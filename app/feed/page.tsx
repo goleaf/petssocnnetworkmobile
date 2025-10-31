@@ -238,76 +238,12 @@ export default function FeedPage() {
     return <LoadingSpinner fullScreen />
   }
 
-  const stats = [
-    {
-      title: "Following",
-      value: user.following.length,
-      icon: Users,
-      color: "text-green-500",
-    },
-    {
-      title: "Followers",
-      value: user.followers.length,
-      icon: Heart,
-      color: "text-red-500",
-    },
-    {
-      title: "Total Posts",
-      value: getBlogPosts().filter((p) => p.authorId === user.id).length,
-      icon: BookOpen,
-      color: "text-purple-500",
-    },
-  ]
-
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
       {/* Welcome Section */}
       <div className="mb-8">
         <h1 className="text-4xl font-bold mb-2">Welcome back, {user.fullName}!</h1>
         <p className="text-muted-foreground">Here{"'"}s what{"'"}s happening in your pet community</p>
-      </div>
-
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-8">
-        <Link href={`/user/${user.username}/following`}>
-          <Card className="hover:shadow-lg transition-all cursor-pointer">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-muted-foreground">Following</p>
-                  <p className="text-2xl font-bold">{stats[0].value}</p>
-                </div>
-                <Users className="h-6 w-6 text-green-500" />
-              </div>
-            </CardContent>
-          </Card>
-        </Link>
-        <Link href={`/user/${user.username}/followers`}>
-          <Card className="hover:shadow-lg transition-all cursor-pointer">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-muted-foreground">Followers</p>
-                  <p className="text-2xl font-bold">{stats[1].value}</p>
-                </div>
-                <Heart className="h-6 w-6 text-red-500" />
-              </div>
-            </CardContent>
-          </Card>
-        </Link>
-        <Link href={`/profile/${user.username}/posts`}>
-          <Card className="hover:shadow-lg transition-all cursor-pointer">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-muted-foreground">Total Posts</p>
-                  <p className="text-2xl font-bold">{stats[2].value}</p>
-                </div>
-                <BookOpen className="h-6 w-6 text-purple-500" />
-              </div>
-            </CardContent>
-          </Card>
-        </Link>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
