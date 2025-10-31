@@ -58,6 +58,7 @@ export default function WikiArticlePage({ params }: { params: Promise<{ slug: st
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null)
   const [editContent, setEditContent] = useState("")
   const [isLoading, setIsLoading] = useState(true)
+  const [highlightComments, setHighlightComments] = useState(false)
 
   useEffect(() => {
     // Load data only on client side
@@ -206,7 +207,24 @@ export default function WikiArticlePage({ params }: { params: Promise<{ slug: st
   const handleScrollToComments = () => {
     const commentsSection = document.getElementById("comments-section")
     if (commentsSection) {
-      commentsSection.scrollIntoView({ behavior: "smooth", block: "start" })
+      // Calculate offset to account for any sticky headers (adjust if needed)
+      const offset = 80
+      const elementPosition = commentsSection.getBoundingClientRect().top
+      const offsetPosition = elementPosition + window.pageYOffset - offset
+
+      // Trigger highlight effect
+      setHighlightComments(true)
+
+      // Smooth scroll with custom offset
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: "smooth",
+      })
+
+      // Remove highlight effect after animation completes
+      setTimeout(() => {
+        setHighlightComments(false)
+      }, 2000)
     }
   }
 
@@ -303,7 +321,14 @@ export default function WikiArticlePage({ params }: { params: Promise<{ slug: st
       </Card>
 
       {/* Comments Section */}
-      <Card id="comments-section" className="mt-6 border-2">
+      <Card
+        id="comments-section"
+        className={`mt-6 border-2 transition-all duration-1000 ease-out ${
+          highlightComments
+            ? "ring-4 ring-primary/40 shadow-xl shadow-primary/20 scale-[1.005] bg-primary/[0.02]"
+            : "ring-0 scale-100"
+        }`}
+      >
         <CardHeader className="border-b pb-4">
           <div className="flex items-center justify-between">
             <h2 className="text-2xl font-bold">Comments</h2>
