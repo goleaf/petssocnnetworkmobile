@@ -6,9 +6,10 @@ import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { getUsers, getPets } from "@/lib/storage"
 import { useAuth } from "@/lib/auth"
-import { PawPrint, Users, ArrowLeft, Plus } from "lucide-react"
+import { PawPrint, Users, ArrowLeft, Plus, Lock } from "lucide-react"
 import Link from "next/link"
 import { getPetUrlFromPet } from "@/lib/utils/pet-url"
+import { canViewUserPets } from "@/lib/utils/privacy"
 
 export default function PetsPage({ params }: { params: Promise<{ username: string }> }) {
   const { username } = use(params)
@@ -20,9 +21,14 @@ export default function PetsPage({ params }: { params: Promise<{ username: strin
     const foundUser = getUsers().find((u) => u.username === username)
     if (foundUser) {
       setUser(foundUser)
-      setPets(getPets().filter((p) => p.ownerId === foundUser.id))
+      const viewerId = currentUser?.id || null
+      if (canViewUserPets(foundUser, viewerId)) {
+        setPets(getPets().filter((p) => p.ownerId === foundUser.id))
+      } else {
+        setPets([])
+      }
     }
-  }, [username])
+  }, [username, currentUser])
 
   if (!user) {
     return (
@@ -33,6 +39,8 @@ export default function PetsPage({ params }: { params: Promise<{ username: strin
   }
 
   const isOwnProfile = currentUser?.id === user.id
+  const viewerId = currentUser?.id || null
+  const canViewPets = canViewUserPets(user, viewerId)
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
@@ -46,7 +54,7 @@ export default function PetsPage({ params }: { params: Promise<{ username: strin
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">{user.fullName}'s Pets</h1>
-          <p className="text-muted-foreground">{pets.length} {pets.length === 1 ? "pet" : "pets"}</p>
+          <p className="text-muted-foreground">{canViewPets ? `${pets.length} ${pets.length === 1 ? "pet" : "pets"}` : "Private"}</p>
         </div>
         {isOwnProfile && (
           <Link href={`/profile/${user.username}/add-pet`}>
@@ -58,7 +66,14 @@ export default function PetsPage({ params }: { params: Promise<{ username: strin
         )}
       </div>
 
-      {pets.length > 0 ? (
+      {!canViewPets ? (
+        <Card>
+          <CardContent className="p-12 text-center space-y-4">
+            <Lock className="h-12 w-12 mx-auto text-muted-foreground/50" />
+            <p className="text-muted-foreground">This user{"'"}s pets are private</p>
+          </CardContent>
+        </Card>
+      ) : pets.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {pets.map((pet) => (
             <Link key={pet.id} href={getPetUrlFromPet(pet, user.username)}>
