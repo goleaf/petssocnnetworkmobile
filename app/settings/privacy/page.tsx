@@ -64,14 +64,8 @@ export default function PrivacySettingsPage() {
   }
 
   const handleBlock = (blockUserId: string) => {
-    if (!user || !window.confirm("Are you sure you want to block this user?")) return
-    blockUser(user.id, blockUserId)
-    const allUsers = getUsers()
-    const blocked = allUsers.filter((u) => {
-      const updatedUser = getUsers().find((usr) => usr.id === user.id)
-      return updatedUser?.blockedUsers?.includes(u.id)
-    })
-    setBlockedUsers(blocked)
+    // This function is not used in the UI - blocking is typically done from profile pages
+    // Keep it for potential future use
   }
 
   const handleUnblock = (unblockUserId: string) => {
