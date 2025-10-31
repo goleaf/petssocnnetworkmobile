@@ -313,51 +313,6 @@ export default function FeedPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main Content */}
         <div className="lg:col-span-2 space-y-6">
-          {/* My Pets Section */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>My Pets</CardTitle>
-              <Link href={`/profile/${user.username}/add-pet`}>
-                <Button size="sm">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Pet
-                </Button>
-              </Link>
-            </CardHeader>
-            <CardContent>
-              {myPets.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {myPets.map((pet) => (
-                    <Link key={pet.id} href={getPetUrlFromPet(pet, user.username)}>
-                      <div className="flex items-center gap-3 p-3 rounded-lg hover:bg-accent transition-colors cursor-pointer">
-                        <Avatar className="h-12 w-12">
-                          <AvatarImage src={pet.avatar || "/placeholder.svg"} alt={pet.name} />
-                          <AvatarFallback>{pet.name.charAt(0)}</AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-semibold">{pet.name}</p>
-                          <p className="text-sm text-muted-foreground capitalize">{pet.breed || pet.species}</p>
-                        </div>
-                        <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                          <Heart className="h-3 w-3" />
-                          {pet.followers.length}
-                        </div>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  <PawPrint className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                  <p>You haven{"'"}t added any pets yet</p>
-                  <Link href={`/profile/${user.username}/add-pet`}>
-                    <Button className="mt-4">Add Your First Pet</Button>
-                  </Link>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
           {/* Filter and Create Post */}
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-2xl font-bold">Feed</h2>
