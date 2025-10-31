@@ -45,37 +45,32 @@ export const useAuth = create<AuthState>()(
       },
 
       login: async (username: string, password: string) => {
+        // Validate input
+        if (!username || username.trim() === "") {
+          return { success: false, error: "Username is required" }
+        }
+        if (!password || password.trim() === "") {
+          return { success: false, error: "Password is required" }
+        }
+
         // Simulate API call
         await new Promise((resolve) => setTimeout(resolve, 500))
 
         const users = getUsers()
-        const user = users.find((u) => u.username === username)
+        const user = users.find((u) => u.username === username.trim())
 
         if (!user) {
           return { success: false, error: "Invalid username or password" }
         }
 
-        // Check password - in a real app, you'd verify the password hash
-        // If user has a password set, require it to match
-        if (user.password) {
-          if (user.password !== password) {
-            return { success: false, error: "Invalid username or password" }
-          }
-        } else {
-          // If user doesn't have password set (legacy user), require password and set it
-          if (!password || password.trim() === "") {
-            return { success: false, error: "Password is required" }
-          }
-          // For existing users without password, update password
-          user.password = password
-          if (typeof window !== "undefined") {
-            const allUsers = getUsers()
-            const index = allUsers.findIndex((u) => u.id === user.id)
-            if (index !== -1) {
-              allUsers[index] = user
-              localStorage.setItem("pet_social_users", JSON.stringify(allUsers))
-            }
-          }
+        // Check password - user must have a password set
+        if (!user.password) {
+          return { success: false, error: "Invalid username or password" }
+        }
+
+        // Verify password matches
+        if (user.password !== password) {
+          return { success: false, error: "Invalid username or password" }
         }
 
         setStorageUser(user.id)

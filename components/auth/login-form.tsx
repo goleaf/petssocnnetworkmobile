@@ -28,9 +28,28 @@ export function LoginForm({ onSuccess, onSwitchToRegister }: LoginFormProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
+    
+    // Client-side validation
+    if (!username.trim()) {
+      setError("Username is required")
+      return
+    }
+    if (!password.trim()) {
+      setError("Password is required")
+      return
+    }
+    if (username.trim().length < 3) {
+      setError("Username must be at least 3 characters")
+      return
+    }
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters")
+      return
+    }
+
     setIsLoading(true)
 
-    const result = await login(username, password)
+    const result = await login(username.trim(), password)
 
     setIsLoading(false)
 

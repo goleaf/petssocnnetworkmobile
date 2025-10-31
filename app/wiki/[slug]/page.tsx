@@ -31,6 +31,7 @@ import {
   Smile,
   ThumbsUp,
   MessageCircle,
+  Loader2,
 } from "lucide-react"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import Link from "next/link"
@@ -59,6 +60,11 @@ export default function WikiArticlePage({ params }: { params: Promise<{ slug: st
   const [editContent, setEditContent] = useState("")
   const [isLoading, setIsLoading] = useState(true)
   const [highlightComments, setHighlightComments] = useState(false)
+  const [isLiking, setIsLiking] = useState(false)
+  const [isPostingComment, setIsPostingComment] = useState(false)
+  const [isReplying, setIsReplying] = useState<string | null>(null)
+  const [isSavingEdit, setIsSavingEdit] = useState<string | null>(null)
+  const [isDeleting, setIsDeleting] = useState<string | null>(null)
 
   useEffect(() => {
     // Load data only on client side
@@ -84,13 +90,18 @@ export default function WikiArticlePage({ params }: { params: Promise<{ slug: st
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const handleLike = () => {
-    if (!currentUser || !article) return
+  const handleLike = async () => {
+    if (!currentUser || !article || isLiking) return
+
+    setIsLiking(true)
+
+    // Simulate async operation
+    await new Promise((resolve) => setTimeout(resolve, 300))
 
     const updatedArticle = { ...article }
 
     if (hasLiked) {
-      updatedArticle.likes = updatedArticle.likes.filter((id) => id !== currentUser.id)
+      updatedArticle.likes = updatedArticle.likes.filter((id: string) => id !== currentUser.id)
     } else {
       updatedArticle.likes.push(currentUser.id)
     }
@@ -98,10 +109,16 @@ export default function WikiArticlePage({ params }: { params: Promise<{ slug: st
     updateWikiArticle(updatedArticle)
     setArticle(updatedArticle)
     setHasLiked(!hasLiked)
+    setIsLiking(false)
   }
 
-  const handleAddComment = () => {
-    if (!currentUser || !article || !newComment.trim()) return
+  const handleAddComment = async () => {
+    if (!currentUser || !article || !newComment.trim() || isPostingComment) return
+
+    setIsPostingComment(true)
+
+    // Simulate async operation
+    await new Promise((resolve) => setTimeout(resolve, 500))
 
     const comment: Comment = {
       id: String(Date.now()),
@@ -123,10 +140,16 @@ export default function WikiArticlePage({ params }: { params: Promise<{ slug: st
     const updatedComments = getCommentsByWikiArticleId(article.id)
     setComments(updatedComments)
     setNewComment("")
+    setIsPostingComment(false)
   }
 
-  const handleReply = (parentCommentId: string) => {
-    if (!currentUser || !article || !replyContent.trim()) return
+  const handleReply = async (parentCommentId: string) => {
+    if (!currentUser || !article || !replyContent.trim() || isReplying) return
+
+    setIsReplying(parentCommentId)
+
+    // Simulate async operation
+    await new Promise((resolve) => setTimeout(resolve, 500))
 
     const reply: Comment = {
       id: String(Date.now()),
@@ -150,6 +173,7 @@ export default function WikiArticlePage({ params }: { params: Promise<{ slug: st
     setComments(updatedComments)
     setReplyContent("")
     setReplyingTo(null)
+    setIsReplying(null)
   }
 
   const handleStartEdit = (comment: Comment) => {
@@ -157,20 +181,35 @@ export default function WikiArticlePage({ params }: { params: Promise<{ slug: st
     setEditContent(comment.content)
   }
 
-  const handleSaveEdit = (commentId: string) => {
-    if (!editContent.trim()) return
+  const handleSaveEdit = async (commentId: string) => {
+    if (!editContent.trim() || isSavingEdit) return
+
+    setIsSavingEdit(commentId)
+
+    // Simulate async operation
+    await new Promise((resolve) => setTimeout(resolve, 400))
+
     updateComment(commentId, editContent.trim())
     const updatedComments = getCommentsByWikiArticleId(article.id)
     setComments(updatedComments)
     setEditingCommentId(null)
     setEditContent("")
+    setIsSavingEdit(null)
   }
 
-  const handleDelete = (commentId: string) => {
+  const handleDelete = async (commentId: string) => {
+    if (isDeleting) return
+    
     if (window.confirm("Are you sure you want to delete this comment?")) {
+      setIsDeleting(commentId)
+      
+      // Simulate async operation
+      await new Promise((resolve) => setTimeout(resolve, 300))
+      
       deleteComment(commentId)
       const updatedComments = getCommentsByWikiArticleId(article.id)
       setComments(updatedComments)
+      setIsDeleting(null)
     }
   }
 
@@ -291,7 +330,7 @@ export default function WikiArticlePage({ params }: { params: Promise<{ slug: st
             <Badge variant="secondary" className="capitalize">
               {article.category}
             </Badge>
-            {article.species?.map((species) => (
+            {article.species?.map((species: string) => (
               <Badge key={species} variant="outline" className="capitalize">
                 {species}
               </Badge>
@@ -323,8 +362,14 @@ export default function WikiArticlePage({ params }: { params: Promise<{ slug: st
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Button onClick={handleLike} variant={hasLiked ? "default" : "outline"} size="sm">
-              <Heart className={`h-4 w-4 mr-2 ${hasLiked ? "fill-current" : ""}`} />
+            <Button
+              onClick={handleLike}
+              variant={hasLiked ? "default" : "outline"}
+              size="sm"
+              loading={isLiking}
+              loadingText={hasLiked ? "Unliking..." : "Liking..."}
+            >
+              {!isLiking && <Heart className={`h-4 w-4 mr-2 ${hasLiked ? "fill-current" : ""}`} />}
               {article.likes.length} {article.likes.length === 1 ? "Like" : "Likes"}
             </Button>
             <Button variant="outline" size="sm" onClick={handleScrollToComments}>
@@ -376,12 +421,14 @@ export default function WikiArticlePage({ params }: { params: Promise<{ slug: st
                 <div className="flex justify-end">
                   <Button
                     onClick={handleAddComment}
-                    disabled={!newComment.trim()}
+                    disabled={!newComment.trim() || isPostingComment}
                     size="lg"
                     className="px-6"
+                    loading={isPostingComment}
+                    loadingText="Posting comment..."
                   >
-                    <Send className="h-4 w-4 mr-2" />
-                    Post Comment
+                    {!isPostingComment && <Send className="h-4 w-4 mr-2" />}
+                    {!isPostingComment && "Post Comment"}
                   </Button>
                 </div>
               </div>
@@ -443,9 +490,22 @@ export default function WikiArticlePage({ params }: { params: Promise<{ slug: st
                                   <Edit2 className="h-4 w-4 mr-2" />
                                   Edit
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleDelete(comment.id)} className="text-destructive">
-                                  <Trash2 className="h-4 w-4 mr-2" />
-                                  Delete
+                                <DropdownMenuItem
+                                  onClick={() => handleDelete(comment.id)}
+                                  className="text-destructive"
+                                  disabled={isDeleting === comment.id}
+                                >
+                                  {isDeleting === comment.id ? (
+                                    <>
+                                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                      Deleting...
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Trash2 className="h-4 w-4 mr-2" />
+                                      Delete
+                                    </>
+                                  )}
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
@@ -471,9 +531,14 @@ export default function WikiArticlePage({ params }: { params: Promise<{ slug: st
                                 <X className="h-4 w-4 mr-1" />
                                 Cancel
                               </Button>
-                              <Button size="sm" onClick={() => handleSaveEdit(comment.id)}>
-                                <Check className="h-4 w-4 mr-1" />
-                                Save
+                              <Button
+                                size="sm"
+                                onClick={() => handleSaveEdit(comment.id)}
+                                loading={isSavingEdit === comment.id}
+                                loadingText="Saving..."
+                              >
+                                {isSavingEdit !== comment.id && <Check className="h-4 w-4 mr-1" />}
+                                {isSavingEdit !== comment.id && "Save"}
                               </Button>
                             </div>
                           </div>
@@ -585,10 +650,12 @@ export default function WikiArticlePage({ params }: { params: Promise<{ slug: st
                                 <Button
                                   size="sm"
                                   onClick={() => handleReply(comment.id)}
-                                  disabled={!replyContent.trim()}
+                                  disabled={!replyContent.trim() || isReplying === comment.id}
+                                  loading={isReplying === comment.id}
+                                  loadingText="Posting reply..."
                                 >
-                                  <Send className="h-3.5 w-3.5 mr-1.5" />
-                                  Reply
+                                  {isReplying !== comment.id && <Send className="h-3.5 w-3.5 mr-1.5" />}
+                                  {isReplying !== comment.id && "Reply"}
                                 </Button>
                               </div>
                             </div>
@@ -666,9 +733,19 @@ export default function WikiArticlePage({ params }: { params: Promise<{ slug: st
                                               <DropdownMenuItem
                                                 onClick={() => handleDelete(reply.id)}
                                                 className="text-destructive"
+                                                disabled={isDeleting === reply.id}
                                               >
-                                                <Trash2 className="h-4 w-4 mr-2" />
-                                                Delete
+                                                {isDeleting === reply.id ? (
+                                                  <>
+                                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                                    Deleting...
+                                                  </>
+                                                ) : (
+                                                  <>
+                                                    <Trash2 className="h-4 w-4 mr-2" />
+                                                    Delete
+                                                  </>
+                                                )}
                                               </DropdownMenuItem>
                                             </DropdownMenuContent>
                                           </DropdownMenu>
@@ -694,9 +771,14 @@ export default function WikiArticlePage({ params }: { params: Promise<{ slug: st
                                               <X className="h-3 w-3 mr-1" />
                                               Cancel
                                             </Button>
-                                            <Button size="sm" onClick={() => handleSaveEdit(reply.id)}>
-                                              <Check className="h-3 w-3 mr-1" />
-                                              Save
+                                            <Button
+                                              size="sm"
+                                              onClick={() => handleSaveEdit(reply.id)}
+                                              loading={isSavingEdit === reply.id}
+                                              loadingText="Saving..."
+                                            >
+                                              {isSavingEdit !== reply.id && <Check className="h-3 w-3 mr-1" />}
+                                              {isSavingEdit !== reply.id && "Save"}
                                             </Button>
                                           </div>
                                         </div>

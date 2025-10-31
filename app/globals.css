@@ -123,4 +123,19 @@
   body {
     @apply bg-background text-foreground;
   }
+  /* macOS-style hand cursor for interactive elements */
+  button:not(:disabled),
+  a[href],
+  [role="button"]:not(:disabled),
+  [role="tab"]:not(:disabled),
+  [role="link"]:not(:disabled),
+  input[type="submit"]:not(:disabled),
+  input[type="button"]:not(:disabled),
+  label[for] {
+    cursor: pointer;
+  }
+  button:disabled,
+  [role="button"]:disabled {
+    cursor: not-allowed;
+  }
 }
