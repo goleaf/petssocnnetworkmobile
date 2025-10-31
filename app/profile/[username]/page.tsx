@@ -8,12 +8,22 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { getUsers, getPets, getBlogPosts, updateUser } from "@/lib/storage"
 import { useAuth } from "@/lib/auth"
-import { MapPin, Calendar, Users, Heart, PawPrint, FileText } from "lucide-react"
+import { MapPin, Calendar, Users, Heart, PawPrint, FileText, Lock } from "lucide-react"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import Link from "next/link"
 import { useState, useEffect } from "react"
 import { formatDate } from "@/lib/utils/date"
 import { getPetUrlFromPet } from "@/lib/utils/pet-url"
+import {
+  canViewProfile,
+  canViewUserPosts,
+  canViewUserPets,
+  canViewFollowers,
+  canViewFollowing,
+  canViewProfileField,
+  canSendFollowRequest,
+  canViewPost,
+} from "@/lib/utils/privacy"
 
 export default function ProfilePage({ params }: { params: Promise<{ username: string }> }) {
   const { username } = use(params)
@@ -28,13 +38,33 @@ export default function ProfilePage({ params }: { params: Promise<{ username: st
     // Load data only on client side to prevent hydration mismatch
     const foundUser = getUsers().find((u) => u.username === username)
     if (foundUser) {
+      const viewerId = currentUser?.id || null
+      
+      // Check if viewer can see profile
+      if (!canViewProfile(foundUser, viewerId)) {
+        setIsLoading(false)
+        return
+      }
+      
       setUser(foundUser)
-      setPets(getPets().filter((p) => p.ownerId === foundUser.id))
-      setPosts(
-        getBlogPosts()
+      
+      // Filter pets and posts based on privacy
+      if (canViewUserPets(foundUser, viewerId)) {
+        const allPets = getPets().filter((p) => p.ownerId === foundUser.id)
+        setPets(allPets)
+      } else {
+        setPets([])
+      }
+      
+      if (canViewUserPosts(foundUser, viewerId)) {
+        const allPosts = getBlogPosts()
           .filter((p) => p.authorId === foundUser.id)
-          .slice(0, 6)
-      )
+          .filter((p) => canViewPost(p, foundUser, viewerId))
+        setPosts(allPosts.slice(0, 6))
+      } else {
+        setPosts([])
+      }
+      
       if (currentUser) {
         setIsFollowing(foundUser.followers.includes(currentUser.id))
       }
@@ -72,13 +102,32 @@ export default function ProfilePage({ params }: { params: Promise<{ username: st
     return <LoadingSpinner fullScreen />
   }
 
+  if (isLoading) {
+    return <LoadingSpinner fullScreen />
+  }
+
   if (!user) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <p className="text-center text-muted-foreground">User not found</p>
+      <div className="container mx-auto px-4 py-8 max-w-7xl">
+        <Card>
+          <CardContent className="p-12 text-center">
+            <Lock className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+            <p className="text-lg font-semibold mb-2">User not found or profile is private</p>
+            <p className="text-muted-foreground">
+              This profile may not exist or you don{"'"}t have permission to view it.
+            </p>
+          </CardContent>
+        </Card>
       </div>
     )
   }
+
+  const viewerId = currentUser?.id || null
+  const canViewPets = canViewUserPets(user, viewerId)
+  const canViewPosts = canViewUserPosts(user, viewerId)
+  const canViewFollowersList = canViewFollowers(user, viewerId)
+  const canViewFollowingList = canViewFollowing(user, viewerId)
+  const canFollow = canSendFollowRequest(user, viewerId)
 
   return (
       <div className="container mx-auto px-4 py-8 max-w-7xl">
@@ -96,14 +145,22 @@ export default function ProfilePage({ params }: { params: Promise<{ username: st
                   <p className="text-muted-foreground">@{user.username}</p>
                 </div>
                 {currentUser && currentUser.id !== user.id && (
-                  <Button onClick={handleFollow} variant={isFollowing ? "outline" : "default"}>
-                    {isFollowing ? "Unfollow" : "Follow"}
-                  </Button>
+                  <>
+                    {isFollowing ? (
+                      <Button onClick={handleFollow} variant="outline">
+                        Unfollow
+                      </Button>
+                    ) : canFollow ? (
+                      <Button onClick={handleFollow} variant="default">
+                        Follow
+                      </Button>
+                    ) : null}
+                  </>
                 )}
               </div>
               {user.bio && <p className="text-foreground">{user.bio}</p>}
               <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-                {user.location && (
+                {user.location && canViewProfileField("location", user, viewerId) && (
                   <div className="flex items-center gap-1">
                     <MapPin className="h-4 w-4" />
                     {user.location}
