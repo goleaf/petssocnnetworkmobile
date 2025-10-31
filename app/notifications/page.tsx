@@ -508,24 +508,27 @@ export default function NotificationsPage() {
           <div className="flex-1">
             <div className="flex items-center gap-2 sm:gap-3 mb-2">
               <h1 className="text-4xl font-bold">Notifications</h1>
-              {showStats && (
-                <Badge variant="secondary">
-                  {unreadCount > 0 ? `${unreadCount} unread` : "All caught up"}
-                </Badge>
-              )}
+              <Badge variant="secondary">
+                {unreadCount > 0 ? `${unreadCount} unread` : "All caught up"}
+              </Badge>
             </div>
             <p className="text-muted-foreground text-lg">Stay updated with your activity</p>
           </div>
           <div className="flex items-center gap-1 sm:gap-2">
-            <label className="flex items-center gap-1.5 cursor-pointer h-8 px-2 sm:px-3 border rounded-md bg-white dark:bg-gray-900 hover:bg-accent hover:text-accent-foreground">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowStats(!showStats)}
+              className="h-8 px-2 sm:px-3 bg-white dark:bg-gray-900 flex items-center gap-2"
+            >
               <Checkbox
                 checked={showStats}
                 onCheckedChange={(checked) => setShowStats(checked === true)}
-                className="h-4 w-4"
+                className="h-4 w-4 pointer-events-none"
               />
               <BarChart3 className="h-4 w-4" />
               <span className="hidden sm:inline text-sm">Statistics</span>
-            </label>
+            </Button>
           </div>
         </div>
 
