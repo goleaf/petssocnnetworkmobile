@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useEffect, use } from "react"
+import { useState, useEffect, use, useRef, useCallback } from "react"
 import { useAuth } from "@/lib/auth"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -10,13 +10,17 @@ import { Button } from "@/components/ui/button"
 import { BackButton } from "@/components/ui/back-button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { getBlogPostById, getPetsByOwnerId, updateBlogPost } from "@/lib/storage"
 import type { BlogPost, PrivacyLevel } from "@/lib/types"
-import { ArrowLeft, Save, X } from "lucide-react"
+import { Save, X } from "lucide-react"
 import Link from "next/link"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
+import RichTextEditor from "reactjs-tiptap-editor"
+import { BaseKit } from "reactjs-tiptap-editor"
+import Tags from "@yaireo/tagify/react"
+import "@yaireo/tagify/dist/tagify.css"
+import "reactjs-tiptap-editor/style.css"
 
 export default function EditBlogPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
@@ -25,76 +29,128 @@ export default function EditBlogPage({ params }: { params: Promise<{ id: string 
   const [myPets, setMyPets] = useState<any[]>([])
   const [post, setPost] = useState<BlogPost | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [isSaving, setIsSaving] = useState(false)
+  const [content, setContent] = useState("")
+  const tagifyRef = useRef<any>(null)
+  const hashtagRef = useRef<any>(null)
+
   const [formData, setFormData] = useState({
     petId: "",
     title: "",
-    content: "",
     tags: "",
     privacy: "public" as PrivacyLevel,
     hashtags: "",
   })
 
+  const extensions = [
+    BaseKit.configure({
+      placeholder: {
+        showOnlyCurrent: true,
+      },
+      characterCount: {
+        limit: 50000,
+      },
+    }),
+  ]
+
   useEffect(() => {
-    if (!user) {
-      router.push("/")
-      return
+    const loadData = async () => {
+      if (!user) {
+        router.push("/")
+        return
+      }
+
+      setIsLoading(true)
+
+      // Simulate a small delay to show spinner
+      await new Promise((resolve) => setTimeout(resolve, 300))
+
+      const loadedPost = getBlogPostById(id)
+      if (!loadedPost) {
+        router.push("/feed")
+        return
+      }
+
+      // Check if user owns the post
+      if (loadedPost.authorId !== user.id) {
+        router.push(`/blog/${id}`)
+        return
+      }
+
+      setPost(loadedPost)
+      const pets = getPetsByOwnerId(user.id)
+      setMyPets(pets)
+
+      setFormData({
+        petId: loadedPost.petId,
+        title: loadedPost.title,
+        tags: loadedPost.tags.join(", "),
+        privacy: (loadedPost.privacy || "public") as PrivacyLevel,
+        hashtags: loadedPost.hashtags?.join(", ") || "",
+      })
+
+      setContent(loadedPost.content)
+      setIsLoading(false)
     }
 
-    const loadedPost = getBlogPostById(id)
-    if (!loadedPost) {
-      router.push("/feed")
-      return
-    }
-
-    // Check if user owns the post
-    if (loadedPost.authorId !== user.id) {
-      router.push(`/blog/${id}`)
-      return
-    }
-
-    setPost(loadedPost)
-    const pets = getPetsByOwnerId(user.id)
-    setMyPets(pets)
-
-    setFormData({
-      petId: loadedPost.petId,
-      title: loadedPost.title,
-      content: loadedPost.content,
-      tags: loadedPost.tags.join(", "),
-      privacy: (loadedPost.privacy || "public") as PrivacyLevel,
-      hashtags: loadedPost.hashtags?.join(", ") || "",
-    })
-    setIsLoading(false)
+    loadData()
   }, [id, user, router])
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleTagsChange = useCallback((e: any) => {
+    const tagify = e.detail.tagify
+    const tagsArray = tagify.value.map((tag: any) => tag.value).join(", ")
+    setFormData((prev) => ({ ...prev, tags: tagsArray }))
+  }, [])
+
+  const handleHashtagsChange = useCallback((e: any) => {
+    const tagify = e.detail.tagify
+    const tagsArray = tagify.value.map((tag: any) => tag.value).join(", ")
+    setFormData((prev) => ({ ...prev, hashtags: tagsArray }))
+  }, [])
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!user || !post) return
+    if (!user || !post || isSaving) return
 
-    const hashtagMatches = formData.content.match(/#\w+/g) || []
-    const contentHashtags = hashtagMatches.map((tag) => tag.substring(1))
-    const manualHashtags = formData.hashtags
-      .split(",")
-      .map((tag) => tag.trim())
-      .filter((tag) => tag)
-    const allHashtags = [...new Set([...contentHashtags, ...manualHashtags])]
+    setIsSaving(true)
 
-    const updatedPost: BlogPost = {
-      ...post,
-      petId: formData.petId,
-      title: formData.title,
-      content: formData.content,
-      tags: formData.tags
+    try {
+      // Extract hashtags from content
+      const hashtagMatches = content.match(/#\w+/g) || []
+      const contentHashtags = hashtagMatches.map((tag) => tag.substring(1))
+      
+      // Get manual hashtags from tagify
+      const manualHashtags = formData.hashtags
         .split(",")
         .map((tag) => tag.trim())
-        .filter((tag) => tag),
-      hashtags: allHashtags,
-      privacy: formData.privacy,
-      updatedAt: new Date().toISOString(),
-    }
+        .filter((tag) => tag)
+      
+      const allHashtags = [...new Set([...contentHashtags, ...manualHashtags])]
 
-    updateBlogPost(updatedPost)
-    router.push(`/blog/${post.id}`)
+      // Get tags from tagify
+      const tags = formData.tags
+        .split(",")
+        .map((tag) => tag.trim())
+        .filter((tag) => tag)
+
+      const updatedPost: BlogPost = {
+        ...post,
+        petId: formData.petId,
+        title: formData.title,
+        content: content,
+        tags: tags,
+        hashtags: allHashtags,
+        privacy: formData.privacy,
+        updatedAt: new Date().toISOString(),
+      }
+
+      updateBlogPost(updatedPost)
+      router.push(`/blog/${post.id}`)
+    } catch (error) {
+      console.error("Error updating post:", error)
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   if (isLoading) {
@@ -123,13 +179,15 @@ export default function EditBlogPage({ params }: { params: Promise<{ id: string 
           </div>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <Label htmlFor="petId">Select Pet *</Label>
+                <Label htmlFor="petId" required>
+                  Select Pet
+                </Label>
                 <Select value={formData.petId} onValueChange={(value) => setFormData({ ...formData, petId: value })}>
                   <SelectTrigger>
-                    <SelectValue />
+                    <SelectValue placeholder="Select a pet" />
                   </SelectTrigger>
                   <SelectContent>
                     {myPets.map((pet) => (
@@ -142,7 +200,9 @@ export default function EditBlogPage({ params }: { params: Promise<{ id: string 
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="privacy">Privacy *</Label>
+                <Label htmlFor="privacy" required>
+                  Privacy
+                </Label>
                 <Select
                   value={formData.privacy}
                   onValueChange={(value: PrivacyLevel) => setFormData({ ...formData, privacy: value })}
@@ -160,66 +220,94 @@ export default function EditBlogPage({ params }: { params: Promise<{ id: string 
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="title">Title *</Label>
+              <Label htmlFor="title" required>
+                Title
+              </Label>
               <Input
                 id="title"
                 value={formData.title}
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                 placeholder="Give your post a catchy title"
                 required
-                className="h-10"
+                className="h-11"
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="content">Content *</Label>
-              <Textarea
-                id="content"
-                value={formData.content}
-                onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-                placeholder="Share your story... Add hashtags with #tag"
-                rows={10}
-                required
-                className="resize-none"
-              />
+              <Label htmlFor="content" required description="Write your story with rich text formatting">
+                Content
+              </Label>
+              <div className="border border-input rounded-md overflow-hidden bg-background">
+                <RichTextEditor
+                  content={content}
+                  output="html"
+                  onChangeContent={setContent}
+                  extensions={extensions}
+                  minHeight="300px"
+                  contentClass="min-h-[300px] p-4 prose prose-sm max-w-none"
+                />
+              </div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="tags">Tags</Label>
-              <Input
-                id="tags"
-                value={formData.tags}
-                onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
-                placeholder="adventure, training, funny (comma separated)"
-                className="h-10"
-              />
-              <p className="text-xs text-muted-foreground">Separate tags with commas</p>
+              <Label htmlFor="tags" description="Add tags separated by commas">
+                Tags
+              </Label>
+              <div className="border border-input rounded-md bg-background">
+                <Tags
+                  tagifyRef={tagifyRef}
+                  whitelist={[]}
+                  placeholder="adventure, training, funny"
+                  settings={{
+                    duplicates: false,
+                    maxTags: 20,
+                    trim: true,
+                  }}
+                  defaultValue={formData.tags}
+                  onChange={handleTagsChange}
+                />
+              </div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="hashtags">Hashtags</Label>
-              <Input
-                id="hashtags"
-                value={formData.hashtags}
-                onChange={(e) => setFormData({ ...formData, hashtags: e.target.value })}
-                placeholder="dogs, puppylove, goldenretriever (comma separated)"
-                className="h-10"
-              />
-              <p className="text-xs text-muted-foreground">
-                Hashtags in your content (#tag) will be automatically detected
-              </p>
+              <Label htmlFor="hashtags" description="Hashtags in your content (#tag) will be automatically detected">
+                Hashtags
+              </Label>
+              <div className="border border-input rounded-md bg-background">
+                <Tags
+                  tagifyRef={hashtagRef}
+                  whitelist={[]}
+                  placeholder="dogs, puppylove, goldenretriever"
+                  settings={{
+                    duplicates: false,
+                    maxTags: 20,
+                    trim: true,
+                  }}
+                  defaultValue={formData.hashtags}
+                  onChange={handleHashtagsChange}
+                />
+              </div>
             </div>
 
-            <div className="flex gap-4 pt-4">
+            <div className="flex gap-4 pt-4 border-t">
               <Link href={`/blog/${post.id}`} className="flex-1">
-                <Button type="button" variant="outline" className="w-full">
+                <Button type="button" variant="outline" className="w-full" disabled={isSaving}>
                   <X className="h-4 w-4 mr-2" />
                   Cancel
                 </Button>
               </Link>
-              <Button type="submit" className="flex-1">
-                <Save className="h-4 w-4 mr-2" />
-                Save Changes
+              <Button type="submit" className="flex-1" disabled={isSaving || !formData.title.trim() || !content.trim()}>
+                {isSaving ? (
+                  <>
+                    <LoadingSpinner size="sm" className="mr-2" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4 mr-2" />
+                    Save Changes
+                  </>
+                )}
               </Button>
             </div>
           </form>
@@ -228,4 +316,3 @@ export default function EditBlogPage({ params }: { params: Promise<{ id: string 
     </div>
   )
 }
-
