@@ -6,8 +6,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Button } from "@/components/ui/button"
+import { BackButton } from "@/components/ui/back-button"
 import { useAuth } from "@/components/auth/auth-provider"
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft, Mail, Bell } from "lucide-react"
 import type { NotificationSettings } from "@/lib/types"
 
 export default function NotificationSettingsPage() {
@@ -69,10 +70,7 @@ export default function NotificationSettingsPage() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
-      <Button variant="ghost" onClick={() => router.back()} className="mb-6">
-        <ArrowLeft className="h-4 w-4 mr-2" />
-        Back
-      </Button>
+      <BackButton onClick={() => router.back()} label="Back" />
 
       <div className="space-y-6">
         <div>
@@ -82,7 +80,12 @@ export default function NotificationSettingsPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Email Notifications</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <div className="h-8 w-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                <Mail className="h-4 w-4 text-blue-500" />
+              </div>
+              Email Notifications
+            </CardTitle>
             <CardDescription>Receive notifications via email</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -145,7 +148,12 @@ export default function NotificationSettingsPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>In-App Notifications</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <div className="h-8 w-8 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                <Bell className="h-4 w-4 text-purple-500" />
+              </div>
+              In-App Notifications
+            </CardTitle>
             <CardDescription>Receive notifications within the app</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">

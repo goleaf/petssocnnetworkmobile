@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -16,6 +16,7 @@ import Link from "next/link"
 const POSTS_PER_PAGE = 9
 
 export default function BlogPage() {
+  const [mounted, setMounted] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [sortBy, setSortBy] = useState("recent")
   const [selectedCategory, setSelectedCategory] = useState("all")
@@ -23,6 +24,10 @@ export default function BlogPage() {
   const posts = getBlogPosts()
   const pets = getPets()
   const users = getUsers()
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   // Define categories based on common tags
   const categories = [
@@ -115,6 +120,43 @@ export default function BlogPage() {
       currentPage,
       totalPosts: allPosts.length,
     }
+  }
+
+  if (!mounted) {
+    return (
+      <div className="container mx-auto px-4 py-8 max-w-7xl">
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold mb-2">Pet Blogs</h1>
+          <p className="text-muted-foreground text-lg">Stories, adventures, and updates from our furry friends</p>
+        </div>
+        <div className="flex flex-col md:flex-row gap-4 mb-6">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              type="search"
+              placeholder="Search blog posts..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          <div className="w-full md:w-[180px] h-9 rounded-md border bg-transparent" />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Card key={i} className="h-full flex flex-col overflow-hidden p-0 animate-pulse">
+              <div className="aspect-video w-full bg-muted" />
+              <CardContent className="p-4 flex-1 flex flex-col">
+                <div className="h-4 bg-muted rounded w-3/4 mb-2" />
+                <div className="h-3 bg-muted rounded w-1/2 mb-4" />
+                <div className="h-3 bg-muted rounded w-full mb-1" />
+                <div className="h-3 bg-muted rounded w-5/6" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    )
   }
 
   return (

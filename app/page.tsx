@@ -11,7 +11,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { getBlogPosts, getPets, getUsers, getPetsByOwnerId, addBlogPost, deleteBlogPost, togglePostReaction, toggleFollow } from "@/lib/storage"
-import { PawPrint, Heart, Users, BookOpen, TrendingUp, MessageCircle, Share2, MoreHorizontal, Globe, UsersIcon, Lock, Edit2, Trash2, Smile, Plus } from "lucide-react"
+import { PawPrint, Heart, Users, BookOpen, TrendingUp, MessageCircle, Share2, MoreHorizontal, Globe, UsersIcon, Lock, Edit2, Trash2, Smile, Plus, Filter, Send, UserPlus, Rocket, ArrowRight, FileText } from "lucide-react"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -323,6 +323,7 @@ export default function HomePage() {
               <h2 className="text-2xl font-bold">Feed</h2>
               <div className="flex gap-2">
                 <Button variant={filter === "all" ? "default" : "outline"} size="sm" onClick={() => setFilter("all")}>
+                  <FileText className="h-4 w-4 mr-2" />
                   All Posts
                 </Button>
                 <Button
@@ -330,6 +331,7 @@ export default function HomePage() {
                   size="sm"
                   onClick={() => setFilter("following")}
                 >
+                  <Users className="h-4 w-4 mr-2" />
                   Following
                 </Button>
               </div>
@@ -365,6 +367,7 @@ export default function HomePage() {
                           </SelectContent>
                         </Select>
                         <Button onClick={handleCreatePost} disabled={!newPostContent.trim()}>
+                          <Send className="h-4 w-4 mr-2" />
                           Post
                         </Button>
                       </div>
@@ -483,6 +486,7 @@ export default function HomePage() {
                           variant="outline"
                           onClick={() => handleFollowSuggested(suggestedUser.id)}
                         >
+                          <UserPlus className="h-4 w-4 mr-2" />
                           Follow
                         </Button>
                       </div>
@@ -641,7 +645,10 @@ export default function HomePage() {
               <p className="text-muted-foreground">Popular posts from our community</p>
             </div>
             <Link href="/blog">
-              <Button variant="outline">View All</Button>
+              <Button variant="outline">
+                <ArrowRight className="h-4 w-4 mr-2" />
+                View All
+              </Button>
             </Link>
           </div>
           <div className="grid md:grid-cols-3 gap-6">
@@ -692,6 +699,7 @@ export default function HomePage() {
               Create your account today and start sharing your pet{"'"}s amazing journey
             </p>
             <Button size="lg" variant="secondary" onClick={() => setShowRegister(true)}>
+              <Rocket className="h-4 w-4 mr-2" />
               Get Started Free
             </Button>
           </CardContent>

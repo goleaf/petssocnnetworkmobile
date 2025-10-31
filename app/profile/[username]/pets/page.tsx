@@ -4,6 +4,7 @@ import { useState, useEffect, use } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { BackButton } from "@/components/ui/back-button"
 import { getUsers, getPets } from "@/lib/storage"
 import { useAuth } from "@/lib/auth"
 import { PawPrint, Users, ArrowLeft, Plus, Lock } from "lucide-react"
@@ -44,12 +45,7 @@ export default function PetsPage({ params }: { params: Promise<{ username: strin
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
-      <Link href={`/profile/${username}`}>
-        <Button variant="ghost" className="mb-6">
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Profile
-        </Button>
-      </Link>
+      <BackButton href={`/profile/${username}`} label="Back to Profile" />
 
       <div className="mb-6 flex items-center justify-between">
         <div>

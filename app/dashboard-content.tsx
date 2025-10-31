@@ -7,7 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { getPets, getBlogPosts, getUsers, getPetsByOwnerId } from "@/lib/storage"
-import { Heart, MessageCircle, TrendingUp, Users, PawPrint, BookOpen, Plus } from "lucide-react"
+import { Heart, MessageCircle, TrendingUp, Users, PawPrint, BookOpen, Plus, UserPlus } from "lucide-react"
 import Link from "next/link"
 import { formatDate } from "@/lib/utils/date"
 import { getPetUrlFromPet } from "@/lib/utils/pet-url"
@@ -98,7 +98,12 @@ export default function DashboardContent({ user }: { user: User }) {
           {/* My Pets */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>My Pets</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <div className="h-8 w-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                  <PawPrint className="h-4 w-4 text-blue-500" />
+                </div>
+                My Pets
+              </CardTitle>
               <Link href="/dashboard/add-pet">
                 <Button size="sm">
                   <Plus className="h-4 w-4 mr-2" />
@@ -133,7 +138,10 @@ export default function DashboardContent({ user }: { user: User }) {
                   <PawPrint className="h-12 w-12 mx-auto mb-3 opacity-50" />
                   <p>You haven{"'"}t added any pets yet</p>
                   <Link href="/dashboard/add-pet">
-                    <Button className="mt-4">Add Your First Pet</Button>
+                    <Button className="mt-4">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Your First Pet
+                    </Button>
                   </Link>
                 </div>
               )}
@@ -143,7 +151,12 @@ export default function DashboardContent({ user }: { user: User }) {
           {/* Recent Posts from Following */}
           <Card>
             <CardHeader>
-              <CardTitle>Recent Posts</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <div className="h-8 w-8 rounded-lg bg-green-500/10 flex items-center justify-center">
+                  <MessageCircle className="h-4 w-4 text-green-500" />
+                </div>
+                Recent Posts
+              </CardTitle>
             </CardHeader>
             <CardContent>
               {recentPosts.length > 0 ? (
@@ -193,7 +206,9 @@ export default function DashboardContent({ user }: { user: User }) {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <TrendingUp className="h-5 w-5" />
+                <div className="h-8 w-8 rounded-lg bg-orange-500/10 flex items-center justify-center">
+                  <TrendingUp className="h-4 w-4 text-orange-500" />
+                </div>
                 Trending Posts
               </CardTitle>
             </CardHeader>
@@ -244,7 +259,12 @@ export default function DashboardContent({ user }: { user: User }) {
           {/* Suggested Users */}
           <Card>
             <CardHeader>
-              <CardTitle>Suggested Users</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <div className="h-8 w-8 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                  <Users className="h-4 w-4 text-purple-500" />
+                </div>
+                Suggested Users
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
@@ -261,6 +281,7 @@ export default function DashboardContent({ user }: { user: User }) {
                       </div>
                     </Link>
                     <Button size="sm" variant="outline">
+                      <UserPlus className="h-4 w-4 mr-2" />
                       Follow
                     </Button>
                   </div>
@@ -272,7 +293,12 @@ export default function DashboardContent({ user }: { user: User }) {
           {/* Quick Links */}
           <Card>
             <CardHeader>
-              <CardTitle>Quick Links</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <div className="h-8 w-8 rounded-lg bg-indigo-500/10 flex items-center justify-center">
+                  <BookOpen className="h-4 w-4 text-indigo-500" />
+                </div>
+                Quick Links
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
               <Link href="/blog">

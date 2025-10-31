@@ -7,13 +7,14 @@ import { useAuth } from "@/lib/auth"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { BackButton } from "@/components/ui/back-button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { getBlogPostById, getPetsByOwnerId, updateBlogPost } from "@/lib/storage"
 import type { BlogPost, PrivacyLevel } from "@/lib/types"
-import { ArrowLeft, Save } from "lucide-react"
+import { ArrowLeft, Save, X } from "lucide-react"
 import Link from "next/link"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 
@@ -110,12 +111,7 @@ export default function EditBlogPage({ params }: { params: Promise<{ id: string 
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
-      <Link href={`/blog/${post.id}`}>
-        <Button variant="ghost" className="mb-6">
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Post
-        </Button>
-      </Link>
+      <BackButton href={`/blog/${post.id}`} label="Back to Post" />
 
       <Card>
         <CardHeader>
@@ -217,6 +213,7 @@ export default function EditBlogPage({ params }: { params: Promise<{ id: string 
             <div className="flex gap-4 pt-4">
               <Link href={`/blog/${post.id}`} className="flex-1">
                 <Button type="button" variant="outline" className="w-full">
+                  <X className="h-4 w-4 mr-2" />
                   Cancel
                 </Button>
               </Link>

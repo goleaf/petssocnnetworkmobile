@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/auth"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { BackButton } from "@/components/ui/back-button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
@@ -132,9 +133,7 @@ export default function EditPetPage({ params }: { params: Promise<{ username: st
         <Card>
           <CardContent className="p-8 text-center">
             <p className="text-muted-foreground mb-4">Pet not found or you don't have permission to edit.</p>
-            <Link href={`/user/${username}`}>
-              <Button>Back to Profile</Button>
-            </Link>
+            <BackButton href={`/user/${username}`} label="Back to Profile" />
           </CardContent>
         </Card>
       </div>
@@ -143,12 +142,7 @@ export default function EditPetPage({ params }: { params: Promise<{ username: st
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
-      <Link href={getPetUrlFromPet(pet, username)}>
-        <Button variant="ghost" className="mb-6">
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Pet Profile
-        </Button>
-      </Link>
+      <BackButton href={getPetUrlFromPet(pet, username)} label="Back to Pet Profile" />
 
       <Card>
         <CardHeader>

@@ -186,7 +186,10 @@ export function Navigation() {
               </>
             ) : (
               <Link href="/">
-                <Button>Sign In</Button>
+                <Button>
+                  <User className="h-4 w-4 mr-2" />
+                  Sign In
+                </Button>
               </Link>
             )}
           </div>
@@ -240,7 +243,10 @@ export function Navigation() {
                     </>
                   ) : (
                     <Link href="/" onClick={() => setIsOpen(false)}>
-                      <Button className="w-full">Sign In</Button>
+                      <Button className="w-full">
+                        <User className="h-4 w-4 mr-2" />
+                        Sign In
+                      </Button>
                     </Link>
                   )}
                 </div>

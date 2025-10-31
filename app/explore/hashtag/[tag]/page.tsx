@@ -5,6 +5,7 @@ import { useParams } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { BackButton } from "@/components/ui/back-button"
 import { getBlogPosts } from "@/lib/storage"
 import Link from "next/link"
 import { Hash, ArrowLeft } from "lucide-react"
@@ -23,12 +24,7 @@ export default function HashtagPage() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
-      <Link href="/explore">
-        <Button variant="ghost" className="mb-6">
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Explore
-        </Button>
-      </Link>
+      <BackButton href="/explore" label="Back to Explore" />
 
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-2">

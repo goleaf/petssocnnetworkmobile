@@ -4,6 +4,7 @@ import { useState, useEffect, use } from "react"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { BackButton } from "@/components/ui/back-button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Textarea } from "@/components/ui/textarea"
 import {
@@ -208,12 +209,7 @@ export default function BlogPostPage({ params }: { params: Promise<{ id: string 
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
-      <Link href="/blog">
-        <Button variant="ghost" className="mb-6">
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Blogs
-        </Button>
-      </Link>
+      <BackButton href="/blog" label="Back to Blogs" />
 
       <Card className="overflow-hidden p-0">
         {post.coverImage && (
@@ -269,7 +265,7 @@ export default function BlogPostPage({ params }: { params: Promise<{ id: string 
               </>
             )}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <Button onClick={handleLike} variant={hasLiked ? "default" : "outline"} size="sm">
               <Heart className={`h-4 w-4 mr-2 ${hasLiked ? "fill-current" : ""}`} />
               {post.likes.length} {post.likes.length === 1 ? "Like" : "Likes"}
@@ -278,6 +274,14 @@ export default function BlogPostPage({ params }: { params: Promise<{ id: string 
               <MessageCircle className="h-4 w-4 mr-2" />
               {totalCommentsCount} {totalCommentsCount === 1 ? "Comment" : "Comments"}
             </Button>
+            {currentUser && currentUser.id === post.authorId && (
+              <Link href={`/blog/${post.id}/edit`}>
+                <Button variant="outline" size="sm">
+                  <Edit2 className="h-4 w-4 mr-2" />
+                  Edit
+                </Button>
+              </Link>
+            )}
           </div>
         </CardHeader>
         <CardContent className="prose prose-lg max-w-none px-6 pb-6">
@@ -520,6 +524,7 @@ export default function BlogPostPage({ params }: { params: Promise<{ id: string 
                                     setReplyContent("")
                                   }}
                                 >
+                                  <X className="h-3.5 w-3.5 mr-1.5" />
                                   Cancel
                                 </Button>
                                 <Button

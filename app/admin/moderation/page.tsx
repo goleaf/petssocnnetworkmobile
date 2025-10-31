@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { AlertTriangle, Shield, TrendingUp, Users } from "lucide-react"
+import { AlertTriangle, Shield, TrendingUp, Users, Flag, Filter, Gauge } from "lucide-react"
 import { detectSuspiciousActivity, clearUserActivity } from "@/lib/spam-detection"
 import { getUsers } from "@/lib/storage"
 
@@ -114,7 +114,12 @@ export default function ModerationPage() {
         <TabsContent value="suspicious" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Flagged Users</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <div className="h-8 w-8 rounded-lg bg-yellow-500/10 flex items-center justify-center">
+                  <Flag className="h-4 w-4 text-yellow-500" />
+                </div>
+                Flagged Users
+              </CardTitle>
               <CardDescription>Users with suspicious activity patterns detected by automated systems</CardDescription>
             </CardHeader>
             <CardContent>
@@ -148,7 +153,12 @@ export default function ModerationPage() {
         <TabsContent value="filters" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Active Content Filters</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <div className="h-8 w-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                  <Filter className="h-4 w-4 text-blue-500" />
+                </div>
+                Active Content Filters
+              </CardTitle>
               <CardDescription>Automated filters protecting content quality and safety</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -182,7 +192,12 @@ export default function ModerationPage() {
         <TabsContent value="limits" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Rate Limit Configuration</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <div className="h-8 w-8 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                  <Gauge className="h-4 w-4 text-purple-500" />
+                </div>
+                Rate Limit Configuration
+              </CardTitle>
               <CardDescription>Limits to prevent abuse and ensure fair usage</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">

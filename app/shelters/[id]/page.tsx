@@ -4,6 +4,7 @@ import { useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { BackButton } from "@/components/ui/back-button"
 import { Badge } from "@/components/ui/badge"
 import { Heart, MapPin, Phone, Mail, Globe, CheckCircle2, ArrowLeft } from "lucide-react"
 import Image from "next/image"
@@ -73,10 +74,7 @@ export default function ShelterDetailPage() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
-      <Button variant="ghost" onClick={() => router.back()} className="mb-4">
-        <ArrowLeft className="h-4 w-4 mr-2" />
-        Back to Shelters
-      </Button>
+      <BackButton onClick={() => router.back()} label="Back to Shelters" className="mb-4" />
 
       <div className="relative h-64 md:h-96 w-full rounded-lg overflow-hidden mb-6">
         <Image src={shelter.coverImage || "/placeholder.svg"} alt={shelter.name} fill className="object-cover" />

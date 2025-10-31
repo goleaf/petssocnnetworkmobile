@@ -589,6 +589,7 @@ export default function UserProfilePage() {
                     {user.followers.length > 5 && (
                       <Link href={`/user/${user.username}/followers`}>
                         <Button variant="ghost" className="w-full" size="sm">
+                          <Users className="h-4 w-4 mr-2" />
                           View all {user.followers.length} followers
                         </Button>
                       </Link>
@@ -631,6 +632,7 @@ export default function UserProfilePage() {
                     {user.following.length > 5 && (
                       <Link href={`/user/${user.username}/following`}>
                         <Button variant="ghost" className="w-full" size="sm">
+                          <Heart className="h-4 w-4 mr-2" />
                           View all {user.following.length} following
                         </Button>
                       </Link>

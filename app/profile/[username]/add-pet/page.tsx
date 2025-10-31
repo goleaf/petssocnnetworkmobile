@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/auth"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { BackButton } from "@/components/ui/back-button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
@@ -61,12 +62,7 @@ export default function AddPetPage({ params }: { params: Promise<{ username: str
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
-      <Link href={`/profile/${username}`}>
-        <Button variant="ghost" className="mb-6">
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Profile
-        </Button>
-      </Link>
+      <BackButton href={`/profile/${username}`} label="Back to Profile" />
 
       <Card>
         <CardHeader>

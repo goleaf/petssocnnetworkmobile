@@ -7,13 +7,14 @@ import { useAuth } from "@/lib/auth"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { BackButton } from "@/components/ui/back-button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { addPet } from "@/lib/storage"
 import type { Pet } from "@/lib/types"
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft, Plus } from "lucide-react"
 import Link from "next/link"
 
 export default function AddPetPage() {
@@ -56,12 +57,7 @@ export default function AddPetPage() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
-      <Link href="/dashboard">
-        <Button variant="ghost" className="mb-6">
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Dashboard
-        </Button>
-      </Link>
+      <BackButton href="/dashboard" label="Back to Dashboard" />
 
       <Card>
         <CardHeader>
@@ -186,6 +182,7 @@ export default function AddPetPage() {
             </div>
 
             <Button type="submit" className="w-full">
+              <Plus className="h-4 w-4 mr-2" />
               Add Pet
             </Button>
           </form>

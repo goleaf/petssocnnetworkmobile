@@ -4,6 +4,7 @@ import { useState, useEffect, use } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { BackButton } from "@/components/ui/back-button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { getUsers, getPets, getBlogPosts, deleteBlogPost } from "@/lib/storage"
 import { useAuth } from "@/lib/auth"
@@ -65,12 +66,7 @@ export default function PostsPage({ params }: { params: Promise<{ username: stri
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
-      <Link href={`/profile/${username}`}>
-        <Button variant="ghost" className="mb-6">
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Profile
-        </Button>
-      </Link>
+      <BackButton href={`/profile/${username}`} label="Back to Profile" />
 
       <div className="mb-6">
         <h1 className="text-3xl font-bold">{user.fullName}'s Posts</h1>

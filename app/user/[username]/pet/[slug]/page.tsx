@@ -4,6 +4,7 @@ import { useState, useEffect, use } from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { BackButton } from "@/components/ui/back-button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Progress } from "@/components/ui/progress"
@@ -112,12 +113,7 @@ export default function PetProfilePage({ params }: { params: Promise<{ username:
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
-      <Link href={`/user/${owner.username}`}>
-        <Button variant="ghost" className="mb-6">
-          <FileText className="h-4 w-4 mr-2" />
-          Back to {owner.fullName}'s Profile
-        </Button>
-      </Link>
+      <BackButton href={`/user/${owner.username}`} label={`Back to ${owner.fullName}'s Profile`} icon={FileText} />
       <Card>
         <CardHeader className="pb-4">
           <div className="flex flex-col md:flex-row gap-6 items-start">

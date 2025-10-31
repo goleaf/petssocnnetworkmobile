@@ -7,12 +7,13 @@ import { useAuth } from "@/lib/auth"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { BackButton } from "@/components/ui/back-button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { addBlogPost, getPetsByOwnerId } from "@/lib/storage"
 import type { BlogPost } from "@/lib/types"
-import { ArrowLeft, Save } from "lucide-react"
+import { ArrowLeft, Save, Send, Trash2 } from "lucide-react"
 import Link from "next/link"
 import { MarkdownEditor } from "@/components/markdown-editor"
 import { PrivacySelector } from "@/components/privacy-selector"
@@ -145,12 +146,7 @@ export default function CreateBlogPage() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
-      <Link href="/blog">
-        <Button variant="ghost" className="mb-6">
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Blogs
-        </Button>
-      </Link>
+      <BackButton href="/blog" label="Back to Blogs" />
 
       {existingDrafts.length > 0 && (
         <Card className="mb-6">
@@ -169,9 +165,11 @@ export default function CreateBlogPage() {
                   </div>
                   <div className="flex gap-2">
                     <Button variant="outline" size="sm" onClick={() => loadDraft(draft)}>
+                      <Save className="h-4 w-4 mr-2" />
                       Load
                     </Button>
                     <Button variant="ghost" size="sm" onClick={() => deleteDraft(draft.id)}>
+                      <Trash2 className="h-4 w-4 mr-2" />
                       Delete
                     </Button>
                   </div>
@@ -270,6 +268,7 @@ export default function CreateBlogPage() {
             </div>
 
             <Button type="submit" className="w-full">
+              <Send className="h-4 w-4 mr-2" />
               Publish Post
             </Button>
           </form>

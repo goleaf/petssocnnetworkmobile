@@ -144,6 +144,7 @@ export default function SheltersPage() {
             onClick={() => setSelectedSpecies(null)}
             size="sm"
           >
+            <Search className="h-4 w-4 mr-2" />
             All
           </Button>
           {allSpecies.map((species) => (

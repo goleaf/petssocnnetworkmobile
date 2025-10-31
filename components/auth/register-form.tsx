@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { useAuth } from "@/lib/auth"
-import { Loader2, Eye, EyeOff } from "lucide-react"
+import { Loader2, Eye, EyeOff, User, UserPlus } from "lucide-react"
 
 interface RegisterFormProps {
   onSuccess?: () => void
@@ -167,10 +167,12 @@ export function RegisterForm({ onSuccess, onSwitchToLogin }: RegisterFormProps) 
         <CardFooter className="flex flex-col gap-4 pt-6">
           <Button type="submit" className="w-full" size="lg" disabled={isLoading}>
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {!isLoading && <UserPlus className="h-4 w-4 mr-2" />}
             Create Account
           </Button>
           {onSwitchToLogin && (
             <Button type="button" variant="ghost" className="w-full" onClick={onSwitchToLogin}>
+              <User className="h-4 w-4 mr-2" />
               Already have an account? Sign in
             </Button>
           )}

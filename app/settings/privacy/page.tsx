@@ -1,22 +1,26 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { useAuth } from "@/components/auth/auth-provider"
 import { PrivacySelector } from "@/components/privacy-selector"
 import { updateUser, getUsers, blockUser, unblockUser } from "@/lib/storage"
 import type { PrivacyLevel } from "@/lib/types"
-import { ArrowLeft, Ban, UserX } from "lucide-react"
+import { ArrowLeft, Ban, UserX, User, FileText, Users, CheckCircle2, XCircle } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import Link from "next/link"
 
 export default function PrivacySettingsPage() {
   const { user } = useAuth()
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const [isLoading, setIsLoading] = useState(false)
+  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
   const [settings, setSettings] = useState({
     profile: "public" as PrivacyLevel,
     email: "private" as PrivacyLevel,
@@ -31,6 +35,27 @@ export default function PrivacySettingsPage() {
   })
   const [blockedUsers, setBlockedUsers] = useState<any[]>([])
 
+  // Handle success/error messages from URL params
+  useEffect(() => {
+    const status = searchParams.get("status")
+    if (status === "success") {
+      setMessage({ type: "success", text: "Privacy settings saved successfully!" })
+      const timer = setTimeout(() => {
+        setMessage(null)
+        router.replace("/settings/privacy")
+      }, 5000)
+      return () => clearTimeout(timer)
+    } else if (status === "error") {
+      setMessage({ type: "error", text: "Failed to save privacy settings. Please try again." })
+      const timer = setTimeout(() => {
+        setMessage(null)
+        router.replace("/settings/privacy")
+      }, 5000)
+      return () => clearTimeout(timer)
+    }
+  }, [searchParams, router])
+
+  // Load user data
   useEffect(() => {
     if (user) {
       if (user.privacy) {
@@ -57,10 +82,28 @@ export default function PrivacySettingsPage() {
     }
   }, [user])
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!user) return
-    updateUser(user.id, { privacy: settings })
-    router.back()
+    
+    setIsLoading(true)
+    setMessage(null)
+    
+    try {
+      // Simulate async operation (in case updateUser becomes async in the future)
+      await new Promise((resolve) => setTimeout(resolve, 300))
+      
+      updateUser(user.id, { privacy: settings })
+      
+      // Redirect with success message
+      router.push("/settings/privacy?status=success")
+      router.refresh()
+    } catch (error) {
+      // Redirect with error message
+      router.push("/settings/privacy?status=error")
+      router.refresh()
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const handleBlock = (blockUserId: string) => {
@@ -80,141 +123,172 @@ export default function PrivacySettingsPage() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
-      <Button variant="ghost" onClick={() => router.back()} className="mb-6">
-        <ArrowLeft className="h-4 w-4 mr-2" />
-        Back
-      </Button>
+      <BackButton onClick={() => router.back()} label="Back" />
 
       <div className="space-y-6">
+        {/* Success/Error Message */}
+        {message && (
+          <Alert
+            variant={message.type === "error" ? "destructive" : "default"}
+            className={message.type === "success" ? "border-green-500/50 bg-green-500/10" : ""}
+          >
+            {message.type === "success" ? (
+              <CheckCircle2 className="text-green-500" />
+            ) : (
+              <XCircle className="text-destructive" />
+            )}
+            <AlertTitle>{message.type === "success" ? "Success" : "Error"}</AlertTitle>
+            <AlertDescription>{message.text}</AlertDescription>
+          </Alert>
+        )}
         <div>
           <h1 className="text-3xl font-bold">Privacy Settings</h1>
           <p className="text-muted-foreground mt-2">Control who can see your information and content</p>
         </div>
 
-        {/* Profile Privacy */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Profile Privacy</CardTitle>
-            <CardDescription>Choose who can see different parts of your profile</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="space-y-2">
-              <Label>Profile Visibility</Label>
-              <p className="text-sm text-muted-foreground mb-2">Who can see your profile information</p>
-              <PrivacySelector
-                value={settings.profile}
-                onChange={(value) => setSettings({ ...settings, profile: value })}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Email Address</Label>
-              <p className="text-sm text-muted-foreground mb-2">Who can see your email address</p>
-              <PrivacySelector
-                value={settings.email}
-                onChange={(value) => setSettings({ ...settings, email: value })}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Location</Label>
-              <p className="text-sm text-muted-foreground mb-2">Who can see your location</p>
-              <PrivacySelector
-                value={settings.location}
-                onChange={(value) => setSettings({ ...settings, location: value })}
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Content Privacy */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Content Privacy</CardTitle>
-            <CardDescription>Control who can see your posts, pets, and lists</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="space-y-2">
-              <Label>Posts</Label>
-              <p className="text-sm text-muted-foreground mb-2">Who can see your posts</p>
-              <PrivacySelector
-                value={settings.posts}
-                onChange={(value) => setSettings({ ...settings, posts: value })}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Pets</Label>
-              <p className="text-sm text-muted-foreground mb-2">Who can see your pets</p>
-              <PrivacySelector
-                value={settings.pets}
-                onChange={(value) => setSettings({ ...settings, pets: value })}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Followers List</Label>
-              <p className="text-sm text-muted-foreground mb-2">Who can see your followers</p>
-              <PrivacySelector
-                value={settings.followers}
-                onChange={(value) => setSettings({ ...settings, followers: value })}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Following List</Label>
-              <p className="text-sm text-muted-foreground mb-2">Who can see who you follow</p>
-              <PrivacySelector
-                value={settings.following}
-                onChange={(value) => setSettings({ ...settings, following: value })}
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Interactions */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Interactions</CardTitle>
-            <CardDescription>Control how others can interact with you</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div className="space-y-1">
-                <Label>Searchable</Label>
-                <p className="text-sm text-muted-foreground">Allow others to find you by searching</p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Profile Privacy */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <div className="h-8 w-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                  <User className="h-4 w-4 text-blue-500" />
+                </div>
+                Profile Privacy
+              </CardTitle>
+              <CardDescription>Choose who can see different parts of your profile</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-2">
+                <Label>Profile Visibility</Label>
+                <p className="text-sm text-muted-foreground mb-2">Who can see your profile information</p>
+                <PrivacySelector
+                  value={settings.profile}
+                  onChange={(value) => setSettings({ ...settings, profile: value })}
+                />
               </div>
-              <Switch
-                checked={settings.searchable}
-                onCheckedChange={(checked) => setSettings({ ...settings, searchable: checked })}
-              />
-            </div>
 
-            <div className="space-y-2">
-              <Label>Follow Requests</Label>
-              <p className="text-sm text-muted-foreground mb-2">Who can send you follow requests</p>
-              <PrivacySelector
-                value={settings.allowFollowRequests}
-                onChange={(value) => setSettings({ ...settings, allowFollowRequests: value })}
-              />
-            </div>
+              <div className="space-y-2">
+                <Label>Email Address</Label>
+                <p className="text-sm text-muted-foreground mb-2">Who can see your email address</p>
+                <PrivacySelector
+                  value={settings.email}
+                  onChange={(value) => setSettings({ ...settings, email: value })}
+                />
+              </div>
 
-            <div className="space-y-2">
-              <Label>Tagging</Label>
-              <p className="text-sm text-muted-foreground mb-2">Who can tag you in posts</p>
-              <PrivacySelector
-                value={settings.allowTagging}
-                onChange={(value) => setSettings({ ...settings, allowTagging: value })}
-              />
-            </div>
-          </CardContent>
-        </Card>
+              <div className="space-y-2">
+                <Label>Location</Label>
+                <p className="text-sm text-muted-foreground mb-2">Who can see your location</p>
+                <PrivacySelector
+                  value={settings.location}
+                  onChange={(value) => setSettings({ ...settings, location: value })}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Content Privacy */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <div className="h-8 w-8 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                  <FileText className="h-4 w-4 text-purple-500" />
+                </div>
+                Content Privacy
+              </CardTitle>
+              <CardDescription>Control who can see your posts, pets, and lists</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-2">
+                <Label>Posts</Label>
+                <p className="text-sm text-muted-foreground mb-2">Who can see your posts</p>
+                <PrivacySelector
+                  value={settings.posts}
+                  onChange={(value) => setSettings({ ...settings, posts: value })}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Pets</Label>
+                <p className="text-sm text-muted-foreground mb-2">Who can see your pets</p>
+                <PrivacySelector
+                  value={settings.pets}
+                  onChange={(value) => setSettings({ ...settings, pets: value })}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Followers List</Label>
+                <p className="text-sm text-muted-foreground mb-2">Who can see your followers</p>
+                <PrivacySelector
+                  value={settings.followers}
+                  onChange={(value) => setSettings({ ...settings, followers: value })}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Following List</Label>
+                <p className="text-sm text-muted-foreground mb-2">Who can see who you follow</p>
+                <PrivacySelector
+                  value={settings.following}
+                  onChange={(value) => setSettings({ ...settings, following: value })}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Interactions */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <div className="h-8 w-8 rounded-lg bg-green-500/10 flex items-center justify-center">
+                  <Users className="h-4 w-4 text-green-500" />
+                </div>
+                Interactions
+              </CardTitle>
+              <CardDescription>Control how others can interact with you</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <Label>Searchable</Label>
+                  <p className="text-sm text-muted-foreground">Allow others to find you by searching</p>
+                </div>
+                <Switch
+                  checked={settings.searchable}
+                  onCheckedChange={(checked) => setSettings({ ...settings, searchable: checked })}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Follow Requests</Label>
+                <p className="text-sm text-muted-foreground mb-2">Who can send you follow requests</p>
+                <PrivacySelector
+                  value={settings.allowFollowRequests}
+                  onChange={(value) => setSettings({ ...settings, allowFollowRequests: value })}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Tagging</Label>
+                <p className="text-sm text-muted-foreground mb-2">Who can tag you in posts</p>
+                <PrivacySelector
+                  value={settings.allowTagging}
+                  onChange={(value) => setSettings({ ...settings, allowTagging: value })}
+                />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
         {/* Blocked Users */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Ban className="h-5 w-5" />
+              <div className="h-8 w-8 rounded-lg bg-red-500/10 flex items-center justify-center">
+                <Ban className="h-4 w-4 text-red-500" />
+              </div>
               Blocked Users
             </CardTitle>
             <CardDescription>Manage users you have blocked</CardDescription>
@@ -252,10 +326,12 @@ export default function PrivacySettingsPage() {
         </Card>
 
         <div className="flex justify-end gap-4">
-          <Button variant="outline" onClick={() => router.back()}>
+          <Button variant="outline" onClick={() => router.back()} disabled={isLoading}>
             Cancel
           </Button>
-          <Button onClick={handleSave}>Save Changes</Button>
+          <Button onClick={handleSave} loading={isLoading} disabled={isLoading}>
+            Save Changes
+          </Button>
         </div>
       </div>
     </div>

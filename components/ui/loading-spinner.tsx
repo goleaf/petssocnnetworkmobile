@@ -15,7 +15,7 @@ const sizeClasses = {
 
 export function LoadingSpinner({ className, size = "md", fullScreen = false }: LoadingSpinnerProps) {
   const spinner = (
-    <Loader2 className={cn("animate-spin text-primary", sizeClasses[size], className)} />
+    <Loader2 role="status" aria-label="Loading" className={cn("animate-spin text-primary", sizeClasses[size], className)} />
   )
 
   if (fullScreen) {

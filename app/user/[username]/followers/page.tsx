@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
+import { BackButton } from "@/components/ui/back-button"
 import { Input } from "@/components/ui/input"
 import { getUserByUsername, getUsers, toggleFollow } from "@/lib/storage"
 import { useAuth } from "@/lib/auth"
@@ -65,12 +66,7 @@ export default function FollowersPage() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
-      <Link href={`/user/${user.username}`}>
-        <Button variant="ghost" className="mb-6">
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Profile
-        </Button>
-      </Link>
+      <BackButton href={`/user/${user.username}`} label="Back to Profile" />
 
       <Card>
         <CardHeader>

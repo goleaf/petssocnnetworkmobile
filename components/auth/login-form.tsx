@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { useAuth } from "@/lib/auth"
-import { Loader2, Eye, EyeOff } from "lucide-react"
+import { Loader2, Eye, EyeOff, User, UserPlus } from "lucide-react"
 
 interface LoginFormProps {
   onSuccess?: () => void
@@ -114,10 +114,12 @@ export function LoginForm({ onSuccess, onSwitchToRegister }: LoginFormProps) {
         <CardFooter className="flex flex-col gap-4 pt-6">
           <Button type="submit" className="w-full" size="lg" disabled={isLoading}>
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {!isLoading && <User className="h-4 w-4 mr-2" />}
             Sign In
           </Button>
           {onSwitchToRegister && (
             <Button type="button" variant="ghost" className="w-full" onClick={onSwitchToRegister}>
+              <UserPlus className="h-4 w-4 mr-2" />
               {"Don't have an account? Register"}
             </Button>
           )}

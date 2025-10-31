@@ -168,6 +168,7 @@ export default function WikiPage() {
                 size="sm"
                 onClick={() => handleSubcategoryChange(null)}
               >
+                <BookOpen className="h-4 w-4 mr-2" />
                 All {categories.find((c) => c.value === selectedCategory)?.label}
               </Button>
               {currentSubcategories.map((subcat) => (

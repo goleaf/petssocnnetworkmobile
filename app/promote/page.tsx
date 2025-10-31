@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { TrendingUp, Target, DollarSign, Calendar, AlertCircle } from "lucide-react"
+import { TrendingUp, Target, DollarSign, Calendar, AlertCircle, X } from "lucide-react"
 import { useAuth } from "@/components/auth/auth-provider"
 import { toast } from "sonner"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -184,6 +184,7 @@ export default function PromotePostPage() {
 
         <div className="flex gap-4">
           <Button type="button" variant="outline" onClick={() => router.back()} className="flex-1">
+            <X className="h-4 w-4 mr-2" />
             Cancel
           </Button>
           <Button type="submit" className="flex-1">

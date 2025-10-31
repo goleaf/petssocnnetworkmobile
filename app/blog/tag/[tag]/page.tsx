@@ -4,6 +4,7 @@ import { useState, useEffect, use } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { BackButton } from "@/components/ui/back-button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { getBlogPosts, getPets, getUsers } from "@/lib/storage"
 import Link from "next/link"
@@ -11,34 +12,44 @@ import { Tag, ArrowLeft, Heart } from "lucide-react"
 import type { BlogPost } from "@/lib/types"
 import { formatDate } from "@/lib/utils/date"
 import { getPetUrlFromPet } from "@/lib/utils/pet-url"
+import { LoadingSpinner } from "@/components/ui/loading-spinner"
 
 export default function TagPage({ params }: { params: Promise<{ tag: string }> }) {
   const { tag } = use(params)
   const [posts, setPosts] = useState<BlogPost[]>([])
+  const [loading, setLoading] = useState(true)
   const decodedTag = decodeURIComponent(tag)
 
   useEffect(() => {
-    const allPosts = getBlogPosts()
-    // Filter posts that have this tag (case-insensitive)
-    const filtered = allPosts.filter(
-      (post) =>
-        post.tags.some((t) => t.toLowerCase() === decodedTag.toLowerCase()) ||
-        post.hashtags?.some((h) => h.toLowerCase() === decodedTag.toLowerCase())
-    )
-    setPosts(filtered)
+    setLoading(true)
+    // Simulate a small delay to show the spinner
+    setTimeout(() => {
+      const allPosts = getBlogPosts()
+      // Filter posts that have this tag (case-insensitive)
+      const filtered = allPosts.filter(
+        (post) =>
+          post.tags.some((t) => t.toLowerCase() === decodedTag.toLowerCase()) ||
+          post.hashtags?.some((h) => h.toLowerCase() === decodedTag.toLowerCase())
+      )
+      setPosts(filtered)
+      setLoading(false)
+    }, 100)
   }, [decodedTag])
 
   const pets = getPets()
   const users = getUsers()
 
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 py-8 max-w-7xl">
+        <LoadingSpinner fullScreen />
+      </div>
+    )
+  }
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
-      <Link href="/blog">
-        <Button variant="ghost" className="mb-6">
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Blog
-        </Button>
-      </Link>
+      <BackButton href="/blog" label="Back to Blog" />
 
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-2">
