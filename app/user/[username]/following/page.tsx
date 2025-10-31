@@ -9,8 +9,9 @@ import { Input } from "@/components/ui/input"
 import { getUserByUsername, getUsers, toggleFollow } from "@/lib/storage"
 import { useAuth } from "@/lib/auth"
 import type { User } from "@/lib/types"
-import { ArrowLeft, Search, UserPlus, UserMinus, Heart } from "lucide-react"
+import { ArrowLeft, Search, UserPlus, UserMinus, Heart, Lock } from "lucide-react"
 import Link from "next/link"
+import { canViewFollowing } from "@/lib/utils/privacy"
 
 export default function FollowingPage() {
   const params = useParams()
@@ -31,11 +32,16 @@ export default function FollowingPage() {
 
     setUser(fetchedUser)
 
-    // Get all following
-    const allUsers = getUsers()
-    const followingUsers = allUsers.filter((u) => fetchedUser.following.includes(u.id))
-    setFollowing(followingUsers)
-  }, [params.username, router])
+    const viewerId = currentUser?.id || null
+    if (canViewFollowing(fetchedUser, viewerId)) {
+      // Get all following
+      const allUsers = getUsers()
+      const followingUsers = allUsers.filter((u) => fetchedUser.following.includes(u.id))
+      setFollowing(followingUsers)
+    } else {
+      setFollowing([])
+    }
+  }, [params.username, router, currentUser])
 
   const handleFollow = (userId: string) => {
     if (!currentUser) return
@@ -54,6 +60,9 @@ export default function FollowingPage() {
 
   if (!user) return null
 
+  const viewerId = currentUser?.id || null
+  const canViewFollowingList = canViewFollowing(user, viewerId)
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
       <Link href={`/user/${user.username}`}>
@@ -68,7 +77,7 @@ export default function FollowingPage() {
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               <Heart className="h-6 w-6" />
-              {user.fullName}'s Following ({following.length})
+              {user.fullName}'s Following {canViewFollowingList ? `(${following.length})` : "(Private)"}
             </CardTitle>
           </div>
           <div className="relative mt-4">
@@ -82,7 +91,12 @@ export default function FollowingPage() {
           </div>
         </CardHeader>
         <CardContent>
-          {filteredFollowing.length > 0 ? (
+          {!canViewFollowingList ? (
+            <div className="text-center py-12 text-muted-foreground">
+              <Lock className="h-12 w-12 mx-auto mb-3 opacity-50" />
+              <p>This user{"'"}s following list is private</p>
+            </div>
+          ) : filteredFollowing.length > 0 ? (
             <div className="space-y-4">
               {filteredFollowing.map((followingUser) => {
                 const isFollowing = currentUser?.following.includes(followingUser.id)
