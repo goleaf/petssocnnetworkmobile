@@ -3,6 +3,7 @@
 import { useState, useEffect, use } from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
+import { EditButton } from "@/components/ui/edit-button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { BackButton } from "@/components/ui/back-button"
 import { Badge } from "@/components/ui/badge"
@@ -144,10 +145,9 @@ export default function PetProfilePage({ params }: { params: Promise<{ username:
                 <div className="flex gap-2">
                   {isOwner && (
                     <Link href={`/user/${owner.username}/pet/${slug}/edit`}>
-                      <Button variant="outline">
-                        <Edit className="h-4 w-4 mr-2" />
+                      <EditButton>
                         Edit Profile
-                      </Button>
+                      </EditButton>
                     </Link>
                   )}
                   {currentUser && !isOwner && (

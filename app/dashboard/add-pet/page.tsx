@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/auth"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { CreateButton } from "@/components/ui/create-button"
 import { BackButton } from "@/components/ui/back-button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -272,10 +273,9 @@ export default function AddPetPage() {
               />
             </div>
 
-            <Button type="submit" className="w-full">
-              <Plus className="h-4 w-4 mr-2" />
+            <CreateButton type="submit" className="w-full" iconType="plus">
               Add Pet
-            </Button>
+            </CreateButton>
           </form>
         </CardContent>
       </Card>

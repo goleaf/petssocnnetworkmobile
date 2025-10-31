@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { useAuth } from "@/components/auth/auth-provider"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { DeleteButton } from "@/components/ui/delete-button"
 import { getDraftsByUserId, deleteDraft } from "@/lib/drafts"
 import type { Draft } from "@/lib/types"
 import { FileText, Trash2, Clock } from "lucide-react"
@@ -70,9 +71,8 @@ export default function DraftsPage() {
                         Continue
                       </Button>
                     </Link>
-                    <Button variant="ghost" size="sm" onClick={() => handleDelete(draft.id)}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <DeleteButton size="sm" onClick={() => handleDelete(draft.id)} showIcon={true}>
+                    </DeleteButton>
                   </div>
                 </div>
               </CardHeader>

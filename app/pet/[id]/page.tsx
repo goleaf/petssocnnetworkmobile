@@ -3,6 +3,7 @@
 import { useState, useEffect, use } from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
+import { EditButton } from "@/components/ui/edit-button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -136,10 +137,9 @@ export default function PetProfilePage({ params }: { params: Promise<{ id: strin
                 </div>
                 <div className="flex gap-2">
                   {isOwner && (
-                    <Button variant="outline">
-                      <Edit className="h-4 w-4 mr-2" />
+                    <EditButton>
                       Edit Profile
-                    </Button>
+                    </EditButton>
                   )}
                   {currentUser && !isOwner && (
                     <Button onClick={handleFollow} variant={isFollowing ? "outline" : "default"}>

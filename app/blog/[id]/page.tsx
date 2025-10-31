@@ -3,6 +3,7 @@
 import { useState, useEffect, use } from "react"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { EditButton } from "@/components/ui/edit-button"
 import { Badge } from "@/components/ui/badge"
 import { BackButton } from "@/components/ui/back-button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -25,6 +26,7 @@ import Link from "next/link"
 import type { Comment, ReactionType } from "@/lib/types"
 import { formatCommentDate, formatDate } from "@/lib/utils/date"
 import { getPetUrlFromPet } from "@/lib/utils/pet-url"
+import { replaceEmoticons } from "@/lib/utils/emoticon-replacer"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -84,11 +86,14 @@ export default function BlogPostPage({ params }: { params: Promise<{ id: string 
   const handleAddComment = () => {
     if (!currentUser || !post || !newComment.trim()) return
 
+    // Replace emoticons in comment
+    const processedContent = replaceEmoticons(newComment.trim())
+
     const comment: Comment = {
       id: String(Date.now()),
       postId: post.id,
       userId: currentUser.id,
-      content: newComment.trim(),
+      content: processedContent,
       createdAt: new Date().toISOString(),
       reactions: {
         like: [],
@@ -109,11 +114,14 @@ export default function BlogPostPage({ params }: { params: Promise<{ id: string 
   const handleReply = (parentCommentId: string) => {
     if (!currentUser || !post || !replyContent.trim()) return
 
+    // Replace emoticons in reply
+    const processedContent = replaceEmoticons(replyContent.trim())
+
     const reply: Comment = {
       id: String(Date.now()),
       postId: post.id,
       userId: currentUser.id,
-      content: replyContent.trim(),
+      content: processedContent,
       createdAt: new Date().toISOString(),
       parentCommentId,
       reactions: {
@@ -140,7 +148,9 @@ export default function BlogPostPage({ params }: { params: Promise<{ id: string 
 
   const handleSaveEdit = (commentId: string) => {
     if (!editContent.trim() || !post) return
-    updateComment(commentId, editContent.trim())
+    // Replace emoticons in edited comment
+    const processedContent = replaceEmoticons(editContent.trim())
+    updateComment(commentId, processedContent)
     const updatedComments = getCommentsByPostId(post.id)
     setComments(updatedComments)
     setEditingCommentId(null)
@@ -276,10 +286,9 @@ export default function BlogPostPage({ params }: { params: Promise<{ id: string 
             </Button>
             {currentUser && currentUser.id === post.authorId && (
               <Link href={`/blog/${post.id}/edit`}>
-                <Button variant="outline" size="sm">
-                  <Edit2 className="h-4 w-4 mr-2" />
+                <EditButton size="sm">
                   Edit
-                </Button>
+                </EditButton>
               </Link>
             )}
           </div>
@@ -313,7 +322,18 @@ export default function BlogPostPage({ params }: { params: Promise<{ id: string 
                 <Textarea
                   placeholder="Share your thoughts..."
                   value={newComment}
-                  onChange={(e) => setNewComment(e.target.value)}
+                  onChange={(e) => {
+                    const value = e.target.value
+                    setNewComment(value)
+                    // Auto-replace emoticons when user types space or punctuation
+                    const lastChar = value[value.length - 1]
+                    if (lastChar === ' ' || lastChar === '\n' || /[.,!?;:]/.test(lastChar)) {
+                      const replaced = replaceEmoticons(value)
+                      if (replaced !== value) {
+                        setNewComment(replaced)
+                      }
+                    }
+                  }}
                   rows={4}
                   className="min-h-[100px] resize-none text-base"
                 />
@@ -387,7 +407,7 @@ export default function BlogPostPage({ params }: { params: Promise<{ id: string 
                                   <Edit2 className="h-4 w-4 mr-2" />
                                   Edit
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleDelete(comment.id)} className="text-destructive">
+                                <DropdownMenuItem onClick={() => handleDelete(comment.id)} variant="destructive">
                                   <Trash2 className="h-4 w-4 mr-2" />
                                   Delete
                                 </DropdownMenuItem>
@@ -399,7 +419,18 @@ export default function BlogPostPage({ params }: { params: Promise<{ id: string 
                           <div className="space-y-3">
                             <Textarea
                               value={editContent}
-                              onChange={(e) => setEditContent(e.target.value)}
+                              onChange={(e) => {
+                                const value = e.target.value
+                                setEditContent(value)
+                                // Auto-replace emoticons when user types space or punctuation
+                                const lastChar = value[value.length - 1]
+                                if (lastChar === ' ' || lastChar === '\n' || /[.,!?;:]/.test(lastChar)) {
+                                  const replaced = replaceEmoticons(value)
+                                  if (replaced !== value) {
+                                    setEditContent(replaced)
+                                  }
+                                }
+                              }}
                               rows={4}
                               className="bg-background text-base min-h-[100px]"
                             />
@@ -511,7 +542,18 @@ export default function BlogPostPage({ params }: { params: Promise<{ id: string 
                               <Textarea
                                 placeholder={`Reply to ${commentUser?.fullName}...`}
                                 value={replyContent}
-                                onChange={(e) => setReplyContent(e.target.value)}
+                                onChange={(e) => {
+                                  const value = e.target.value
+                                  setReplyContent(value)
+                                  // Auto-replace emoticons when user types space or punctuation
+                                  const lastChar = value[value.length - 1]
+                                  if (lastChar === ' ' || lastChar === '\n' || /[.,!?;:]/.test(lastChar)) {
+                                    const replaced = replaceEmoticons(value)
+                                    if (replaced !== value) {
+                                      setReplyContent(replaced)
+                                    }
+                                  }
+                                }}
                                 rows={3}
                                 className="bg-background text-sm min-h-[80px] resize-none"
                               />
@@ -610,7 +652,7 @@ export default function BlogPostPage({ params }: { params: Promise<{ id: string 
                                               </DropdownMenuItem>
                                               <DropdownMenuItem
                                                 onClick={() => handleDelete(reply.id)}
-                                                className="text-destructive"
+                                                variant="destructive"
                                               >
                                                 <Trash2 className="h-4 w-4 mr-2" />
                                                 Delete
@@ -623,7 +665,18 @@ export default function BlogPostPage({ params }: { params: Promise<{ id: string 
                                         <div className="space-y-2">
                                           <Textarea
                                             value={editContent}
-                                            onChange={(e) => setEditContent(e.target.value)}
+                                            onChange={(e) => {
+                                              const value = e.target.value
+                                              setEditContent(value)
+                                              // Auto-replace emoticons when user types space or punctuation
+                                              const lastChar = value[value.length - 1]
+                                              if (lastChar === ' ' || lastChar === '\n' || /[.,!?;:]/.test(lastChar)) {
+                                                const replaced = replaceEmoticons(value)
+                                                if (replaced !== value) {
+                                                  setEditContent(replaced)
+                                                }
+                                              }
+                                            }}
                                             rows={3}
                                             className="bg-background text-sm min-h-[80px]"
                                           />

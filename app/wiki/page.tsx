@@ -245,8 +245,9 @@ export default function WikiPage() {
               
               {paginatedArticles.length === 0 ? (
                 <Card>
-                  <CardContent className="p-8 text-center text-muted-foreground">
-                    No articles found in this category
+                  <CardContent className="p-12 text-center space-y-4">
+                    <BookOpen className="h-12 w-12 mx-auto text-muted-foreground/50" />
+                    <p className="text-muted-foreground">No articles found in this category</p>
                   </CardContent>
                 </Card>
               ) : totalPages > 1 && (

@@ -1055,9 +1055,12 @@ export default function SearchPage() {
             </div>
           ) : results.blogs.length === 0 ? (
             <Card>
-              <CardContent className="p-12 text-center">
-                <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                <p className="text-muted-foreground">No blog posts found</p>
+              <CardContent className="p-12 text-center space-y-4">
+                <FileText className="h-12 w-12 mx-auto text-muted-foreground/50" />
+                <div className="space-y-2">
+                  <p className="text-muted-foreground font-medium">No blog posts found</p>
+                  <p className="text-sm text-muted-foreground/80">Try adjusting your search terms or filters</p>
+                </div>
               </CardContent>
             </Card>
           ) : (

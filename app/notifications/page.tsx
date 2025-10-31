@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { getNotificationsByUserId, markAsRead, markAllAsRead, deleteNotification, generateFakeNotificationsForUser } from "@/lib/notifications"
 import type { Notification } from "@/lib/types"
 import { Bell, Trash2, Check, Sparkles } from "lucide-react"
+import { DeleteButton } from "@/components/ui/delete-button"
 import { formatDistanceToNow } from "date-fns"
 
 export default function NotificationsPage() {
@@ -21,7 +22,18 @@ export default function NotificationsPage() {
       router.push("/")
       return
     }
+    
     loadNotifications()
+    
+    // Automatically generate fake notifications for Sarah Johnson (user ID "1")
+    // This ensures she always has the full set of demo notifications
+    if (user.id === "1") {
+      generateFakeNotificationsForUser(user.id)
+      // Reload notifications after generating
+      setTimeout(() => {
+        loadNotifications()
+      }, 100)
+    }
   }, [user, router])
 
   const loadNotifications = () => {
@@ -91,12 +103,12 @@ export default function NotificationsPage() {
             <Sparkles className="h-4 w-4 mr-2" />
             Generate Fake Notifications
           </Button>
-          {notifications.some((n) => !n.read) && (
-            <Button variant="outline" size="sm" onClick={handleMarkAllRead}>
-              <Check className="h-4 w-4 mr-2" />
-              Mark all as read
-            </Button>
-          )}
+        {notifications.some((n) => !n.read) && (
+          <Button variant="outline" size="sm" onClick={handleMarkAllRead}>
+            <Check className="h-4 w-4 mr-2" />
+            Mark all as read
+          </Button>
+        )}
         </div>
       </div>
 
@@ -137,9 +149,8 @@ export default function NotificationsPage() {
                         <Check className="h-4 w-4" />
                       </Button>
                     )}
-                    <Button variant="ghost" size="sm" onClick={() => handleDelete(notification.id)} title="Delete">
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <DeleteButton size="sm" onClick={() => handleDelete(notification.id)} title="Delete" showIcon={true}>
+                    </DeleteButton>
                   </div>
                 </div>
               </CardContent>

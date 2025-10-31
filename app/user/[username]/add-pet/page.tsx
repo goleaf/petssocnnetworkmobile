@@ -1,59 +1,37 @@
 "use client"
 
-import React, { useState, useEffect, use } from "react"
+import { useState, useEffect, use } from "react"
 import { useAuth } from "@/lib/auth"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { BackButton } from "@/components/ui/back-button"
 import { PetForm, type PetFormData } from "@/components/pet-form"
-import { getPetByUsernameAndSlug, updatePet, generatePetSlug, getUsers } from "@/lib/storage"
+import { addPet, getUserByUsername, generatePetSlug, getUsers } from "@/lib/storage"
+import { Plus } from "lucide-react"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
-import { Save } from "lucide-react"
-import { getPetUrlFromPet } from "@/lib/utils/pet-url"
+import Link from "next/link"
 
-export default function EditPetPage({ params }: { params: Promise<{ username: string; slug: string }> }) {
-  const { username, slug } = use(params)
+export default function AddPetPage({ params }: { params: Promise<{ username: string }> }) {
+  const { username } = use(params)
   const { user } = useAuth()
   const router = useRouter()
-  const [pet, setPet] = useState<any | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    if (!user) {
-      router.push("/")
-      return
-    }
-
-    const fetchedPet = getPetByUsernameAndSlug(username, slug)
-    if (!fetchedPet) {
+    const fetchedUser = getUserByUsername(username)
+    if (!fetchedUser || !user || fetchedUser.id !== user.id) {
       router.push(`/user/${username}`)
       return
     }
-
-    // Check if user owns the pet
-    if (fetchedPet.ownerId !== user.id) {
-      const owner = getUsers().find((u) => u.id === fetchedPet.ownerId)
-      if (owner) {
-        const petUrl = getPetUrlFromPet(fetchedPet, owner.username)
-        router.push(petUrl)
-      } else {
-        router.push(`/user/${username}`)
-      }
-      return
-    }
-
-    setPet(fetchedPet)
     setIsLoading(false)
-  }, [username, slug, user, router])
+  }, [username, user, router])
 
   const handleSubmit = async (formData: PetFormData) => {
-    if (!user || !pet) return
+    if (!user) return
 
-    // Generate new slug if name changed
-    const newSlug = pet.name !== formData.name ? generatePetSlug(formData.name) : pet.slug
-
-    const updatedPet = {
-      ...pet,
+    const newPet = {
+      id: String(Date.now()),
+      ownerId: user.id,
       name: formData.name,
       species: formData.species,
       breed: formData.breed || undefined,
@@ -77,19 +55,14 @@ export default function EditPetPage({ params }: { params: Promise<{ username: st
       vaccinations: formData.vaccinations.length > 0 ? formData.vaccinations : undefined,
       medications: formData.medications.length > 0 ? formData.medications : undefined,
       trainingProgress: formData.trainingProgress.length > 0 ? formData.trainingProgress : undefined,
-      slug: newSlug,
+      followers: [],
+      slug: generatePetSlug(formData.name),
     }
 
-    updatePet(updatedPet)
-    
-    // Redirect to pet profile with potentially new slug after a short delay to show success message
+    addPet(newPet)
+    // Redirect to pets page after successful creation
     setTimeout(() => {
-      const owner = getUsers().find((u) => u.id === user.id)
-      if (owner) {
-        router.push(getPetUrlFromPet(updatedPet, owner.username))
-      } else {
-        router.push(`/user/${username}`)
-      }
+      router.push(`/user/${username}/pets`)
     }, 1000)
   }
 
@@ -97,43 +70,30 @@ export default function EditPetPage({ params }: { params: Promise<{ username: st
     return <LoadingSpinner fullScreen />
   }
 
-  if (!pet || !user) {
-    return (
-      <div className="container mx-auto px-4 py-8 max-w-7xl">
-        <Card>
-          <CardContent className="p-8 text-center">
-            <p className="text-muted-foreground mb-4">Pet not found or you don't have permission to edit.</p>
-            <BackButton href={`/user/${username}`} label="Back to Profile" />
-          </CardContent>
-        </Card>
-      </div>
-    )
-  }
+  if (!user) return null
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
-      <BackButton href={getPetUrlFromPet(pet, username)} label="Back to Pet Profile" />
+      <BackButton href={`/user/${username}/pets`} label="Back to Pets" />
 
       <Card className="mb-6">
         <CardHeader>
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-primary/10">
-              <Save className="h-6 w-6 text-primary" />
+              <Plus className="h-6 w-6 text-primary" />
             </div>
             <div>
-              <CardTitle className="text-2xl">Edit Pet Profile</CardTitle>
-              <CardDescription>Update all information about {pet.name}</CardDescription>
+              <CardTitle className="text-2xl">Add New Pet</CardTitle>
+              <CardDescription>Share your furry friend with the community</CardDescription>
             </div>
           </div>
         </CardHeader>
       </Card>
 
       <PetForm
-        mode="edit"
-        initialData={pet}
+        mode="create"
         onSubmit={handleSubmit}
-        onCancel={() => router.push(getPetUrlFromPet(pet, username))}
-        petName={pet.name}
+        onCancel={() => router.push(`/user/${username}/pets`)}
       />
     </div>
   )

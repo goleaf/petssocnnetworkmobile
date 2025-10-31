@@ -18,6 +18,7 @@ import {
   toggleCommentReaction,
 } from "@/lib/storage"
 import { useAuth } from "@/lib/auth"
+import { replaceEmoticons } from "@/lib/utils/emoticon-replacer"
 import {
   Eye,
   Heart,
@@ -121,11 +122,14 @@ export default function WikiArticlePage({ params }: { params: Promise<{ slug: st
     // Simulate async operation
     await new Promise((resolve) => setTimeout(resolve, 500))
 
+    // Replace emoticons in comment
+    const processedContent = replaceEmoticons(newComment.trim())
+
     const comment: Comment = {
       id: String(Date.now()),
       wikiArticleId: article.id,
       userId: currentUser.id,
-      content: newComment.trim(),
+      content: processedContent,
       createdAt: new Date().toISOString(),
       reactions: {
         like: [],
@@ -152,11 +156,14 @@ export default function WikiArticlePage({ params }: { params: Promise<{ slug: st
     // Simulate async operation
     await new Promise((resolve) => setTimeout(resolve, 500))
 
+    // Replace emoticons in reply
+    const processedContent = replaceEmoticons(replyContent.trim())
+
     const reply: Comment = {
       id: String(Date.now()),
       wikiArticleId: article.id,
       userId: currentUser.id,
-      content: replyContent.trim(),
+      content: processedContent,
       createdAt: new Date().toISOString(),
       parentCommentId,
       reactions: {
@@ -190,7 +197,9 @@ export default function WikiArticlePage({ params }: { params: Promise<{ slug: st
     // Simulate async operation
     await new Promise((resolve) => setTimeout(resolve, 400))
 
-    updateComment(commentId, editContent.trim())
+    // Replace emoticons in edited comment
+    const processedContent = replaceEmoticons(editContent.trim())
+    updateComment(commentId, processedContent)
     const updatedComments = getCommentsByWikiArticleId(article.id)
     setComments(updatedComments)
     setEditingCommentId(null)
@@ -423,7 +432,18 @@ export default function WikiArticlePage({ params }: { params: Promise<{ slug: st
                 <Textarea
                   placeholder="Share your thoughts..."
                   value={newComment}
-                  onChange={(e) => setNewComment(e.target.value)}
+                  onChange={(e) => {
+                    const value = e.target.value
+                    setNewComment(value)
+                    // Auto-replace emoticons when user types space or punctuation
+                    const lastChar = value[value.length - 1]
+                    if (lastChar === ' ' || lastChar === '\n' || /[.,!?;:]/.test(lastChar)) {
+                      const replaced = replaceEmoticons(value)
+                      if (replaced !== value) {
+                        setNewComment(replaced)
+                      }
+                    }
+                  }}
                   rows={4}
                   className="min-h-[100px] resize-none text-base"
                 />
@@ -501,7 +521,7 @@ export default function WikiArticlePage({ params }: { params: Promise<{ slug: st
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
                                   onClick={() => handleDelete(comment.id)}
-                                  className="text-destructive"
+                                  variant="destructive"
                                   disabled={isDeleting === comment.id}
                                 >
                                   {isDeleting === comment.id ? (
@@ -524,7 +544,18 @@ export default function WikiArticlePage({ params }: { params: Promise<{ slug: st
                           <div className="space-y-3">
                             <Textarea
                               value={editContent}
-                              onChange={(e) => setEditContent(e.target.value)}
+                              onChange={(e) => {
+                                const value = e.target.value
+                                setEditContent(value)
+                                // Auto-replace emoticons when user types space or punctuation
+                                const lastChar = value[value.length - 1]
+                                if (lastChar === ' ' || lastChar === '\n' || /[.,!?;:]/.test(lastChar)) {
+                                  const replaced = replaceEmoticons(value)
+                                  if (replaced !== value) {
+                                    setEditContent(replaced)
+                                  }
+                                }
+                              }}
                               rows={4}
                               className="bg-background text-base min-h-[100px]"
                             />
@@ -641,7 +672,18 @@ export default function WikiArticlePage({ params }: { params: Promise<{ slug: st
                               <Textarea
                                 placeholder={`Reply to ${commentUser?.fullName}...`}
                                 value={replyContent}
-                                onChange={(e) => setReplyContent(e.target.value)}
+                                onChange={(e) => {
+                                  const value = e.target.value
+                                  setReplyContent(value)
+                                  // Auto-replace emoticons when user types space or punctuation
+                                  const lastChar = value[value.length - 1]
+                                  if (lastChar === ' ' || lastChar === '\n' || /[.,!?;:]/.test(lastChar)) {
+                                    const replaced = replaceEmoticons(value)
+                                    if (replaced !== value) {
+                                      setReplyContent(replaced)
+                                    }
+                                  }
+                                }}
                                 rows={3}
                                 className="bg-background text-sm min-h-[80px] resize-none"
                               />
@@ -741,7 +783,7 @@ export default function WikiArticlePage({ params }: { params: Promise<{ slug: st
                                               </DropdownMenuItem>
                                               <DropdownMenuItem
                                                 onClick={() => handleDelete(reply.id)}
-                                                className="text-destructive"
+                                                variant="destructive"
                                                 disabled={isDeleting === reply.id}
                                               >
                                                 {isDeleting === reply.id ? (
@@ -764,7 +806,18 @@ export default function WikiArticlePage({ params }: { params: Promise<{ slug: st
                                         <div className="space-y-2">
                                           <Textarea
                                             value={editContent}
-                                            onChange={(e) => setEditContent(e.target.value)}
+                                            onChange={(e) => {
+                                              const value = e.target.value
+                                              setEditContent(value)
+                                              // Auto-replace emoticons when user types space or punctuation
+                                              const lastChar = value[value.length - 1]
+                                              if (lastChar === ' ' || lastChar === '\n' || /[.,!?;:]/.test(lastChar)) {
+                                                const replaced = replaceEmoticons(value)
+                                                if (replaced !== value) {
+                                                  setEditContent(replaced)
+                                                }
+                                              }
+                                            }}
                                             rows={3}
                                             className="bg-background text-sm min-h-[80px]"
                                           />

@@ -72,6 +72,20 @@ export interface Pet {
   privacy?: "public" | "private" | "followers-only"
 }
 
+export interface FeedPost {
+  id: string
+  petId: string
+  authorId: string
+  content: string
+  images?: string[]
+  likes: string[] // Kept for backward compatibility
+  reactions?: Record<ReactionType, string[]> // User IDs who reacted with each type
+  createdAt: string
+  updatedAt: string
+  privacy?: "public" | "private" | "followers-only"
+  hashtags?: string[]
+}
+
 export interface BlogPost {
   id: string
   petId: string
@@ -98,6 +112,7 @@ export type ReactionType = "like" | "love" | "laugh" | "wow" | "sad" | "angry"
 export interface Comment {
   id: string
   postId?: string // For blog posts
+  feedPostId?: string // For feed posts
   wikiArticleId?: string // For wiki articles
   petPhotoId?: string // For pet photos (format: petId:photoIndex)
   userId: string
@@ -316,4 +331,166 @@ export interface PromotedPost {
   createdAt: string
   reviewedBy?: string
   reviewNotes?: string
+}
+
+// Group Types
+export type GroupType = "open" | "closed" | "secret"
+
+export type GroupMemberRole = "owner" | "admin" | "moderator" | "member"
+
+export type GroupTopicStatus = "active" | "locked" | "archived"
+
+export type EventRSVPStatus = "going" | "maybe" | "not-going"
+
+export type GroupResourceType = "document" | "link" | "file"
+
+export type GroupActivityType = "post" | "topic" | "comment" | "poll" | "event" | "join" | "leave" | "role_change"
+
+export interface Group {
+  id: string
+  name: string
+  slug: string
+  description: string
+  type: GroupType
+  categoryId: string
+  ownerId: string
+  coverImage?: string
+  avatar?: string
+  memberCount: number
+  topicCount: number
+  postCount: number
+  tags?: string[]
+  rules?: string[]
+  createdAt: string
+  updatedAt: string
+}
+
+export interface GroupMember {
+  id: string
+  groupId: string
+  userId: string
+  role: GroupMemberRole
+  joinedAt: string
+  permissions?: {
+    canPost?: boolean
+    canComment?: boolean
+    canCreateTopic?: boolean
+    canCreatePoll?: boolean
+    canCreateEvent?: boolean
+    canModerate?: boolean
+    canManageMembers?: boolean
+    canManageSettings?: boolean
+  }
+}
+
+export interface GroupTopic {
+  id: string
+  groupId: string
+  authorId: string
+  title: string
+  content: string
+  parentTopicId?: string // For nested topics/threads
+  isPinned: boolean
+  isLocked: boolean
+  status: GroupTopicStatus
+  viewCount: number
+  commentCount: number
+  reactions?: Record<ReactionType, string[]>
+  tags?: string[]
+  createdAt: string
+  updatedAt: string
+}
+
+export interface GroupPoll {
+  id: string
+  groupId: string
+  topicId?: string // Optional - polls can be in topics or standalone
+  authorId: string
+  question: string
+  options: PollOption[]
+  allowMultiple: boolean
+  expiresAt?: string
+  isClosed: boolean
+  voteCount: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface PollOption {
+  id: string
+  text: string
+  voteCount: number
+}
+
+export interface PollVote {
+  id: string
+  userId: string
+  pollId: string
+  optionIds: string[] // Can be multiple if allowMultiple is true
+  votedAt: string
+}
+
+export interface GroupEvent {
+  id: string
+  groupId: string
+  authorId: string
+  title: string
+  description: string
+  startDate: string
+  endDate?: string
+  location?: string
+  locationUrl?: string
+  rsvpRequired: boolean
+  maxAttendees?: number
+  attendeeCount: number
+  coverImage?: string
+  isCancelled: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export interface EventRSVP {
+  id: string
+  userId: string
+  eventId: string
+  status: EventRSVPStatus
+  respondedAt: string
+  notes?: string
+}
+
+export interface GroupResource {
+  id: string
+  groupId: string
+  title: string
+  type: GroupResourceType
+  url?: string // For links
+  filePath?: string // For uploaded files (stored as reference)
+  description?: string
+  uploadedBy: string
+  category?: string
+  tags?: string[]
+  downloadCount?: number
+  createdAt: string
+}
+
+export interface GroupActivity {
+  id: string
+  groupId: string
+  userId: string
+  type: GroupActivityType
+  targetId?: string // ID of the target (topic, poll, event, etc.)
+  targetType?: "topic" | "poll" | "event" | "resource" | "member"
+  metadata?: Record<string, any>
+  timestamp: string
+}
+
+export interface GroupCategory {
+  id: string
+  name: string
+  slug: string
+  description: string
+  icon?: string
+  groupCount: number
+  color?: string
+  createdAt: string
 }

@@ -6,13 +6,15 @@ import { useAuth } from "@/lib/auth"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
+import { EditButton } from "@/components/ui/edit-button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { getUserByUsername, getUserById, updateUser, getPetsByOwnerId, getBlogPosts, toggleFollow } from "@/lib/storage"
-import type { User } from "@/lib/types"
+import { TagInput } from "@/components/ui/tag-input"
+import { getUserByUsername, getUserById, updateUser, getPetsByOwnerId, getBlogPosts, getFeedPosts, getFeedPostsByAuthorId, toggleFollow } from "@/lib/storage"
+import type { User, FeedPost, BlogPost } from "@/lib/types"
 import {
   MapPin,
   Calendar,
@@ -28,6 +30,8 @@ import {
   X,
   UserPlus,
   UserMinus,
+  User,
+  MessageCircle,
 } from "lucide-react"
 import Link from "next/link"
 import { BadgeDisplay } from "@/components/badge-display"
@@ -50,12 +54,14 @@ export default function UserProfilePage() {
   const { user: currentUser, isAuthenticated } = useAuth()
   const [user, setUser] = useState<User | null>(null)
   const [pets, setPets] = useState<any[]>([])
-  const [posts, setPosts] = useState<any[]>([])
+  const [feedPosts, setFeedPosts] = useState<FeedPost[]>([])
+  const [blogPosts, setBlogPosts] = useState<BlogPost[]>([])
   const [isEditing, setIsEditing] = useState(false)
   const [isFollowing, setIsFollowing] = useState(false)
   const [editForm, setEditForm] = useState({
     fullName: "",
     bio: "",
+    avatar: "",
     location: "",
     website: "",
     phone: "",
@@ -91,12 +97,23 @@ export default function UserProfilePage() {
     }
     
     if (canViewUserPosts(fetchedUser, viewerId)) {
-      const allPosts = getBlogPosts()
+      // Get feed posts
+      const allFeedPosts = getFeedPostsByAuthorId(fetchedUser.id).filter((post) => {
+        if (!post.privacy || post.privacy === "public") return true
+        if (post.privacy === "private" && post.authorId !== viewerId) return false
+        if (post.privacy === "followers-only" && viewerId && !getUserById(viewerId || "")?.following.includes(post.authorId)) return false
+        return true
+      })
+      setFeedPosts(allFeedPosts)
+      
+      // Get blog posts
+      const allBlogPosts = getBlogPosts()
         .filter((post) => post.authorId === fetchedUser.id)
         .filter((post) => canViewPost(post, fetchedUser, viewerId))
-      setPosts(allPosts)
+      setBlogPosts(allBlogPosts)
     } else {
-      setPosts([])
+      setFeedPosts([])
+      setBlogPosts([])
     }
 
     if (currentUser) {
@@ -106,6 +123,7 @@ export default function UserProfilePage() {
     setEditForm({
       fullName: fetchedUser.fullName,
       bio: fetchedUser.bio || "",
+      avatar: fetchedUser.avatar || "",
       location: fetchedUser.location || "",
       website: fetchedUser.website || "",
       phone: fetchedUser.phone || "",
@@ -130,6 +148,7 @@ export default function UserProfilePage() {
     updateUser(user.id, {
       fullName: editForm.fullName,
       bio: editForm.bio,
+      avatar: editForm.avatar,
       location: editForm.location,
       website: editForm.website,
       phone: editForm.phone,
@@ -155,7 +174,8 @@ export default function UserProfilePage() {
   
   const stats = [
     { label: "Pets", value: canViewPets ? pets.length : 0, icon: PawPrint, canView: canViewPets },
-    { label: "Posts", value: canViewPosts ? posts.length : 0, icon: BookOpen, canView: canViewPosts },
+    { label: "Feed Posts", value: canViewPosts ? feedPosts.length : 0, icon: MessageCircle, canView: canViewPosts },
+    { label: "Blog Posts", value: canViewPosts ? blogPosts.length : 0, icon: BookOpen, canView: canViewPosts },
     { label: "Followers", value: canViewFollowersList ? user.followers.length : 0, icon: Users, canView: canViewFollowersList },
     { label: "Following", value: canViewFollowingList ? user.following.length : 0, icon: Heart, canView: canViewFollowingList },
   ]
@@ -167,10 +187,24 @@ export default function UserProfilePage() {
         <Card className="mb-6">
           <CardContent className="p-8">
             <div className="flex flex-col md:flex-row gap-6 items-start">
+              <div className="flex flex-col items-center gap-3">
               <Avatar className="h-32 w-32 border-4 border-background shadow-lg">
-                <AvatarImage src={user.avatar || "/placeholder.svg"} alt={user.fullName} />
+                  <AvatarImage src={isEditing ? editForm.avatar || "/placeholder.svg" : user.avatar || "/placeholder.svg"} alt={user.fullName} />
                 <AvatarFallback className="text-4xl">{user.fullName.charAt(0)}</AvatarFallback>
               </Avatar>
+                {isEditing && (
+                  <div className="space-y-2 w-full">
+                    <Label htmlFor="avatar" className="text-xs">Avatar URL</Label>
+                    <Input
+                      id="avatar"
+                      value={editForm.avatar}
+                      onChange={(e) => setEditForm({ ...editForm, avatar: e.target.value })}
+                      placeholder="/path/to/image.png"
+                      className="text-sm"
+                    />
+                  </div>
+                )}
+              </div>
 
               <div className="flex-1 space-y-4">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -210,10 +244,9 @@ export default function UserProfilePage() {
                             </Button>
                           </>
                         ) : (
-                          <Button onClick={() => setIsEditing(true)} variant="outline" size="sm">
-                            <Edit className="h-4 w-4 mr-2" />
+                          <EditButton onClick={() => setIsEditing(true)} size="sm">
                             Edit Profile
-                          </Button>
+                          </EditButton>
                         )}
                       </>
                     ) : (
@@ -258,9 +291,9 @@ export default function UserProfilePage() {
                   {stats.map((stat) => {
                     let linkHref = "#"
                     if (stat.label === "Pets") {
-                      linkHref = "#pets"
+                      linkHref = `/user/${user.username}/pets`
                     } else if (stat.label === "Posts") {
-                      linkHref = "#posts"
+                      linkHref = `/user/${user.username}/posts`
                     } else if (stat.label === "Followers") {
                       linkHref = `/user/${user.username}/followers`
                     } else if (stat.label === "Following") {
@@ -292,17 +325,15 @@ export default function UserProfilePage() {
                         }}
                       >
                         <Card className="hover:shadow-lg transition-all duration-200 hover:border-primary/50 cursor-pointer group h-full">
-                          <CardContent className="p-6 text-center">
-                            <div className="flex flex-col items-center justify-center space-y-3">
-                              <div className="p-3 rounded-full bg-primary/10 group-hover:bg-primary/20 transition-colors">
-                                <stat.icon className="h-6 w-6 text-primary group-hover:scale-110 transition-transform" />
-                              </div>
-                              <div>
-                                <p className="text-3xl font-bold text-foreground group-hover:text-primary transition-colors">
+                          <CardContent className="px-1 py-0.5 text-center">
+                            <div className="flex flex-col items-center justify-center gap-0">
+                              <div className="flex items-center justify-center gap-1">
+                                <stat.icon className="h-5 w-5 text-primary group-hover:scale-110 transition-transform" />
+                                <p className="text-lg font-bold text-foreground group-hover:text-primary transition-colors">
                                   {stat.value}
                                 </p>
-                                <p className="text-sm font-medium text-muted-foreground mt-1">{stat.label}</p>
                               </div>
+                              <p className="text-sm font-medium text-muted-foreground leading-tight">{stat.label}</p>
                             </div>
                           </CardContent>
                         </Card>
@@ -318,23 +349,107 @@ export default function UserProfilePage() {
         {/* Profile Details */}
         <div className="grid lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
-            <Tabs defaultValue="posts" className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="posts">Posts</TabsTrigger>
-                <TabsTrigger value="pets">Pets</TabsTrigger>
-                <TabsTrigger value="about">About</TabsTrigger>
+            <Tabs defaultValue="feed" className="w-full">
+              <TabsList className="grid w-full grid-cols-4">
+                <TabsTrigger value="feed">
+                  <MessageCircle className="h-4 w-4 mr-2" />
+                  Feed Posts
+                </TabsTrigger>
+                <TabsTrigger value="blog">
+                  <BookOpen className="h-4 w-4 mr-2" />
+                  Blog Posts
+                </TabsTrigger>
+                <TabsTrigger value="pets">
+                  <PawPrint className="h-4 w-4 mr-2" />
+                  Pets
+                </TabsTrigger>
+                <TabsTrigger value="about">
+                  <User className="h-4 w-4 mr-2" />
+                  About
+                </TabsTrigger>
               </TabsList>
 
-              <TabsContent value="posts" className="space-y-4">
+              <TabsContent value="feed" className="space-y-4">
+                {!canViewPosts ? (
+                  <Card>
+                    <CardContent className="p-12 text-center text-muted-foreground">
+                      <MessageCircle className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                      <p>This user{"'"}s feed posts are private</p>
+                    </CardContent>
+                  </Card>
+                ) : feedPosts.length > 0 ? (
+                  feedPosts.map((post) => {
+                    const pet = pets.find((p) => p.id === post.petId)
+                    return (
+                      <Card key={post.id}>
+                        <CardContent className="p-6">
+                          <div className="space-y-3">
+                            <div className="flex items-center gap-3">
+                              {pet && (
+                                <>
+                                  <Avatar className="h-10 w-10">
+                                    <AvatarImage src={pet.avatar || "/placeholder.svg"} alt={pet.name} />
+                                    <AvatarFallback>{pet.name.charAt(0)}</AvatarFallback>
+                                  </Avatar>
+                                  <div>
+                                    <p className="font-semibold">{pet.name}</p>
+                                    <p className="text-xs text-muted-foreground">
+                                      {formatDate(post.createdAt)}
+                                    </p>
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                            <p className="text-foreground whitespace-pre-wrap break-words">{post.content}</p>
+                            {post.images && post.images.length > 0 && (
+                              <div className="grid grid-cols-2 gap-2">
+                                {post.images.map((image, index) => (
+                                  <div key={index} className="aspect-square rounded-lg overflow-hidden">
+                                    <img src={image} alt={`Post image ${index + 1}`} className="w-full h-full object-cover" />
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            {post.hashtags && post.hashtags.length > 0 && (
+                              <div className="flex flex-wrap gap-2">
+                                {post.hashtags.map((tag) => (
+                                  <Badge key={tag} variant="outline" className="text-xs">
+                                    #{tag}
+                                  </Badge>
+                                ))}
+                              </div>
+                            )}
+                            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                              <div className="flex items-center gap-1">
+                                <Heart className="h-4 w-4" />
+                                <span>{post.likes?.length || 0}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )
+                  })
+                ) : (
+                  <Card>
+                    <CardContent className="p-12 text-center text-muted-foreground">
+                      <MessageCircle className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                      <p>No feed posts yet</p>
+                    </CardContent>
+                  </Card>
+                )}
+              </TabsContent>
+
+              <TabsContent value="blog" className="space-y-4">
                 {!canViewPosts ? (
                   <Card>
                     <CardContent className="p-12 text-center text-muted-foreground">
                       <BookOpen className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                      <p>This user{"'"}s posts are private</p>
+                      <p>This user{"'"}s blog posts are private</p>
                     </CardContent>
                   </Card>
-                ) : posts.length > 0 ? (
-                  posts.map((post) => {
+                ) : blogPosts.length > 0 ? (
+                  blogPosts.map((post) => {
                     const pet = pets.find((p) => p.id === post.petId)
                     return (
                       <Card key={post.id}>
@@ -369,7 +484,7 @@ export default function UserProfilePage() {
                               <div className="flex items-center gap-4 text-sm text-muted-foreground">
                                 <div className="flex items-center gap-1">
                                   <Heart className="h-4 w-4" />
-                                  {post.likes.length}
+                                  <span>{post.likes?.length || 0}</span>
                                 </div>
                                 <div className="flex gap-1">
                                   {post.tags.slice(0, 3).map((tag: string) => (
@@ -389,7 +504,7 @@ export default function UserProfilePage() {
                   <Card>
                     <CardContent className="p-12 text-center text-muted-foreground">
                       <BookOpen className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                      <p>No posts yet</p>
+                      <p>No blog posts yet</p>
                     </CardContent>
                   </Card>
                 )}
@@ -484,6 +599,20 @@ export default function UserProfilePage() {
                             value={editForm.favoriteAnimal}
                             onChange={(e) => setEditForm({ ...editForm, favoriteAnimal: e.target.value })}
                             placeholder="Dogs, Cats, etc."
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Interests</Label>
+                          <TagInput
+                            value={editForm.interests.join(", ")}
+                            onChange={(value) => {
+                              const interestsArray = value
+                                .split(",")
+                                .map((tag) => tag.trim())
+                                .filter((tag) => tag)
+                              setEditForm({ ...editForm, interests: interestsArray })
+                            }}
+                            placeholder="Add interests (e.g., hiking, photography, dogs)"
                           />
                         </div>
                       </>

@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/auth"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { CreateButton } from "@/components/ui/create-button"
 import { BackButton } from "@/components/ui/back-button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -299,9 +300,9 @@ export default function AddPetPage({ params }: { params: Promise<{ username: str
                   Cancel
                 </Button>
               </Link>
-              <Button type="submit" className="flex-1" disabled={isSubmitting}>
+              <CreateButton type="submit" className="flex-1" disabled={isSubmitting} iconType="plus">
                 {isSubmitting ? "Adding Pet..." : "Add Pet"}
-              </Button>
+              </CreateButton>
             </div>
           </form>
         </CardContent>

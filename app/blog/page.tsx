@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
+import { CreateButton } from "@/components/ui/create-button"
 import { getBlogPosts, getPets, getUsers } from "@/lib/storage"
 import { formatCommentDate } from "@/lib/utils/date"
 import { stripHtml } from "@/lib/utils/strip-html"
@@ -299,8 +300,12 @@ export default function BlogPage() {
               
               {paginatedPosts.length === 0 ? (
                 <Card>
-                  <CardContent className="p-8 text-center text-muted-foreground">
-                    No blog posts found in this category
+                  <CardContent className="p-12 text-center space-y-4">
+                    <FileText className="h-12 w-12 mx-auto text-muted-foreground/50" />
+                    <div className="space-y-2">
+                      <p className="text-muted-foreground font-medium">No posts in this category yet</p>
+                      <p className="text-sm text-muted-foreground/80">Check back later or browse other categories</p>
+                    </div>
                   </CardContent>
                 </Card>
               ) : totalPages > 1 && (
@@ -379,10 +384,9 @@ export default function BlogPage() {
                           </p>
                         </div>
                         <Link href="/blog/create">
-                          <Button size="lg" className="mt-4">
-                            <Plus className="h-5 w-5 mr-2" />
+                          <CreateButton size="lg" className="mt-4" iconType="plus">
                             Create Your First Post
-                          </Button>
+                          </CreateButton>
                         </Link>
                       </div>
                     </CardContent>

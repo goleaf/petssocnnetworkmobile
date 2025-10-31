@@ -2,7 +2,7 @@
 
 import { useEffect } from "react"
 import Link from "next/link"
-import { AlertTriangle, Home, RefreshCw, ArrowLeft } from "lucide-react"
+import { AlertTriangle, Home, RefreshCw, ArrowLeft, RefreshCcw, Trash2, Clock, Info } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 interface ErrorProps {
@@ -18,28 +18,31 @@ export default function Error({ error, reset }: ErrorProps) {
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 bg-gradient-to-br from-background via-background to-destructive/5">
-      <div className="max-w-2xl w-full text-center space-y-8 py-16">
-        {/* Error Icon */}
-        <div className="inline-flex items-center justify-center w-32 h-32 rounded-full bg-destructive/10 dark:bg-destructive/20 mb-6">
-          <AlertTriangle className="w-16 h-16 text-destructive" strokeWidth={1.5} />
-        </div>
-        
-        {/* Error Message */}
-        <div className="space-y-4">
-          <h1 className="text-5xl font-bold text-foreground">
-            Something Went Wrong
-          </h1>
+      <div className="max-w-4xl w-full space-y-8 py-4 md:py-8">
+        {/* Header with Icon on Left */}
+        <div className="flex flex-col md:flex-row items-center md:items-start gap-3 md:gap-4">
+          {/* Error Icon */}
+          <div className="flex-shrink-0 inline-flex items-center justify-center w-24 h-24 md:w-32 md:h-32 rounded-full bg-destructive/10 dark:bg-destructive/20">
+            <AlertTriangle className="w-12 h-12 md:w-16 md:h-16 text-destructive" strokeWidth={1.5} />
+          </div>
           
-          <p className="text-lg text-muted-foreground max-w-md mx-auto">
-            We're sorry, but something unexpected happened. Don't worry, we're here to help you get back on track.
-          </p>
+          {/* Error Message */}
+          <div className="flex-1 text-center md:text-left space-y-4">
+            <h1 className="text-4xl md:text-5xl font-bold text-foreground">
+              Something Went Wrong
+            </h1>
+            
+            <p className="text-base md:text-lg text-muted-foreground">
+              We're sorry, but something unexpected happened. Don't worry, we're here to help you get back on track.
+            </p>
+          </div>
         </div>
 
         {/* Error Details (only in development) */}
         {process.env.NODE_ENV === "development" && error.message && (
-          <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4 text-left">
-            <p className="text-sm font-semibold text-destructive mb-2">Error Details (Development Only):</p>
-            <p className="text-sm text-muted-foreground font-mono break-all">
+          <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4 md:p-6 text-left">
+            <p className="text-sm md:text-base font-semibold text-destructive mb-2">Error Details (Development Only):</p>
+            <p className="text-xs md:text-sm text-muted-foreground font-mono break-all">
               {error.message}
             </p>
             {error.digest && (
@@ -51,15 +54,39 @@ export default function Error({ error, reset }: ErrorProps) {
         )}
 
         {/* What Happened Section */}
-        <div className="bg-card border rounded-lg p-6 space-y-4 text-left">
-          <h3 className="font-semibold text-foreground flex items-center gap-2">
+        <div className="bg-card border rounded-lg p-4 md:p-6 space-y-4 text-left">
+          <h3 className="text-base md:text-lg font-semibold text-foreground flex items-center gap-2">
             <AlertTriangle className="w-5 h-5 text-destructive" />
             What happened?
           </h3>
-          <p className="text-muted-foreground text-sm leading-relaxed">
-            An unexpected error occurred while loading this page. This could be due to a temporary issue,
-            a problem with the data, or a bug in the application. Your data is safe, and this error has been logged.
-          </p>
+          <div className="flex items-start gap-3">
+            <Info className="w-5 h-5 text-muted-foreground mt-0.5 flex-shrink-0" />
+            <p className="text-sm md:text-base text-muted-foreground leading-relaxed">
+              An unexpected error occurred while loading this page. This could be due to a temporary issue, a problem with the data, or a bug in the application. Your data is safe, and this error has been logged.
+            </p>
+          </div>
+        </div>
+
+        {/* Help Section */}
+        <div className="bg-card border rounded-lg p-4 md:p-6 space-y-4 text-left">
+          <h3 className="text-base md:text-lg font-semibold text-foreground flex items-center gap-2">
+            <AlertTriangle className="w-5 h-5 text-destructive" />
+            If this problem persists, try:
+          </h3>
+          <ul className="space-y-3 text-sm md:text-base text-muted-foreground">
+            <li className="flex items-start gap-3">
+              <RefreshCcw className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
+              <span>Refreshing the page</span>
+            </li>
+            <li className="flex items-start gap-3">
+              <Trash2 className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
+              <span>Clearing your browser cache</span>
+            </li>
+            <li className="flex items-start gap-3">
+              <Clock className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
+              <span>Waiting a few moments and trying again</span>
+            </li>
+          </ul>
         </div>
 
         {/* Action Buttons */}
@@ -77,7 +104,7 @@ export default function Error({ error, reset }: ErrorProps) {
           </Button>
           
           <Button
-            variant="ghost"
+            variant="outline"
             size="lg"
             className="w-full sm:w-auto"
             onClick={() => window.history.back()}
@@ -85,27 +112,6 @@ export default function Error({ error, reset }: ErrorProps) {
             <ArrowLeft className="w-5 h-5 mr-2" />
             Go Back
           </Button>
-        </div>
-
-        {/* Help Section */}
-        <div className="pt-8 border-t space-y-2">
-          <p className="text-sm text-muted-foreground">
-            If this problem persists, please try:
-          </p>
-          <ul className="text-sm text-muted-foreground space-y-1 text-left max-w-md mx-auto">
-            <li className="flex items-start gap-2">
-              <span className="text-primary mt-1">•</span>
-              <span>Refreshing the page</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="text-primary mt-1">•</span>
-              <span>Clearing your browser cache</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="text-primary mt-1">•</span>
-              <span>Waiting a few moments and trying again</span>
-            </li>
-          </ul>
         </div>
       </div>
     </div>

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Button } from "@/components/ui/button"
+import { CreateButton } from "@/components/ui/create-button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   DropdownMenu,
@@ -90,10 +91,9 @@ export function Navigation() {
             {isAuthenticated && user ? (
               <>
                 <Link href="/blog/create">
-                  <Button size="sm">
-                    <PenSquare className="h-4 w-4 mr-2" />
+                  <CreateButton size="sm" iconType="pen">
                     Write
-                  </Button>
+                  </CreateButton>
                 </Link>
                 <Link href="/promote">
                   <Button size="sm" variant="outline">
@@ -228,10 +228,9 @@ export function Navigation() {
                   {isAuthenticated && user ? (
                     <>
                       <Link href="/blog/create" onClick={() => setIsOpen(false)}>
-                        <Button className="w-full justify-start">
-                          <PenSquare className="h-4 w-4 mr-2" />
+                        <CreateButton className="w-full justify-start" iconType="pen">
                           Write
-                        </Button>
+                        </CreateButton>
                       </Link>
                       <NotificationsDropdown />
                       <Button variant="ghost" className="w-full justify-start" onClick={handleLogout}>

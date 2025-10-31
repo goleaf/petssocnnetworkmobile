@@ -44,9 +44,15 @@ This document provides a comprehensive list of all features available in the Pet
 - Pro membership status
 - User stats display:
   - Number of pets
+  - Number of feed posts
+  - Number of blog posts
   - Number of followers
   - Number of following
-  - Total posts
+- **Profile Tabs**
+  - Feed Posts tab: Shows quick feed posts
+  - Blog Posts tab: Shows longer blog posts
+  - Pets tab: Shows user's pets
+  - About tab: Shows profile details
 
 ### User Connections
 - Follow/unfollow users
@@ -167,10 +173,20 @@ This document provides a comprehensive list of all features available in the Pet
 - Photo viewing
 
 ### Pet Profile Management
-- Create new pet (`/profile/[username]/add-pet` or `/dashboard/add-pet`)
+- Create new pet (`/user/[username]/add-pet` or `/dashboard/add-pet`)
 - Edit pet profile (`/user/[username]/pet/[slug]/edit`)
 - Delete pet (with confirmation)
 - Privacy settings (public, private, followers-only)
+- **Shared PetForm Component**
+  - Unified form for both creating and editing pets
+  - Real-time validation with error messages
+  - Tooltips on form labels for helpful information
+  - Success/error messages with auto-dismiss
+  - Loading spinner during submission
+  - Organized tabs: Basic, Personality, Favorites, Diet, Health, Training
+  - Dynamic fields for health records, vaccinations, medications, training progress
+  - Species-specific validation
+  - Character counters for text fields
 
 ---
 
@@ -181,16 +197,28 @@ This document provides a comprehensive list of all features available in the Pet
   - Create new blog post (`/blog/create`)
   - Select pet for post
   - Title and content
-  - Cover image upload
+  - Cover image upload with dimension validation (1280x720px minimum, 16:9 ratio)
   - Tags and hashtags
   - Privacy settings (public, private, followers-only)
-  - Draft saving
+  - Draft saving with auto-save functionality
 
 - **Edit Posts**
   - Edit existing posts (`/blog/[id]/edit`)
   - Update all post fields
   - Update cover image
   - Manage tags and hashtags
+
+- **Shared BlogForm Component**
+  - Unified form for both creating and editing blog posts
+  - Real-time validation with error messages
+  - Tooltips on form labels for helpful information
+  - Success/error messages with auto-dismiss
+  - Loading spinner during submission
+  - Markdown editor with preview mode
+  - Cover image upload with validation and preview
+  - TagInput components for tags and hashtags
+  - Character counters for title and content
+  - Auto-extract hashtags from content
 
 - **View Posts**
   - Individual post pages (`/blog/[id]`)
@@ -265,6 +293,20 @@ This document provides a comprehensive list of all features available in the Pet
 ## Wiki Articles
 
 ### Wiki Article Management
+- **Create Articles**
+  - Create new wiki article (`/wiki/create`)
+  - Title and content with Markdown support
+  - Category and subcategory selection
+  - Species selection (multi-select)
+  - Cover image URL with preview
+  - Automatic slug generation from title
+
+- **Edit Articles**
+  - Edit existing articles (`/wiki/[slug]/edit`)
+  - Update all article fields
+  - Slug regeneration if title changes
+  - Owner-only editing
+
 - View wiki article (`/wiki/[slug]`)
 - Wiki categories:
   - Care (daily care, grooming, exercise, housing)
@@ -273,6 +315,18 @@ This document provides a comprehensive list of all features available in the Pet
   - Nutrition (feeding basics, special diets, treats & supplements, weight management)
   - Behavior (understanding behavior, problem behaviors, socialization, communication)
   - Breeds (dog breeds, cat breeds, breed selection, mixed breeds)
+
+- **Shared WikiForm Component**
+  - Unified form for both creating and editing wiki articles
+  - Real-time validation with error messages
+  - Tooltips on form labels for helpful information
+  - Success/error messages with auto-dismiss
+  - Loading spinner during submission
+  - Markdown editor with preview mode
+  - Dynamic subcategory selection based on category
+  - Species multi-select with visual selection
+  - Cover image URL with preview
+  - Character counters for title and content
 
 ### Wiki Features
 - **Article Display**
@@ -307,7 +361,13 @@ This document provides a comprehensive list of all features available in the Pet
   - Personalized feed for authenticated users
   - All posts view
   - Following-only view
-  - Post creation interface
+  - **Feed Post Creation**
+    - Create quick feed posts directly from feed
+    - Select pet for post
+    - Text content with hashtag support
+    - Automatic hashtag extraction from content
+    - Privacy settings (public, private, followers-only)
+    - Feed posts saved separately from blog posts
   - Pet selection for posts
   - Trending posts sidebar
   - Suggested users
@@ -317,6 +377,12 @@ This document provides a comprehensive list of all features available in the Pet
   - Filter by "All Posts"
   - Filter by "Following"
   - Real-time updates
+
+- **Feed Posts vs Blog Posts**
+  - Feed posts: Quick updates created in the feed
+  - Blog posts: Longer-form content created via `/blog/create`
+  - Separate storage and management
+  - Profile page shows both types in separate tabs
 
 ### Interactions
 - **Reactions**
@@ -504,9 +570,19 @@ This document provides a comprehensive list of all features available in the Pet
 - Recent activity
 
 ### Profile Pages
-- User profile (`/profile/[username]`)
-- User pets listing (`/profile/[username]/pets`)
-- User posts listing (`/profile/[username]/posts`)
+- User profile (`/user/[username]`)
+- User pets listing (`/user/[username]/pets`)
+  - Search and filter pets
+  - Group by species
+  - Sort by name, age, or date
+  - Edit and delete controls
+- User posts listing (`/user/[username]/posts`)
+  - Search posts
+  - Group by dates
+  - Filter and sort options
+  - Control buttons
+- User feed posts: Displayed in Feed Posts tab on profile
+- User blog posts: Displayed in Blog Posts tab on profile
 - Pet profile navigation
 
 ### Responsive Design
@@ -526,12 +602,27 @@ This document provides a comprehensive list of all features available in the Pet
 - Modern TailwindCSS styling
 - Consistent design system
 - Loading spinners
-- Empty states
-- Error states
+- Empty states with helpful icons and messages
+- Error states with helpful suggestions
 - Toast notifications
 - Modal dialogs
 - Dropdown menus
-- Form validation
+- **Form Validation**
+  - Real-time validation
+  - Error messages with helpful tooltips
+  - Success/error alerts with auto-dismiss
+  - Character counters
+  - Required field indicators
+- **Reusable UI Components**
+  - EditButton: Blue gradient button for edit actions
+  - CreateButton: Green gradient button for create/write actions
+  - DeleteButton: Red gradient button for delete actions
+  - Tooltip component with animations
+- **Error Pages**
+  - Custom 404 page with helpful suggestions
+  - Error boundary pages with troubleshooting tips
+  - Consistent design across error pages
+  - Responsive layout
 - Accessibility features
 
 ### Data Management

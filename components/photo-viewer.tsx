@@ -26,6 +26,7 @@ import {
 } from "@/lib/storage"
 import type { Comment, ReactionType } from "@/lib/types"
 import { formatCommentDate } from "@/lib/utils/date"
+import { replaceEmoticons } from "@/lib/utils/emoticon-replacer"
 import Link from "next/link"
 
 interface PhotoViewerProps {
@@ -150,12 +151,15 @@ export function PhotoViewer({ photos, petId, initialIndex = 0, isOpen, onClose, 
   const handleAddComment = () => {
     if (!currentUser || !newComment.trim()) return
 
+    // Replace emoticons in comment
+    const processedContent = replaceEmoticons(newComment.trim())
+
     const photoKey = `${petId}:${currentIndex}`
     const comment: Comment = {
       id: String(Date.now()),
       petPhotoId: photoKey,
       userId: currentUser.id,
-      content: newComment.trim(),
+      content: processedContent,
       createdAt: new Date().toISOString(),
     }
 
@@ -167,12 +171,15 @@ export function PhotoViewer({ photos, petId, initialIndex = 0, isOpen, onClose, 
   const handleReply = (parentCommentId: string) => {
     if (!currentUser || !replyContent.trim()) return
 
+    // Replace emoticons in reply
+    const processedContent = replaceEmoticons(replyContent.trim())
+
     const photoKey = `${petId}:${currentIndex}`
     const comment: Comment = {
       id: String(Date.now()),
       petPhotoId: photoKey,
       userId: currentUser.id,
-      content: replyContent.trim(),
+      content: processedContent,
       createdAt: new Date().toISOString(),
       parentCommentId,
     }
@@ -190,7 +197,9 @@ export function PhotoViewer({ photos, petId, initialIndex = 0, isOpen, onClose, 
 
   const handleSaveEdit = (commentId: string) => {
     if (!editContent.trim()) return
-    updateComment(commentId, editContent.trim())
+    // Replace emoticons in edited comment
+    const processedContent = replaceEmoticons(editContent.trim())
+    updateComment(commentId, processedContent)
     setEditingCommentId(null)
     setEditContent("")
     loadComments()
@@ -429,7 +438,18 @@ export function PhotoViewer({ photos, petId, initialIndex = 0, isOpen, onClose, 
                               <div className="space-y-2">
                                 <Textarea
                                   value={editContent}
-                                  onChange={(e) => setEditContent(e.target.value)}
+                                  onChange={(e) => {
+                                    const value = e.target.value
+                                    setEditContent(value)
+                                    // Auto-replace emoticons when user types space or punctuation
+                                    const lastChar = value[value.length - 1]
+                                    if (lastChar === ' ' || lastChar === '\n' || /[.,!?;:]/.test(lastChar)) {
+                                      const replaced = replaceEmoticons(value)
+                                      if (replaced !== value) {
+                                        setEditContent(replaced)
+                                      }
+                                    }
+                                  }}
                                   rows={3}
                                   className="text-sm min-h-[60px]"
                                 />
@@ -523,7 +543,7 @@ export function PhotoViewer({ photos, petId, initialIndex = 0, isOpen, onClose, 
                                         <Edit2 className="h-4 w-4 mr-2" />
                                         Edit
                                       </DropdownMenuItem>
-                                      <DropdownMenuItem onClick={() => handleDelete(comment.id)} className="text-destructive">
+                                      <DropdownMenuItem onClick={() => handleDelete(comment.id)} variant="destructive">
                                         <Trash2 className="h-4 w-4 mr-2" />
                                         Delete
                                       </DropdownMenuItem>
@@ -545,7 +565,18 @@ export function PhotoViewer({ photos, petId, initialIndex = 0, isOpen, onClose, 
                                     <Textarea
                                       placeholder={`Reply to ${commentUser?.fullName}...`}
                                       value={replyContent}
-                                      onChange={(e) => setReplyContent(e.target.value)}
+                                      onChange={(e) => {
+                                        const value = e.target.value
+                                        setReplyContent(value)
+                                        // Auto-replace emoticons when user types space or punctuation
+                                        const lastChar = value[value.length - 1]
+                                        if (lastChar === ' ' || lastChar === '\n' || /[.,!?;:]/.test(lastChar)) {
+                                          const replaced = replaceEmoticons(value)
+                                          if (replaced !== value) {
+                                            setReplyContent(replaced)
+                                          }
+                                        }
+                                      }}
                                       rows={2}
                                       className="text-sm min-h-[60px]"
                                     />
@@ -606,7 +637,18 @@ export function PhotoViewer({ photos, petId, initialIndex = 0, isOpen, onClose, 
                                               <div className="space-y-2">
                                                 <Textarea
                                                   value={editContent}
-                                                  onChange={(e) => setEditContent(e.target.value)}
+                                                  onChange={(e) => {
+                                                    const value = e.target.value
+                                                    setEditContent(value)
+                                                    // Auto-replace emoticons when user types space or punctuation
+                                                    const lastChar = value[value.length - 1]
+                                                    if (lastChar === ' ' || lastChar === '\n' || /[.,!?;:]/.test(lastChar)) {
+                                                      const replaced = replaceEmoticons(value)
+                                                      if (replaced !== value) {
+                                                        setEditContent(replaced)
+                                                      }
+                                                    }
+                                                  }}
                                                   rows={2}
                                                   className="text-sm min-h-[50px]"
                                                 />
@@ -683,7 +725,7 @@ export function PhotoViewer({ photos, petId, initialIndex = 0, isOpen, onClose, 
                                                       <Edit2 className="h-4 w-4 mr-2" />
                                                       Edit
                                                     </DropdownMenuItem>
-                                                    <DropdownMenuItem onClick={() => handleDelete(reply.id)} className="text-destructive">
+                                                    <DropdownMenuItem onClick={() => handleDelete(reply.id)} variant="destructive">
                                                       <Trash2 className="h-4 w-4 mr-2" />
                                                       Delete
                                                     </DropdownMenuItem>
@@ -719,7 +761,18 @@ export function PhotoViewer({ photos, petId, initialIndex = 0, isOpen, onClose, 
                       <Textarea
                         placeholder="Add a comment..."
                         value={newComment}
-                        onChange={(e) => setNewComment(e.target.value)}
+                        onChange={(e) => {
+                          const value = e.target.value
+                          setNewComment(value)
+                          // Auto-replace emoticons when user types space or punctuation
+                          const lastChar = value[value.length - 1]
+                          if (lastChar === ' ' || lastChar === '\n' || /[.,!?;:]/.test(lastChar)) {
+                            const replaced = replaceEmoticons(value)
+                            if (replaced !== value) {
+                              setNewComment(replaced)
+                            }
+                          }
+                        }}
                         rows={2}
                         className="text-sm min-h-[60px] resize-none"
                       />

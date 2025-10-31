@@ -1,4 +1,19 @@
-import type { User, Pet, BlogPost, Comment, WikiArticle } from "./types"
+import type { 
+  User, 
+  Pet, 
+  BlogPost, 
+  Comment, 
+  WikiArticle,
+  Group,
+  GroupMember,
+  GroupTopic,
+  GroupPoll,
+  PollVote,
+  GroupEvent,
+  EventRSVP,
+  GroupResource,
+  GroupCategory
+} from "./types"
 
 export const mockUsers: User[] = [
   {
@@ -2738,4 +2753,558 @@ Consider professional training if you're struggling with aggression, severe anxi
 
     return additionalArticles
   })(),
+]
+
+// Group Categories
+export const mockGroupCategories: GroupCategory[] = [
+  {
+    id: "cat-dogs",
+    name: "Dogs",
+    slug: "dogs",
+    description: "Groups for dog owners and enthusiasts",
+    icon: "🐕",
+    color: "#3b82f6",
+    groupCount: 8,
+    createdAt: "2024-01-01T00:00:00Z",
+  },
+  {
+    id: "cat-cats",
+    name: "Cats",
+    slug: "cats",
+    description: "Groups for cat owners and enthusiasts",
+    icon: "🐱",
+    color: "#8b5cf6",
+    groupCount: 6,
+    createdAt: "2024-01-01T00:00:00Z",
+  },
+  {
+    id: "cat-birds",
+    name: "Birds",
+    slug: "birds",
+    description: "Groups for bird owners and avian enthusiasts",
+    icon: "🐦",
+    color: "#10b981",
+    groupCount: 4,
+    createdAt: "2024-01-01T00:00:00Z",
+  },
+  {
+    id: "cat-small-pets",
+    name: "Small Pets",
+    slug: "small-pets",
+    description: "Groups for rabbits, hamsters, and other small pets",
+    icon: "🐰",
+    color: "#f59e0b",
+    groupCount: 5,
+    createdAt: "2024-01-01T00:00:00Z",
+  },
+  {
+    id: "cat-training",
+    name: "Training",
+    slug: "training",
+    description: "Groups focused on pet training and behavior",
+    icon: "🎓",
+    color: "#ef4444",
+    groupCount: 7,
+    createdAt: "2024-01-01T00:00:00Z",
+  },
+  {
+    id: "cat-health",
+    name: "Health",
+    slug: "health",
+    description: "Groups focused on pet health and wellness",
+    icon: "🏥",
+    color: "#ec4899",
+    groupCount: 6,
+    createdAt: "2024-01-01T00:00:00Z",
+  },
+  {
+    id: "cat-adoption",
+    name: "Adoption",
+    slug: "adoption",
+    description: "Groups for pet adoption and rescue",
+    icon: "❤️",
+    color: "#f97316",
+    groupCount: 5,
+    createdAt: "2024-01-01T00:00:00Z",
+  },
+  {
+    id: "cat-nutrition",
+    name: "Nutrition",
+    slug: "nutrition",
+    description: "Groups focused on pet nutrition and diet",
+    icon: "🍽️",
+    color: "#06b6d4",
+    groupCount: 4,
+    createdAt: "2024-01-01T00:00:00Z",
+  },
+]
+
+// Groups
+export const mockGroups: Group[] = [
+  {
+    id: "grp-1",
+    name: "Golden Retriever Owners",
+    slug: "golden-retriever-owners",
+    description: "A community for golden retriever owners to share experiences, tips, and photos of their beloved companions.",
+    type: "open",
+    categoryId: "cat-dogs",
+    ownerId: "1",
+    coverImage: "/dog-cover.jpg",
+    avatar: "/golden-retriever-icon.png",
+    memberCount: 245,
+    topicCount: 89,
+    postCount: 1240,
+    tags: ["golden-retriever", "dogs", "training", "health"],
+    rules: [
+      "Be respectful to all members",
+      "No spam or self-promotion",
+      "Keep posts relevant to golden retrievers",
+    ],
+    createdAt: "2024-01-15T10:00:00Z",
+    updatedAt: "2024-03-20T14:30:00Z",
+  },
+  {
+    id: "grp-2",
+    name: "Persian Cat Lovers",
+    slug: "persian-cat-lovers",
+    description: "Dedicated to Persian cats - share grooming tips, health advice, and adorable photos!",
+    type: "open",
+    categoryId: "cat-cats",
+    ownerId: "2",
+    coverImage: "/cat-cover.jpg",
+    avatar: "/persian-cat-icon.png",
+    memberCount: 189,
+    topicCount: 67,
+    postCount: 890,
+    tags: ["persian", "cats", "grooming", "health"],
+    rules: [
+      "Respect all members and their cats",
+      "No inappropriate content",
+      "Share helpful tips and experiences",
+    ],
+    createdAt: "2024-02-01T09:00:00Z",
+    updatedAt: "2024-03-18T11:20:00Z",
+  },
+  {
+    id: "grp-3",
+    name: "Parrot Enthusiasts",
+    slug: "parrot-enthusiasts",
+    description: "For parrot owners to discuss care, training, and share their colorful companions!",
+    type: "open",
+    categoryId: "cat-birds",
+    ownerId: "3",
+    coverImage: "/bird-cover.jpg",
+    avatar: "/parrot-icon.png",
+    memberCount: 156,
+    topicCount: 54,
+    postCount: 623,
+    tags: ["parrots", "birds", "training", "care"],
+    createdAt: "2024-02-10T12:00:00Z",
+    updatedAt: "2024-03-19T15:45:00Z",
+  },
+  {
+    id: "grp-4",
+    name: "Rabbit Care Community",
+    slug: "rabbit-care-community",
+    description: "A supportive community for rabbit owners to share knowledge about proper bunny care.",
+    type: "closed",
+    categoryId: "cat-small-pets",
+    ownerId: "4",
+    coverImage: "/rabbit-cover.jpg",
+    avatar: "/rabbit-icon.png",
+    memberCount: 98,
+    topicCount: 42,
+    postCount: 345,
+    tags: ["rabbits", "small-pets", "care", "health"],
+    rules: [
+      "Be kind and helpful",
+      "Follow proper rabbit care guidelines",
+      "No breeding discussions",
+    ],
+    createdAt: "2024-02-20T08:30:00Z",
+    updatedAt: "2024-03-17T10:15:00Z",
+  },
+  {
+    id: "grp-5",
+    name: "Dog Training Experts",
+    slug: "dog-training-experts",
+    description: "Share training techniques, ask questions, and learn from experienced trainers.",
+    type: "open",
+    categoryId: "cat-training",
+    ownerId: "1",
+    coverImage: "/training-cover.jpg",
+    avatar: "/training-icon.png",
+    memberCount: 312,
+    topicCount: 156,
+    postCount: 2100,
+    tags: ["training", "dogs", "behavior", "obedience"],
+    createdAt: "2024-01-25T11:00:00Z",
+    updatedAt: "2024-03-21T09:30:00Z",
+  },
+  {
+    id: "grp-6",
+    name: "Cat Health & Wellness",
+    slug: "cat-health-wellness",
+    description: "Discuss cat health issues, preventive care, and share veterinary advice.",
+    type: "open",
+    categoryId: "cat-health",
+    ownerId: "2",
+    coverImage: "/health-cover.jpg",
+    avatar: "/health-icon.png",
+    memberCount: 267,
+    topicCount: 123,
+    postCount: 1456,
+    tags: ["health", "cats", "veterinary", "wellness"],
+    createdAt: "2024-02-05T14:00:00Z",
+    updatedAt: "2024-03-20T16:00:00Z",
+  },
+  {
+    id: "grp-7",
+    name: "Rescue & Adoption Network",
+    slug: "rescue-adoption-network",
+    description: "Connect rescuers, foster families, and adopters. Help pets find their forever homes.",
+    type: "open",
+    categoryId: "cat-adoption",
+    ownerId: "5",
+    coverImage: "/adoption-cover.jpg",
+    avatar: "/adoption-icon.png",
+    memberCount: 423,
+    topicCount: 201,
+    postCount: 3120,
+    tags: ["rescue", "adoption", "foster", "shelter"],
+    createdAt: "2024-01-10T09:00:00Z",
+    updatedAt: "2024-03-22T11:20:00Z",
+  },
+  {
+    id: "grp-8",
+    name: "Raw Feeding Enthusiasts",
+    slug: "raw-feeding-enthusiasts",
+    description: "Discuss raw diets, meal planning, and nutritional balance for pets.",
+    type: "closed",
+    categoryId: "cat-nutrition",
+    ownerId: "6",
+    coverImage: "/nutrition-cover.jpg",
+    avatar: "/nutrition-icon.png",
+    memberCount: 134,
+    topicCount: 67,
+    postCount: 456,
+    tags: ["nutrition", "raw-feeding", "diet", "health"],
+    createdAt: "2024-02-15T10:30:00Z",
+    updatedAt: "2024-03-16T13:45:00Z",
+  },
+  {
+    id: "grp-9",
+    name: "Secret Puppy Playdates",
+    slug: "secret-puppy-playdates",
+    description: "Private group for organizing local puppy playdates and meetups.",
+    type: "secret",
+    categoryId: "cat-dogs",
+    ownerId: "7",
+    coverImage: "/playdate-cover.jpg",
+    avatar: "/playdate-icon.png",
+    memberCount: 45,
+    topicCount: 23,
+    postCount: 178,
+    tags: ["puppies", "playdates", "social"],
+    createdAt: "2024-03-01T08:00:00Z",
+    updatedAt: "2024-03-19T12:00:00Z",
+  },
+  {
+    id: "grp-10",
+    name: "Senior Pet Care",
+    slug: "senior-pet-care",
+    description: "Support group for owners of senior pets. Share experiences and care tips.",
+    type: "open",
+    categoryId: "cat-health",
+    ownerId: "8",
+    coverImage: "/senior-cover.jpg",
+    avatar: "/senior-icon.png",
+    memberCount: 198,
+    topicCount: 89,
+    postCount: 567,
+    tags: ["senior-pets", "health", "care", "support"],
+    createdAt: "2024-02-28T15:00:00Z",
+    updatedAt: "2024-03-18T10:30:00Z",
+  },
+]
+
+// Group Members
+export const mockGroupMembers: GroupMember[] = (() => {
+  const members: GroupMember[] = []
+  const roles: Array<"owner" | "admin" | "moderator" | "member"> = ["owner", "admin", "moderator", "member"]
+  const userIds = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]
+  
+  mockGroups.forEach((group, groupIndex) => {
+    // Owner
+    members.push({
+      id: `mem-${group.id}-${group.ownerId}`,
+      groupId: group.id,
+      userId: group.ownerId,
+      role: "owner",
+      joinedAt: group.createdAt,
+      permissions: {
+        canPost: true,
+        canComment: true,
+        canCreateTopic: true,
+        canCreatePoll: true,
+        canCreateEvent: true,
+        canModerate: true,
+        canManageMembers: true,
+        canManageSettings: true,
+      },
+    })
+    
+    // Add 10-30 members per group
+    const memberCount = Math.floor(Math.random() * 21) + 10
+    for (let i = 0; i < memberCount && i < userIds.length; i++) {
+      const userId = userIds[i]
+      if (userId === group.ownerId) continue
+      
+      const role = i === 0 ? "admin" : i === 1 ? "moderator" : "member"
+      const joinDate = new Date(group.createdAt)
+      joinDate.setDate(joinDate.getDate() + Math.floor(Math.random() * 30))
+      
+      members.push({
+        id: `mem-${group.id}-${userId}-${i}`,
+        groupId: group.id,
+        userId,
+        role,
+        joinedAt: joinDate.toISOString(),
+        permissions: {
+          canPost: true,
+          canComment: true,
+          canCreateTopic: true,
+          canCreatePoll: role !== "member",
+          canCreateEvent: role !== "member",
+          canModerate: role === "admin" || role === "moderator",
+          canManageMembers: role === "admin",
+          canManageSettings: role === "admin",
+        },
+      })
+    }
+  })
+  
+  return members
+})()
+
+// Group Topics
+export const mockGroupTopics: GroupTopic[] = (() => {
+  const topics: GroupTopic[] = []
+  const topicTitles = [
+    "Welcome to the Group!",
+    "Daily Discussion Thread",
+    "Training Tips and Tricks",
+    "Health Concerns",
+    "Favorite Toys",
+    "Grooming Questions",
+    "Nutrition Advice",
+    "Behavioral Issues",
+    "Adoption Stories",
+    "Show Your Pet!",
+  ]
+  
+  let topicId = 1
+  mockGroups.forEach((group) => {
+    // Create 5-15 topics per group
+    const topicCount = Math.floor(Math.random() * 11) + 5
+    for (let i = 0; i < topicCount; i++) {
+      const createdAt = new Date(group.createdAt)
+      createdAt.setDate(createdAt.getDate() + i)
+      
+      const isPinned = i === 0
+      const isLocked = i === topicCount - 1 && Math.random() > 0.7
+      
+      topics.push({
+        id: `topic-${topicId++}`,
+        groupId: group.id,
+        authorId: group.ownerId,
+        title: `${topicTitles[i % topicTitles.length]} #${i + 1}`,
+        content: `This is topic content for ${group.name}. Members can discuss and share their experiences here.\n\nFeel free to ask questions, share tips, or show off your pets!`,
+        isPinned,
+        isLocked,
+        status: isLocked ? "locked" : "active",
+        viewCount: Math.floor(Math.random() * 500) + 50,
+        commentCount: Math.floor(Math.random() * 100) + 5,
+        reactions: {
+          like: ["1", "2", "3"].slice(0, Math.floor(Math.random() * 3) + 1),
+          love: ["4", "5"].slice(0, Math.floor(Math.random() * 2)),
+          laugh: [],
+          wow: [],
+          sad: [],
+          angry: [],
+        },
+        tags: [group.tags?.[0] || "general"],
+        createdAt: createdAt.toISOString(),
+        updatedAt: createdAt.toISOString(),
+      })
+    }
+  })
+  
+  return topics
+})()
+
+// Group Polls
+export const mockGroupPolls: GroupPoll[] = [
+  {
+    id: "poll-1",
+    groupId: "grp-1",
+    authorId: "1",
+    question: "What's your golden retriever's favorite activity?",
+    options: [
+      { id: "opt-1", text: "Fetch", voteCount: 45 },
+      { id: "opt-2", text: "Swimming", voteCount: 32 },
+      { id: "opt-3", text: "Hiking", voteCount: 28 },
+      { id: "opt-4", text: "Training", voteCount: 15 },
+    ],
+    allowMultiple: false,
+    isClosed: false,
+    voteCount: 120,
+    createdAt: "2024-03-15T10:00:00Z",
+    updatedAt: "2024-03-15T10:00:00Z",
+  },
+  {
+    id: "poll-2",
+    groupId: "grp-2",
+    authorId: "2",
+    question: "Which grooming products do you use?",
+    options: [
+      { id: "opt-5", text: "Slicker brush", voteCount: 67 },
+      { id: "opt-6", text: "Undercoat rake", voteCount: 45 },
+      { id: "opt-7", text: "Grooming comb", voteCount: 38 },
+      { id: "opt-8", text: "De-matting tool", voteCount: 22 },
+    ],
+    allowMultiple: true,
+    isClosed: false,
+    voteCount: 172,
+    createdAt: "2024-03-10T14:00:00Z",
+    updatedAt: "2024-03-10T14:00:00Z",
+  },
+  {
+    id: "poll-3",
+    groupId: "grp-5",
+    authorId: "1",
+    question: "What training method do you prefer?",
+    options: [
+      { id: "opt-9", text: "Positive reinforcement", voteCount: 189 },
+      { id: "opt-10", text: "Clicker training", voteCount: 98 },
+      { id: "opt-11", text: "Balanced training", voteCount: 45 },
+      { id: "opt-12", text: "Traditional methods", voteCount: 12 },
+    ],
+    allowMultiple: false,
+    expiresAt: "2024-04-01T00:00:00Z",
+    isClosed: false,
+    voteCount: 344,
+    createdAt: "2024-03-18T09:00:00Z",
+    updatedAt: "2024-03-18T09:00:00Z",
+  },
+]
+
+// Poll Votes
+export const mockPollVotes: PollVote[] = [
+  { id: "vote-1", userId: "1", pollId: "poll-1", optionIds: ["opt-1"], votedAt: "2024-03-15T10:30:00Z" },
+  { id: "vote-2", userId: "2", pollId: "poll-1", optionIds: ["opt-2"], votedAt: "2024-03-15T11:00:00Z" },
+  { id: "vote-3", userId: "3", pollId: "poll-2", optionIds: ["opt-5", "opt-6"], votedAt: "2024-03-10T15:00:00Z" },
+]
+
+// Group Events
+export const mockGroupEvents: GroupEvent[] = [
+  {
+    id: "event-1",
+    groupId: "grp-1",
+    authorId: "1",
+    title: "Golden Retriever Meetup",
+    description: "Join us for a fun meetup at the dog park! Bring your golden retrievers for some playtime and socialization.",
+    startDate: "2024-04-15T10:00:00Z",
+    endDate: "2024-04-15T14:00:00Z",
+    location: "Central Park Dog Run",
+    locationUrl: "https://maps.example.com/central-park",
+    rsvpRequired: true,
+    maxAttendees: 50,
+    attendeeCount: 32,
+    coverImage: "/event-cover-1.jpg",
+    isCancelled: false,
+    createdAt: "2024-03-20T09:00:00Z",
+    updatedAt: "2024-03-20T09:00:00Z",
+  },
+  {
+    id: "event-2",
+    groupId: "grp-5",
+    authorId: "1",
+    title: "Training Workshop",
+    description: "Professional dog trainer will demonstrate basic obedience techniques. All skill levels welcome!",
+    startDate: "2024-04-20T13:00:00Z",
+    endDate: "2024-04-20T16:00:00Z",
+    location: "Community Center - Room 101",
+    rsvpRequired: true,
+    maxAttendees: 30,
+    attendeeCount: 28,
+    isCancelled: false,
+    createdAt: "2024-03-18T10:00:00Z",
+    updatedAt: "2024-03-18T10:00:00Z",
+  },
+  {
+    id: "event-3",
+    groupId: "grp-7",
+    authorId: "5",
+    title: "Adoption Event",
+    description: "Come meet adoptable pets! Multiple rescue organizations will be present with dogs, cats, and small animals.",
+    startDate: "2024-04-10T10:00:00Z",
+    endDate: "2024-04-10T18:00:00Z",
+    location: "City Square",
+    rsvpRequired: false,
+    attendeeCount: 45,
+    isCancelled: false,
+    createdAt: "2024-03-15T08:00:00Z",
+    updatedAt: "2024-03-15T08:00:00Z",
+  },
+]
+
+// Event RSVPs
+export const mockEventRSVPs: EventRSVP[] = [
+  { id: "rsvp-1", userId: "1", eventId: "event-1", status: "going", respondedAt: "2024-03-20T10:00:00Z" },
+  { id: "rsvp-2", userId: "2", eventId: "event-1", status: "going", respondedAt: "2024-03-20T11:00:00Z" },
+  { id: "rsvp-3", userId: "3", eventId: "event-1", status: "maybe", respondedAt: "2024-03-20T12:00:00Z" },
+  { id: "rsvp-4", userId: "4", eventId: "event-2", status: "going", respondedAt: "2024-03-18T11:00:00Z" },
+]
+
+// Group Resources
+export const mockGroupResources: GroupResource[] = [
+  {
+    id: "res-1",
+    groupId: "grp-1",
+    title: "Golden Retriever Care Guide",
+    type: "document",
+    url: "https://example.com/golden-retriever-guide.pdf",
+    description: "Comprehensive guide to golden retriever care, health, and training.",
+    uploadedBy: "1",
+    category: "Care Guides",
+    tags: ["care", "guide", "health"],
+    downloadCount: 156,
+    createdAt: "2024-03-01T10:00:00Z",
+  },
+  {
+    id: "res-2",
+    groupId: "grp-5",
+    title: "Training Techniques Resource",
+    type: "link",
+    url: "https://example.com/training-techniques",
+    description: "Helpful website with training techniques and tips.",
+    uploadedBy: "1",
+    category: "Training",
+    tags: ["training", "techniques"],
+    createdAt: "2024-03-05T14:00:00Z",
+  },
+  {
+    id: "res-3",
+    groupId: "grp-6",
+    title: "Cat Health Checklist",
+    type: "document",
+    url: "https://example.com/cat-health-checklist.pdf",
+    description: "Printable checklist for monitoring your cat's health.",
+    uploadedBy: "2",
+    category: "Health",
+    tags: ["health", "checklist"],
+    downloadCount: 89,
+    createdAt: "2024-03-10T09:00:00Z",
+  },
 ]

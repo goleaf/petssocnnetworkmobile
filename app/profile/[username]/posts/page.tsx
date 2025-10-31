@@ -122,7 +122,7 @@ export default function PostsPage({ params }: { params: Promise<{ username: stri
                               Edit
                             </DropdownMenuItem>
                           </Link>
-                          <DropdownMenuItem onClick={() => handleDelete(post.id)} className="text-destructive">
+                          <DropdownMenuItem onClick={() => handleDelete(post.id)} variant="destructive">
                             <Trash2 className="h-4 w-4 mr-2" />
                             Delete
                           </DropdownMenuItem>
