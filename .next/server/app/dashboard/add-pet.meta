@@ -1,0 +1,15 @@
+{
+  "headers": {
+    "x-nextjs-stale-time": "300",
+    "x-nextjs-prerender": "1",
+    "x-next-cache-tags": "_N_T_/layout,_N_T_/dashboard/layout,_N_T_/dashboard/add-pet/layout,_N_T_/dashboard/add-pet/page,_N_T_/dashboard/add-pet"
+  },
+  "segmentPaths": [
+    "/_tree",
+    "/_full",
+    "/dashboard/add-pet/__PAGE__",
+    "/dashboard/add-pet",
+    "/dashboard",
+    "/_index"
+  ]
+}
