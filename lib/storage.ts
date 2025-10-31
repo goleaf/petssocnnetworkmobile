@@ -1,4 +1,4 @@
-import type { User, Pet, BlogPost, Comment, WikiArticle, Activity } from "./types"
+import type { User, Pet, BlogPost, Comment, WikiArticle, Activity, ReactionType } from "./types"
 import { mockUsers, mockPets, mockBlogPosts, mockComments, mockWikiArticles } from "./mock-data"
 
 const STORAGE_KEYS = {

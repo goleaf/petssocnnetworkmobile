@@ -160,6 +160,10 @@ export default function SearchPage() {
   const totalResults =
     results.users.length + results.pets.length + results.blogs.length + results.wiki.length + results.hashtags.length
 
+  if (isLoading) {
+    return <LoadingSpinner fullScreen />
+  }
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
       <div className="mb-8">
