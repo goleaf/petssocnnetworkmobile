@@ -31,6 +31,16 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import { BadgeDisplay } from "@/components/badge-display"
+import {
+  canViewProfile,
+  canViewUserPosts,
+  canViewUserPets,
+  canViewFollowers,
+  canViewFollowing,
+  canViewProfileField,
+  canSendFollowRequest,
+  canViewPost,
+} from "@/lib/utils/privacy"
 
 export default function UserProfilePage() {
   const params = useParams()
@@ -61,9 +71,31 @@ export default function UserProfilePage() {
       return
     }
 
+    const viewerId = currentUser?.id || null
+    
+    // Check if viewer can see profile
+    if (!canViewProfile(fetchedUser, viewerId)) {
+      router.push("/")
+      return
+    }
+
     setUser(fetchedUser)
-    setPets(getPetsByOwnerId(fetchedUser.id))
-    setPosts(getBlogPosts().filter((post) => post.authorId === fetchedUser.id))
+    
+    // Filter pets and posts based on privacy
+    if (canViewUserPets(fetchedUser, viewerId)) {
+      setPets(getPetsByOwnerId(fetchedUser.id))
+    } else {
+      setPets([])
+    }
+    
+    if (canViewUserPosts(fetchedUser, viewerId)) {
+      const allPosts = getBlogPosts()
+        .filter((post) => post.authorId === fetchedUser.id)
+        .filter((post) => canViewPost(post, fetchedUser, viewerId))
+      setPosts(allPosts)
+    } else {
+      setPosts([])
+    }
 
     if (currentUser) {
       setIsFollowing(currentUser.following.includes(fetchedUser.id))
