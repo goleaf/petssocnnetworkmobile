@@ -425,25 +425,9 @@ export function updateWikiArticle(article: WikiArticle) {
   }
 }
 
-// Photo reactions - stored in pets photos array metadata
-export function getPhotoReactions(petId: string, photoIndex: number): Record<string, Record<ReactionType, string[]>> {
-  if (typeof window === "undefined") return {}
-  const pets = getPets()
-  const pet = pets.find((p) => p.id === petId)
-  if (!pet || !pet.photos || photoIndex >= pet.photos.length) return {}
-  
-  // Use a key format: petId:photoIndex
-  const photoKey = `${petId}:${photoIndex}`
-  const reactionsKey = `pet_photo_reactions_${photoKey}`
-  const data = localStorage.getItem(reactionsKey)
-  return data ? JSON.parse(data) : {}
-}
-
-export function togglePhotoReaction(petId: string, photoIndex: number, userId: string, reactionType: ReactionType) {
-  if (typeof window === "undefined") return
-  const photoKey = `${petId}:${photoIndex}`
-  const reactionsKey = `pet_photo_reactions_${photoKey}`
-  const currentReactions = getPhotoReactions(petId, photoIndex)[photoKey] || {
+// Photo reactions - stored per photo
+export function getPhotoReactions(petId: string, photoIndex: number): Record<ReactionType, string[]> {
+  if (typeof window === "undefined") return {
     like: [],
     love: [],
     laugh: [],
@@ -451,6 +435,37 @@ export function togglePhotoReaction(petId: string, photoIndex: number, userId: s
     sad: [],
     angry: [],
   }
+  const pets = getPets()
+  const pet = pets.find((p) => p.id === petId)
+  if (!pet || !pet.photos || photoIndex >= pet.photos.length) return {
+    like: [],
+    love: [],
+    laugh: [],
+    wow: [],
+    sad: [],
+    angry: [],
+  }
+  
+  // Use a key format: petId:photoIndex
+  const photoKey = `${petId}:${photoIndex}`
+  const reactionsKey = `pet_photo_reactions_${photoKey}`
+  const data = localStorage.getItem(reactionsKey)
+  if (!data) return {
+    like: [],
+    love: [],
+    laugh: [],
+    wow: [],
+    sad: [],
+    angry: [],
+  }
+  return JSON.parse(data)
+}
+
+export function togglePhotoReaction(petId: string, photoIndex: number, userId: string, reactionType: ReactionType) {
+  if (typeof window === "undefined") return
+  const photoKey = `${petId}:${photoIndex}`
+  const reactionsKey = `pet_photo_reactions_${photoKey}`
+  const currentReactions = getPhotoReactions(petId, photoIndex)
   
   const reactionArray = currentReactions[reactionType] || []
   const hasReacted = reactionArray.includes(userId)
@@ -473,11 +488,7 @@ export function togglePhotoReaction(petId: string, photoIndex: number, userId: s
     updatedReactions[reactionType] = [...reactionArray, userId]
   }
   
-  const allReactions: Record<string, Record<ReactionType, string[]>> = {
-    [photoKey]: updatedReactions,
-  }
-  
-  localStorage.setItem(reactionsKey, JSON.stringify(allReactions))
+  localStorage.setItem(reactionsKey, JSON.stringify(updatedReactions))
 }
 
 // Activity operations

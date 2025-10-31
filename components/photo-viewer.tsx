@@ -23,7 +23,6 @@ import {
   togglePhotoReaction,
   getPhotoReactions,
   getUsers,
-  getUserById,
 } from "@/lib/storage"
 import type { Comment, ReactionType } from "@/lib/types"
 import { formatCommentDate } from "@/lib/utils/date"
@@ -399,7 +398,7 @@ export function PhotoViewer({ photos, petId, initialIndex = 0, isOpen, onClose, 
                   </div>
                 ) : (
                   topLevelComments.map((comment) => {
-                    const commentUser = getUserById(comment.userId)
+                                  const commentUser = getUsers().find((u) => u.id === comment.userId)
                     const isOwner = currentUser?.id === comment.userId
                     const isEditing = editingCommentId === comment.id
                     const userReaction = getUserReaction(comment)
