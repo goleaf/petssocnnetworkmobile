@@ -212,19 +212,37 @@ export default function WikiArticlePage({ params }: { params: Promise<{ slug: st
       const elementPosition = commentsSection.getBoundingClientRect().top
       const offsetPosition = elementPosition + window.pageYOffset - offset
 
-      // Trigger highlight effect
+      // Trigger highlight effect immediately for visual feedback
       setHighlightComments(true)
 
-      // Smooth scroll with custom offset
-      window.scrollTo({
-        top: offsetPosition,
-        behavior: "smooth",
-      })
+      // Enhanced smooth scroll with easing
+      const scrollStartPosition = window.pageYOffset
+      const scrollDistance = offsetPosition - scrollStartPosition
+      const scrollDuration = 800 // milliseconds
+      let animationStartTime: number | null = null
 
-      // Remove highlight effect after animation completes
-      setTimeout(() => {
-        setHighlightComments(false)
-      }, 2000)
+      const easeInOutCubic = (t: number): number => {
+        return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2
+      }
+
+      const animateScroll = (currentTime: number) => {
+        if (animationStartTime === null) animationStartTime = currentTime
+        const timeElapsed = currentTime - animationStartTime
+        const progress = Math.min(timeElapsed / scrollDuration, 1)
+
+        window.scrollTo(0, scrollStartPosition + scrollDistance * easeInOutCubic(progress))
+
+        if (progress < 1) {
+          requestAnimationFrame(animateScroll)
+        } else {
+          // Scroll complete - keep highlight for a bit longer
+          setTimeout(() => {
+            setHighlightComments(false)
+          }, 1500)
+        }
+      }
+
+      requestAnimationFrame(animateScroll)
     }
   }
 
