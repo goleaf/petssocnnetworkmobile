@@ -7,10 +7,11 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { getUsers, getPets, getBlogPosts, deleteBlogPost } from "@/lib/storage"
 import { useAuth } from "@/lib/auth"
-import { Heart, ArrowLeft, Edit2, Trash2, FileText } from "lucide-react"
+import { Heart, ArrowLeft, Edit2, Trash2, FileText, Lock } from "lucide-react"
 import Link from "next/link"
 import { formatDate } from "@/lib/utils/date"
 import { getPetUrlFromPet } from "@/lib/utils/pet-url"
+import { canViewUserPosts, canViewPost } from "@/lib/utils/privacy"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,12 +30,18 @@ export default function PostsPage({ params }: { params: Promise<{ username: stri
     const foundUser = getUsers().find((u) => u.username === username)
     if (foundUser) {
       setUser(foundUser)
-      const userPosts = getBlogPosts()
-        .filter((p) => p.authorId === foundUser.id)
-        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-      setPosts(userPosts)
+      const viewerId = currentUser?.id || null
+      if (canViewUserPosts(foundUser, viewerId)) {
+        const userPosts = getBlogPosts()
+          .filter((p) => p.authorId === foundUser.id)
+          .filter((p) => canViewPost(p, foundUser, viewerId))
+          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        setPosts(userPosts)
+      } else {
+        setPosts([])
+      }
     }
-  }, [username])
+  }, [username, currentUser])
 
   const handleDelete = (postId: string) => {
     if (window.confirm("Are you sure you want to delete this post?")) {
@@ -53,6 +60,8 @@ export default function PostsPage({ params }: { params: Promise<{ username: stri
 
   const isOwnProfile = currentUser?.id === user.id
   const pets = getPets()
+  const viewerId = currentUser?.id || null
+  const canViewPosts = canViewUserPosts(user, viewerId)
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
@@ -65,10 +74,17 @@ export default function PostsPage({ params }: { params: Promise<{ username: stri
 
       <div className="mb-6">
         <h1 className="text-3xl font-bold">{user.fullName}'s Posts</h1>
-        <p className="text-muted-foreground">{posts.length} {posts.length === 1 ? "post" : "posts"}</p>
+        <p className="text-muted-foreground">{canViewPosts ? `${posts.length} ${posts.length === 1 ? "post" : "posts"}` : "Private"}</p>
       </div>
 
-      {posts.length > 0 ? (
+      {!canViewPosts ? (
+        <Card>
+          <CardContent className="p-12 text-center space-y-4">
+            <Lock className="h-12 w-12 mx-auto text-muted-foreground/50" />
+            <p className="text-muted-foreground">This user{"'"}s posts are private</p>
+          </CardContent>
+        </Card>
+      ) : posts.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {posts.map((post) => {
             const pet = pets.find((p) => p.id === post.petId)
