@@ -83,11 +83,29 @@ export default function WikiArticlePage({ params }: { params: Promise<{ slug: st
   }, [slug, currentUser])
 
   useEffect(() => {
-    // Increment view count
+    // Increment view count and track recently viewed
     if (article) {
       const updatedArticle = { ...article, views: article.views + 1 }
       updateWikiArticle(updatedArticle)
       setArticle(updatedArticle)
+      
+      // Add to recently viewed if authenticated
+      if (currentUser) {
+        const key = `wiki_recently_viewed_${currentUser.id}`
+        let recentlyViewed: string[] = []
+        if (typeof window !== "undefined") {
+          const data = localStorage.getItem(key)
+          recentlyViewed = data ? JSON.parse(data) : []
+        }
+        // Remove if already exists and add to front
+        recentlyViewed = recentlyViewed.filter((slug) => slug !== article.slug)
+        recentlyViewed.unshift(article.slug)
+        // Keep only last 10
+        recentlyViewed = recentlyViewed.slice(0, 10)
+        if (typeof window !== "undefined") {
+          localStorage.setItem(key, JSON.stringify(recentlyViewed))
+        }
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])

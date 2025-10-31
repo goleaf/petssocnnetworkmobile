@@ -42,6 +42,17 @@ export function markAsRead(notificationId: string) {
   }
 }
 
+export function markAsUnread(notificationId: string) {
+  if (typeof window === "undefined") return
+  const notifications = getNotifications()
+  const index = notifications.findIndex((n) => n.id === notificationId)
+
+  if (index !== -1) {
+    notifications[index].read = false
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(notifications))
+  }
+}
+
 export function markAllAsRead(userId: string) {
   if (typeof window === "undefined") return
   const notifications = getNotifications()
@@ -350,6 +361,87 @@ export function generateFakeNotificationsForUser(userId: string) {
     read: false,
     createdAt: new Date(now.getTime() - 25 * 60000).toISOString(), // 25 minutes ago
   })
+
+  // Add 20 more random notifications
+  const notificationTypes: Array<"follow" | "like" | "comment" | "mention" | "post"> = ["follow", "like", "comment", "mention", "post"]
+  const actorIds = ["2", "3", "4", "5", "6", "7", "8", "9", "10"]
+  const targetIds = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]
+  const targetTypes: Array<"user" | "post" | "wiki"> = ["user", "post", "wiki"]
+  const names = ["mikecatlover", "emmabirds", "alexrabbits", "jessicadogs", "davidcats", "lisapets", "robertpaws", "amandadogs", "chrispets", "samuelpets"]
+  const postTitles = [
+    "Fun Day at the Park",
+    "Training Session Success",
+    "New Toy Arrived",
+    "Vet Visit Update",
+    "Adventure Time",
+    "Cute Photo Session",
+    "Health Check Results",
+    "Playtime Fun",
+    "Diet Changes",
+    "Behavior Training"
+  ]
+  const wikiTitles = [
+    "Dog Training Basics",
+    "Cat Health Guide",
+    "Bird Care Tips",
+    "Rabbit Nutrition",
+    "Pet Safety Guide"
+  ]
+
+  for (let i = 0; i < 20; i++) {
+    const type = notificationTypes[Math.floor(Math.random() * notificationTypes.length)]
+    const actorId = actorIds[Math.floor(Math.random() * actorIds.length)]
+    const actorName = names[Math.floor(Math.random() * names.length)]
+    const targetId = targetIds[Math.floor(Math.random() * targetIds.length)]
+    const isRead = Math.random() > 0.5
+    const hoursAgo = Math.floor(Math.random() * 48) // Random time between 0-48 hours ago
+    const minutesAgo = Math.floor(Math.random() * 60)
+    const timeAgo = hoursAgo * 3600000 + minutesAgo * 60000
+
+    let message = ""
+    let targetType: "user" | "post" | "wiki" = "user"
+
+    switch (type) {
+      case "follow":
+        message = `${actorName} started following you`
+        targetType = "user"
+        break
+      case "like":
+        targetType = Math.random() > 0.5 ? "post" : "wiki"
+        const title = targetType === "post" 
+          ? postTitles[Math.floor(Math.random() * postTitles.length)]
+          : wikiTitles[Math.floor(Math.random() * wikiTitles.length)]
+        message = `${actorName} liked your ${targetType}: "${title}"`
+        break
+      case "comment":
+        targetType = "post"
+        const postTitle = postTitles[Math.floor(Math.random() * postTitles.length)]
+        message = `${actorName} commented on your post: "${postTitle}"`
+        break
+      case "mention":
+        targetType = "post"
+        const mentionTitle = postTitles[Math.floor(Math.random() * postTitles.length)]
+        message = `${actorName} mentioned you in a post: "${mentionTitle}"`
+        break
+      case "post":
+        targetType = "post"
+        const newPostTitle = postTitles[Math.floor(Math.random() * postTitles.length)]
+        message = `${actorName} published a new post: "${newPostTitle}"`
+        break
+    }
+
+    fakeNotifications.push({
+      id: `notif_${Date.now()}_random_${i}`,
+      userId,
+      type,
+      actorId,
+      targetId,
+      targetType,
+      message,
+      read: isRead,
+      createdAt: new Date(now.getTime() - timeAgo).toISOString(),
+    })
+  }
 
   // Add all notifications
   fakeNotifications.forEach((notification) => {

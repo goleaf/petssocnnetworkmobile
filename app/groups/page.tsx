@@ -15,6 +15,8 @@ import {
   List,
   Plus,
   X,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react"
 import Link from "next/link"
 import {
@@ -45,6 +47,8 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
 
+const GROUPS_PER_PAGE = 6
+
 type SortOption = "recent" | "popular" | "members"
 
 export default function GroupsPage() {
@@ -58,6 +62,7 @@ export default function GroupsPage() {
   const initialCategory = searchParams.get("category") || "all"
   const initialType = searchParams.get("type") || "all"
   const initialSort = (searchParams.get("sort") as SortOption) || "recent"
+  const initialPage = parseInt(searchParams.get("page") || "1", 10)
 
   const [query, setQuery] = useState(initialQuery)
   const [selectedCategory, setSelectedCategory] = useState(initialCategory)
@@ -66,6 +71,7 @@ export default function GroupsPage() {
   )
   const [sortBy, setSortBy] = useState<SortOption>(initialSort)
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
+  const [currentPage, setCurrentPage] = useState(initialPage)
   const [isLoading, setIsLoading] = useState(false)
 
   const [categories] = useState<GroupCategory[]>(() => getGroupCategories())
@@ -81,7 +87,7 @@ export default function GroupsPage() {
       loadGroups()
       updateURL()
     }
-  }, [query, selectedCategory, selectedType, sortBy, mounted])
+  }, [query, selectedCategory, selectedType, sortBy, currentPage, mounted])
 
   useEffect(() => {
     if (mounted && inputRef.current) {
@@ -95,6 +101,7 @@ export default function GroupsPage() {
     if (selectedCategory !== "all") params.set("category", selectedCategory)
     if (selectedType !== "all") params.set("type", selectedType)
     if (sortBy !== "recent") params.set("sort", sortBy)
+    if (currentPage > 1) params.set("page", currentPage.toString())
     router.replace(`/groups?${params.toString()}`, { scroll: false })
   }
 
@@ -149,6 +156,7 @@ export default function GroupsPage() {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
+    setCurrentPage(1)
     loadGroups()
   }
 
@@ -157,11 +165,25 @@ export default function GroupsPage() {
     setSelectedCategory("all")
     setSelectedType("all")
     setSortBy("recent")
+    setCurrentPage(1)
     router.replace("/groups")
   }
 
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    if (mounted) {
+      setCurrentPage(1)
+    }
+  }, [query, selectedCategory, selectedType])
+
   const hasActiveFilters =
     query || selectedCategory !== "all" || selectedType !== "all"
+
+  // Pagination calculations
+  const totalPages = Math.ceil(groups.length / GROUPS_PER_PAGE)
+  const startIndex = (currentPage - 1) * GROUPS_PER_PAGE
+  const endIndex = startIndex + GROUPS_PER_PAGE
+  const paginatedGroups = groups.slice(startIndex, endIndex)
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
@@ -407,7 +429,7 @@ export default function GroupsPage() {
               : "space-y-4"
           }
         >
-          {groups.map((group) => (
+          {paginatedGroups.map((group) => (
             <GroupCard key={group.id} group={group} />
           ))}
         </div>
@@ -416,7 +438,56 @@ export default function GroupsPage() {
       {/* Results Count */}
       {!isLoading && groups.length > 0 && (
         <div className="mt-8 text-center text-sm text-muted-foreground">
-          Found {groups.length} {groups.length === 1 ? "group" : "groups"}
+          Showing {startIndex + 1}-{Math.min(endIndex, groups.length)} of {groups.length} {groups.length === 1 ? "group" : "groups"}
+        </div>
+      )}
+
+      {/* Pagination */}
+      {!isLoading && groups.length > GROUPS_PER_PAGE && (
+        <div className="flex items-center justify-center gap-2 mt-8">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+            disabled={currentPage === 1}
+          >
+            <ChevronLeft className="h-4 w-4 mr-1" />
+            Previous
+          </Button>
+          <div className="flex items-center gap-1">
+            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+              let pageNum: number
+              if (totalPages <= 5) {
+                pageNum = i + 1
+              } else if (currentPage <= 3) {
+                pageNum = i + 1
+              } else if (currentPage >= totalPages - 2) {
+                pageNum = totalPages - 4 + i
+              } else {
+                pageNum = currentPage - 2 + i
+              }
+              return (
+                <Button
+                  key={pageNum}
+                  variant={pageNum === currentPage ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setCurrentPage(pageNum)}
+                  className="w-10"
+                >
+                  {pageNum}
+                </Button>
+              )
+            })}
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+            disabled={currentPage === totalPages}
+          >
+            Next
+            <ChevronRight className="h-4 w-4 ml-1" />
+          </Button>
         </div>
       )}
     </div>

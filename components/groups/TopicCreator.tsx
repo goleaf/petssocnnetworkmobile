@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
-import { X, Pin, Lock, Save, Loader2, AlertCircle } from "lucide-react"
+import { X, Pin, Lock, Save, Loader2, AlertCircle, Reply } from "lucide-react"
 import { Input as TagInput } from "@/components/ui/input"
 import type { GroupTopic } from "@/lib/types"
 
@@ -21,6 +21,7 @@ interface TopicCreatorProps {
   onCancel: () => void
   canPin?: boolean
   canLock?: boolean
+  isReply?: boolean
 }
 
 export function TopicCreator({
@@ -31,6 +32,7 @@ export function TopicCreator({
   onCancel,
   canPin = false,
   canLock = false,
+  isReply = false,
 }: TopicCreatorProps) {
   const [formData, setFormData] = useState({
     title: initialData?.title || "",
@@ -129,6 +131,64 @@ export function TopicCreator({
     }
   }
 
+  // Simplified reply form
+  if (isReply && parentTopicId) {
+    return (
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold text-base flex items-center gap-2">
+              <Reply className="h-4 w-4" />
+              Reply to Topic
+            </h3>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={onCancel}
+            >
+              Cancel
+            </Button>
+          </div>
+
+          <div className="space-y-2">
+            <Textarea
+              id="content"
+              value={formData.content}
+              onChange={(e) => handleFieldChange("content", e.target.value)}
+              placeholder="Write your reply here..."
+              rows={6}
+              className={errors.content ? "border-destructive" : ""}
+            />
+            {errors.content && (
+              <p className="text-sm text-destructive">{errors.content}</p>
+            )}
+          </div>
+
+          <div className="flex items-center justify-end gap-2">
+            <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Posting...
+                </>
+              ) : (
+                <>
+                  <Reply className="h-4 w-4 mr-2" />
+                  Post Reply
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+      </form>
+    )
+  }
+
+  // Full form for creating/editing topics
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <Card>

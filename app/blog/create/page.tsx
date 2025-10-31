@@ -12,7 +12,7 @@ import type { BlogPost } from "@/lib/types"
 import { getPetsByOwnerId } from "@/lib/storage"
 import { saveDraft, deleteDraft, getDraftsByUserId } from "@/lib/drafts"
 import type { Draft } from "@/lib/types"
-import { FileText, Save } from "lucide-react"
+import { FileText, Save, FolderOpen } from "lucide-react"
 import Link from "next/link"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { Button } from "@/components/ui/button"
@@ -142,7 +142,15 @@ export default function CreateBlogPage() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
-      <BackButton href="/blog" label="Back to Blogs" />
+      <div className="flex items-center justify-between mb-6">
+        <BackButton href="/blog" label="Back to Blogs" />
+        <Link href="/drafts">
+          <Button variant="outline">
+            <FolderOpen className="h-4 w-4 mr-2" />
+            My Drafts
+          </Button>
+        </Link>
+      </div>
 
       {existingDrafts.length > 0 && !selectedDraft && (
         <Card className="mb-6">

@@ -17,7 +17,10 @@ import type {
   GroupResource,
   GroupActivity,
   GroupCategory,
-  GroupMemberRole
+  GroupMemberRole,
+  GroupWarning,
+  GroupBan,
+  ModerationAction
 } from "./types"
 import { 
   mockUsers, 
@@ -35,6 +38,15 @@ import {
   mockGroupResources,
   mockGroupCategories
 } from "./mock-data"
+
+// Cache management import - avoid circular dependency with lazy loading
+let invalidateCacheFn: (() => void) | null = null
+
+if (typeof window !== "undefined") {
+  import("./cache").then((module) => {
+    invalidateCacheFn = module.invalidateCache
+  })
+}
 
 const STORAGE_KEYS = {
   USERS: "pet_social_users",
@@ -55,10 +67,24 @@ const STORAGE_KEYS = {
   GROUP_RESOURCES: "pet_social_group_resources",
   GROUP_ACTIVITIES: "pet_social_group_activities",
   GROUP_CATEGORIES: "pet_social_group_categories",
+  GROUP_WARNINGS: "pet_social_group_warnings",
+  GROUP_BANS: "pet_social_group_bans",
+  MODERATION_ACTIONS: "pet_social_moderation_actions",
 }
 
 // Helper function to generate slug from pet name
 export function generatePetSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, "") // Remove special characters
+    .replace(/\s+/g, "-") // Replace spaces with hyphens
+    .replace(/-+/g, "-") // Replace multiple hyphens with single hyphen
+    .replace(/^-|-$/g, "") // Remove leading/trailing hyphens
+}
+
+// Helper function to generate slug from group name
+export function generateGroupSlug(name: string): string {
   return name
     .toLowerCase()
     .trim()
@@ -155,6 +181,21 @@ export function initializeStorage() {
   // Initialize group activities
   if (!localStorage.getItem(STORAGE_KEYS.GROUP_ACTIVITIES)) {
     localStorage.setItem(STORAGE_KEYS.GROUP_ACTIVITIES, JSON.stringify([]))
+  }
+  
+  // Initialize group warnings
+  if (!localStorage.getItem(STORAGE_KEYS.GROUP_WARNINGS)) {
+    localStorage.setItem(STORAGE_KEYS.GROUP_WARNINGS, JSON.stringify([]))
+  }
+  
+  // Initialize group bans
+  if (!localStorage.getItem(STORAGE_KEYS.GROUP_BANS)) {
+    localStorage.setItem(STORAGE_KEYS.GROUP_BANS, JSON.stringify([]))
+  }
+  
+  // Initialize moderation actions
+  if (!localStorage.getItem(STORAGE_KEYS.MODERATION_ACTIONS)) {
+    localStorage.setItem(STORAGE_KEYS.MODERATION_ACTIONS, JSON.stringify([]))
   }
   
   // Don't auto-login users - they must login manually
@@ -372,21 +413,291 @@ export function addFeedPost(post: FeedPost) {
   localStorage.setItem(STORAGE_KEYS.FEED_POSTS, JSON.stringify(posts))
 }
 
-export function updateFeedPost(post: FeedPost) {
+export function updateFeedPost(post: FeedPost, userId?: string) {
   if (typeof window === "undefined") return
+  
+  // Validate ownership - only the author can update their post
+  if (userId && post.authorId !== userId) {
+    throw new Error("You can only edit your own posts")
+  }
+  
   const posts = getFeedPosts()
+  const existingPost = posts.find((p) => p.id === post.id)
+  
+  // Verify the post exists and user owns it
+  if (!existingPost) {
+    throw new Error("Post not found")
+  }
+  
+  if (userId && existingPost.authorId !== userId) {
+    throw new Error("You can only edit your own posts")
+  }
+  
   const index = posts.findIndex((p) => p.id === post.id)
   if (index !== -1) {
-    posts[index] = post
+    posts[index] = {
+      ...post,
+      updatedAt: new Date().toISOString(),
+    }
     localStorage.setItem(STORAGE_KEYS.FEED_POSTS, JSON.stringify(posts))
+    if (invalidateCacheFn) invalidateCacheFn()
   }
 }
 
-export function deleteFeedPost(postId: string) {
+export function deleteFeedPost(postId: string, userId?: string) {
   if (typeof window === "undefined") return
+  
   const posts = getFeedPosts()
+  const post = posts.find((p) => p.id === postId)
+  
+  if (!post) {
+    throw new Error("Post not found")
+  }
+  
+  // Validate ownership - only the author can delete their post
+  if (userId && post.authorId !== userId) {
+    throw new Error("You can only delete your own posts")
+  }
+  
   const filteredPosts = posts.filter((p) => p.id !== postId)
   localStorage.setItem(STORAGE_KEYS.FEED_POSTS, JSON.stringify(filteredPosts))
+  if (invalidateCacheFn) invalidateCacheFn()
+}
+
+/**
+ * Generate fake feed posts for sarahpaws (user ID "1")
+ * This is useful for testing and demonstration purposes
+ */
+export function generateFakeFeedPostsForUser(userId: string) {
+  if (typeof window === "undefined") return
+
+  // Clear existing feed posts for this user first
+  const existingPosts = getFeedPosts()
+  const filteredPosts = existingPosts.filter((p) => p.authorId !== userId)
+  localStorage.setItem(STORAGE_KEYS.FEED_POSTS, JSON.stringify(filteredPosts))
+
+  // Get user's pets
+  const userPets = getPetsByOwnerId(userId)
+  if (userPets.length === 0) return
+
+  const now = new Date()
+  const fakePosts: FeedPost[] = []
+
+  // Generate posts for Max (pet ID "1")
+  const maxPet = userPets.find((p) => p.id === "1")
+  if (maxPet) {
+    fakePosts.push({
+      id: `feed_${Date.now()}_max1`,
+      petId: "1",
+      authorId: userId,
+      content: "Max had an amazing day at the beach today! He loves swimming and playing fetch in the waves 🌊🐕 #goldenretriever #beachday #max",
+      likes: ["2", "3", "4"],
+      reactions: {
+        like: ["2", "3"],
+        love: ["4"],
+        laugh: [],
+        wow: [],
+        sad: [],
+        angry: [],
+      },
+      createdAt: new Date(now.getTime() - 2 * 3600000).toISOString(), // 2 hours ago
+      updatedAt: new Date(now.getTime() - 2 * 3600000).toISOString(),
+      privacy: "public",
+      hashtags: ["goldenretriever", "beachday", "max"],
+    })
+
+    fakePosts.push({
+      id: `feed_${Date.now()}_max2`,
+      petId: "1",
+      authorId: userId,
+      content: "Max just aced his agility training session! So proud of this smart boy 🏆 #agilitytraining #dogtraining #proudmom",
+      likes: ["2", "5", "6"],
+      reactions: {
+        like: ["2", "5"],
+        love: ["6"],
+        laugh: [],
+        wow: [],
+        sad: [],
+        angry: [],
+      },
+      createdAt: new Date(now.getTime() - 5 * 3600000).toISOString(), // 5 hours ago
+      updatedAt: new Date(now.getTime() - 5 * 3600000).toISOString(),
+      privacy: "public",
+      hashtags: ["agilitytraining", "dogtraining", "proudmom"],
+    })
+
+    fakePosts.push({
+      id: `feed_${Date.now()}_max3`,
+      petId: "1",
+      authorId: userId,
+      content: "Max made so many new friends at the dog park today! He's such a social butterfly 🦋 #dogpark #social #goldenretriever",
+      likes: ["3", "4", "7"],
+      reactions: {
+        like: ["3", "4"],
+        love: ["7"],
+        laugh: [],
+        wow: [],
+        sad: [],
+        angry: [],
+      },
+      createdAt: new Date(now.getTime() - 1 * 86400000).toISOString(), // 1 day ago
+      updatedAt: new Date(now.getTime() - 1 * 86400000).toISOString(),
+      privacy: "public",
+      hashtags: ["dogpark", "social", "goldenretriever"],
+    })
+
+    fakePosts.push({
+      id: `feed_${Date.now()}_max4`,
+      petId: "1",
+      authorId: userId,
+      content: "Max's favorite snack time! Can't get enough of these carrots 🥕 #healthy #snacks #goldenretriever",
+      likes: ["2", "8"],
+      reactions: {
+        like: ["2", "8"],
+        love: [],
+        laugh: [],
+        wow: [],
+        sad: [],
+        angry: [],
+      },
+      createdAt: new Date(now.getTime() - 2 * 86400000).toISOString(), // 2 days ago
+      updatedAt: new Date(now.getTime() - 2 * 86400000).toISOString(),
+      privacy: "public",
+      hashtags: ["healthy", "snacks", "goldenretriever"],
+    })
+  }
+
+  // Generate posts for Luna (pet ID "2")
+  const lunaPet = userPets.find((p) => p.id === "2")
+  if (lunaPet) {
+    fakePosts.push({
+      id: `feed_${Date.now()}_luna1`,
+      petId: "2",
+      authorId: userId,
+      content: "Luna learned a new trick today! She's so eager to learn 🎓 #luna #tricks #smartdog",
+      likes: ["3", "4", "5"],
+      reactions: {
+        like: ["3", "4"],
+        love: ["5"],
+        laugh: [],
+        wow: [],
+        sad: [],
+        angry: [],
+      },
+      createdAt: new Date(now.getTime() - 30 * 60000).toISOString(), // 30 minutes ago
+      updatedAt: new Date(now.getTime() - 30 * 60000).toISOString(),
+      privacy: "public",
+      hashtags: ["luna", "tricks", "smartdog"],
+    })
+
+    fakePosts.push({
+      id: `feed_${Date.now()}_luna2`,
+      petId: "2",
+      authorId: userId,
+      content: "Luna and Max playing together in the backyard! Best siblings ever 💕 #siblings #playtime #goldenretrievers",
+      likes: ["2", "6", "7", "8"],
+      reactions: {
+        like: ["2", "6"],
+        love: ["7", "8"],
+        laugh: [],
+        wow: [],
+        sad: [],
+        angry: [],
+      },
+      createdAt: new Date(now.getTime() - 4 * 3600000).toISOString(), // 4 hours ago
+      updatedAt: new Date(now.getTime() - 4 * 3600000).toISOString(),
+      privacy: "public",
+      hashtags: ["siblings", "playtime", "goldenretrievers"],
+    })
+
+    fakePosts.push({
+      id: `feed_${Date.now()}_luna3`,
+      petId: "2",
+      authorId: userId,
+      content: "Luna's first agility class was a huge success! She's a natural athlete 🏃‍♀️ #agility #firstclass #proudmom",
+      likes: ["4", "5"],
+      reactions: {
+        like: ["4", "5"],
+        love: [],
+        laugh: [],
+        wow: [],
+        sad: [],
+        angry: [],
+      },
+      createdAt: new Date(now.getTime() - 3 * 86400000).toISOString(), // 3 days ago
+      updatedAt: new Date(now.getTime() - 3 * 86400000).toISOString(),
+      privacy: "public",
+      hashtags: ["agility", "firstclass", "proudmom"],
+    })
+
+    fakePosts.push({
+      id: `feed_${Date.now()}_luna4`,
+      petId: "2",
+      authorId: userId,
+      content: "Luna enjoying some frozen blueberries on this hot day! Her favorite summer treat 🫐 #summer #treats #luna",
+      likes: ["3", "6"],
+      reactions: {
+        like: ["3", "6"],
+        love: [],
+        laugh: [],
+        wow: [],
+        sad: [],
+        angry: [],
+      },
+      createdAt: new Date(now.getTime() - 4 * 86400000).toISOString(), // 4 days ago
+      updatedAt: new Date(now.getTime() - 4 * 86400000).toISOString(),
+      privacy: "public",
+      hashtags: ["summer", "treats", "luna"],
+    })
+  }
+
+  // Generate some posts with both pets
+  fakePosts.push({
+    id: `feed_${Date.now()}_both1`,
+    petId: "1", // Using Max as primary, but mentioning both
+    authorId: userId,
+    content: "Max and Luna had an amazing hike today! They both did so well on the trail 🏔️ #hiking #adventure #goldenretrievers",
+    likes: ["2", "3", "4", "5", "6"],
+    reactions: {
+      like: ["2", "3", "4"],
+      love: ["5", "6"],
+      laugh: [],
+      wow: [],
+      sad: [],
+      angry: [],
+    },
+    createdAt: new Date(now.getTime() - 6 * 3600000).toISOString(), // 6 hours ago
+    updatedAt: new Date(now.getTime() - 6 * 3600000).toISOString(),
+    privacy: "public",
+    hashtags: ["hiking", "adventure", "goldenretrievers"],
+  })
+
+  fakePosts.push({
+    id: `feed_${Date.now()}_both2`,
+    petId: "2", // Using Luna as primary
+    authorId: userId,
+    content: "Family photo time! Max and Luna are growing up so fast 🐕🐕 #family #photoshoot #goldenretrievers",
+    likes: ["2", "4", "7", "8", "9"],
+    reactions: {
+      like: ["2", "4", "7"],
+      love: ["8", "9"],
+      laugh: [],
+      wow: [],
+      sad: [],
+      angry: [],
+    },
+    createdAt: new Date(now.getTime() - 5 * 86400000).toISOString(), // 5 days ago
+    updatedAt: new Date(now.getTime() - 5 * 86400000).toISOString(),
+    privacy: "public",
+    hashtags: ["family", "photoshoot", "goldenretrievers"],
+  })
+
+  // Add all posts
+  fakePosts.forEach((post) => {
+    addFeedPost(post)
+  })
+
+  return fakePosts.length
 }
 
 export function toggleFeedPostReaction(postId: string, userId: string, reactionType: string) {
@@ -784,6 +1095,11 @@ export function addGroup(group: Group) {
   const groups = getGroups()
   groups.push(group)
   localStorage.setItem(STORAGE_KEYS.GROUPS, JSON.stringify(groups))
+  
+  // Invalidate cache when data changes
+  if (invalidateCacheFn) {
+    invalidateCacheFn()
+  }
 }
 
 export function updateGroup(groupId: string, updates: Partial<Group>) {
@@ -793,6 +1109,11 @@ export function updateGroup(groupId: string, updates: Partial<Group>) {
   if (index !== -1) {
     groups[index] = { ...groups[index], ...updates, updatedAt: new Date().toISOString() }
     localStorage.setItem(STORAGE_KEYS.GROUPS, JSON.stringify(groups))
+    
+    // Invalidate cache when data changes
+    if (invalidateCacheFn) {
+      invalidateCacheFn()
+    }
   }
 }
 
@@ -800,6 +1121,11 @@ export function deleteGroup(groupId: string) {
   if (typeof window === "undefined") return
   const groups = getGroups().filter((g) => g.id !== groupId)
   localStorage.setItem(STORAGE_KEYS.GROUPS, JSON.stringify(groups))
+  
+  // Invalidate cache when data changes
+  if (invalidateCacheFn) {
+    invalidateCacheFn()
+  }
 }
 
 // Group Member operations
@@ -1265,6 +1591,11 @@ export function canUserViewGroup(groupId: string, userId?: string): boolean {
   const group = getGroupById(groupId)
   if (!group) return false
   
+  // Check if user is banned
+  if (userId && isUserBannedFromGroup(groupId, userId)) {
+    return false
+  }
+  
   // Open groups are visible to everyone
   if (group.type === "open") return true
   
@@ -1278,4 +1609,144 @@ export function canUserViewGroup(groupId: string, userId?: string): boolean {
   }
   
   return false
+}
+
+// Group Warning operations
+export function getGroupWarnings(): GroupWarning[] {
+  if (typeof window === "undefined") return []
+  const data = localStorage.getItem(STORAGE_KEYS.GROUP_WARNINGS)
+  return data ? JSON.parse(data) : []
+}
+
+export function getGroupWarningsByGroupId(groupId: string): GroupWarning[] {
+  return getGroupWarnings().filter((w) => w.groupId === groupId)
+}
+
+export function getGroupWarningsByUserId(groupId: string, userId: string): GroupWarning[] {
+  return getGroupWarnings().filter((w) => w.groupId === groupId && w.userId === userId)
+}
+
+export function addGroupWarning(warning: GroupWarning) {
+  if (typeof window === "undefined") return
+  const warnings = getGroupWarnings()
+  warnings.push(warning)
+  localStorage.setItem(STORAGE_KEYS.GROUP_WARNINGS, JSON.stringify(warnings))
+  
+  // Log moderation action
+  addModerationAction({
+    id: `mod_action_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    groupId: warning.groupId,
+    actionType: "warn",
+    targetId: warning.userId,
+    targetType: "member",
+    performedBy: warning.issuedBy,
+    reason: warning.reason,
+    metadata: { level: warning.level, notes: warning.notes },
+    timestamp: warning.createdAt,
+  })
+}
+
+export function getWarningCount(groupId: string, userId: string): number {
+  return getGroupWarningsByUserId(groupId, userId).length
+}
+
+// Group Ban operations
+export function getGroupBans(): GroupBan[] {
+  if (typeof window === "undefined") return []
+  const data = localStorage.getItem(STORAGE_KEYS.GROUP_BANS)
+  return data ? JSON.parse(data) : []
+}
+
+export function getGroupBansByGroupId(groupId: string): GroupBan[] {
+  return getGroupBans().filter((b) => b.groupId === groupId)
+}
+
+export function getActiveGroupBansByGroupId(groupId: string): GroupBan[] {
+  const now = new Date()
+  return getGroupBansByGroupId(groupId).filter((ban) => {
+    if (!ban.isActive) return false
+    if (!ban.expiresAt) return true // Permanent ban
+    return new Date(ban.expiresAt) > now
+  })
+}
+
+export function getUserBan(groupId: string, userId: string): GroupBan | undefined {
+  const activeBans = getActiveGroupBansByGroupId(groupId)
+  return activeBans.find((ban) => ban.userId === userId)
+}
+
+export function isUserBannedFromGroup(groupId: string, userId: string): boolean {
+  return getUserBan(groupId, userId) !== undefined
+}
+
+export function banGroupMember(ban: GroupBan) {
+  if (typeof window === "undefined") return
+  const bans = getGroupBans()
+  bans.push(ban)
+  localStorage.setItem(STORAGE_KEYS.GROUP_BANS, JSON.stringify(bans))
+  
+  // Log moderation action
+  addModerationAction({
+    id: `mod_action_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    groupId: ban.groupId,
+    actionType: "ban",
+    targetId: ban.userId,
+    targetType: "member",
+    performedBy: ban.bannedBy,
+    reason: ban.reason,
+    metadata: { expiresAt: ban.expiresAt, permanent: !ban.expiresAt },
+    timestamp: ban.createdAt,
+  })
+  
+  // Remove member from group
+  removeGroupMember(ban.groupId, ban.userId)
+}
+
+export function unbanGroupMember(groupId: string, userId: string, unbannedBy: string) {
+  if (typeof window === "undefined") return
+  const bans = getGroupBans()
+  const banIndex = bans.findIndex((b) => b.groupId === groupId && b.userId === userId && b.isActive)
+  if (banIndex !== -1) {
+    bans[banIndex].isActive = false
+    localStorage.setItem(STORAGE_KEYS.GROUP_BANS, JSON.stringify(bans))
+    
+    // Log moderation action
+    addModerationAction({
+      id: `mod_action_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      groupId,
+      actionType: "unban",
+      targetId: userId,
+      targetType: "member",
+      performedBy: unbannedBy,
+      timestamp: new Date().toISOString(),
+    })
+  }
+}
+
+// Moderation Action operations
+export function getModerationActions(): ModerationAction[] {
+  if (typeof window === "undefined") return []
+  const data = localStorage.getItem(STORAGE_KEYS.MODERATION_ACTIONS)
+  return data ? JSON.parse(data) : []
+}
+
+export function getModerationActionsByGroupId(groupId: string): ModerationAction[] {
+  return getModerationActions()
+    .filter((action) => action.groupId === groupId)
+    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+}
+
+export function addModerationAction(action: ModerationAction) {
+  if (typeof window === "undefined") return
+  const actions = getModerationActions()
+  actions.unshift(action)
+  // Keep only last 1000 actions per group
+  const groupActions = actions.filter((a) => a.groupId === action.groupId)
+  if (groupActions.length > 1000) {
+    const toRemove = groupActions.slice(1000)
+    const filteredActions = actions.filter((a) => !toRemove.includes(a))
+    localStorage.setItem(STORAGE_KEYS.MODERATION_ACTIONS, JSON.stringify(filteredActions))
+  } else {
+    localStorage.setItem(STORAGE_KEYS.MODERATION_ACTIONS, JSON.stringify(actions))
+  }
 }

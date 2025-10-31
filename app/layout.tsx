@@ -13,6 +13,26 @@ export const metadata: Metadata = {
   title: "PawSocial - Pet Social Network",
   description: "Connect with pet lovers, share your pets stories, and learn from our pet care wiki",
   generator: "v0.app",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "PawSocial",
+  },
+  formatDetection: {
+    telephone: false,
+  },
+  icons: {
+    shortcut: "/icon-192x192.png",
+    apple: "/icon-192x192.png",
+  },
+}
+
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
 }
 
 export default function RootLayout({

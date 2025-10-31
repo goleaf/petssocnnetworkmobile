@@ -353,6 +353,7 @@ export interface Group {
   description: string
   type: GroupType
   categoryId: string
+  subcategoryId?: string
   ownerId: string
   coverImage?: string
   avatar?: string
@@ -484,6 +485,14 @@ export interface GroupActivity {
   timestamp: string
 }
 
+export interface GroupSubcategory {
+  id: string
+  name: string
+  slug: string
+  categoryId: string
+  groupCount?: number
+}
+
 export interface GroupCategory {
   id: string
   name: string
@@ -493,4 +502,88 @@ export interface GroupCategory {
   groupCount: number
   color?: string
   createdAt: string
+  subcategories?: GroupSubcategory[]
+}
+
+export interface GroupMetrics {
+  // Member metrics
+  totalMembers: number
+  newMembersThisWeek: number
+  newMembersThisMonth: number
+  activeMembers: number // Members active in last 7 days
+  inactiveMembers: number // Members not active in last 30 days
+  
+  // Engagement metrics
+  totalTopics: number
+  topicsThisWeek: number
+  topicsThisMonth: number
+  totalComments: number
+  commentsThisWeek: number
+  commentsThisMonth: number
+  
+  // Content metrics
+  totalPolls: number
+  pollsThisWeek: number
+  pollsThisMonth: number
+  totalEvents: number
+  eventsThisWeek: number
+  eventsThisMonth: number
+  totalResources: number
+  resourcesThisWeek: number
+  resourcesThisMonth: number
+  
+  // Participation metrics
+  pollParticipationRate: number // Percentage of members who voted in polls
+  eventAttendanceRate: number // Percentage of members who RSVP'd to events
+  averagePollVotes: number
+  averageEventRSVPs: number
+  
+  // Activity timeline (last 7 days)
+  dailyActivity: Array<{
+    date: string
+    topics: number
+    comments: number
+    polls: number
+    events: number
+    resources: number
+    newMembers: number
+  }>
+  
+  // Period range
+  periodStart: string
+  periodEnd: string
+}
+
+export interface GroupWarning {
+  id: string
+  groupId: string
+  userId: string
+  issuedBy: string // Moderator/Admin user ID
+  level: 1 | 2 | 3 // Warning level (1 = minor, 2 = moderate, 3 = severe)
+  reason: string
+  notes?: string
+  createdAt: string
+}
+
+export interface GroupBan {
+  id: string
+  groupId: string
+  userId: string
+  bannedBy: string // Moderator/Admin user ID
+  reason: string
+  expiresAt?: string // If null, permanent ban
+  isActive: boolean
+  createdAt: string
+}
+
+export interface ModerationAction {
+  id: string
+  groupId: string
+  actionType: "ban" | "unban" | "warn" | "remove_member" | "change_role" | "approve_content" | "reject_content" | "delete_content"
+  targetId: string // User ID or content ID
+  targetType: "member" | "topic" | "poll" | "event" | "resource" | "comment"
+  performedBy: string // Moderator/Admin user ID
+  reason?: string
+  metadata?: Record<string, any>
+  timestamp: string
 }

@@ -82,9 +82,11 @@ describe('TagPage', () => {
     })
     
     // Should show spinner initially (before timer completes)
-    // We'll check for the Loader2 icon which is in the spinner
-    const spinner = screen.getByRole('status', { hidden: true })
-    expect(spinner).toBeInTheDocument()
+    // The LoadingSpinner component renders a spinner - check for it by aria-label or class
+    await waitFor(() => {
+      const spinner = screen.queryByLabelText(/loading/i) || screen.queryByRole('status')
+      expect(spinner).toBeInTheDocument()
+    }, { timeout: 1000 })
   })
 
   it('should display tag name and post count after loading', async () => {

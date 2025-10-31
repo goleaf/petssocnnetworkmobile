@@ -58,6 +58,22 @@ export function GroupHeader({ group, onJoin, onLeave }: GroupHeaderProps) {
   const userRole = user ? getUserRoleInGroup(group.id, user.id) : null
   const canManage = user ? canUserManageSettings(group.id, user.id) : false
 
+  // Generate placeholder images using free services
+  const getCoverImage = () => {
+    if (group.coverImage) return group.coverImage
+    // Use Picsum Photos with seed for consistent random images per group
+    const seed = group.id.replace(/[^a-zA-Z0-9]/g, "").substring(0, 10) || "default"
+    return `https://picsum.photos/seed/${seed}/1200/256`
+  }
+
+  const getAvatarImage = () => {
+    if (group.avatar) return group.avatar
+    // Use UI Avatars for placeholder avatars
+    const name = encodeURIComponent(group.name)
+    const bgColor = category?.color?.replace("#", "") || "3b82f6"
+    return `https://ui-avatars.com/api/?name=${name}&background=${bgColor}&color=fff&size=96`
+  }
+
   const handleJoin = async () => {
     if (!user || isJoining) return
     
@@ -133,21 +149,18 @@ export function GroupHeader({ group, onJoin, onLeave }: GroupHeaderProps) {
 
   return (
     <div className="relative">
-      {/* Cover Image */}
-      {group.coverImage ? (
-        <div className="relative h-64 w-full overflow-hidden bg-muted">
-          <Image
-            src={group.coverImage}
-            alt={group.name}
-            fill
-            className="object-cover"
-            priority
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent" />
-        </div>
-      ) : (
-        <div className="h-64 w-full bg-gradient-to-br from-primary/20 to-primary/5" />
-      )}
+      {/* Cover Image - Always show */}
+      <div className="relative h-64 w-full overflow-hidden bg-muted">
+        <Image
+          src={getCoverImage()}
+          alt={group.name}
+          fill
+          className="object-cover"
+          priority
+          unoptimized
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent" />
+      </div>
 
       <div className="container mx-auto px-4 max-w-7xl relative -mt-16 pb-6">
         <div className="bg-card rounded-lg border shadow-lg p-6">
@@ -155,7 +168,7 @@ export function GroupHeader({ group, onJoin, onLeave }: GroupHeaderProps) {
             {/* Avatar */}
             <div className="flex-shrink-0">
               <Avatar className="h-24 w-24 border-4 border-background shadow-lg">
-                <AvatarImage src={group.avatar} alt={group.name} />
+                <AvatarImage src={getAvatarImage()} alt={group.name} />
                 <AvatarFallback className="text-3xl">
                   {group.name.charAt(0).toUpperCase()}
                 </AvatarFallback>

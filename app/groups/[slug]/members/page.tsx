@@ -129,7 +129,7 @@ export default function GroupMembersPage({
     if (!member) return
 
     updateGroupMember(memberId, { role: newRole })
-    
+
     // Update local state
     const updatedMembers = members.map((m) =>
       m.id === memberId ? { ...m, role: newRole } : m
@@ -146,7 +146,7 @@ export default function GroupMembersPage({
 
     if (confirm(`Are you sure you want to remove this member from the group?`)) {
       removeGroupMember(group.id, member.userId)
-      
+
       // Update local state
       const updatedMembers = members.filter((m) => m.id !== memberId)
       setMembers(updatedMembers)

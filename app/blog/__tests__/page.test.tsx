@@ -75,22 +75,29 @@ describe('BlogPage', () => {
   it('should render sort dropdown', async () => {
     render(<BlogPage />)
     
-    // Wait for page to render, then check for sort dropdown
+    // Wait for component to mount (BlogPage uses mounted state)
     await waitFor(() => {
       // The Select component should be present - check by looking for the container or buttons
       const buttons = screen.queryAllByRole('button')
       const selectElement = document.querySelector('[role="combobox"]') || document.querySelector('[data-slot="select-trigger"]')
       // At least one of these should exist
       expect(buttons.length > 0 || selectElement).toBeTruthy()
-    })
+    }, { timeout: 3000 })
   })
 
-  it('should render category tabs', () => {
+  it('should render category tabs', async () => {
     render(<BlogPage />)
-    expect(screen.getByText(/all posts/i)).toBeInTheDocument()
+    
+    // Wait for component to mount
+    await waitFor(() => {
+      expect(screen.getByText(/all posts/i)).toBeInTheDocument()
+    }, { timeout: 3000 })
+    
     // Adventure and Training might appear multiple times (as tabs and as tags)
-    expect(screen.getAllByText(/adventure/i).length).toBeGreaterThan(0)
-    expect(screen.getAllByText(/training/i).length).toBeGreaterThan(0)
+    await waitFor(() => {
+      expect(screen.getAllByText(/adventure/i).length).toBeGreaterThan(0)
+      expect(screen.getAllByText(/training/i).length).toBeGreaterThan(0)
+    }, { timeout: 2000 })
   })
 
   it('should display blog posts', async () => {
@@ -98,11 +105,16 @@ describe('BlogPage', () => {
     
     await waitFor(() => {
       expect(screen.getByText('Test Post 1')).toBeInTheDocument()
-    })
+    }, { timeout: 3000 })
   })
 
   it('should filter posts by search query', async () => {
     render(<BlogPage />)
+    
+    // Wait for component to mount first
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText(/search blog posts/i)).toBeInTheDocument()
+    }, { timeout: 3000 })
     
     const searchInput = screen.getByPlaceholderText(/search blog posts/i)
     await userEvent.type(searchInput, 'Test Post 1')
@@ -110,7 +122,7 @@ describe('BlogPage', () => {
     await waitFor(() => {
       expect(screen.getByText('Test Post 1')).toBeInTheDocument()
       expect(screen.queryByText('Test Post 2')).not.toBeInTheDocument()
-    })
+    }, { timeout: 3000 })
   })
 
   it('should show empty state when no posts match', async () => {
@@ -120,7 +132,7 @@ describe('BlogPage', () => {
     
     await waitFor(() => {
       expect(screen.getByText(/no blog posts found/i)).toBeInTheDocument()
-    })
+    }, { timeout: 3000 })
   })
 
   it('should display post likes count', async () => {
@@ -129,7 +141,7 @@ describe('BlogPage', () => {
     await waitFor(() => {
       const likesElements = screen.getAllByText('1')
       expect(likesElements.length).toBeGreaterThan(0)
-    })
+    }, { timeout: 3000 })
   })
 
   it('should display post tags', async () => {
@@ -139,7 +151,7 @@ describe('BlogPage', () => {
       // Tags might appear multiple times (as tabs and as tags)
       const adventureTags = screen.getAllByText('adventure')
       expect(adventureTags.length).toBeGreaterThan(0)
-    })
+    }, { timeout: 3000 })
   })
 
   it('should navigate to post detail page when post is clicked', async () => {
@@ -148,7 +160,7 @@ describe('BlogPage', () => {
     await waitFor(() => {
       const postLink = screen.getByText('Test Post 1').closest('a')
       expect(postLink).toHaveAttribute('href', '/blog/1')
-    })
+    }, { timeout: 3000 })
   })
 
   it('should filter posts by category', async () => {
@@ -157,12 +169,14 @@ describe('BlogPage', () => {
     // Wait for page to render with posts
     await waitFor(() => {
       expect(screen.getByText('Test Post 1')).toBeInTheDocument()
-    })
+    }, { timeout: 3000 })
     
     // Verify that category tabs are present - the filtering logic is tested through UI interaction
     // Since tabs might have multiple instances (as labels and as content), we verify presence
-    const adventureElements = screen.queryAllByText(/adventure/i)
-    expect(adventureElements.length).toBeGreaterThan(0)
+    await waitFor(() => {
+      const adventureElements = screen.queryAllByText(/adventure/i)
+      expect(adventureElements.length).toBeGreaterThan(0)
+    }, { timeout: 2000 })
   })
 
   it('should sort posts by recent', async () => {
@@ -171,7 +185,7 @@ describe('BlogPage', () => {
     await waitFor(() => {
       const posts = screen.getAllByText(/test post \d/i)
       expect(posts.length).toBeGreaterThan(0)
-    })
+    }, { timeout: 3000 })
   })
 
   it('should paginate posts when more than 9 posts', async () => {
@@ -196,7 +210,7 @@ describe('BlogPage', () => {
       // Should show pagination controls
       const nextButton = screen.getByText(/next/i)
       expect(nextButton).toBeInTheDocument()
-    })
+    }, { timeout: 3000 })
   })
 
   it('should display pet avatar and name for each post', async () => {
@@ -205,7 +219,7 @@ describe('BlogPage', () => {
     await waitFor(() => {
       expect(screen.getByText('Pet 1')).toBeInTheDocument()
       expect(screen.getByText(/by user 1/i)).toBeInTheDocument()
-    })
+    }, { timeout: 3000 })
   })
 
   it('should not show "My Posts" tab when user is not authenticated', () => {
@@ -214,7 +228,7 @@ describe('BlogPage', () => {
     expect(screen.queryByText(/my posts/i)).not.toBeInTheDocument()
   })
 
-  it('should show "My Posts" tab when user is authenticated', () => {
+  it('should show "My Posts" tab when user is authenticated', async () => {
     ;(auth.useAuth as jest.Mock).mockReturnValue({
       user: { id: 'user1', username: 'user1' },
       isAuthenticated: true,
@@ -222,7 +236,11 @@ describe('BlogPage', () => {
     
     render(<BlogPage />)
     
-    expect(screen.getByText(/my posts/i)).toBeInTheDocument()
+    await waitFor(() => {
+      // "My Posts" may be hidden on small screens, so check with querySelector or getAllByText
+      const myPostsElements = screen.getAllByText(/my posts/i)
+      expect(myPostsElements.length).toBeGreaterThan(0)
+    }, { timeout: 2000 })
   })
 
   it('should filter posts by current user in "My Posts" tab', async () => {
@@ -233,20 +251,21 @@ describe('BlogPage', () => {
     
     render(<BlogPage />)
     
-    // Wait for the page to render
+    // Wait for the page to render and mount
     await waitFor(() => {
-      expect(screen.getByText(/my posts/i)).toBeInTheDocument()
-    })
+      const myPostsElements = screen.getAllByText(/my posts/i)
+      expect(myPostsElements.length).toBeGreaterThan(0)
+    }, { timeout: 3000 })
     
-    // Click on "My Posts" tab
-    const myPostsTab = screen.getByText(/my posts/i)
-    await userEvent.click(myPostsTab)
+    // Click on "My Posts" tab - get the first one (may have multiple due to hidden text)
+    const myPostsTabs = screen.getAllByText(/my posts/i)
+    await userEvent.click(myPostsTabs[0])
     
     // Should only show posts from user1
     await waitFor(() => {
       expect(screen.getByText('Test Post 1')).toBeInTheDocument()
       expect(screen.queryByText('Test Post 2')).not.toBeInTheDocument()
-    })
+    }, { timeout: 3000 })
   })
 
   it('should show empty state with create button when user has no posts', async () => {
@@ -259,20 +278,21 @@ describe('BlogPage', () => {
     
     render(<BlogPage />)
     
-    // Wait for the page to render
+    // Wait for the page to render and mount
     await waitFor(() => {
-      expect(screen.getByText(/my posts/i)).toBeInTheDocument()
-    })
+      const myPostsElements = screen.getAllByText(/my posts/i)
+      expect(myPostsElements.length).toBeGreaterThan(0)
+    }, { timeout: 3000 })
     
     // Click on "My Posts" tab
-    const myPostsTab = screen.getByText(/my posts/i)
+    const myPostsTab = screen.getAllByText(/my posts/i)[0]
     await userEvent.click(myPostsTab)
     
     // Should show empty state
     await waitFor(() => {
       expect(screen.getByText(/start writing your story/i)).toBeInTheDocument()
       expect(screen.getByText(/create your first post/i)).toBeInTheDocument()
-    })
+    }, { timeout: 3000 })
     
     // Check that the button links to create page
     const createButton = screen.getByText(/create your first post/i).closest('a')

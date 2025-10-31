@@ -4,14 +4,20 @@
   "private": true,
   "scripts": {
     "build": "next build",
-    "dev": "next dev",
+    "build:android": "next build && npx cap sync android",
+    "dev": "next dev --no-turbo",
     "lint": "eslint .",
     "start": "next start",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage"
+    "test:coverage": "jest --coverage",
+    "apk:debug": "npm run build:android && cd mobile/android && .\\gradlew assembleDebug",
+    "apk:release": "npm run build:android && cd mobile/android && .\\gradlew assembleRelease"
   },
   "dependencies": {
+    "@capacitor/android": "^7.0.0",
+    "@capacitor/cli": "^7.0.0",
+    "@capacitor/core": "^7.0.0",
     "@hookform/resolvers": "^3.10.0",
     "@radix-ui/react-accordion": "1.2.2",
     "@radix-ui/react-alert-dialog": "1.1.4",
@@ -72,8 +78,8 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.9",
     "@testing-library/jest-dom": "^6.6.3",
-    "@testing-library/react": "^16.1.0",
-    "@testing-library/user-event": "^14.5.2",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
     "@types/jest": "^29.5.14",
     "@types/node": "^22",
     "@types/react": "^19",

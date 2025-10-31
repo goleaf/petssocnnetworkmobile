@@ -17,7 +17,8 @@ import {
 } from "@/lib/storage"
 import type { Group, GroupCategory } from "@/lib/types"
 import { useAuth } from "@/lib/auth"
-import { Search, ArrowLeft, Grid, List } from "lucide-react"
+import { Search, ArrowLeft } from "lucide-react"
+import { ViewModeSelector } from "@/components/ui/view-mode-selector"
 import {
   Select,
   SelectContent,
@@ -185,22 +186,11 @@ export default function GroupCategoryPage({
           </Select>
 
           {/* View Mode */}
-          <div className="flex items-center gap-2 border rounded-md p-1">
-            <Button
-              variant={viewMode === "grid" ? "default" : "ghost"}
-              size="sm"
-              onClick={() => setViewMode("grid")}
-            >
-              <Grid className="h-4 w-4" />
-            </Button>
-            <Button
-              variant={viewMode === "list" ? "default" : "ghost"}
-              size="sm"
-              onClick={() => setViewMode("list")}
-            >
-              <List className="h-4 w-4" />
-            </Button>
-          </div>
+          <ViewModeSelector
+            value={viewMode}
+            onValueChange={(value) => setViewMode(value)}
+            iconVariant="grid"
+          />
         </div>
 
         {/* Groups List */}

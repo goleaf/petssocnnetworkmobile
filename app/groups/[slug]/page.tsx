@@ -17,6 +17,7 @@ import {
   getGroupActivitiesByGroupId,
   canUserViewGroup,
   isUserMemberOfGroup,
+  canUserModerate,
 } from "@/lib/storage"
 import type { Group } from "@/lib/types"
 import { useAuth } from "@/lib/auth"
@@ -32,6 +33,8 @@ import {
   Plus,
 } from "lucide-react"
 import Link from "next/link"
+import { BulkEventExportButton } from "@/components/groups/EventExportButton"
+import { AnalyticsDashboard } from "@/components/groups/AnalyticsDashboard"
 
 export default function GroupPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params)
@@ -45,7 +48,7 @@ export default function GroupPage({ params }: { params: Promise<{ slug: string }
     if (typeof window === "undefined") return
 
     const foundGroup = getGroupBySlug(slug)
-    
+
     if (!foundGroup) {
       setIsLoading(false)
       router.push("/groups")
@@ -86,6 +89,7 @@ export default function GroupPage({ params }: { params: Promise<{ slug: string }
   }
 
   const isMember = isAuthenticated && user ? isUserMemberOfGroup(group.id, user.id) : false
+  const canModerate = isAuthenticated && user ? canUserModerate(group.id, user.id) : false
 
   const topics = getGroupTopicsByGroupId(group.id)
   const polls = getGroupPollsByGroupId(group.id)
@@ -101,13 +105,13 @@ export default function GroupPage({ params }: { params: Promise<{ slug: string }
       {/* Main Content */}
       <div className="container mx-auto px-4 max-w-7xl py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 lg:grid-cols-7 mb-6">
+          <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 lg:grid-cols-8 mb-6">
             <TabsTrigger value="feed" className="flex items-center gap-2">
-              <FileText className="h-4 w-4" />
+              <FileText className="h-4 w-4 text-blue-500" />
               <span className="hidden sm:inline">Feed</span>
             </TabsTrigger>
             <TabsTrigger value="topics" className="flex items-center gap-2">
-              <MessageSquare className="h-4 w-4" />
+              <MessageSquare className="h-4 w-4 text-green-500" />
               <span className="hidden sm:inline">Topics</span>
               {topics.length > 0 && (
                 <span className="ml-1 text-xs bg-muted px-1.5 py-0.5 rounded-full">
@@ -116,7 +120,7 @@ export default function GroupPage({ params }: { params: Promise<{ slug: string }
               )}
             </TabsTrigger>
             <TabsTrigger value="polls" className="flex items-center gap-2">
-              <BarChart3 className="h-4 w-4" />
+              <BarChart3 className="h-4 w-4 text-amber-500" />
               <span className="hidden sm:inline">Polls</span>
               {polls.length > 0 && (
                 <span className="ml-1 text-xs bg-muted px-1.5 py-0.5 rounded-full">
@@ -125,7 +129,7 @@ export default function GroupPage({ params }: { params: Promise<{ slug: string }
               )}
             </TabsTrigger>
             <TabsTrigger value="events" className="flex items-center gap-2">
-              <Calendar className="h-4 w-4" />
+              <Calendar className="h-4 w-4 text-red-500" />
               <span className="hidden sm:inline">Events</span>
               {events.length > 0 && (
                 <span className="ml-1 text-xs bg-muted px-1.5 py-0.5 rounded-full">
@@ -134,7 +138,7 @@ export default function GroupPage({ params }: { params: Promise<{ slug: string }
               )}
             </TabsTrigger>
             <TabsTrigger value="resources" className="flex items-center gap-2">
-              <FolderOpen className="h-4 w-4" />
+              <FolderOpen className="h-4 w-4 text-purple-500" />
               <span className="hidden sm:inline">Resources</span>
               {resources.length > 0 && (
                 <span className="ml-1 text-xs bg-muted px-1.5 py-0.5 rounded-full">
@@ -143,11 +147,17 @@ export default function GroupPage({ params }: { params: Promise<{ slug: string }
               )}
             </TabsTrigger>
             <TabsTrigger value="members" className="flex items-center gap-2">
-              <Users className="h-4 w-4" />
+              <Users className="h-4 w-4 text-indigo-500" />
               <span className="hidden sm:inline">Members</span>
             </TabsTrigger>
+            {canModerate && (
+              <TabsTrigger value="analytics" className="flex items-center gap-2">
+                <BarChart3 className="h-4 w-4 text-teal-500" />
+                <span className="hidden sm:inline">Analytics</span>
+              </TabsTrigger>
+            )}
             <TabsTrigger value="settings" className="flex items-center gap-2">
-              <Settings className="h-4 w-4" />
+              <Settings className="h-4 w-4 text-gray-500" />
               <span className="hidden sm:inline">Settings</span>
             </TabsTrigger>
           </TabsList>
@@ -352,14 +362,24 @@ export default function GroupPage({ params }: { params: Promise<{ slug: string }
           <TabsContent value="events" className="space-y-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-2xl font-bold">Events</h2>
-              {isMember && (
-                <Link href={`/groups/${group.slug}/events/create`}>
-                  <Button size="sm">
-                    <Plus className="h-4 w-4 mr-2" />
-                    New Event
-                  </Button>
-                </Link>
-              )}
+              <div className="flex items-center gap-2">
+                {events.length > 0 && (
+                  <BulkEventExportButton
+                    events={events}
+                    groupSlug={group.slug}
+                    groupName={group.name}
+                    size="sm"
+                  />
+                )}
+                {isMember && (
+                  <Link href={`/groups/${group.slug}/events/create`}>
+                    <Button size="sm">
+                      <Plus className="h-4 w-4 mr-2" />
+                      New Event
+                    </Button>
+                  </Link>
+                )}
+              </div>
             </div>
 
             {events.length === 0 ? (
@@ -487,6 +507,13 @@ export default function GroupPage({ params }: { params: Promise<{ slug: string }
               <Button variant="outline">View All Members</Button>
             </Link>
           </TabsContent>
+
+          {/* Analytics Tab */}
+          {canModerate && (
+            <TabsContent value="analytics">
+              <AnalyticsDashboard groupId={group.id} groupName={group.name} />
+            </TabsContent>
+          )}
 
           {/* Settings Tab */}
           <TabsContent value="settings">

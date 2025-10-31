@@ -17,7 +17,7 @@ export default function Error({ error, reset }: ErrorProps) {
   }, [error])
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 bg-gradient-to-br from-background via-background to-destructive/5">
+    <div className="min-h-screen flex items-center justify-center px-4 bg-gradient-to-br from-background via-background to-muted/20">
       <div className="max-w-4xl w-full space-y-8 py-4 md:py-8">
         {/* Header with Icon on Left */}
         <div className="flex flex-col md:flex-row items-center md:items-start gap-3 md:gap-4">
@@ -28,12 +28,16 @@ export default function Error({ error, reset }: ErrorProps) {
           
           {/* Error Message */}
           <div className="flex-1 text-center md:text-left space-y-4">
-            <h1 className="text-4xl md:text-5xl font-bold text-foreground">
-              Something Went Wrong
+            <h1 className="text-6xl md:text-8xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-primary to-destructive">
+              500
             </h1>
             
+            <h2 className="text-2xl md:text-3xl font-bold text-foreground">
+              Internal Server Error
+            </h2>
+            
             <p className="text-base md:text-lg text-muted-foreground">
-              We're sorry, but something unexpected happened. Don't worry, we're here to help you get back on track.
+              We're sorry, but something unexpected happened on our end. Don't worry, we're here to help you get back on track.
             </p>
           </div>
         </div>
@@ -53,40 +57,33 @@ export default function Error({ error, reset }: ErrorProps) {
           </div>
         )}
 
-        {/* What Happened Section */}
+        {/* Helpful Suggestions */}
         <div className="bg-card border rounded-lg p-4 md:p-6 space-y-4 text-left">
           <h3 className="text-base md:text-lg font-semibold text-foreground flex items-center gap-2">
             <AlertTriangle className="w-5 h-5 text-destructive" />
-            What happened?
+            What you can do:
           </h3>
           <div className="flex items-start gap-3">
             <Info className="w-5 h-5 text-muted-foreground mt-0.5 flex-shrink-0" />
-            <p className="text-sm md:text-base text-muted-foreground leading-relaxed">
-              An unexpected error occurred while loading this page. This could be due to a temporary issue, a problem with the data, or a bug in the application. Your data is safe, and this error has been logged.
-            </p>
+            <ul className="space-y-3 text-sm md:text-base text-muted-foreground flex-1">
+              <li className="flex items-start gap-3">
+                <span className="text-primary mt-0.5">•</span>
+                <span>Try refreshing the page - this often resolves temporary issues</span>
+              </li>
+              <li className="flex items-start gap-3">
+                <span className="text-primary mt-0.5">•</span>
+                <span>Clear your browser cache and cookies, then try again</span>
+              </li>
+              <li className="flex items-start gap-3">
+                <span className="text-primary mt-0.5">•</span>
+                <span>Wait a few moments and try again - the issue might be temporary</span>
+              </li>
+              <li className="flex items-start gap-3">
+                <span className="text-primary mt-0.5">•</span>
+                <span>Return to the homepage and navigate from there</span>
+              </li>
+            </ul>
           </div>
-        </div>
-
-        {/* Help Section */}
-        <div className="bg-card border rounded-lg p-4 md:p-6 space-y-4 text-left">
-          <h3 className="text-base md:text-lg font-semibold text-foreground flex items-center gap-2">
-            <AlertTriangle className="w-5 h-5 text-destructive" />
-            If this problem persists, try:
-          </h3>
-          <ul className="space-y-3 text-sm md:text-base text-muted-foreground">
-            <li className="flex items-start gap-3">
-              <RefreshCcw className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
-              <span>Refreshing the page</span>
-            </li>
-            <li className="flex items-start gap-3">
-              <Trash2 className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
-              <span>Clearing your browser cache</span>
-            </li>
-            <li className="flex items-start gap-3">
-              <Clock className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
-              <span>Waiting a few moments and trying again</span>
-            </li>
-          </ul>
         </div>
 
         {/* Action Buttons */}

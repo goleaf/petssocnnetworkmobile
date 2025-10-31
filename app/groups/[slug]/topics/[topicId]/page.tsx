@@ -190,25 +190,13 @@ export default function GroupTopicPage({
         {/* Reply Form */}
         {showReplyForm && canCreate && !topic.isLocked && (
           <Card className="mt-6">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-semibold flex items-center gap-2">
-                  <Reply className="h-4 w-4" />
-                  Reply to Topic
-                </h3>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowReplyForm(false)}
-                >
-                  Cancel
-                </Button>
-              </div>
+            <CardContent className="p-4">
               <TopicCreator
                 groupId={group.id}
                 parentTopicId={topic.id}
                 onSubmit={handleReply}
                 onCancel={() => setShowReplyForm(false)}
+                isReply={true}
               />
             </CardContent>
           </Card>

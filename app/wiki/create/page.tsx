@@ -7,8 +7,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { BackButton } from "@/components/ui/back-button"
 import { WikiForm, type WikiFormData } from "@/components/wiki-form"
 import { addWikiArticle, generateWikiSlug } from "@/lib/storage"
-import { FileText } from "lucide-react"
+import { FileText, FolderOpen } from "lucide-react"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
+import { Button } from "@/components/ui/button"
+import Link from "next/link"
 
 export default function CreateWikiPage() {
   const { user } = useAuth()
@@ -57,7 +59,15 @@ export default function CreateWikiPage() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
-      <BackButton href="/wiki" label="Back to Wiki" />
+      <div className="flex items-center justify-between mb-6">
+        <BackButton href="/wiki" label="Back to Wiki" />
+        <Link href="/drafts">
+          <Button variant="outline">
+            <FolderOpen className="h-4 w-4 mr-2" />
+            My Drafts
+          </Button>
+        </Link>
+      </div>
 
       <Card className="mb-6">
         <CardHeader>

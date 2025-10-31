@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Calendar, MapPin, Users, Clock, ExternalLink } from "lucide-react"
 import type { GroupEvent } from "@/lib/types"
 import { formatDate, formatDateTime } from "@/lib/utils/date"
+import { EventExportButton } from "./EventExportButton"
 
 interface EventCardProps {
   event: GroupEvent
@@ -90,6 +91,15 @@ export function EventCard({ event, groupSlug, showGroupLink = false }: EventCard
                 <span>of {event.maxAttendees} max</span>
               )}
             </div>
+          </div>
+
+          <div className="mt-4 pt-4 border-t">
+            <EventExportButton
+              event={event}
+              groupSlug={groupSlug}
+              variant="outline"
+              size="sm"
+            />
           </div>
         </CardContent>
       </Card>

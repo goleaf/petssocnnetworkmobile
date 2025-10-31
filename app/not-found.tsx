@@ -79,27 +79,6 @@ export default function NotFound() {
             Go Back
           </Button>
         </div>
-
-        {/* Popular Links */}
-        <div className="pt-8 border-t space-y-3">
-          <p className="text-sm md:text-base text-muted-foreground font-medium text-center md:text-left">
-            Popular pages:
-          </p>
-          <div className="flex flex-wrap gap-3 justify-center md:justify-start">
-            <Button asChild variant="ghost" size="sm">
-              <Link href="/feed">Feed</Link>
-            </Button>
-            <Button asChild variant="ghost" size="sm">
-              <Link href="/blog">Blog</Link>
-            </Button>
-            <Button asChild variant="ghost" size="sm">
-              <Link href="/wiki">Wiki</Link>
-            </Button>
-            <Button asChild variant="ghost" size="sm">
-              <Link href="/search">Search</Link>
-            </Button>
-          </div>
-        </div>
       </div>
     </div>
   )

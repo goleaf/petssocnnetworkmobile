@@ -11,7 +11,7 @@ import { CreateButton } from "@/components/ui/create-button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { getFeedPosts, getBlogPosts, getPets, getUsers, getPetsByOwnerId, addFeedPost, deleteFeedPost, toggleFeedPostReaction, deleteBlogPost, togglePostReaction, toggleFollow } from "@/lib/storage"
+import { getFeedPosts, getBlogPosts, getPets, getUsers, getPetsByOwnerId, addFeedPost, updateFeedPost, deleteFeedPost, toggleFeedPostReaction, deleteBlogPost, togglePostReaction, toggleFollow, generateFakeFeedPostsForUser } from "@/lib/storage"
 import { PawPrint, Heart, Users, BookOpen, TrendingUp, MessageCircle, Share2, MoreHorizontal, Globe, UsersIcon, Lock, Edit2, Trash2, Smile, Plus, Filter, Send, UserPlus, Rocket, ArrowRight, FileText } from "lucide-react"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import Link from "next/link"
@@ -21,6 +21,7 @@ import type { FeedPost, BlogPost, Pet, User as UserType, ReactionType } from "@/
 import { getPetUrlFromPet } from "@/lib/utils/pet-url"
 import { canViewPost } from "@/lib/utils/privacy"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { RoleBadge } from "@/components/role-badge"
 
 export default function HomePage() {
   const { user, isAuthenticated } = useAuth()
@@ -43,6 +44,8 @@ export default function HomePage() {
   const [selectedPet, setSelectedPet] = useState("")
   const [filter, setFilter] = useState<"all" | "following">("all")
   const [isFeedLoading, setIsFeedLoading] = useState(true)
+  const [editingPostId, setEditingPostId] = useState<string | null>(null)
+  const [editPostContent, setEditPostContent] = useState("")
 
   useEffect(() => {
     // Get featured posts (most liked)
@@ -69,6 +72,12 @@ export default function HomePage() {
       if (pets.length > 0 && !selectedPet) {
         setSelectedPet(pets[0].id)
       }
+      
+      // Automatically generate fake feed posts for sarahpaws (user ID "1")
+      if (user.id === "1") {
+        generateFakeFeedPostsForUser(user.id)
+      }
+      
       loadFeed()
       loadTrending()
       loadSuggestedUsers()
@@ -184,11 +193,17 @@ export default function HomePage() {
   }
 
   const handleDelete = (postId: string) => {
+    if (!user) return
     if (!window.confirm("Are you sure you want to delete this post?")) return
     // Check if it's a feed post or blog post
     const feedPost = getFeedPosts().find((p) => p.id === postId)
     if (feedPost) {
-      deleteFeedPost(postId)
+      try {
+        deleteFeedPost(postId, user.id)
+      } catch (error) {
+        alert(error instanceof Error ? error.message : "Failed to delete post")
+        return
+      }
     } else {
       deleteBlogPost(postId)
     }
@@ -197,9 +212,35 @@ export default function HomePage() {
   }
 
   const handleEdit = (post: FeedPost) => {
-    // Feed posts don't have a dedicated edit page, can edit inline if needed
-    // For now, we'll just show an alert that feed posts are simpler
-    alert("Feed posts are quick updates. To create longer posts, use the Blog section.")
+    setEditingPostId(post.id)
+    setEditPostContent(post.content)
+  }
+
+  const handleSaveEdit = (postId: string) => {
+    if (!user) return
+    const post = feedPosts.find((p) => p.id === postId)
+    if (!post) return
+
+    const updatedPost: FeedPost = {
+      ...post,
+      content: editPostContent.trim(),
+      updatedAt: new Date().toISOString(),
+    }
+
+    try {
+      updateFeedPost(updatedPost, user.id)
+      setEditingPostId(null)
+      setEditPostContent("")
+      loadFeed()
+      loadTrending()
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Failed to update post")
+    }
+  }
+
+  const handleCancelEdit = () => {
+    setEditingPostId(null)
+    setEditPostContent("")
   }
 
   const handleReaction = (postId: string, reactionType: ReactionType) => {
@@ -254,140 +295,12 @@ export default function HomePage() {
 
   // If user is authenticated, show feed
   if (isAuthenticated && user) {
-    const feedStats = [
-      {
-        title: "My Pets",
-        value: myPets.length,
-        icon: PawPrint,
-        color: "text-blue-500",
-      },
-      {
-        title: "Following",
-        value: user.following.length,
-        icon: Users,
-        color: "text-green-500",
-      },
-      {
-        title: "Followers",
-        value: user.followers.length,
-        icon: Heart,
-        color: "text-red-500",
-      },
-      {
-        title: "Feed Posts",
-        value: getFeedPosts().filter((p) => p.authorId === user.id).length,
-        icon: MessageCircle,
-        color: "text-blue-500",
-      },
-      {
-        title: "Blog Posts",
-        value: getBlogPosts().filter((p) => p.authorId === user.id).length,
-        icon: BookOpen,
-        color: "text-purple-500",
-      },
-    ]
-
     return (
       <div className="container mx-auto px-4 py-8 max-w-7xl">
         {/* Welcome Section */}
         <div className="mb-8">
           <h1 className="text-4xl font-bold mb-2">Welcome back, {user.fullName}!</h1>
           <p className="text-muted-foreground">Here{"'"}s what{"'"}s happening in your pet community</p>
-        </div>
-
-        {/* Stats Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-8">
-          <Link href={`/profile/${user.username}/pets`}>
-            <Card className="hover:shadow-lg transition-all cursor-pointer">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs text-muted-foreground">My Pets</p>
-                    <p className="text-2xl font-bold">{feedStats[0].value}</p>
-                  </div>
-                  <PawPrint className="h-6 w-6 text-blue-500" />
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
-          <Link href={`/user/${user.username}/following`}>
-            <Card className="hover:shadow-lg transition-all cursor-pointer">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs text-muted-foreground">Following</p>
-                    <p className="text-2xl font-bold">{feedStats[1].value}</p>
-                  </div>
-                  <Users className="h-6 w-6 text-green-500" />
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
-          <Link href={`/user/${user.username}/followers`}>
-            <Card className="hover:shadow-lg transition-all cursor-pointer">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs text-muted-foreground">Followers</p>
-                    <p className="text-2xl font-bold">{feedStats[2].value}</p>
-                  </div>
-                  <Heart className="h-6 w-6 text-red-500" />
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
-          <Link href={`/user/${user.username}`} onClick={(e) => {
-            e.preventDefault()
-            router.push(`/user/${user.username}`)
-            setTimeout(() => {
-              const tabs = document.querySelector('[role="tablist"]')
-              if (tabs) {
-                tabs.scrollIntoView({ behavior: "smooth", block: "start" })
-                const tabButton = document.querySelector('[role="tab"][value="feed"]') as HTMLButtonElement
-                if (tabButton) {
-                  setTimeout(() => tabButton.click(), 100)
-                }
-              }
-            }, 100)
-          }}>
-            <Card className="hover:shadow-lg transition-all cursor-pointer">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs text-muted-foreground">Feed Posts</p>
-                    <p className="text-2xl font-bold">{feedStats[3].value}</p>
-                  </div>
-                  <MessageCircle className="h-6 w-6 text-blue-500" />
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
-          <Link href={`/user/${user.username}`} onClick={(e) => {
-            e.preventDefault()
-            router.push(`/user/${user.username}`)
-            setTimeout(() => {
-              const tabs = document.querySelector('[role="tablist"]')
-              if (tabs) {
-                tabs.scrollIntoView({ behavior: "smooth", block: "start" })
-                const tabButton = document.querySelector('[role="tab"][value="blog"]') as HTMLButtonElement
-                if (tabButton) {
-                  setTimeout(() => tabButton.click(), 100)
-                }
-              }
-            }, 100)
-          }}>
-            <Card className="hover:shadow-lg transition-all cursor-pointer">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs text-muted-foreground">Blog Posts</p>
-                    <p className="text-2xl font-bold">{feedStats[4].value}</p>
-                  </div>
-                  <BookOpen className="h-6 w-6 text-purple-500" />
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -489,8 +402,13 @@ export default function HomePage() {
                     onReaction={handleReaction}
                     onDelete={handleDelete}
                     onEdit={handleEdit}
+                    onSave={handleSaveEdit}
+                    onCancel={handleCancelEdit}
                     onShare={handleShare}
                     currentUser={user}
+                    isEditing={editingPostId === post.id}
+                    editContent={editPostContent}
+                    onEditContentChange={setEditPostContent}
                   />
                 ))
               )}
@@ -503,7 +421,9 @@ export default function HomePage() {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <TrendingUp className="h-5 w-5" />
+                  <div className="h-8 w-8 rounded-lg bg-orange-500/10 flex items-center justify-center">
+                    <TrendingUp className="h-4 w-4 text-orange-500" />
+                  </div>
                   Trending Posts
                 </CardTitle>
               </CardHeader>
@@ -557,7 +477,12 @@ export default function HomePage() {
             {/* Suggested Users */}
             <Card>
               <CardHeader>
-                <CardTitle>Suggested Users</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                    <Users className="h-4 w-4 text-purple-500" />
+                  </div>
+                  Suggested Users
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 {suggestedUsers.length > 0 ? (
@@ -588,33 +513,6 @@ export default function HomePage() {
                 ) : (
                   <p className="text-sm text-muted-foreground text-center py-4">No suggestions available</p>
                 )}
-              </CardContent>
-            </Card>
-
-            {/* Quick Links */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Quick Links</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <Link href="/blog">
-                  <Button variant="ghost" className="w-full justify-start">
-                    <BookOpen className="h-4 w-4 mr-2" />
-                    Browse All Blogs
-                  </Button>
-                </Link>
-                <Link href="/wiki">
-                  <Button variant="ghost" className="w-full justify-start">
-                    <BookOpen className="h-4 w-4 mr-2" />
-                    Pet Care Wiki
-                  </Button>
-                </Link>
-                <Link href={`/profile/${user.username}`}>
-                  <Button variant="ghost" className="w-full justify-start">
-                    <Users className="h-4 w-4 mr-2" />
-                    My Profile
-                  </Button>
-                </Link>
               </CardContent>
             </Card>
           </div>
@@ -807,15 +705,25 @@ function FeedPostCard({
   onReaction,
   onDelete,
   onEdit,
+  onSave,
+  onCancel,
   onShare,
   currentUser,
+  isEditing,
+  editContent,
+  onEditContentChange,
 }: {
   post: FeedPost
   onReaction: (postId: string, reactionType: ReactionType) => void
   onDelete: (postId: string) => void
   onEdit: (post: FeedPost) => void
+  onSave?: (postId: string) => void
+  onCancel?: () => void
   onShare: (post: FeedPost) => void
   currentUser: UserType
+  isEditing?: boolean
+  editContent?: string
+  onEditContentChange?: (content: string) => void
 }) {
   const pet = getPets().find((p) => p.id === post.petId)
   const author = getUsers().find((u) => u.id === post.authorId)
@@ -873,7 +781,7 @@ function FeedPostCard({
               </Avatar>
             </Link>
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <Link href={author ? getPetUrlFromPet(pet, author.username) : "#"} className="font-semibold hover:underline">
                   {pet?.name}
                 </Link>
@@ -881,6 +789,7 @@ function FeedPostCard({
                 <Link href={`/user/${author?.username}`} className="text-sm text-muted-foreground hover:underline">
                   {author?.fullName}
                 </Link>
+                {author && <RoleBadge role={author.role} size="sm" />}
               </div>
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <span>{formatDate(post.createdAt)}</span>
@@ -889,40 +798,67 @@ function FeedPostCard({
               </div>
             </div>
           </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8">
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {isOwner && (
-                <>
-                  <DropdownMenuItem onClick={() => onEdit(post)}>
-                    <Edit2 className="h-4 w-4 mr-2" />
-                    Edit post
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => onDelete(post.id)} variant="destructive">
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Delete post
-                  </DropdownMenuItem>
-                </>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {isOwner && !isEditing && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => onEdit(post)}>
+                  <Edit2 className="h-4 w-4 mr-2" />
+                  Edit post
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onDelete(post.id)}>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete post
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
 
         {/* Post Content */}
         <div className="mb-3">
-          <p className="text-foreground whitespace-pre-wrap break-words">{post.content}</p>
-          {post.images && post.images.length > 0 && (
-            <div className="grid grid-cols-2 gap-2 mt-3">
-              {post.images.map((image, index) => (
-                <div key={index} className="aspect-square rounded-lg overflow-hidden">
-                  <img src={image} alt={`Post image ${index + 1}`} className="w-full h-full object-cover" />
-                </div>
-              ))}
+          {isEditing ? (
+            <div className="space-y-3">
+              <Textarea
+                value={editContent || ""}
+                onChange={(e) => onEditContentChange?.(e.target.value)}
+                className="min-h-[100px] resize-none"
+                placeholder="What's on your pet's mind?"
+              />
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  onClick={() => onSave?.(post.id)}
+                  disabled={!editContent?.trim()}
+                >
+                  Save
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={onCancel}
+                >
+                  Cancel
+                </Button>
+              </div>
             </div>
+          ) : (
+            <>
+              <p className="text-foreground whitespace-pre-wrap break-words">{post.content}</p>
+              {post.images && post.images.length > 0 && (
+                <div className="grid grid-cols-2 gap-2 mt-3">
+                  {post.images.map((image, index) => (
+                    <div key={index} className="aspect-square rounded-lg overflow-hidden">
+                      <img src={image} alt={`Post image ${index + 1}`} className="w-full h-full object-cover" />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
           )}
         </div>
 

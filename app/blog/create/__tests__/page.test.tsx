@@ -1,5 +1,5 @@
 import React from 'react'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import * as storage from '@/lib/storage'
 import * as drafts from '@/lib/drafts'
 import { useAuth } from '@/lib/auth'
@@ -62,11 +62,13 @@ describe('CreateBlogPage', () => {
     ;(storage.addBlogPost as jest.Mock).mockImplementation(() => {})
   })
 
-  it('should show message when user has no pets', () => {
+  it('should show message when user has no pets', async () => {
     ;(storage.getPetsByOwnerId as jest.Mock).mockReturnValue([])
 
     render(<CreateBlogPage />)
 
-    expect(screen.getByText(/you need to add a pet before creating a blog post/i)).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.getByText(/you need to add a pet before creating a blog post/i)).toBeInTheDocument()
+    }, { timeout: 2000 })
   })
 })

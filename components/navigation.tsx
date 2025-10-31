@@ -30,6 +30,7 @@ import {
   Heart,
   TrendingUp,
   Users,
+  ChevronDown,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { NotificationsDropdown } from "@/components/notifications-dropdown"
@@ -106,11 +107,14 @@ export function Navigation() {
                 <NotificationsDropdown />
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="relative h-10 w-10 rounded-full">
-                      <Avatar className="h-10 w-10">
+                    <Button variant="ghost" className="relative h-10 w-10 rounded-full p-0 hover:bg-gray-100 dark:hover:bg-gray-800">
+                      <Avatar className="h-10 w-10 border-2 border-gray-400">
                         <AvatarImage src={user.avatar || "/placeholder.svg"} alt={user.fullName} />
                         <AvatarFallback>{user.fullName.charAt(0)}</AvatarFallback>
                       </Avatar>
+                      <div className="absolute -bottom-1 -right-1 h-5 w-5 rounded-full bg-white flex items-center justify-center border border-gray-200 dark:border-gray-700 shadow-sm">
+                        <ChevronDown className="h-3 w-3 text-gray-600" />
+                      </div>
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
@@ -127,12 +131,6 @@ export function Navigation() {
                         Profile
                       </DropdownMenuItem>
                     </Link>
-                    <Link href="/">
-                      <DropdownMenuItem>
-                        <Home className="mr-2 h-4 w-4" />
-                        Feed
-                      </DropdownMenuItem>
-                    </Link>
                     <DropdownMenuSeparator />
                     <Link href="/shelters">
                       <DropdownMenuItem>
@@ -147,22 +145,10 @@ export function Navigation() {
                       </DropdownMenuItem>
                     </Link>
                     <DropdownMenuSeparator />
-                    <Link href="/settings/privacy">
+                    <Link href="/settings">
                       <DropdownMenuItem>
                         <Settings className="mr-2 h-4 w-4" />
-                        Privacy Settings
-                      </DropdownMenuItem>
-                    </Link>
-                    <Link href="/settings/notifications">
-                      <DropdownMenuItem>
-                        <Settings className="mr-2 h-4 w-4" />
-                        Notification Settings
-                      </DropdownMenuItem>
-                    </Link>
-                    <Link href="/drafts">
-                      <DropdownMenuItem>
-                        <FileText className="mr-2 h-4 w-4" />
-                        My Drafts
+                        Settings
                       </DropdownMenuItem>
                     </Link>
                     {(isAdmin() || isModerator()) && (
