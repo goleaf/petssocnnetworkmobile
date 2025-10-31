@@ -547,8 +547,11 @@ function UserCard({ user }: { user: UserType }) {
 }
 
 function PetCard({ pet }: { pet: Pet }) {
+  const users = getUsers()
+  const owner = users.find((u) => u.id === pet.ownerId)
+  const petUrl = owner ? getPetUrlFromPet(pet, owner.username) : `/pet/${pet.id}`
   return (
-    <Link href={`/pet/${pet.id}`}>
+    <Link href={petUrl}>
       <Card className="hover:bg-muted/50 transition-colors cursor-pointer">
         <CardContent className="p-4">
           <div className="flex items-center gap-3">

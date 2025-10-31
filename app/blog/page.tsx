@@ -195,7 +195,7 @@ export default function BlogPage() {
                         <Heart className="h-4 w-4" />
                         {post.likes.length}
                       </div>
-                      <span>{new Date(post.createdAt).toLocaleDateString("en-GB")}</span>
+                                  <span>{formatDate(post.createdAt)}</span>
                     </div>
                   </div>
                   <div className="flex gap-1 flex-wrap mt-3">

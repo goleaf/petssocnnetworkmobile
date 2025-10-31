@@ -1,6 +1,0 @@
-{
-  "version": 3,
-  "sources": [],
-  "sections": [
-    {"offset": {"line": 4, "column": 0}, "map": {"version":3,"sources":["file:///Users/andrejprus/Library/CloudStorage/Dropbox/projects/petssocnnetworkmobile/app/dashboard/page.tsx"],"sourcesContent":["\"use client\"\n\nimport { useEffect } from \"react\"\nimport { useRouter } from \"next/navigation\"\n\nexport default function DashboardPage() {\n  const router = useRouter()\n\n  useEffect(() => {\n    // Redirect /dashboard to /\n    router.replace(\"/\")\n  }, [router])\n\n  return null\n}\n"],"names":[],"mappings":";;;;AAEA;AACA;AAHA;;;AAKe,SAAS;IACtB,MAAM,SAAS,IAAA,8QAAS;IAExB,IAAA,iVAAS,EAAC;QACR,2BAA2B;QAC3B,OAAO,OAAO,CAAC;IACjB,GAAG;QAAC;KAAO;IAEX,OAAO;AACT","debugId":null}}]
-}

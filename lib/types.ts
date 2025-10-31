@@ -34,6 +34,7 @@ export interface Pet {
   id: string
   ownerId: string
   name: string
+  slug?: string // URL-friendly slug for routing
   species: "dog" | "cat" | "bird" | "rabbit" | "hamster" | "fish" | "other"
   breed?: string
   age?: number

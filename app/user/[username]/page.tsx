@@ -149,7 +149,7 @@ export default function UserProfilePage() {
                     <p className="text-muted-foreground">@{user.username}</p>
                     {user.isPro && user.proExpiresAt && (
                       <p className="text-xs text-amber-600 mt-1">
-                        Pro member until {new Date(user.proExpiresAt).toLocaleDateString("en-GB")}
+                        Pro member until {formatDate(user.proExpiresAt)}
                       </p>
                     )}
                   </div>
@@ -303,7 +303,7 @@ export default function UserProfilePage() {
                                     <div>
                                       <p className="font-semibold">{pet.name}</p>
                                       <p className="text-xs text-muted-foreground">
-                                        {new Date(post.createdAt).toLocaleDateString("en-GB")}
+                                        {formatDate(post.createdAt)}
                                       </p>
                                     </div>
                                   </>
@@ -351,7 +351,7 @@ export default function UserProfilePage() {
                 {pets.length > 0 ? (
                   <div className="grid md:grid-cols-2 gap-4">
                     {pets.map((pet) => (
-                      <Link key={pet.id} href={`/pet/${pet.id}`}>
+                      <Link key={pet.id} href={getPetUrlFromPet(pet, user.username)}>
                         <Card className="hover:shadow-lg transition-shadow cursor-pointer">
                           <CardContent className="p-6">
                             <div className="flex items-center gap-4">
@@ -479,7 +479,7 @@ export default function UserProfilePage() {
                         )}
                         <div className="flex items-center gap-3">
                           <Calendar className="h-5 w-5 text-muted-foreground" />
-                          <span>Joined {new Date(user.joinedAt).toLocaleDateString("en-GB")}</span>
+                          <span>Joined {formatDate(user.joinedAt)}</span>
                         </div>
                         {user.interests && user.interests.length > 0 && (
                           <div className="pt-4 border-t">

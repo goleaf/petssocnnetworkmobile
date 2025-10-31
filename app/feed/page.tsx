@@ -12,8 +12,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { getPets, getBlogPosts, getUsers, getPetsByOwnerId, addBlogPost, updateBlogPost, deleteBlogPost, togglePostReaction } from "@/lib/storage"
 import { Heart, MessageCircle, Share2, MoreHorizontal, Globe, UsersIcon, Lock, Edit2, Trash2, Smile } from "lucide-react"
 import Link from "next/link"
-import { formatDistanceToNow } from "date-fns"
+import { formatDate } from "@/lib/utils/date"
 import type { BlogPost, Pet, User as UserType, ReactionType } from "@/lib/types"
+import { getPetUrlFromPet } from "@/lib/utils/pet-url"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 
 export default function FeedPage() {
@@ -278,7 +279,7 @@ function FeedPostCard({
         {/* Post Header */}
         <div className="flex items-start justify-between mb-3">
           <div className="flex gap-3">
-            <Link href={`/pet/${pet?.id}`}>
+            <Link href={author ? getPetUrlFromPet(pet, author.username) : "#"}>
               <Avatar className="h-10 w-10 cursor-pointer">
                 <AvatarImage src={pet?.avatar || "/placeholder.svg"} />
                 <AvatarFallback>{pet?.name.charAt(0)}</AvatarFallback>
@@ -286,7 +287,7 @@ function FeedPostCard({
             </Link>
             <div>
               <div className="flex items-center gap-2">
-                <Link href={`/pet/${pet?.id}`} className="font-semibold hover:underline">
+                <Link href={author ? getPetUrlFromPet(pet, author.username) : "#"} className="font-semibold hover:underline">
                   {pet?.name}
                 </Link>
                 <span className="text-muted-foreground text-sm">•</span>
@@ -295,7 +296,7 @@ function FeedPostCard({
                 </Link>
               </div>
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <span>{formatDistanceToNow(new Date(post.createdAt), { addSuffix: true })}</span>
+                <span>{formatDate(post.createdAt)}</span>
                 <span>•</span>
                 {getPrivacyIcon()}
               </div>

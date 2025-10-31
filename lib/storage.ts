@@ -11,6 +11,17 @@ const STORAGE_KEYS = {
   CURRENT_USER: "pet_social_current_user",
 }
 
+// Helper function to generate slug from pet name
+function generatePetSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, "") // Remove special characters
+    .replace(/\s+/g, "-") // Replace spaces with hyphens
+    .replace(/-+/g, "-") // Replace multiple hyphens with single hyphen
+    .replace(/^-|-$/g, "") // Remove leading/trailing hyphens
+}
+
 // Initialize storage with mock data if empty
 export function initializeStorage() {
   if (typeof window === "undefined") return
@@ -19,7 +30,20 @@ export function initializeStorage() {
     localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(mockUsers))
   }
   if (!localStorage.getItem(STORAGE_KEYS.PETS)) {
-    localStorage.setItem(STORAGE_KEYS.PETS, JSON.stringify(mockPets))
+    // Generate slugs for all pets if they don't have them
+    const petsWithSlugs = mockPets.map((pet) => ({
+      ...pet,
+      slug: pet.slug || generatePetSlug(pet.name),
+    }))
+    localStorage.setItem(STORAGE_KEYS.PETS, JSON.stringify(petsWithSlugs))
+  } else {
+    // Ensure existing pets have slugs
+    const existingPets = JSON.parse(localStorage.getItem(STORAGE_KEYS.PETS) || "[]") as Pet[]
+    const updatedPets = existingPets.map((pet) => ({
+      ...pet,
+      slug: pet.slug || generatePetSlug(pet.name),
+    }))
+    localStorage.setItem(STORAGE_KEYS.PETS, JSON.stringify(updatedPets))
   }
   if (!localStorage.getItem(STORAGE_KEYS.BLOG_POSTS)) {
     localStorage.setItem(STORAGE_KEYS.BLOG_POSTS, JSON.stringify(mockBlogPosts))
@@ -120,6 +144,26 @@ export function getPetsByOwnerId(ownerId: string): Pet[] {
   return getPets().filter((p) => p.ownerId === ownerId)
 }
 
+export function getPetByUsernameAndSlug(username: string, slug: string): Pet | undefined {
+  const users = getUsers()
+  const owner = users.find((u) => u.username === username)
+  if (!owner) return undefined
+  
+  const pets = getPets()
+  return pets.find((p) => p.ownerId === owner.id && (p.slug === slug || !p.slug && p.id === slug))
+}
+
+// Export the generatePetSlug function for external use
+export function generatePetSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, "") // Remove special characters
+    .replace(/\s+/g, "-") // Replace spaces with hyphens
+    .replace(/-+/g, "-") // Replace multiple hyphens with single hyphen
+    .replace(/^-|-$/g, "") // Remove leading/trailing hyphens
+}
+
 export function updatePet(pet: Pet) {
   if (typeof window === "undefined") return
   const pets = getPets()
@@ -133,6 +177,10 @@ export function updatePet(pet: Pet) {
 export function addPet(pet: Pet) {
   if (typeof window === "undefined") return
   const pets = getPets()
+  // Generate slug if not provided
+  if (!pet.slug) {
+    pet.slug = generatePetSlug(pet.name)
+  }
   pets.push(pet)
   localStorage.setItem(STORAGE_KEYS.PETS, JSON.stringify(pets))
 }

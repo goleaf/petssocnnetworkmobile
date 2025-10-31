@@ -21,7 +21,8 @@ import { useAuth } from "@/lib/auth"
 import { Heart, MessageCircle, ArrowLeft, Send, Reply, Edit2, Trash2, X, Check, Smile, Loader2 } from "lucide-react"
 import Link from "next/link"
 import type { Comment, ReactionType } from "@/lib/types"
-import { formatCommentDate } from "@/lib/utils/date"
+import { formatCommentDate, formatDate } from "@/lib/utils/date"
+import { getPetUrlFromPet } from "@/lib/utils/pet-url"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -225,27 +226,22 @@ export default function BlogPostPage({ params }: { params: Promise<{ id: string 
         )}
         <CardHeader className="space-y-4 px-6 pt-6">
           <div className="flex items-center gap-3">
-            <Link href={`/pet/${pet.id}`}>
+            <Link href={getPetUrlFromPet(pet, author.username)}>
               <Avatar className="h-12 w-12 cursor-pointer">
                 <AvatarImage src={pet.avatar || "/placeholder.svg"} alt={pet.name} />
                 <AvatarFallback>{pet.name.charAt(0)}</AvatarFallback>
               </Avatar>
             </Link>
             <div className="flex-1">
-              <Link href={`/pet/${pet.id}`} className="font-semibold hover:underline">
+              <Link href={getPetUrlFromPet(pet, author.username)} className="font-semibold hover:underline">
                 {pet.name}
               </Link>
               <p className="text-sm text-muted-foreground">
                 by{" "}
-                <Link href={`/profile/${author.username}`} className="hover:underline">
+                <Link href={`/user/${author.username}`} className="hover:underline">
                   {author.fullName}
                 </Link>{" "}
-                •{" "}
-                {new Date(post.createdAt).toLocaleDateString("en-GB", {
-                  month: "long",
-                  day: "numeric",
-                  year: "numeric",
-                })}
+                • {formatDate(post.createdAt)}
               </p>
             </div>
           </div>

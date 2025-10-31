@@ -9,6 +9,8 @@ import { Badge } from "@/components/ui/badge"
 import { getPets, getBlogPosts, getUsers, getPetsByOwnerId } from "@/lib/storage"
 import { Heart, MessageCircle, TrendingUp, Users, PawPrint, BookOpen, Plus } from "lucide-react"
 import Link from "next/link"
+import { formatDate } from "@/lib/utils/date"
+import { getPetUrlFromPet } from "@/lib/utils/pet-url"
 
 export default function DashboardContent({ user }: { user: User }) {
   const [myPets, setMyPets] = useState<any[]>([])
@@ -108,7 +110,7 @@ export default function DashboardContent({ user }: { user: User }) {
               {myPets.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {myPets.map((pet) => (
-                    <Link key={pet.id} href={`/pet/${pet.id}`}>
+                    <Link key={pet.id} href={getPetUrlFromPet(pet, user.username)}>
                       <div className="flex items-center gap-3 p-3 rounded-lg hover:bg-accent transition-colors cursor-pointer">
                         <Avatar className="h-12 w-12">
                           <AvatarImage src={pet.avatar || "/placeholder.svg"} alt={pet.name} />
@@ -169,7 +171,7 @@ export default function DashboardContent({ user }: { user: User }) {
                                 <Heart className="h-3 w-3" />
                                 {post.likes.length}
                               </div>
-                              <span>{new Date(post.createdAt).toLocaleDateString("en-GB")}</span>
+                              <span>{formatDate(post.createdAt)}</span>
                             </div>
                           </div>
                         </div>

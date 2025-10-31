@@ -11,6 +11,8 @@ import { useAuth } from "@/lib/auth"
 import { MapPin, Calendar, Users, Heart, Loader2, PawPrint, FileText } from "lucide-react"
 import Link from "next/link"
 import { useState, useEffect } from "react"
+import { formatDate } from "@/lib/utils/date"
+import { getPetUrlFromPet } from "@/lib/utils/pet-url"
 
 export default function ProfilePage({ params }: { params: Promise<{ username: string }> }) {
   const { username } = use(params)
@@ -112,7 +114,7 @@ export default function ProfilePage({ params }: { params: Promise<{ username: st
                 )}
                 <div className="flex items-center gap-1">
                   <Calendar className="h-4 w-4" />
-                  Joined {new Date(user.joinedAt).toLocaleDateString("en-GB", { month: "long", year: "numeric" })}
+                  Joined {formatDate(user.joinedAt)}
                 </div>
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
@@ -236,7 +238,7 @@ export default function ProfilePage({ params }: { params: Promise<{ username: st
           )}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {pets.map((pet) => (
-              <Link key={pet.id} href={`/pet/${pet.id}`}>
+              <Link key={pet.id} href={getPetUrlFromPet(pet, user.username)}>
                 <Card className="hover:shadow-lg transition-shadow cursor-pointer">
                   <CardContent className="p-4">
                     <div className="flex items-start gap-3">
@@ -298,7 +300,7 @@ export default function ProfilePage({ params }: { params: Promise<{ username: st
                     <CardContent className="p-4">
                       <h3 className="font-semibold text-lg line-clamp-2">{post.title}</h3>
                       <p className="text-sm text-muted-foreground mt-1">
-                        By {pet?.name} • {new Date(post.createdAt).toLocaleDateString("en-GB")}
+                        By {pet?.name} • {formatDate(post.createdAt)}
                       </p>
                       <p className="text-sm mt-2 line-clamp-2">{post.content}</p>
                       <div className="flex items-center gap-4 mt-3 text-sm text-muted-foreground">
