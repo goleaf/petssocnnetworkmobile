@@ -116,8 +116,20 @@ export default function FeedPage() {
   }
 
   const loadTrending = () => {
+    if (!user) return
+    
     const allPosts = getBlogPosts()
-    const trending = [...allPosts].sort((a, b) => {
+    const allUsers = getUsers()
+    
+    // Filter posts that viewer can see based on privacy
+    const visiblePosts = allPosts.filter((post) => {
+      const author = allUsers.find((u) => u.id === post.authorId)
+      if (!author) return false
+      return canViewPost(post, author, user.id)
+    })
+    
+    // Sort by engagement (reactions/likes)
+    const trending = [...visiblePosts].sort((a, b) => {
       const aLikes = a.reactions
         ? Object.values(a.reactions).reduce((sum, arr) => sum + arr.length, 0)
         : a.likes.length
@@ -132,7 +144,19 @@ export default function FeedPage() {
   const loadSuggestedUsers = () => {
     if (!user) return
     const allUsers = getUsers()
-    const suggested = allUsers.filter((u) => u.id !== user.id && !user.following.includes(u.id)).slice(0, 4)
+    // Filter out blocked users and users who blocked the current user
+    const suggested = allUsers
+      .filter((u) => {
+        if (u.id === user.id) return false
+        if (user.following.includes(u.id)) return false
+        // Check if blocked
+        if (u.blockedUsers?.includes(user.id)) return false
+        if (user.blockedUsers?.includes(u.id)) return false
+        // Check if user is searchable
+        if (u.privacy?.searchable === false) return false
+        return true
+      })
+      .slice(0, 4)
     setSuggestedUsers(suggested)
   }
 
