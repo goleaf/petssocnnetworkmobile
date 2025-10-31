@@ -134,6 +134,67 @@ export function toggleFollow(followerId: string, followingId: string) {
   localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users))
 }
 
+export function blockUser(userId: string, blockUserId: string) {
+  if (typeof window === "undefined") return
+  const users = getUsers()
+
+  const userIndex = users.findIndex((u) => u.id === userId)
+  if (userIndex === -1) return
+
+  const user = users[userIndex]
+  if (!user.blockedUsers) {
+    user.blockedUsers = []
+  }
+
+  // Add to blocked list if not already blocked
+  if (!user.blockedUsers.includes(blockUserId)) {
+    user.blockedUsers.push(blockUserId)
+  }
+
+  // Unfollow both ways if they were following each other
+  if (user.following.includes(blockUserId)) {
+    user.following = user.following.filter((id) => id !== blockUserId)
+    const blockedUserIndex = users.findIndex((u) => u.id === blockUserId)
+    if (blockedUserIndex !== -1) {
+      const blockedUser = users[blockedUserIndex]
+      blockedUser.followers = blockedUser.followers.filter((id) => id !== userId)
+      users[blockedUserIndex] = blockedUser
+    }
+  }
+
+  if (user.followers.includes(blockUserId)) {
+    user.followers = user.followers.filter((id) => id !== blockUserId)
+    const blockedUserIndex = users.findIndex((u) => u.id === blockUserId)
+    if (blockedUserIndex !== -1) {
+      const blockedUser = users[blockedUserIndex]
+      blockedUser.following = blockedUser.following.filter((id) => id !== userId)
+      users[blockedUserIndex] = blockedUser
+    }
+  }
+
+  users[userIndex] = user
+  localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users))
+}
+
+export function unblockUser(userId: string, unblockUserId: string) {
+  if (typeof window === "undefined") return
+  const users = getUsers()
+
+  const userIndex = users.findIndex((u) => u.id === userId)
+  if (userIndex === -1) return
+
+  const user = users[userIndex]
+  if (!user.blockedUsers) {
+    user.blockedUsers = []
+  }
+
+  // Remove from blocked list
+  user.blockedUsers = user.blockedUsers.filter((id) => id !== unblockUserId)
+
+  users[userIndex] = user
+  localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users))
+}
+
 // Pet operations
 export function getPets(): Pet[] {
   if (typeof window === "undefined") return []
