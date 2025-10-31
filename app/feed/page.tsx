@@ -41,6 +41,7 @@ import Link from "next/link"
 import { formatDate } from "@/lib/utils/date"
 import type { BlogPost, Pet, User as UserType, ReactionType } from "@/lib/types"
 import { getPetUrlFromPet } from "@/lib/utils/pet-url"
+import { canViewPost } from "@/lib/utils/privacy"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 
@@ -82,17 +83,35 @@ export default function FeedPage() {
     if (!user) return
 
     const allPosts = getBlogPosts()
+    const allUsers = getUsers()
 
     if (filter === "following") {
-      // Show only posts from followed users and pets
+      // Show only posts from followed users and pets that viewer can see
       const followedPosts = allPosts.filter((post) => {
+        const author = allUsers.find((u) => u.id === post.authorId)
+        if (!author) return false
+        
+        // Must be following the author or the pet
         const pet = getPets().find((p) => p.id === post.petId)
-        return pet && (user.following.includes(post.authorId) || pet.followers.includes(user.id))
+        const isFollowingUser = user.following.includes(post.authorId)
+        const isFollowingPet = pet && pet.followers.includes(user.id)
+        
+        if (!isFollowingUser && !isFollowingPet) return false
+        
+        // Check if viewer can see this post based on privacy
+        return canViewPost(post, author, user.id)
       })
       setFeedPosts(followedPosts)
     } else {
-      // Show all public posts
-      setFeedPosts(allPosts.filter((post) => post.privacy === "public" || !post.privacy))
+      // Show all posts that viewer can see based on privacy
+      const visiblePosts = allPosts.filter((post) => {
+        const author = allUsers.find((u) => u.id === post.authorId)
+        if (!author) return false
+        
+        // Check if viewer can see this post based on privacy
+        return canViewPost(post, author, user.id)
+      })
+      setFeedPosts(visiblePosts)
     }
   }
 
