@@ -546,13 +546,47 @@ export default function SearchPage() {
           <div className="flex gap-2">
             <Select value={sortBy} onValueChange={(value) => setSortBy(value as SortOption)}>
               <SelectTrigger className="w-[140px]">
-                <ArrowUpDown className="h-4 w-4 mr-2" />
-                <SelectValue />
+                <SelectValue>
+                  {(() => {
+                    const sortIcons = {
+                      relevance: ArrowUpDown,
+                      recent: Clock,
+                      popular: TrendingUp,
+                    }
+                    const sortLabels = {
+                      relevance: "Relevance",
+                      recent: "Most Recent",
+                      popular: "Most Popular",
+                    }
+                    const Icon = sortIcons[sortBy] || ArrowUpDown
+                    return (
+                      <div className="flex items-center gap-2">
+                        <Icon className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                        <span className="truncate">{sortLabels[sortBy]}</span>
+                      </div>
+                    )
+                  })()}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="relevance">Relevance</SelectItem>
-                <SelectItem value="recent">Most Recent</SelectItem>
-                <SelectItem value="popular">Most Popular</SelectItem>
+                <SelectItem value="relevance">
+                  <div className="flex items-center gap-2">
+                    <ArrowUpDown className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                    <span>Relevance</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="recent">
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                    <span>Most Recent</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="popular">
+                  <div className="flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                    <span>Most Popular</span>
+                  </div>
+                </SelectItem>
               </SelectContent>
             </Select>
 
@@ -936,7 +970,7 @@ export default function SearchPage() {
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {results.hashtags.slice(0, 20).map((tag) => (
-                      <Link key={tag} href={`/explore/hashtag/${tag}`}>
+                      <Link key={tag} href={`/search?q=${encodeURIComponent(`#${tag}`)}&tab=blogs`}>
                         <Badge
                           variant="secondary"
                           className="text-sm px-3 py-1 cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors"
@@ -1091,7 +1125,7 @@ export default function SearchPage() {
           ) : (
             <div className="flex flex-wrap gap-2">
               {results.hashtags.map((tag) => (
-                <Link key={tag} href={`/explore/hashtag/${tag}`}>
+                <Link key={tag} href={`/search?q=${encodeURIComponent(`#${tag}`)}&tab=blogs`}>
                   <Badge
                     variant="secondary"
                     className="text-base px-4 py-2 cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors"

@@ -3,8 +3,10 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import BlogPage from '../page'
 import * as storage from '@/lib/storage'
+import * as auth from '@/lib/auth'
 
 jest.mock('@/lib/storage')
+jest.mock('@/lib/auth')
 jest.mock('next/link', () => {
   return ({ children, href }: { children: React.ReactNode; href: string }) => {
     return <a href={href}>{children}</a>
@@ -54,6 +56,10 @@ describe('BlogPage', () => {
     ;(storage.getBlogPosts as jest.Mock).mockReturnValue(mockPosts)
     ;(storage.getPets as jest.Mock).mockReturnValue(mockPets)
     ;(storage.getUsers as jest.Mock).mockReturnValue(mockUsers)
+    ;(auth.useAuth as jest.Mock).mockReturnValue({
+      user: null,
+      isAuthenticated: false,
+    })
   })
 
   it('should render blog page with title', () => {
@@ -200,6 +206,77 @@ describe('BlogPage', () => {
       expect(screen.getByText('Pet 1')).toBeInTheDocument()
       expect(screen.getByText(/by user 1/i)).toBeInTheDocument()
     })
+  })
+
+  it('should not show "My Posts" tab when user is not authenticated', () => {
+    render(<BlogPage />)
+    
+    expect(screen.queryByText(/my posts/i)).not.toBeInTheDocument()
+  })
+
+  it('should show "My Posts" tab when user is authenticated', () => {
+    ;(auth.useAuth as jest.Mock).mockReturnValue({
+      user: { id: 'user1', username: 'user1' },
+      isAuthenticated: true,
+    })
+    
+    render(<BlogPage />)
+    
+    expect(screen.getByText(/my posts/i)).toBeInTheDocument()
+  })
+
+  it('should filter posts by current user in "My Posts" tab', async () => {
+    ;(auth.useAuth as jest.Mock).mockReturnValue({
+      user: { id: 'user1', username: 'user1' },
+      isAuthenticated: true,
+    })
+    
+    render(<BlogPage />)
+    
+    // Wait for the page to render
+    await waitFor(() => {
+      expect(screen.getByText(/my posts/i)).toBeInTheDocument()
+    })
+    
+    // Click on "My Posts" tab
+    const myPostsTab = screen.getByText(/my posts/i)
+    await userEvent.click(myPostsTab)
+    
+    // Should only show posts from user1
+    await waitFor(() => {
+      expect(screen.getByText('Test Post 1')).toBeInTheDocument()
+      expect(screen.queryByText('Test Post 2')).not.toBeInTheDocument()
+    })
+  })
+
+  it('should show empty state with create button when user has no posts', async () => {
+    ;(auth.useAuth as jest.Mock).mockReturnValue({
+      user: { id: 'user3', username: 'user3' },
+      isAuthenticated: true,
+    })
+    
+    ;(storage.getBlogPosts as jest.Mock).mockReturnValue(mockPosts)
+    
+    render(<BlogPage />)
+    
+    // Wait for the page to render
+    await waitFor(() => {
+      expect(screen.getByText(/my posts/i)).toBeInTheDocument()
+    })
+    
+    // Click on "My Posts" tab
+    const myPostsTab = screen.getByText(/my posts/i)
+    await userEvent.click(myPostsTab)
+    
+    // Should show empty state
+    await waitFor(() => {
+      expect(screen.getByText(/start writing your story/i)).toBeInTheDocument()
+      expect(screen.getByText(/create your first post/i)).toBeInTheDocument()
+    })
+    
+    // Check that the button links to create page
+    const createButton = screen.getByText(/create your first post/i).closest('a')
+    expect(createButton).toHaveAttribute('href', '/blog/create')
   })
 })
 

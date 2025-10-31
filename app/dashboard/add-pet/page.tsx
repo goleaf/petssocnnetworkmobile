@@ -14,7 +14,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { addPet } from "@/lib/storage"
 import type { Pet } from "@/lib/types"
-import { ArrowLeft, Plus } from "lucide-react"
+import { ArrowLeft, Plus, PawPrint, Dog, Cat, Bird, Rabbit, Fish, CircleDot, User } from "lucide-react"
 import Link from "next/link"
 
 export default function AddPetPage() {
@@ -83,17 +83,80 @@ export default function AddPetPage() {
                   value={formData.species}
                   onValueChange={(value: Pet["species"]) => setFormData({ ...formData, species: value })}
                 >
-                  <SelectTrigger>
-                    <SelectValue />
+                  <SelectTrigger className="w-full">
+                    <SelectValue>
+                      {(() => {
+                        const speciesIcons = {
+                          dog: Dog,
+                          cat: Cat,
+                          bird: Bird,
+                          rabbit: Rabbit,
+                          hamster: PawPrint,
+                          fish: Fish,
+                          other: CircleDot,
+                        }
+                        const speciesLabels = {
+                          dog: "Dog",
+                          cat: "Cat",
+                          bird: "Bird",
+                          rabbit: "Rabbit",
+                          hamster: "Hamster",
+                          fish: "Fish",
+                          other: "Other",
+                        }
+                        const Icon = speciesIcons[formData.species] || PawPrint
+                        return (
+                          <div className="flex items-center gap-2">
+                            <Icon className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                            <span className="truncate">{speciesLabels[formData.species]}</span>
+                          </div>
+                        )
+                      })()}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="dog">Dog</SelectItem>
-                    <SelectItem value="cat">Cat</SelectItem>
-                    <SelectItem value="bird">Bird</SelectItem>
-                    <SelectItem value="rabbit">Rabbit</SelectItem>
-                    <SelectItem value="hamster">Hamster</SelectItem>
-                    <SelectItem value="fish">Fish</SelectItem>
-                    <SelectItem value="other">Other</SelectItem>
+                    <SelectItem value="dog">
+                      <div className="flex items-center gap-2">
+                        <Dog className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                        <span>Dog</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="cat">
+                      <div className="flex items-center gap-2">
+                        <Cat className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                        <span>Cat</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="bird">
+                      <div className="flex items-center gap-2">
+                        <Bird className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                        <span>Bird</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="rabbit">
+                      <div className="flex items-center gap-2">
+                        <Rabbit className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                        <span>Rabbit</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="hamster">
+                      <div className="flex items-center gap-2">
+                        <PawPrint className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                        <span>Hamster</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="fish">
+                      <div className="flex items-center gap-2">
+                        <Fish className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                        <span>Fish</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="other">
+                      <div className="flex items-center gap-2">
+                        <CircleDot className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                        <span>Other</span>
+                      </div>
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -104,12 +167,40 @@ export default function AddPetPage() {
                   value={formData.gender}
                   onValueChange={(value: Pet["gender"]) => setFormData({ ...formData, gender: value })}
                 >
-                  <SelectTrigger>
-                    <SelectValue />
+                  <SelectTrigger className="w-full">
+                    <SelectValue>
+                      {(() => {
+                        const genderIcons = {
+                          male: User,
+                          female: User,
+                        }
+                        const genderLabels = {
+                          male: "Male",
+                          female: "Female",
+                        }
+                        const Icon = genderIcons[formData.gender] || User
+                        return (
+                          <div className="flex items-center gap-2">
+                            <Icon className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                            <span className="truncate">{genderLabels[formData.gender]}</span>
+                          </div>
+                        )
+                      })()}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="male">Male</SelectItem>
-                    <SelectItem value="female">Female</SelectItem>
+                    <SelectItem value="male">
+                      <div className="flex items-center gap-2">
+                        <User className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                        <span>Male</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="female">
+                      <div className="flex items-center gap-2">
+                        <User className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                        <span>Female</span>
+                      </div>
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>

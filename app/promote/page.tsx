@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { TrendingUp, Target, DollarSign, Calendar, AlertCircle, X } from "lucide-react"
+import { TrendingUp, Target, DollarSign, Calendar, AlertCircle, X, FileText, PawPrint } from "lucide-react"
 import { useAuth } from "@/components/auth/auth-provider"
 import { toast } from "sonner"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -97,13 +97,39 @@ export default function PromotePostPage() {
           </CardHeader>
           <CardContent>
             <Select value={selectedPost} onValueChange={setSelectedPost}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select a post" />
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select a post">
+                  {selectedPost && (
+                    <div className="flex items-center gap-2">
+                      <FileText className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                      <span className="truncate">
+                        {selectedPost === "1" && "My dog's birthday celebration 🎉"}
+                        {selectedPost === "2" && "Tips for training puppies"}
+                        {selectedPost === "3" && "Adoption success story"}
+                      </span>
+                    </div>
+                  )}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="1">My dog's birthday celebration 🎉</SelectItem>
-                <SelectItem value="2">Tips for training puppies</SelectItem>
-                <SelectItem value="3">Adoption success story</SelectItem>
+                <SelectItem value="1">
+                  <div className="flex items-center gap-2">
+                    <FileText className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                    <span>My dog's birthday celebration 🎉</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="2">
+                  <div className="flex items-center gap-2">
+                    <FileText className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                    <span>Tips for training puppies</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="3">
+                  <div className="flex items-center gap-2">
+                    <FileText className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                    <span>Adoption success story</span>
+                  </div>
+                </SelectItem>
               </SelectContent>
             </Select>
           </CardContent>
@@ -131,14 +157,43 @@ export default function PromotePostPage() {
             <div className="space-y-2">
               <Label htmlFor="duration">Duration (days)</Label>
               <Select value={duration} onValueChange={setDuration}>
-                <SelectTrigger>
-                  <SelectValue />
+                <SelectTrigger className="w-full">
+                  <SelectValue>
+                    {(() => {
+                      return (
+                        <div className="flex items-center gap-2">
+                          <Calendar className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                          <span className="truncate">{duration} days</span>
+                        </div>
+                      )
+                    })()}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="3">3 days</SelectItem>
-                  <SelectItem value="7">7 days</SelectItem>
-                  <SelectItem value="14">14 days</SelectItem>
-                  <SelectItem value="30">30 days</SelectItem>
+                  <SelectItem value="3">
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                      <span>3 days</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="7">
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                      <span>7 days</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="14">
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                      <span>14 days</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="30">
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                      <span>30 days</span>
+                    </div>
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -154,15 +209,45 @@ export default function PromotePostPage() {
             <div className="space-y-2">
               <Label htmlFor="species">Pet Species</Label>
               <Select>
-                <SelectTrigger>
-                  <SelectValue placeholder="All species" />
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="All species">
+                    <div className="flex items-center gap-2">
+                      <PawPrint className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                      <span className="truncate">All species</span>
+                    </div>
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All species</SelectItem>
-                  <SelectItem value="dogs">Dogs</SelectItem>
-                  <SelectItem value="cats">Cats</SelectItem>
-                  <SelectItem value="birds">Birds</SelectItem>
-                  <SelectItem value="rabbits">Rabbits</SelectItem>
+                  <SelectItem value="all">
+                    <div className="flex items-center gap-2">
+                      <PawPrint className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                      <span>All species</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="dogs">
+                    <div className="flex items-center gap-2">
+                      <PawPrint className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                      <span>Dogs</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="cats">
+                    <div className="flex items-center gap-2">
+                      <PawPrint className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                      <span>Cats</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="birds">
+                    <div className="flex items-center gap-2">
+                      <PawPrint className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                      <span>Birds</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="rabbits">
+                    <div className="flex items-center gap-2">
+                      <PawPrint className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                      <span>Rabbits</span>
+                    </div>
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>

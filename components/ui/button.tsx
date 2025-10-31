@@ -57,6 +57,20 @@ function Button({
   const Comp = asChild ? Slot : 'button'
   const isDisabled = disabled || loading
 
+  // When asChild is true, we must pass exactly one child to Slot
+  if (asChild) {
+    return (
+      <Comp
+        data-slot="button"
+        className={cn(buttonVariants({ variant, size, className }))}
+        disabled={isDisabled}
+        {...props}
+      >
+        {children}
+      </Comp>
+    )
+  }
+
   return (
     <Comp
       data-slot="button"

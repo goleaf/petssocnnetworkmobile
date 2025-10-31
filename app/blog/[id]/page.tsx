@@ -253,7 +253,7 @@ export default function BlogPostPage({ params }: { params: Promise<{ id: string 
             {post.hashtags && post.hashtags.length > 0 && (
               <>
                 {post.hashtags.map((hashtag) => (
-                  <Link key={hashtag} href={`/explore/hashtag/${encodeURIComponent(hashtag)}`}>
+                  <Link key={hashtag} href={`/search?q=${encodeURIComponent(`#${hashtag}`)}&tab=blogs`}>
                     <Badge
                       variant="outline"
                       className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors"

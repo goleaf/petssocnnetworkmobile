@@ -5,9 +5,9 @@ import { useRouter } from "next/navigation"
 import { useAuth } from "@/components/auth/auth-provider"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { getNotificationsByUserId, markAsRead, markAllAsRead, deleteNotification } from "@/lib/notifications"
+import { getNotificationsByUserId, markAsRead, markAllAsRead, deleteNotification, generateFakeNotificationsForUser } from "@/lib/notifications"
 import type { Notification } from "@/lib/types"
-import { Bell, Trash2, Check } from "lucide-react"
+import { Bell, Trash2, Check, Sparkles } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
 
 export default function NotificationsPage() {
@@ -46,6 +46,12 @@ export default function NotificationsPage() {
     loadNotifications()
   }
 
+  const handleGenerateFakeNotifications = () => {
+    if (!user) return
+    generateFakeNotificationsForUser(user.id)
+    loadNotifications()
+  }
+
   const handleNotificationClick = (notification: Notification) => {
     if (!notification.read) {
       markAsRead(notification.id)
@@ -71,7 +77,7 @@ export default function NotificationsPage() {
         <p className="text-muted-foreground mt-2">Stay updated with your activity</p>
       </div>
 
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
         <div className="flex gap-2">
           <Button variant={filter === "all" ? "default" : "outline"} size="sm" onClick={() => setFilter("all")}>
             All
@@ -80,12 +86,18 @@ export default function NotificationsPage() {
             Unread ({notifications.filter((n) => !n.read).length})
           </Button>
         </div>
-        {notifications.some((n) => !n.read) && (
-          <Button variant="outline" size="sm" onClick={handleMarkAllRead}>
-            <Check className="h-4 w-4 mr-2" />
-            Mark all as read
+        <div className="flex gap-2">
+          <Button variant="secondary" size="sm" onClick={handleGenerateFakeNotifications}>
+            <Sparkles className="h-4 w-4 mr-2" />
+            Generate Fake Notifications
           </Button>
-        )}
+          {notifications.some((n) => !n.read) && (
+            <Button variant="outline" size="sm" onClick={handleMarkAllRead}>
+              <Check className="h-4 w-4 mr-2" />
+              Mark all as read
+            </Button>
+          )}
+        </div>
       </div>
 
       {filteredNotifications.length === 0 ? (

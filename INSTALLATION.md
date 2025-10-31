@@ -52,7 +52,6 @@ petssocnnetworkmobile/
 │   ├── dashboard/         # User dashboard
 │   ├── blog/              # Blog posts
 │   ├── feed/              # Social feed
-│   ├── explore/           # Explore page
 │   ├── wiki/              # Pet care wiki
 │   ├── shelters/          # Animal shelters
 │   └── ...

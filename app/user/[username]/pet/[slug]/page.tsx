@@ -188,17 +188,17 @@ export default function PetProfilePage({ params }: { params: Promise<{ username:
                 )}
               </div>
               <div className="flex items-center gap-4 text-sm">
-                <div className="flex items-center gap-2">
+                <Link href={`/user/${username}/pet/${slug}/followers`} className="flex items-center gap-2 hover:text-primary transition-colors cursor-pointer">
                   <Heart className="h-4 w-4 text-muted-foreground" />
                   <span className="font-semibold">{pet.followers.length}</span>
                   <span className="text-muted-foreground">{pet.followers.length === 1 ? "Follower" : "Followers"}</span>
-                </div>
+                </Link>
                 {pet.friends && pet.friends.length > 0 && (
-                  <div className="flex items-center gap-2">
+                  <Link href={`/user/${username}/pet/${slug}/friends`} className="flex items-center gap-2 hover:text-primary transition-colors cursor-pointer">
                     <Users className="h-4 w-4 text-muted-foreground" />
                     <span className="font-semibold">{pet.friends.length}</span>
                     <span className="text-muted-foreground">{pet.friends.length === 1 ? "Friend" : "Friends"}</span>
-                  </div>
+                  </Link>
                 )}
               </div>
             </div>

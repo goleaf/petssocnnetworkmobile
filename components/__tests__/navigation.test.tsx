@@ -66,7 +66,6 @@ describe('Navigation', () => {
     expect(screen.getByText('Wiki')).toBeInTheDocument()
     expect(screen.getByText('Shelters')).toBeInTheDocument()
     expect(screen.getByText('Search')).toBeInTheDocument()
-    expect(screen.getByText('Explore')).toBeInTheDocument()
   })
 
   it('should show additional items for authenticated users', async () => {

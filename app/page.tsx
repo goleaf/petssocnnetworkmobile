@@ -356,12 +356,31 @@ export default function HomePage() {
                       <div className="flex items-center justify-between">
                         <Select value={selectedPet} onValueChange={setSelectedPet}>
                           <SelectTrigger className="w-[200px]">
-                            <SelectValue placeholder="Select pet" />
+                            <SelectValue placeholder="Select pet">
+                              {selectedPet && (() => {
+                                const selectedPetObj = myPets.find((p) => p.id === selectedPet)
+                                return selectedPetObj ? (
+                                  <div className="flex items-center gap-2">
+                                    <Avatar className="h-5 w-5 flex-shrink-0">
+                                      <AvatarImage src={selectedPetObj.avatar || "/placeholder.svg"} alt={selectedPetObj.name} />
+                                      <AvatarFallback className="text-xs">{selectedPetObj.name.charAt(0)}</AvatarFallback>
+                                    </Avatar>
+                                    <span className="truncate">{selectedPetObj.name}</span>
+                                  </div>
+                                ) : null
+                              })()}
+                            </SelectValue>
                           </SelectTrigger>
                           <SelectContent>
                             {myPets.map((pet) => (
                               <SelectItem key={pet.id} value={pet.id}>
-                                {pet.name}
+                                <div className="flex items-center gap-2">
+                                  <Avatar className="h-6 w-6 flex-shrink-0">
+                                    <AvatarImage src={pet.avatar || "/placeholder.svg"} alt={pet.name} />
+                                    <AvatarFallback className="text-xs">{pet.name.charAt(0)}</AvatarFallback>
+                                  </Avatar>
+                                  <span>{pet.name}</span>
+                                </div>
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -844,7 +863,7 @@ function FeedPostCard({
               </Link>
             ))}
             {post.hashtags?.slice(0, 3).map((tag) => (
-              <Link key={tag} href={`/explore/hashtag/${encodeURIComponent(tag)}`}>
+              <Link key={tag} href={`/search?q=${encodeURIComponent(`#${tag}`)}&tab=blogs`}>
                 <Badge
                   variant="outline"
                   className="text-xs cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors"

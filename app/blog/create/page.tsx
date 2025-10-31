@@ -11,6 +11,7 @@ import { BackButton } from "@/components/ui/back-button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { addBlogPost, getPetsByOwnerId } from "@/lib/storage"
 import type { BlogPost } from "@/lib/types"
 import { ArrowLeft, Save, Send, Trash2 } from "lucide-react"
@@ -203,13 +204,32 @@ export default function CreateBlogPage() {
                   Select Pet
                 </Label>
                 <Select value={formData.petId} onValueChange={(value) => setFormData({ ...formData, petId: value })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a pet" />
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select a pet">
+                      {(() => {
+                        const selectedPet = myPets.find((p) => p.id === formData.petId)
+                        return selectedPet ? (
+                          <div className="flex items-center gap-2">
+                            <Avatar className="h-5 w-5 flex-shrink-0">
+                              <AvatarImage src={selectedPet.avatar || "/placeholder.svg"} alt={selectedPet.name} />
+                              <AvatarFallback className="text-xs">{selectedPet.name.charAt(0)}</AvatarFallback>
+                            </Avatar>
+                            <span className="truncate">{selectedPet.name}</span>
+                          </div>
+                        ) : null
+                      })()}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {myPets.map((pet) => (
                       <SelectItem key={pet.id} value={pet.id}>
-                        {pet.name}
+                        <div className="flex items-center gap-2">
+                          <Avatar className="h-6 w-6 flex-shrink-0">
+                            <AvatarImage src={pet.avatar || "/placeholder.svg"} alt={pet.name} />
+                            <AvatarFallback className="text-xs">{pet.name.charAt(0)}</AvatarFallback>
+                          </Avatar>
+                          <span>{pet.name}</span>
+                        </div>
                       </SelectItem>
                     ))}
                   </SelectContent>

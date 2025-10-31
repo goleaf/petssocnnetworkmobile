@@ -25,7 +25,6 @@ import {
   PenSquare,
   Settings,
   Search,
-  Compass,
   Home,
   Heart,
   TrendingUp,
@@ -53,7 +52,6 @@ export function Navigation() {
     { href: "/wiki", label: "Wiki", icon: BookOpen },
     { href: "/shelters", label: "Shelters", icon: Heart },
     { href: "/search", label: "Search", icon: Search },
-    { href: "/explore", label: "Explore", icon: Compass },
   ]
 
   const handleLogout = () => {

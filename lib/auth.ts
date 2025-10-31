@@ -63,14 +63,27 @@ export const useAuth = create<AuthState>()(
           return { success: false, error: "Invalid username or password" }
         }
 
-        // Check password - user must have a password set
+        // If user doesn't have a password set, set it from the provided password
         if (!user.password) {
-          return { success: false, error: "Invalid username or password" }
-        }
-
-        // Verify password matches
-        if (user.password !== password) {
-          return { success: false, error: "Invalid username or password" }
+          if (!password || password.trim() === "") {
+            return { success: false, error: "Password is required" }
+          }
+          // Set the password for the user
+          const users = getUsers()
+          const userIndex = users.findIndex((u) => u.id === user.id)
+          if (userIndex !== -1) {
+            users[userIndex] = { ...users[userIndex], password }
+            if (typeof window !== "undefined") {
+              localStorage.setItem("pet_social_users", JSON.stringify(users))
+            }
+            // Update the user object for login
+            user.password = password
+          }
+        } else {
+          // Verify password matches if user has a password
+          if (user.password !== password) {
+            return { success: false, error: "Invalid username or password" }
+          }
         }
 
         setStorageUser(user.id)

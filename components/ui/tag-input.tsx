@@ -1,15 +1,9 @@
 "use client"
 
-import { useCallback, useRef, useEffect, useState } from "react"
-import dynamic from "next/dynamic"
-
-// Dynamic import to avoid build issues with Tagify JSX
-const Tags = dynamic(() => import("@yaireo/tagify/react").then((mod) => mod.default), {
-  ssr: false,
-  loading: () => (
-    <div className="w-full h-10 border border-input rounded-md bg-background animate-pulse" />
-  ),
-})
+import { useState, useEffect, useRef, KeyboardEvent } from "react"
+import { X } from "lucide-react"
+import { cn } from "@/lib/utils"
+import { Badge } from "@/components/ui/badge"
 
 interface TagInputProps {
   value: string
@@ -19,43 +13,92 @@ interface TagInputProps {
 }
 
 export function TagInput({ value, onChange, placeholder, className }: TagInputProps) {
-  const tagifyRef = useRef<any>(null)
-  const [mounted, setMounted] = useState(false)
+  const [tags, setTags] = useState<string[]>([])
+  const [inputValue, setInputValue] = useState("")
+  const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    setMounted(true)
-  }, [])
+    if (value) {
+      const tagArray = value
+        .split(",")
+        .map((tag) => tag.trim())
+        .filter((tag) => tag)
+      setTags(tagArray)
+    } else {
+      setTags([])
+    }
+  }, [value])
 
-  const handleChange = useCallback(
-    (e: any) => {
-      const tagify = e.detail.tagify
-      const tagsArray = tagify.value.map((tag: any) => tag.value).join(", ")
-      onChange(tagsArray)
-    },
-    [onChange]
-  )
+  const updateValue = (newTags: string[]) => {
+    setTags(newTags)
+    onChange(newTags.join(", "))
+  }
 
-  if (!mounted) {
-    return (
-      <div className={`w-full h-10 border border-input rounded-md bg-background animate-pulse ${className || ""}`} />
-    )
+  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" || e.key === ",") {
+      e.preventDefault()
+      addTag()
+    } else if (e.key === "Backspace" && inputValue === "" && tags.length > 0) {
+      updateValue(tags.slice(0, -1))
+    }
+  }
+
+  const addTag = () => {
+    const trimmed = inputValue.trim()
+    if (trimmed && !tags.includes(trimmed)) {
+      updateValue([...tags, trimmed])
+      setInputValue("")
+    } else if (trimmed && tags.includes(trimmed)) {
+      setInputValue("")
+    }
+  }
+
+  const removeTag = (tagToRemove: string) => {
+    updateValue(tags.filter((tag) => tag !== tagToRemove))
+  }
+
+  const handleBlur = () => {
+    addTag()
   }
 
   return (
-    <div className={`border border-input rounded-md bg-background ${className || ""}`}>
-      <Tags
-        tagifyRef={tagifyRef}
-        whitelist={[]}
-        placeholder={placeholder || "Add tags"}
-        settings={{
-          duplicates: false,
-          maxTags: 20,
-          trim: true,
-        }}
-        defaultValue={value}
-        onChange={handleChange}
+    <div
+      className={cn(
+        "flex flex-wrap gap-2 p-2 min-h-[44px] border border-input rounded-md bg-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2",
+        className
+      )}
+      onClick={() => inputRef.current?.focus()}
+    >
+      {tags.map((tag) => (
+        <Badge
+          key={tag}
+          variant="secondary"
+          className="flex items-center gap-1 px-2 py-1 text-sm font-medium"
+        >
+          {tag}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              removeTag(tag)
+            }}
+            className="ml-1 rounded-full hover:bg-destructive/20 p-0.5 transition-colors"
+            aria-label={`Remove ${tag}`}
+          >
+            <X className="h-3 w-3" />
+          </button>
+        </Badge>
+      ))}
+      <input
+        ref={inputRef}
+        type="text"
+        value={inputValue}
+        onChange={(e) => setInputValue(e.target.value)}
+        onKeyDown={handleKeyDown}
+        onBlur={handleBlur}
+        placeholder={tags.length === 0 ? placeholder : ""}
+        className="flex-1 min-w-[120px] border-0 outline-none bg-transparent text-sm placeholder:text-muted-foreground"
       />
     </div>
   )
 }
-
