@@ -199,10 +199,12 @@ export default function CreateBlogPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="petId">Select Pet *</Label>
+                <Label htmlFor="petId" required>
+                  Select Pet
+                </Label>
                 <Select value={formData.petId} onValueChange={(value) => setFormData({ ...formData, petId: value })}>
                   <SelectTrigger>
-                    <SelectValue />
+                    <SelectValue placeholder="Select a pet" />
                   </SelectTrigger>
                   <SelectContent>
                     {myPets.map((pet) => (
@@ -215,7 +217,7 @@ export default function CreateBlogPage() {
               </div>
 
               <div className="space-y-2">
-                <Label>Privacy</Label>
+                <Label htmlFor="privacy">Privacy</Label>
                 <PrivacySelector
                   value={formData.privacy}
                   onChange={(value) => setFormData({ ...formData, privacy: value })}
@@ -224,18 +226,23 @@ export default function CreateBlogPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="title">Title *</Label>
+              <Label htmlFor="title" required>
+                Title
+              </Label>
               <Input
                 id="title"
                 value={formData.title}
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                 placeholder="Give your post a catchy title"
                 required
+                className="h-11"
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="content">Content *</Label>
+              <Label htmlFor="content" required description="Use markdown for formatting. Add hashtags with #tag">
+                Content
+              </Label>
               <MarkdownEditor
                 value={formData.content}
                 onChange={(value) => setFormData({ ...formData, content: value })}
@@ -244,27 +251,29 @@ export default function CreateBlogPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="tags">Tags</Label>
+              <Label htmlFor="tags" description="Add tags separated by commas">
+                Tags
+              </Label>
               <Input
                 id="tags"
                 value={formData.tags}
                 onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
                 placeholder="adventure, training, funny (comma separated)"
+                className="h-11"
               />
-              <p className="text-xs text-muted-foreground">Separate tags with commas</p>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="hashtags">Hashtags</Label>
+              <Label htmlFor="hashtags" description="Hashtags in your content (#tag) will be automatically detected">
+                Hashtags
+              </Label>
               <Input
                 id="hashtags"
                 value={formData.hashtags}
                 onChange={(e) => setFormData({ ...formData, hashtags: e.target.value })}
                 placeholder="dogs, puppylove, goldenretriever (comma separated)"
+                className="h-11"
               />
-              <p className="text-xs text-muted-foreground">
-                Hashtags in your content (#tag) will be automatically detected
-              </p>
             </div>
 
             <Button type="submit" className="w-full">
