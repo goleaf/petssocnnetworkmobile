@@ -2260,6 +2260,86 @@ export const mockBlogPosts: BlogPost[] = [
     }
   }),
   
+  // Add 20 additional blog posts with random categories
+  ...Array.from({ length: 20 }, (_, i) => {
+    const postId = 101 + i
+    const allPets = ["1", "2", "3", "4", "5", "6"]
+    const allAuthors = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]
+    const petId = allPets[i % allPets.length]
+    const authorId = allAuthors[i % allAuthors.length]
+    const date = new Date(2024, 11, 10 - i)
+    const dateStr = date.toISOString().split("T")[0]
+    
+    // Categories and their associated tags
+    const categories = [
+      {
+        category: "adventure",
+        templates: [
+          { title: "Mountain Hiking Expedition", content: "Today we conquered a new mountain trail! The views were breathtaking and my pet was a natural hiker. We both got a great workout and enjoyed nature's beauty together.", tags: ["adventure", "hiking", "outdoor", "mountain"] },
+          { title: "Camping Under the Stars", content: "First camping trip was a huge success! Set up the tent, built a campfire, and watched the stars. My pet loved exploring the campsite and snuggling in the tent at night.", tags: ["adventure", "camping", "outdoor", "travel"] },
+          { title: "Forest Trail Discovery", content: "Found an amazing hidden trail in the local forest. The path was peaceful and my pet enjoyed all the new smells and sights. Great way to spend a weekend morning!", tags: ["adventure", "trail", "outdoor", "nature"] },
+          { title: "Riverside Adventure", content: "Spent the day exploring along the river. My pet loved splashing in the shallow water and chasing after sticks. Perfect weather for an outdoor adventure!", tags: ["adventure", "river", "outdoor", "swimming"] },
+        ],
+      },
+      {
+        category: "training",
+        templates: [
+          { title: "Advanced Trick Training", content: "Working on more complex tricks now. The dedication is paying off and seeing the progress makes all the effort worthwhile. Training builds such a strong bond!", tags: ["training", "tricks", "advanced", "learning"] },
+          { title: "Obedience Class Progress", content: "Just finished another obedience class session. The instructor praised our progress and my pet is becoming so well-behaved. Consistency is key!", tags: ["training", "obedience", "lesson", "progress"] },
+          { title: "Agility Training Session", content: "Agility training is getting more challenging but we're both loving it! The course practice is improving coordination and strengthening our teamwork.", tags: ["training", "agility", "exercise", "practice"] },
+          { title: "New Command Mastered", content: "Successfully taught a new command today! The celebration with treats was well-deserved. Every small achievement feels like a major milestone.", tags: ["training", "commands", "teach", "success"] },
+        ],
+      },
+      {
+        category: "funny",
+        templates: [
+          { title: "Bath Time Fails", content: "Attempted bath time and it turned into a comedy show! The reaction was priceless and I couldn't help but laugh. Some things never get easier but they're always entertaining!", tags: ["funny", "bath", "cute", "silly"] },
+          { title: "Kitchen Helper Mishaps", content: "My pet decided to 'help' in the kitchen today. Let's just say the kitchen looks different now but in the funniest way possible. These moments make life interesting!", tags: ["funny", "kitchen", "hilarious", "cute"] },
+          { title: "Zoomies at Midnight", content: "The midnight zoomies are real! Just when I thought everyone was settled, chaos erupted. These spontaneous energy bursts are so funny to watch.", tags: ["funny", "zoomies", "silly", "energy"] },
+          { title: "Sneaky Treat Stealing", content: "Caught my pet in the act of being extra sneaky for treats. The guilty look afterwards was absolutely adorable. Can't help but reward such cleverness!", tags: ["funny", "sneaky", "treats", "adorable"] },
+        ],
+      },
+      {
+        category: "photos",
+        templates: [
+          { title: "Golden Hour Photography", content: "Captured some stunning photos during golden hour today. The lighting was perfect and my pet looked absolutely majestic in every shot. Nature's lighting beats anything artificial!", tags: ["photo", "photography", "golden-hour", "beautiful"] },
+          { title: "Action Shot Collection", content: "Managed to capture some incredible action shots during playtime. Freezing those moments in time shows just how graceful and athletic pets can be. Photography at its best!", tags: ["photo", "action", "picture", "play"] },
+          { title: "Portrait Session Success", content: "Professional portrait session turned out amazing! Every photo shows my pet's personality shining through. These memories will last forever.", tags: ["photo", "portrait", "photography", "cute"] },
+          { title: "Nature Photo Series", content: "Created a beautiful series of photos with nature as the backdrop. The combination of natural beauty and pet charm creates magical moments captured forever.", tags: ["photo", "nature", "picture", "outdoor"] },
+        ],
+      },
+      {
+        category: "playtime",
+        templates: [
+          { title: "New Toy Collection", content: "Added some exciting new toys to our collection! The interactive ones are already favorites and provide hours of entertainment. Playtime just got way more fun!", tags: ["playtime", "toys", "fun", "games"] },
+          { title: "Dog Park Playdate", content: "Amazing playdate at the dog park today! Socializing with other pets and owners while watching everyone have fun together. These social experiences are so valuable!", tags: ["playtime", "park", "social", "fun"] },
+          { title: "Indoor Play Session", content: "Rainy day didn't stop us from having fun! Set up an indoor play area and we had a blast with puzzles and games. Creativity makes every day special.", tags: ["playtime", "indoor", "games", "activity"] },
+          { title: "Fetch Championship", content: "Played the longest game of fetch ever! We both got tired but couldn't stop. The determination and enthusiasm never ceases to amaze me. Best workout ever!", tags: ["playtime", "fetch", "exercise", "fun"] },
+        ],
+      },
+    ]
+    
+    // Select random category
+    const randomCategory = categories[Math.floor(Math.random() * categories.length)]
+    const template = randomCategory.templates[Math.floor(Math.random() * randomCategory.templates.length)]
+    const likes = Array.from({ length: Math.floor(Math.random() * 8) }, (_, j) => String((j % 10) + 1))
+    const hashtags = template.tags.slice(0, 2)
+    
+    return {
+      id: String(postId),
+      petId,
+      authorId,
+      title: template.title,
+      content: template.content,
+      tags: template.tags,
+      hashtags,
+      likes,
+      createdAt: dateStr,
+      updatedAt: dateStr,
+      privacy: "public" as const,
+    }
+  }),
+  
   // Generate articles with subcategories - 20 articles per subcategory
   // Define subcategories for each main category
   (() => {
