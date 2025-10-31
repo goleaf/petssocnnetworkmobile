@@ -147,7 +147,7 @@ export default function BlogPage() {
       </div>
 
       <Tabs value={selectedCategory} onValueChange={handleCategoryChange} className="w-full mb-6">
-        <TabsList className="grid w-full grid-cols-3 lg:grid-cols-6">
+        <TabsList className="grid w-full grid-cols-3 lg:grid-cols-6 mb-6">
           {categories.map((category) => (
             <TabsTrigger key={category.value} value={category.value} className="flex items-center gap-2">
               <category.icon className="h-4 w-4" />

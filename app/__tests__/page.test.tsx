@@ -23,6 +23,7 @@ jest.mock('@/lib/storage', () => ({
   getBlogPosts: jest.fn(),
   getPets: jest.fn(),
   getUsers: jest.fn(),
+  getPetsByOwnerId: jest.fn(),
 }))
 
 // Mock DashboardContent
@@ -54,6 +55,7 @@ describe('HomePage', () => {
     ;(storage.getBlogPosts as jest.Mock).mockReturnValue([])
     ;(storage.getPets as jest.Mock).mockReturnValue([])
     ;(storage.getUsers as jest.Mock).mockReturnValue([])
+    ;(storage.getPetsByOwnerId as jest.Mock).mockReturnValue([])
   })
 
   it('should render landing page when user is not authenticated', () => {

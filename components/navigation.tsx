@@ -46,7 +46,7 @@ export function Navigation() {
   const navItems = [
     ...(isAuthenticated
       ? [
-          { href: "/feed", label: "Feed", icon: Home },
+          { href: "/", label: "Feed", icon: Home },
         ]
       : []),
     { href: "/blog", label: "Blogs", icon: FileText },
@@ -127,7 +127,7 @@ export function Navigation() {
                         Profile
                       </DropdownMenuItem>
                     </Link>
-                    <Link href="/feed">
+                    <Link href="/">
                       <DropdownMenuItem>
                         <Home className="mr-2 h-4 w-4" />
                         Feed

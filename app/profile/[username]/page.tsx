@@ -167,20 +167,20 @@ export default function ProfilePage({ params }: { params: Promise<{ username: st
                   Joined {formatDate(user.joinedAt)}
                 </div>
               </div>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-4">
                 {canViewPets ? (
                   <Link href={`/profile/${user.username}/pets`}>
-                    <Card className="hover:shadow-lg transition-all duration-200 hover:border-primary/50 cursor-pointer group h-full">
-                      <CardContent className="p-4 text-center">
-                        <div className="flex flex-col items-center justify-center space-y-2">
-                          <div className="p-2 rounded-full bg-primary/10 group-hover:bg-primary/20 transition-colors">
-                            <PawPrint className="h-5 w-5 text-primary group-hover:scale-110 transition-transform" />
+                    <Card className="hover:shadow-md transition-all duration-200 hover:border-primary/50 cursor-pointer group h-full">
+                      <CardContent className="p-2 text-center">
+                        <div className="flex flex-col items-center justify-center space-y-1">
+                          <div className="p-1 rounded-full bg-primary/10 group-hover:bg-primary/20 transition-colors">
+                            <PawPrint className="h-3 w-3 text-primary group-hover:scale-110 transition-transform" />
                           </div>
                           <div>
-                            <p className="text-2xl font-bold text-foreground group-hover:text-primary transition-colors">
+                            <p className="text-base font-bold text-foreground group-hover:text-primary transition-colors">
                               {pets.length}
                             </p>
-                            <p className="text-xs font-medium text-muted-foreground mt-1">
+                            <p className="text-[10px] font-medium text-muted-foreground">
                               {pets.length === 1 ? "Pet" : "Pets"}
                             </p>
                           </div>
@@ -190,14 +190,14 @@ export default function ProfilePage({ params }: { params: Promise<{ username: st
                   </Link>
                 ) : (
                   <Card className="opacity-50 cursor-not-allowed h-full">
-                    <CardContent className="p-4 text-center">
-                      <div className="flex flex-col items-center justify-center space-y-2">
-                        <div className="p-2 rounded-full bg-muted">
-                          <Lock className="h-5 w-5 text-muted-foreground" />
+                    <CardContent className="p-2 text-center">
+                      <div className="flex flex-col items-center justify-center space-y-1">
+                        <div className="p-1 rounded-full bg-muted">
+                          <Lock className="h-3 w-3 text-muted-foreground" />
                         </div>
                         <div>
-                          <p className="text-2xl font-bold text-muted-foreground">—</p>
-                          <p className="text-xs font-medium text-muted-foreground mt-1">Pets</p>
+                          <p className="text-base font-bold text-muted-foreground">—</p>
+                          <p className="text-[10px] font-medium text-muted-foreground">Pets</p>
                         </div>
                       </div>
                     </CardContent>
@@ -205,17 +205,17 @@ export default function ProfilePage({ params }: { params: Promise<{ username: st
                 )}
                 {canViewPosts ? (
                   <Link href={`/profile/${user.username}/posts`}>
-                    <Card className="hover:shadow-lg transition-all duration-200 hover:border-primary/50 cursor-pointer group h-full">
-                      <CardContent className="p-4 text-center">
-                        <div className="flex flex-col items-center justify-center space-y-2">
-                          <div className="p-2 rounded-full bg-primary/10 group-hover:bg-primary/20 transition-colors">
-                            <FileText className="h-5 w-5 text-primary group-hover:scale-110 transition-transform" />
+                    <Card className="hover:shadow-md transition-all duration-200 hover:border-primary/50 cursor-pointer group h-full">
+                      <CardContent className="p-2 text-center">
+                        <div className="flex flex-col items-center justify-center space-y-1">
+                          <div className="p-1 rounded-full bg-primary/10 group-hover:bg-primary/20 transition-colors">
+                            <FileText className="h-3 w-3 text-primary group-hover:scale-110 transition-transform" />
                           </div>
                           <div>
-                            <p className="text-2xl font-bold text-foreground group-hover:text-primary transition-colors">
+                            <p className="text-base font-bold text-foreground group-hover:text-primary transition-colors">
                               {posts.length}
                             </p>
-                            <p className="text-xs font-medium text-muted-foreground mt-1">Posts</p>
+                            <p className="text-[10px] font-medium text-muted-foreground">Posts</p>
                           </div>
                         </div>
                       </CardContent>
@@ -223,14 +223,14 @@ export default function ProfilePage({ params }: { params: Promise<{ username: st
                   </Link>
                 ) : (
                   <Card className="opacity-50 cursor-not-allowed h-full">
-                    <CardContent className="p-4 text-center">
-                      <div className="flex flex-col items-center justify-center space-y-2">
-                        <div className="p-2 rounded-full bg-muted">
-                          <Lock className="h-5 w-5 text-muted-foreground" />
+                    <CardContent className="p-2 text-center">
+                      <div className="flex flex-col items-center justify-center space-y-1">
+                        <div className="p-1 rounded-full bg-muted">
+                          <Lock className="h-3 w-3 text-muted-foreground" />
                         </div>
                         <div>
-                          <p className="text-2xl font-bold text-muted-foreground">—</p>
-                          <p className="text-xs font-medium text-muted-foreground mt-1">Posts</p>
+                          <p className="text-base font-bold text-muted-foreground">—</p>
+                          <p className="text-[10px] font-medium text-muted-foreground">Posts</p>
                         </div>
                       </div>
                     </CardContent>
@@ -238,17 +238,17 @@ export default function ProfilePage({ params }: { params: Promise<{ username: st
                 )}
                 {canViewFollowersList ? (
                   <Link href={`/user/${user.username}/followers`}>
-                    <Card className="hover:shadow-lg transition-all duration-200 hover:border-primary/50 cursor-pointer group h-full">
-                      <CardContent className="p-4 text-center">
-                        <div className="flex flex-col items-center justify-center space-y-2">
-                          <div className="p-2 rounded-full bg-primary/10 group-hover:bg-primary/20 transition-colors">
-                            <Users className="h-5 w-5 text-primary group-hover:scale-110 transition-transform" />
+                    <Card className="hover:shadow-md transition-all duration-200 hover:border-primary/50 cursor-pointer group h-full">
+                      <CardContent className="p-2 text-center">
+                        <div className="flex flex-col items-center justify-center space-y-1">
+                          <div className="p-1 rounded-full bg-primary/10 group-hover:bg-primary/20 transition-colors">
+                            <Users className="h-3 w-3 text-primary group-hover:scale-110 transition-transform" />
                           </div>
                           <div>
-                            <p className="text-2xl font-bold text-foreground group-hover:text-primary transition-colors">
+                            <p className="text-base font-bold text-foreground group-hover:text-primary transition-colors">
                               {user.followers.length}
                             </p>
-                            <p className="text-xs font-medium text-muted-foreground mt-1">Followers</p>
+                            <p className="text-[10px] font-medium text-muted-foreground">Followers</p>
                           </div>
                         </div>
                       </CardContent>
@@ -256,14 +256,14 @@ export default function ProfilePage({ params }: { params: Promise<{ username: st
                   </Link>
                 ) : (
                   <Card className="opacity-50 cursor-not-allowed h-full">
-                    <CardContent className="p-4 text-center">
-                      <div className="flex flex-col items-center justify-center space-y-2">
-                        <div className="p-2 rounded-full bg-muted">
-                          <Lock className="h-5 w-5 text-muted-foreground" />
+                    <CardContent className="p-2 text-center">
+                      <div className="flex flex-col items-center justify-center space-y-1">
+                        <div className="p-1 rounded-full bg-muted">
+                          <Lock className="h-3 w-3 text-muted-foreground" />
                         </div>
                         <div>
-                          <p className="text-2xl font-bold text-muted-foreground">—</p>
-                          <p className="text-xs font-medium text-muted-foreground mt-1">Followers</p>
+                          <p className="text-base font-bold text-muted-foreground">—</p>
+                          <p className="text-[10px] font-medium text-muted-foreground">Followers</p>
                         </div>
                       </div>
                     </CardContent>
@@ -271,17 +271,17 @@ export default function ProfilePage({ params }: { params: Promise<{ username: st
                 )}
                 {canViewFollowingList ? (
                   <Link href={`/user/${user.username}/following`}>
-                    <Card className="hover:shadow-lg transition-all duration-200 hover:border-primary/50 cursor-pointer group h-full">
-                      <CardContent className="p-4 text-center">
-                        <div className="flex flex-col items-center justify-center space-y-2">
-                          <div className="p-2 rounded-full bg-primary/10 group-hover:bg-primary/20 transition-colors">
-                            <Heart className="h-5 w-5 text-primary group-hover:scale-110 transition-transform" />
+                    <Card className="hover:shadow-md transition-all duration-200 hover:border-primary/50 cursor-pointer group h-full">
+                      <CardContent className="p-2 text-center">
+                        <div className="flex flex-col items-center justify-center space-y-1">
+                          <div className="p-1 rounded-full bg-primary/10 group-hover:bg-primary/20 transition-colors">
+                            <Heart className="h-3 w-3 text-primary group-hover:scale-110 transition-transform" />
                           </div>
                           <div>
-                            <p className="text-2xl font-bold text-foreground group-hover:text-primary transition-colors">
+                            <p className="text-base font-bold text-foreground group-hover:text-primary transition-colors">
                               {user.following.length}
                             </p>
-                            <p className="text-xs font-medium text-muted-foreground mt-1">Following</p>
+                            <p className="text-[10px] font-medium text-muted-foreground">Following</p>
                           </div>
                         </div>
                       </CardContent>
@@ -289,14 +289,14 @@ export default function ProfilePage({ params }: { params: Promise<{ username: st
                   </Link>
                 ) : (
                   <Card className="opacity-50 cursor-not-allowed h-full">
-                    <CardContent className="p-4 text-center">
-                      <div className="flex flex-col items-center justify-center space-y-2">
-                        <div className="p-2 rounded-full bg-muted">
-                          <Lock className="h-5 w-5 text-muted-foreground" />
+                    <CardContent className="p-2 text-center">
+                      <div className="flex flex-col items-center justify-center space-y-1">
+                        <div className="p-1 rounded-full bg-muted">
+                          <Lock className="h-3 w-3 text-muted-foreground" />
                         </div>
                         <div>
-                          <p className="text-2xl font-bold text-muted-foreground">—</p>
-                          <p className="text-xs font-medium text-muted-foreground mt-1">Following</p>
+                          <p className="text-base font-bold text-muted-foreground">—</p>
+                          <p className="text-[10px] font-medium text-muted-foreground">Following</p>
                         </div>
                       </div>
                     </CardContent>

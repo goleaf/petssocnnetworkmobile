@@ -36,8 +36,8 @@ export function LoginForm({ onSuccess, onSwitchToRegister }: LoginFormProps) {
 
     if (result.success) {
       onSuccess?.()
-      // Redirect to feed after successful login
-      router.push("/feed")
+      // Redirect to home (feed) after successful login
+      router.push("/")
       router.refresh()
     } else {
       setError(result.error || "Login failed")

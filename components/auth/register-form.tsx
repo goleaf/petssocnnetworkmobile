@@ -58,8 +58,8 @@ export function RegisterForm({ onSuccess, onSwitchToLogin }: RegisterFormProps) 
 
     if (result.success) {
       onSuccess?.()
-      // Redirect to feed after successful registration
-      router.push("/feed")
+      // Redirect to home (feed) after successful registration
+      router.push("/")
       router.refresh()
     } else {
       setError(result.error || "Registration failed")
