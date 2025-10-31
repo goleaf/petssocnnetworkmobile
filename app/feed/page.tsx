@@ -57,11 +57,13 @@ export default function FeedPage() {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
+    // Redirect to home if not authenticated
     if (!isAuthenticated) {
       router.push("/")
       return
     }
 
+    // Load feed data if user is authenticated
     if (user) {
       setIsLoading(true)
       const pets = getPetsByOwnerId(user.id)
@@ -229,55 +231,55 @@ export default function FeedPage() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
         <Link href={`/profile/${user.username}/pets`}>
           <Card className="hover:shadow-lg transition-all cursor-pointer">
-            <CardContent className="p-6">
+            <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">My Pets</p>
-                  <p className="text-3xl font-bold mt-1">{stats[0].value}</p>
+                  <p className="text-xs text-muted-foreground">My Pets</p>
+                  <p className="text-2xl font-bold">{stats[0].value}</p>
                 </div>
-                <PawPrint className="h-8 w-8 text-blue-500" />
+                <PawPrint className="h-6 w-6 text-blue-500" />
               </div>
             </CardContent>
           </Card>
         </Link>
         <Link href={`/user/${user.username}/following`}>
           <Card className="hover:shadow-lg transition-all cursor-pointer">
-            <CardContent className="p-6">
+            <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">Following</p>
-                  <p className="text-3xl font-bold mt-1">{stats[1].value}</p>
+                  <p className="text-xs text-muted-foreground">Following</p>
+                  <p className="text-2xl font-bold">{stats[1].value}</p>
                 </div>
-                <Users className="h-8 w-8 text-green-500" />
+                <Users className="h-6 w-6 text-green-500" />
               </div>
             </CardContent>
           </Card>
         </Link>
         <Link href={`/user/${user.username}/followers`}>
           <Card className="hover:shadow-lg transition-all cursor-pointer">
-            <CardContent className="p-6">
+            <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">Followers</p>
-                  <p className="text-3xl font-bold mt-1">{stats[2].value}</p>
+                  <p className="text-xs text-muted-foreground">Followers</p>
+                  <p className="text-2xl font-bold">{stats[2].value}</p>
                 </div>
-                <Heart className="h-8 w-8 text-red-500" />
+                <Heart className="h-6 w-6 text-red-500" />
               </div>
             </CardContent>
           </Card>
         </Link>
         <Link href={`/profile/${user.username}/posts`}>
           <Card className="hover:shadow-lg transition-all cursor-pointer">
-            <CardContent className="p-6">
+            <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">Total Posts</p>
-                  <p className="text-3xl font-bold mt-1">{stats[3].value}</p>
+                  <p className="text-xs text-muted-foreground">Total Posts</p>
+                  <p className="text-2xl font-bold">{stats[3].value}</p>
                 </div>
-                <BookOpen className="h-8 w-8 text-purple-500" />
+                <BookOpen className="h-6 w-6 text-purple-500" />
               </div>
             </CardContent>
           </Card>

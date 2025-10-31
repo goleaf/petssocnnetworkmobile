@@ -31,6 +31,8 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import { BadgeDisplay } from "@/components/badge-display"
+import { getPetUrlFromPet } from "@/lib/utils/pet-url"
+import { formatDate } from "@/lib/utils/date"
 import {
   canViewProfile,
   canViewUserPosts,
@@ -144,11 +146,18 @@ export default function UserProfilePage() {
   if (!user) return null
 
   const isOwnProfile = currentUser?.id === user.id
+  const viewerId = currentUser?.id || null
+  const canViewPets = canViewUserPets(user, viewerId)
+  const canViewPosts = canViewUserPosts(user, viewerId)
+  const canViewFollowersList = canViewFollowers(user, viewerId)
+  const canViewFollowingList = canViewFollowing(user, viewerId)
+  const canFollow = canSendFollowRequest(user, viewerId)
+  
   const stats = [
-    { label: "Pets", value: pets.length, icon: PawPrint },
-    { label: "Posts", value: posts.length, icon: BookOpen },
-    { label: "Followers", value: user.followers.length, icon: Users },
-    { label: "Following", value: user.following.length, icon: Heart },
+    { label: "Pets", value: canViewPets ? pets.length : 0, icon: PawPrint, canView: canViewPets },
+    { label: "Posts", value: canViewPosts ? posts.length : 0, icon: BookOpen, canView: canViewPosts },
+    { label: "Followers", value: canViewFollowersList ? user.followers.length : 0, icon: Users, canView: canViewFollowersList },
+    { label: "Following", value: canViewFollowingList ? user.following.length : 0, icon: Heart, canView: canViewFollowingList },
   ]
 
   return (
@@ -209,19 +218,19 @@ export default function UserProfilePage() {
                       </>
                     ) : (
                       isAuthenticated && (
-                        <Button onClick={handleFollow} variant={isFollowing ? "outline" : "default"}>
+                        <>
                           {isFollowing ? (
-                            <>
+                            <Button onClick={handleFollow} variant="outline">
                               <UserMinus className="h-4 w-4 mr-2" />
                               Unfollow
-                            </>
-                          ) : (
-                            <>
+                            </Button>
+                          ) : canFollow ? (
+                            <Button onClick={handleFollow} variant="default">
                               <UserPlus className="h-4 w-4 mr-2" />
                               Follow
-                            </>
-                          )}
-                        </Button>
+                            </Button>
+                          ) : null}
+                        </>
                       )
                     )}
                   </div>
@@ -317,7 +326,14 @@ export default function UserProfilePage() {
               </TabsList>
 
               <TabsContent value="posts" className="space-y-4">
-                {posts.length > 0 ? (
+                {!canViewPosts ? (
+                  <Card>
+                    <CardContent className="p-12 text-center text-muted-foreground">
+                      <BookOpen className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                      <p>This user{"'"}s posts are private</p>
+                    </CardContent>
+                  </Card>
+                ) : posts.length > 0 ? (
                   posts.map((post) => {
                     const pet = pets.find((p) => p.id === post.petId)
                     return (
@@ -380,7 +396,14 @@ export default function UserProfilePage() {
               </TabsContent>
 
               <TabsContent value="pets" className="space-y-4">
-                {pets.length > 0 ? (
+                {!canViewPets ? (
+                  <Card>
+                    <CardContent className="p-12 text-center text-muted-foreground">
+                      <PawPrint className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                      <p>This user{"'"}s pets are private</p>
+                    </CardContent>
+                  </Card>
+                ) : pets.length > 0 ? (
                   <div className="grid md:grid-cols-2 gap-4">
                     {pets.map((pet) => (
                       <Link key={pet.id} href={getPetUrlFromPet(pet, user.username)}>
@@ -472,7 +495,7 @@ export default function UserProfilePage() {
                             <span>{user.occupation}</span>
                           </div>
                         )}
-                        {user.location && (
+                        {user.location && canViewProfileField("location", user, viewerId) && (
                           <div className="flex items-center gap-3">
                             <MapPin className="h-5 w-5 text-muted-foreground" />
                             <span>{user.location}</span>
@@ -491,7 +514,7 @@ export default function UserProfilePage() {
                             </a>
                           </div>
                         )}
-                        {user.email && (
+                        {user.email && canViewProfileField("email", user, viewerId) && (
                           <div className="flex items-center gap-3">
                             <Mail className="h-5 w-5 text-muted-foreground" />
                             <span>{user.email}</span>

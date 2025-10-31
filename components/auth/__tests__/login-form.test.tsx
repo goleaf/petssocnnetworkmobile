@@ -20,6 +20,7 @@ const mockRouter = {
   replace: jest.fn(),
   prefetch: jest.fn(),
   back: jest.fn(),
+  refresh: jest.fn(),
   pathname: '/',
   query: {},
   asPath: '/',
@@ -72,7 +73,8 @@ describe('LoginForm', () => {
 
     await waitFor(() => {
       expect(mockLogin).toHaveBeenCalledWith('testuser', 'password123')
-      expect(mockRouter.push).toHaveBeenCalledWith('/')
+      expect(mockRouter.push).toHaveBeenCalledWith('/feed')
+      expect(mockRouter.refresh).toHaveBeenCalled()
       expect(onSuccess).toHaveBeenCalled()
     })
   })

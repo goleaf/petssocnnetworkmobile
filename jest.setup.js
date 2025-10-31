@@ -9,6 +9,7 @@ jest.mock('next/navigation', () => ({
       replace: jest.fn(),
       prefetch: jest.fn(),
       back: jest.fn(),
+      refresh: jest.fn(),
       pathname: '/',
       query: {},
       asPath: '/',
