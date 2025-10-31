@@ -274,20 +274,7 @@ export default function FeedPage() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
-        <Link href={`/profile/${user.username}/pets`}>
-          <Card className="hover:shadow-lg transition-all cursor-pointer">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-muted-foreground">My Pets</p>
-                  <p className="text-2xl font-bold">{stats[0].value}</p>
-                </div>
-                <PawPrint className="h-6 w-6 text-blue-500" />
-              </div>
-            </CardContent>
-          </Card>
-        </Link>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-8">
         <Link href={`/user/${user.username}/following`}>
           <Card className="hover:shadow-lg transition-all cursor-pointer">
             <CardContent className="p-4">
