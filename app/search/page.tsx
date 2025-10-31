@@ -54,6 +54,7 @@ export default function SearchPage() {
       filters.category.length === 0
     ) {
       setResults({ users: [], pets: [], blogs: [], wiki: [], hashtags: [] })
+      setIsLoading(false)
       return
     }
 

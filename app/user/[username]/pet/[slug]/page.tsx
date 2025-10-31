@@ -698,6 +698,7 @@ export default function PetProfilePage({ params }: { params: Promise<{ username:
                   </div>
                   <PhotoViewer
                     photos={pet.photos}
+                    petId={pet.id}
                     initialIndex={selectedPhotoIndex}
                     isOpen={photoViewerOpen}
                     onClose={() => setPhotoViewerOpen(false)}
