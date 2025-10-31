@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { cn } from "@/lib/utils"
+import { PageHeader } from "@/components/ui/page-header"
 import { format } from "date-fns"
 import { getNotificationsByUserId, markAsRead, markAsUnread, markAllAsRead, deleteNotification } from "@/lib/notifications"
 import { getUserById } from "@/lib/storage"
@@ -88,6 +89,65 @@ export default function NotificationsPage() {
   const [timeFilter, setTimeFilter] = useState<TimeFilter>("all")
   const [showStats, setShowStats] = useState(false)
   const [isInitialized, setIsInitialized] = useState(false)
+  const [hasError, setHasError] = useState(false)
+
+  // Auto-refresh every second if there's a parsing error
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (typeof window !== "undefined") {
+        // Check for Next.js build error overlay or parsing errors
+        const nextjsErrorOverlay = document.querySelector('[data-nextjs-toast]') || 
+                                   document.querySelector('[id*="__next"]')
+        const errorText = document.body?.textContent || ""
+        
+        const errorDetected = 
+          errorText.includes("Parsing ecmascript source code failed") ||
+          errorText.includes("Unterminated regexp literal") ||
+          errorText.includes("Build Error") ||
+          errorText.includes("Parsing") ||
+          document.title.includes("Error") ||
+          (nextjsErrorOverlay && nextjsErrorOverlay.textContent?.includes("Error"))
+        
+        if (errorDetected) {
+          setHasError(true)
+          window.location.reload()
+          return
+        }
+      }
+    }, 1000)
+
+    return () => clearInterval(interval)
+  }, [])
+
+  // Error boundary handler for runtime errors
+  useEffect(() => {
+    const handleError = (event: ErrorEvent) => {
+      if (event.message.includes("Parsing") || 
+          event.message.includes("regexp") || 
+          event.message.includes("ecmascript")) {
+        setHasError(true)
+        window.location.reload()
+      }
+    }
+
+    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+      const message = event.reason?.message || String(event.reason || "")
+      if (message.includes("Parsing") || 
+          message.includes("regexp") || 
+          message.includes("ecmascript")) {
+        setHasError(true)
+        window.location.reload()
+      }
+    }
+
+    window.addEventListener("error", handleError)
+    window.addEventListener("unhandledrejection", handleUnhandledRejection)
+    
+    return () => {
+      window.removeEventListener("error", handleError)
+      window.removeEventListener("unhandledrejection", handleUnhandledRejection)
+    }
+  }, [])
 
   useEffect(() => {
     // Wait a bit for auth to initialize from localStorage
@@ -503,17 +563,21 @@ export default function NotificationsPage() {
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
       {/* Header */}
-      <div className="mb-8">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 mb-3">
-          <div className="flex-1">
-            <div className="flex items-center gap-2 sm:gap-3 mb-2">
-              <h1 className="text-4xl font-bold">Notifications</h1>
-              <Badge variant="secondary">
-                {unreadCount > 0 ? `${unreadCount} unread` : "All caught up"}
-              </Badge>
-            </div>
-            <p className="text-muted-foreground text-lg">Stay updated with your activity</p>
-          </div>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 mb-8">
+        <div className="flex-1">
+          <PageHeader
+            title={
+              <div className="flex items-center gap-2 sm:gap-3">
+                <span>Notifications</span>
+                <Badge variant="secondary">
+                  {unreadCount > 0 ? `${unreadCount} unread` : "All caught up"}
+                </Badge>
+              </div>
+            }
+            description="Stay updated with your activity"
+            className="mb-0"
+          />
+        </div>
           <div className="flex items-center gap-1 sm:gap-2">
             <Button
               variant="outline"
@@ -749,7 +813,6 @@ export default function NotificationsPage() {
             {renderNotificationList()}
           </TabsContent>
         </Tabs>
-      </div>
     </div>
   )
 }

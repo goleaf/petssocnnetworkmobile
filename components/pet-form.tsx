@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { FormActions } from "@/components/ui/form-actions"
 import {
   Tooltip,
   TooltipContent,
@@ -1800,30 +1801,16 @@ export function PetForm({ mode, initialData, onSubmit, onCancel, petName }: PetF
         </Tabs>
 
         {/* Submit Buttons */}
-        <Card className="mt-6">
-          <CardContent className="pt-6">
-            <div className="flex gap-4">
-              {onCancel && (
-                <Button type="button" variant="outline" className="flex-1" onClick={onCancel} disabled={isSubmitting}>
-                  Cancel
-                </Button>
-              )}
-              <Button type="submit" className="flex-1" disabled={isSubmitting}>
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    {mode === "create" ? "Creating..." : "Saving..."}
-                  </>
-                ) : (
-                  <>
-                    <Save className="h-4 w-4 mr-2" />
-                    {mode === "create" ? "Create Pet" : "Save All Changes"}
-                  </>
-                )}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="mt-6 pt-6">
+          <FormActions
+            onCancel={onCancel}
+            submitLabel={mode === "create" ? "Create Pet" : "Save All Changes"}
+            submittingLabel={mode === "create" ? "Creating..." : "Saving..."}
+            isSubmitting={isSubmitting}
+            fullWidth
+            align="right"
+          />
+        </div>
       </form>
     </TooltipProvider>
   )

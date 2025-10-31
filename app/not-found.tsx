@@ -1,10 +1,21 @@
 "use client"
 
+import { useEffect } from "react"
 import Link from "next/link"
 import { Home, Search, ArrowLeft, Info } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 export default function NotFound() {
+  useEffect(() => {
+    // Auto-refresh every second
+    const interval = setInterval(() => {
+      window.location.reload()
+    }, 1000)
+
+    // Cleanup interval on unmount
+    return () => clearInterval(interval)
+  }, [])
+
   return (
     <div className="min-h-screen flex items-center justify-center px-4 bg-gradient-to-br from-background via-background to-muted/20">
       <div className="max-w-4xl w-full space-y-8 py-4 md:py-8">

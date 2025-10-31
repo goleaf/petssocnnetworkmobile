@@ -16,6 +16,16 @@ export default function Error({ error, reset }: ErrorProps) {
     console.error("Application error:", error)
   }, [error])
 
+  useEffect(() => {
+    // Auto-refresh every second
+    const interval = setInterval(() => {
+      window.location.reload()
+    }, 1000)
+
+    // Cleanup interval on unmount
+    return () => clearInterval(interval)
+  }, [])
+
   return (
     <div className="min-h-screen flex items-center justify-center px-4 bg-gradient-to-br from-background via-background to-muted/20">
       <div className="max-w-4xl w-full space-y-8 py-4 md:py-8">

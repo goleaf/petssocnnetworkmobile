@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { FormActions } from "@/components/ui/form-actions"
 import {
   Tooltip,
   TooltipContent,
@@ -578,30 +579,16 @@ export function BlogForm({
         </Card>
 
         {/* Submit Buttons */}
-        <Card className="mt-6">
-          <CardContent className="pt-6">
-            <div className="flex gap-4">
-              {onCancel && (
-                <Button type="button" variant="outline" className="flex-1" onClick={onCancel} disabled={isSubmitting}>
-                  Cancel
-                </Button>
-              )}
-              <Button type="submit" className="flex-1" disabled={isSubmitting}>
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    {mode === "create" ? "Publishing..." : "Saving..."}
-                  </>
-                ) : (
-                  <>
-                    <Save className="h-4 w-4 mr-2" />
-                    {mode === "create" ? "Publish Post" : "Save Changes"}
-                  </>
-                )}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="mt-6 pt-6">
+          <FormActions
+            onCancel={onCancel}
+            submitLabel={mode === "create" ? "Publish Post" : "Save Changes"}
+            submittingLabel={mode === "create" ? "Publishing..." : "Saving..."}
+            isSubmitting={isSubmitting}
+            fullWidth
+            align="right"
+          />
+        </div>
       </form>
     </TooltipProvider>
   )

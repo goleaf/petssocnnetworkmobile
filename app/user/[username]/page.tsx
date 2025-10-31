@@ -32,6 +32,13 @@ import {
   MoreHorizontal,
   Edit2,
   Trash2,
+  Dog,
+  Cat,
+  Bird,
+  Rabbit,
+  Fish,
+  Turtle,
+  CircleDot,
 } from "lucide-react"
 import Link from "next/link"
 import { BadgeDisplay } from "@/components/badge-display"
@@ -286,6 +293,38 @@ export default function UserProfilePage() {
 
                 {user.bio && <p className="text-muted-foreground">{user.bio}</p>}
 
+                {/* Favorite Animals */}
+                {user.favoriteAnimals && user.favoriteAnimals.length > 0 && (
+                  <div className="flex flex-wrap gap-2 items-center">
+                    <span className="text-sm font-medium text-muted-foreground">Favorite Animals:</span>
+                    {user.favoriteAnimals.map((animal) => {
+                      const animalConfig = {
+                        dog: { icon: Dog, color: "text-amber-500", label: "Dogs" },
+                        cat: { icon: Cat, color: "text-blue-500", label: "Cats" },
+                        bird: { icon: Bird, color: "text-yellow-500", label: "Birds" },
+                        rabbit: { icon: Rabbit, color: "text-pink-500", label: "Rabbits" },
+                        hamster: { icon: CircleDot, color: "text-orange-500", label: "Hamsters" },
+                        fish: { icon: Fish, color: "text-cyan-500", label: "Fish" },
+                        turtle: { icon: Turtle, color: "text-green-500", label: "Turtles" },
+                        snake: { icon: CircleDot, color: "text-emerald-500", label: "Snakes" },
+                        lizard: { icon: CircleDot, color: "text-lime-500", label: "Lizards" },
+                        "guinea-pig": { icon: Heart, color: "text-rose-500", label: "Guinea Pigs" },
+                        ferret: { icon: CircleDot, color: "text-indigo-500", label: "Ferrets" },
+                        chinchilla: { icon: CircleDot, color: "text-violet-500", label: "Chinchillas" },
+                        hedgehog: { icon: CircleDot, color: "text-purple-500", label: "Hedgehogs" },
+                      }[animal]
+                      if (!animalConfig) return null
+                      const Icon = animalConfig.icon
+                      return (
+                        <Badge key={animal} variant="secondary" className="px-2 py-1 flex items-center gap-1.5">
+                          <Icon className={`h-4 w-4 ${animalConfig.color}`} />
+                          <span>{animalConfig.label}</span>
+                        </Badge>
+                      )
+                    })}
+                  </div>
+                )}
+
                 {user.shelterSponsorship && (
                   <div className="flex items-center gap-2 text-sm text-pink-600 bg-pink-50 dark:bg-pink-950 px-3 py-2 rounded-lg">
                     <Heart className="h-4 w-4" />
@@ -334,12 +373,12 @@ export default function UserProfilePage() {
                           <CardContent className="px-1 py-0.5 text-center">
                             <div className="flex flex-col items-center justify-center gap-0.5">
                               <div className="flex items-center justify-center gap-1">
-                                <stat.icon className="h-4 w-4 text-primary group-hover:text-foreground transition-all duration-300 ease-in-out" />
-                                <p className="text-base font-bold text-foreground group-hover:text-foreground transition-all duration-300 ease-in-out">
+                                <stat.icon className="h-5 w-5 text-primary group-hover:text-foreground transition-all duration-300 ease-in-out" />
+                                <p className="text-lg font-bold text-foreground group-hover:text-foreground transition-all duration-300 ease-in-out">
                                   {stat.value}
                                 </p>
                               </div>
-                              <p className="text-xs font-medium text-muted-foreground group-hover:text-accent-foreground leading-tight transition-all duration-300 ease-in-out">{stat.label}</p>
+                              <p className="text-sm font-medium text-muted-foreground group-hover:text-accent-foreground leading-tight transition-all duration-300 ease-in-out">{stat.label}</p>
                             </div>
                           </CardContent>
                         </Card>

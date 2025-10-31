@@ -8,6 +8,7 @@ import { getCurrentUser, setCurrentUser as setStorageUser, getUsers } from "./st
 interface AuthState {
   user: User | null
   isAuthenticated: boolean
+  isInitialized: boolean
   login: (username: string, password: string) => Promise<{ success: boolean; error?: string }>
   logout: () => void
   register: (data: {
@@ -26,18 +27,19 @@ interface AuthState {
 
 export const useAuth = create<AuthState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       user: null,
       isAuthenticated: false,
+      isInitialized: false, // Will be set to true after initialization or rehydration
 
       initialize: () => {
         const currentUser = getCurrentUser()
         // Only set authenticated if there's a valid user in storage
         if (currentUser) {
-          set({ user: currentUser, isAuthenticated: true })
+          set({ user: currentUser, isAuthenticated: true, isInitialized: true })
         } else {
           // Clear any stale auth state
-          set({ user: null, isAuthenticated: false })
+          set({ user: null, isAuthenticated: false, isInitialized: true })
           if (typeof window !== "undefined") {
             localStorage.removeItem("pet_social_current_user")
           }
@@ -87,7 +89,7 @@ export const useAuth = create<AuthState>()(
         }
 
         setStorageUser(user.id)
-        set({ user, isAuthenticated: true })
+        set({ user, isAuthenticated: true, isInitialized: true })
         return { success: true }
       },
 
@@ -96,7 +98,7 @@ export const useAuth = create<AuthState>()(
           localStorage.removeItem("pet_social_current_user")
         }
         // Clear persisted auth state
-        set({ user: null, isAuthenticated: false })
+        set({ user: null, isAuthenticated: false, isInitialized: true })
         // Clear persisted zustand state
         if (typeof window !== "undefined") {
           localStorage.removeItem("pet-social-auth")
@@ -136,7 +138,7 @@ export const useAuth = create<AuthState>()(
         }
 
         setStorageUser(newUser.id)
-        set({ user: newUser, isAuthenticated: true })
+        set({ user: newUser, isAuthenticated: true, isInitialized: true })
         return { success: true }
       },
 
@@ -145,7 +147,7 @@ export const useAuth = create<AuthState>()(
         const user = users.find((u) => u.id === userId)
         if (user) {
           setStorageUser(userId)
-          set({ user, isAuthenticated: true })
+          set({ user, isAuthenticated: true, isInitialized: true })
         }
       },
 
@@ -167,6 +169,13 @@ export const useAuth = create<AuthState>()(
     {
       name: "pet-social-auth",
       partialize: (state) => ({ user: state.user, isAuthenticated: state.isAuthenticated }),
+      onRehydrateStorage: () => (state, error) => {
+        if (!error && state && state.user) {
+          // After rehydration, if we have a user, mark as initialized
+          // The initialize() function will also be called by AuthProvider to ensure sync with storage
+          useAuth.setState({ isInitialized: true })
+        }
+      },
     },
   ),
 )

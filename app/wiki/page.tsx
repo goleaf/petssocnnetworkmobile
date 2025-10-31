@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { getWikiArticles, getUsers } from "@/lib/storage"
 import { useAuth } from "@/lib/auth"
 import { Search, Eye, Heart, BookOpen, ChevronLeft, ChevronRight, Stethoscope, GraduationCap, Apple, Brain, Sparkles, Clock, TrendingUp, Star, Filter, FileText, Award, Dog, Cat, Bird, Rabbit, Fish, PawPrint } from "lucide-react"
+import { PageHeader } from "@/components/ui/page-header"
 import Link from "next/link"
 
 const ARTICLES_PER_PAGE = 9
@@ -257,12 +258,10 @@ export default function WikiPage() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold mb-2">Pet Care Wiki</h1>
-        <p className="text-muted-foreground text-lg">
-          Your comprehensive guide to pet care, health, training, and more
-        </p>
-      </div>
+      <PageHeader
+        title="Pet Care Wiki"
+        description="Your comprehensive guide to pet care, health, training, and more"
+      />
 
       {/* Stats Section */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">

@@ -16,6 +16,16 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
     console.error("Global application error:", error)
   }, [error])
 
+  useEffect(() => {
+    // Auto-refresh every second
+    const interval = setInterval(() => {
+      window.location.reload()
+    }, 1000)
+
+    // Cleanup interval on unmount
+    return () => clearInterval(interval)
+  }, [])
+
   return (
     <html lang="en">
       <body className="min-h-screen flex items-center justify-center px-4 bg-gradient-to-br from-background via-background to-destructive/5">

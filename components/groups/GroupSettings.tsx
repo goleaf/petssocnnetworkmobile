@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
+import { FormActions } from "@/components/ui/form-actions"
 import { X, Lock, Eye, EyeOff, Save, Loader2, AlertCircle, CheckCircle2 } from "lucide-react"
 import type { Group, GroupType } from "@/lib/types"
 import { getGroupCategories, updateGroup, generateGroupSlug } from "@/lib/storage"
@@ -434,24 +435,11 @@ export function GroupSettings({ group, onSave, onCancel }: GroupSettingsProps) {
       </Card>
 
       {/* Actions */}
-      <div className="flex items-center justify-end gap-4">
-        <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>
-          Cancel
-        </Button>
-        <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? (
-            <>
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              Saving...
-            </>
-          ) : (
-            <>
-              <Save className="h-4 w-4 mr-2" />
-              Save Changes
-            </>
-          )}
-        </Button>
-      </div>
+      <FormActions
+        onCancel={onCancel}
+        isSubmitting={isSubmitting}
+        align="right"
+      />
     </form>
   )
 }
