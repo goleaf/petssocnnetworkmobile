@@ -18,7 +18,14 @@ export interface User {
     email: "public" | "private" | "followers-only"
     location: "public" | "private" | "followers-only"
     pets: "public" | "private" | "followers-only"
+    posts: "public" | "private" | "followers-only"
+    followers: "public" | "private" | "followers-only"
+    following: "public" | "private" | "followers-only"
+    searchable: boolean
+    allowFollowRequests: "public" | "followers-only"
+    allowTagging: "public" | "followers-only" | "private"
   }
+  blockedUsers?: string[] // User IDs that are blocked
   occupation?: string
   website?: string
   phone?: string

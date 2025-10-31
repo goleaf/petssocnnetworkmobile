@@ -110,6 +110,11 @@ export function toggleFollow(followerId: string, followingId: string) {
   const follower = users[followerIndex]
   const following = users[followingIndex]
 
+  // Check if blocked
+  if (following.blockedUsers?.includes(followerId) || follower.blockedUsers?.includes(followingId)) {
+    return // Cannot follow if blocked
+  }
+
   // Check if already following
   const isFollowing = follower.following.includes(followingId)
 

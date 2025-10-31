@@ -69,7 +69,7 @@ describe('Navigation', () => {
     expect(screen.getByText('Explore')).toBeInTheDocument()
   })
 
-  it('should show additional items for authenticated users', () => {
+  it('should show additional items for authenticated users', async () => {
     ;(useAuth as jest.Mock).mockReturnValue({
       user: mockUser,
       isAuthenticated: true,
@@ -79,8 +79,13 @@ describe('Navigation', () => {
     })
 
     render(<Navigation />)
-    expect(screen.getByText('Feed')).toBeInTheDocument()
-    expect(screen.getByText('Dashboard')).toBeInTheDocument()
+    
+    await waitFor(() => {
+      expect(screen.getByText('Feed')).toBeInTheDocument()
+      // Dashboard is not in the main navigation - it's accessible via user menu or direct route
+      // Check that authenticated user menu items are shown instead
+      expect(screen.getByText('Write')).toBeInTheDocument()
+    }, { timeout: 3000 })
   })
 
   it('should show user menu when authenticated', () => {
