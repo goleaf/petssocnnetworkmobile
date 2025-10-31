@@ -398,7 +398,7 @@ export function PhotoViewer({ photos, petId, initialIndex = 0, isOpen, onClose, 
                   </div>
                 ) : (
                   topLevelComments.map((comment) => {
-                                  const commentUser = getUsers().find((u) => u.id === comment.userId)
+                    const commentUser = getUsers().find((u) => u.id === comment.userId)
                     const isOwner = currentUser?.id === comment.userId
                     const isEditing = editingCommentId === comment.id
                     const userReaction = getUserReaction(comment)
@@ -574,7 +574,7 @@ export function PhotoViewer({ photos, petId, initialIndex = 0, isOpen, onClose, 
                             {replies.length > 0 && (
                               <div className="mt-3 ml-4 pl-4 space-y-3 border-l-2 border-primary/20">
                                 {replies.map((reply) => {
-                                  const replyUser = getUserById(reply.userId)
+                                  const replyUser = getUsers().find((u) => u.id === reply.userId)
                                   const isReplyOwner = currentUser?.id === reply.userId
                                   const isEditingReply = editingCommentId === reply.id
                                   const replyUserReaction = getUserReaction(reply)
