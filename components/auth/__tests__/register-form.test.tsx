@@ -84,7 +84,7 @@ describe('RegisterForm', () => {
         username: 'johndoe',
         fullName: 'John Doe',
       })
-      expect(mockRouter.push).toHaveBeenCalledWith('/feed')
+      expect(mockRouter.push).toHaveBeenCalledWith('/')
       expect(mockRouter.refresh).toHaveBeenCalled()
       expect(onSuccess).toHaveBeenCalled()
     })

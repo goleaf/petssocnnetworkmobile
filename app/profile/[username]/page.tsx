@@ -248,7 +248,10 @@ export default function ProfilePage({ params }: { params: Promise<{ username: st
                             <p className="text-base font-bold text-foreground group-hover:text-primary transition-colors">
                               {user.followers.length}
                             </p>
-                            <p className="text-[10px] font-medium text-muted-foreground">Followers</p>
+                            <p className="text-[10px] font-medium text-muted-foreground">
+                              {user.followers.length === 1 ? "Follower" : "Followers"}
+                            </p>
+                            <p className="text-[9px] text-muted-foreground/70">{user.followers.length} {user.followers.length === 1 ? "person" : "people"}</p>
                           </div>
                         </div>
                       </CardContent>

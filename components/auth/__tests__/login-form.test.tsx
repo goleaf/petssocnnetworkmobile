@@ -73,7 +73,7 @@ describe('LoginForm', () => {
 
     await waitFor(() => {
       expect(mockLogin).toHaveBeenCalledWith('testuser', 'password123')
-      expect(mockRouter.push).toHaveBeenCalledWith('/feed')
+      expect(mockRouter.push).toHaveBeenCalledWith('/')
       expect(mockRouter.refresh).toHaveBeenCalled()
       expect(onSuccess).toHaveBeenCalled()
     })
