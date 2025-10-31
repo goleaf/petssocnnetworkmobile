@@ -12,7 +12,7 @@ const STORAGE_KEYS = {
 }
 
 // Helper function to generate slug from pet name
-function generatePetSlug(name: string): string {
+export function generatePetSlug(name: string): string {
   return name
     .toLowerCase()
     .trim()
@@ -151,17 +151,6 @@ export function getPetByUsernameAndSlug(username: string, slug: string): Pet | u
   
   const pets = getPets()
   return pets.find((p) => p.ownerId === owner.id && (p.slug === slug || !p.slug && p.id === slug))
-}
-
-// Export the generatePetSlug function for external use
-export function generatePetSlug(name: string): string {
-  return name
-    .toLowerCase()
-    .trim()
-    .replace(/[^\w\s-]/g, "") // Remove special characters
-    .replace(/\s+/g, "-") // Replace spaces with hyphens
-    .replace(/-+/g, "-") // Replace multiple hyphens with single hyphen
-    .replace(/^-|-$/g, "") // Remove leading/trailing hyphens
 }
 
 export function updatePet(pet: Pet) {

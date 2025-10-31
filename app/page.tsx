@@ -10,10 +10,11 @@ import { Button } from "@/components/ui/button"
 import { getBlogPosts, getPets, getUsers } from "@/lib/storage"
 import { PawPrint, Heart, Users, BookOpen, TrendingUp, Loader2 } from "lucide-react"
 import Link from "next/link"
-import DashboardContent from "./dashboard-content"
+import { useRouter } from "next/navigation"
 
 export default function HomePage() {
   const { user, isAuthenticated } = useAuth()
+  const router = useRouter()
   const [showRegister, setShowRegister] = useState(false)
   const [featuredPosts, setFeaturedPosts] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -39,6 +40,13 @@ export default function HomePage() {
     setIsLoading(false)
   }, [])
 
+  useEffect(() => {
+    // If user is logged in, redirect to feed
+    if (isAuthenticated && user && !isLoading) {
+      router.push("/feed")
+    }
+  }, [isAuthenticated, user, isLoading, router])
+
   // Show loading spinner while checking auth and loading data
   if (isLoading) {
     return (
@@ -48,9 +56,13 @@ export default function HomePage() {
     )
   }
 
-  // If user is logged in, show dashboard
+  // If user is logged in, redirect to feed (handled by useEffect above)
   if (isAuthenticated && user) {
-    return <DashboardContent user={user} />
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    )
   }
 
   // If user is not logged in, show landing page

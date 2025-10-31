@@ -66,14 +66,18 @@ describe('HomePage', () => {
     expect(screen.getByText(/connect, share, and learn about your pets/i)).toBeInTheDocument()
   })
 
-  it('should render dashboard when user is authenticated', () => {
+  it('should render dashboard when user is authenticated', async () => {
     ;(useAuth as jest.Mock).mockReturnValue({
       user: mockUser,
       isAuthenticated: true,
     })
 
     render(<HomePage />)
-    expect(screen.getByText(`Dashboard for ${mockUser.fullName}`)).toBeInTheDocument()
+    
+    // Wait for loading to complete and dashboard to render
+    await waitFor(() => {
+      expect(screen.getByText(`Dashboard for ${mockUser.fullName}`)).toBeInTheDocument()
+    }, { timeout: 3000 })
   })
 
   it('should display login form on landing page', () => {

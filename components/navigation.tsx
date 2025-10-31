@@ -47,7 +47,6 @@ export function Navigation() {
     ...(isAuthenticated
       ? [
           { href: "/feed", label: "Feed", icon: Home },
-          { href: "/", label: "Dashboard", icon: LayoutDashboard },
         ]
       : []),
     { href: "/blog", label: "Blogs", icon: FileText },
@@ -128,10 +127,10 @@ export function Navigation() {
                         Profile
                       </DropdownMenuItem>
                     </Link>
-                    <Link href="/">
+                    <Link href="/feed">
                       <DropdownMenuItem>
-                        <LayoutDashboard className="mr-2 h-4 w-4" />
-                        Dashboard
+                        <Home className="mr-2 h-4 w-4" />
+                        Feed
                       </DropdownMenuItem>
                     </Link>
                     <DropdownMenuSeparator />

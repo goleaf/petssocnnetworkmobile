@@ -118,20 +118,7 @@ export default function ProfilePage({ params }: { params: Promise<{ username: st
                 </div>
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
-                <Link
-                  href={`/profile/${user.username}`}
-                  onClick={(e) => {
-                    e.preventDefault()
-                    const tabs = document.querySelector('[role="tablist"]')
-                    if (tabs) {
-                      tabs.scrollIntoView({ behavior: "smooth", block: "start" })
-                      const tabButton = document.querySelector('[role="tab"][value="pets"]') as HTMLButtonElement
-                      if (tabButton) {
-                        setTimeout(() => tabButton.click(), 100)
-                      }
-                    }
-                  }}
-                >
+                <Link href={`/profile/${user.username}/pets`}>
                   <Card className="hover:shadow-lg transition-all duration-200 hover:border-primary/50 cursor-pointer group h-full">
                     <CardContent className="p-4 text-center">
                       <div className="flex flex-col items-center justify-center space-y-2">
@@ -150,20 +137,7 @@ export default function ProfilePage({ params }: { params: Promise<{ username: st
                     </CardContent>
                   </Card>
                 </Link>
-                <Link
-                  href={`/profile/${user.username}`}
-                  onClick={(e) => {
-                    e.preventDefault()
-                    const tabs = document.querySelector('[role="tablist"]')
-                    if (tabs) {
-                      tabs.scrollIntoView({ behavior: "smooth", block: "start" })
-                      const tabButton = document.querySelector('[role="tab"][value="posts"]') as HTMLButtonElement
-                      if (tabButton) {
-                        setTimeout(() => tabButton.click(), 100)
-                      }
-                    }
-                  }}
-                >
+                <Link href={`/profile/${user.username}/posts`}>
                   <Card className="hover:shadow-lg transition-all duration-200 hover:border-primary/50 cursor-pointer group h-full">
                     <CardContent className="p-4 text-center">
                       <div className="flex flex-col items-center justify-center space-y-2">
@@ -180,7 +154,7 @@ export default function ProfilePage({ params }: { params: Promise<{ username: st
                     </CardContent>
                   </Card>
                 </Link>
-                <Link href={`/profile/${user.username}/followers`}>
+                <Link href={`/user/${user.username}/followers`}>
                   <Card className="hover:shadow-lg transition-all duration-200 hover:border-primary/50 cursor-pointer group h-full">
                     <CardContent className="p-4 text-center">
                       <div className="flex flex-col items-center justify-center space-y-2">
@@ -197,7 +171,7 @@ export default function ProfilePage({ params }: { params: Promise<{ username: st
                     </CardContent>
                   </Card>
                 </Link>
-                <Link href={`/profile/${user.username}/following`}>
+                <Link href={`/user/${user.username}/following`}>
                   <Card className="hover:shadow-lg transition-all duration-200 hover:border-primary/50 cursor-pointer group h-full">
                     <CardContent className="p-4 text-center">
                       <div className="flex flex-col items-center justify-center space-y-2">

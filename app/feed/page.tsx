@@ -3,14 +3,40 @@
 import { useEffect, useState } from "react"
 import { useAuth } from "@/components/auth/auth-provider"
 import { useRouter } from "next/navigation"
-import { Card, CardContent } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { getPets, getBlogPosts, getUsers, getPetsByOwnerId, addBlogPost, updateBlogPost, deleteBlogPost, togglePostReaction } from "@/lib/storage"
-import { Heart, MessageCircle, Share2, MoreHorizontal, Globe, UsersIcon, Lock, Edit2, Trash2, Smile } from "lucide-react"
+import {
+  getPets,
+  getBlogPosts,
+  getUsers,
+  getPetsByOwnerId,
+  addBlogPost,
+  updateBlogPost,
+  deleteBlogPost,
+  togglePostReaction,
+  toggleFollow,
+} from "@/lib/storage"
+import {
+  Heart,
+  MessageCircle,
+  Share2,
+  MoreHorizontal,
+  Globe,
+  UsersIcon,
+  Lock,
+  Edit2,
+  Trash2,
+  Smile,
+  TrendingUp,
+  PawPrint,
+  BookOpen,
+  Plus,
+  Users,
+} from "lucide-react"
 import Link from "next/link"
 import { formatDate } from "@/lib/utils/date"
 import type { BlogPost, Pet, User as UserType, ReactionType } from "@/lib/types"
@@ -22,6 +48,8 @@ export default function FeedPage() {
   const router = useRouter()
   const [feedPosts, setFeedPosts] = useState<BlogPost[]>([])
   const [myPets, setMyPets] = useState<Pet[]>([])
+  const [trendingPosts, setTrendingPosts] = useState<BlogPost[]>([])
+  const [suggestedUsers, setSuggestedUsers] = useState<UserType[]>([])
   const [newPostContent, setNewPostContent] = useState("")
   const [selectedPet, setSelectedPet] = useState("")
   const [filter, setFilter] = useState<"all" | "following">("all")
@@ -39,6 +67,8 @@ export default function FeedPage() {
         setSelectedPet(pets[0].id)
       }
       loadFeed()
+      loadTrending()
+      loadSuggestedUsers()
     }
   }, [user, isAuthenticated, router, filter])
 
@@ -58,6 +88,27 @@ export default function FeedPage() {
       // Show all public posts
       setFeedPosts(allPosts.filter((post) => post.privacy === "public" || !post.privacy))
     }
+  }
+
+  const loadTrending = () => {
+    const allPosts = getBlogPosts()
+    const trending = [...allPosts].sort((a, b) => {
+      const aLikes = a.reactions
+        ? Object.values(a.reactions).reduce((sum, arr) => sum + arr.length, 0)
+        : a.likes.length
+      const bLikes = b.reactions
+        ? Object.values(b.reactions).reduce((sum, arr) => sum + arr.length, 0)
+        : b.likes.length
+      return bLikes - aLikes
+    })
+    setTrendingPosts(trending.slice(0, 3))
+  }
+
+  const loadSuggestedUsers = () => {
+    if (!user) return
+    const allUsers = getUsers()
+    const suggested = allUsers.filter((u) => u.id !== user.id && !user.following.includes(u.id)).slice(0, 4)
+    setSuggestedUsers(suggested)
   }
 
   const handleCreatePost = () => {
@@ -80,12 +131,14 @@ export default function FeedPage() {
     addBlogPost(newPost)
     setNewPostContent("")
     loadFeed()
+    loadTrending()
   }
 
   const handleDelete = (postId: string) => {
     if (!window.confirm("Are you sure you want to delete this post?")) return
     deleteBlogPost(postId)
     loadFeed()
+    loadTrending()
   }
 
   const handleEdit = (post: BlogPost) => {
@@ -96,6 +149,7 @@ export default function FeedPage() {
     if (!user) return
     togglePostReaction(postId, user.id, reactionType)
     loadFeed()
+    loadTrending()
   }
 
   const handleShare = (post: BlogPost) => {
@@ -125,91 +179,356 @@ export default function FeedPage() {
     }
   }
 
+  const handleFollowSuggested = (userId: string) => {
+    if (!user) return
+    toggleFollow(user.id, userId)
+    loadSuggestedUsers()
+  }
+
   if (!user) return null
+
+  const stats = [
+    {
+      title: "My Pets",
+      value: myPets.length,
+      icon: PawPrint,
+      color: "text-blue-500",
+    },
+    {
+      title: "Following",
+      value: user.following.length,
+      icon: Users,
+      color: "text-green-500",
+    },
+    {
+      title: "Followers",
+      value: user.followers.length,
+      icon: Heart,
+      color: "text-red-500",
+    },
+    {
+      title: "Total Posts",
+      value: getBlogPosts().filter((p) => p.authorId === user.id).length,
+      icon: BookOpen,
+      color: "text-purple-500",
+    },
+  ]
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
-      <div className="mb-6">
-        <div className="flex items-center justify-between mb-4">
-          <h1 className="text-3xl font-bold">Activity Feed</h1>
-          <div className="flex gap-2">
-            <Button variant={filter === "all" ? "default" : "outline"} size="sm" onClick={() => setFilter("all")}>
-              All Posts
-            </Button>
-            <Button
-              variant={filter === "following" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setFilter("following")}
-            >
-              Following
-            </Button>
-          </div>
-        </div>
+      {/* Welcome Section */}
+      <div className="mb-8">
+        <h1 className="text-4xl font-bold mb-2">Welcome back, {user.fullName}!</h1>
+        <p className="text-muted-foreground">Here{"'"}s what{"'"}s happening in your pet community</p>
       </div>
 
-      {/* Create Post Card */}
-      {myPets.length > 0 && (
-        <Card className="mb-6">
-          <CardContent className="p-4">
-            <div className="flex gap-3">
-              <Avatar className="h-10 w-10">
-                <AvatarImage src={user.avatar || "/placeholder.svg"} />
-                <AvatarFallback>{user.fullName.charAt(0)}</AvatarFallback>
-              </Avatar>
-              <div className="flex-1 space-y-3">
-                <Textarea
-                  placeholder="What's on your pet's mind?"
-                  value={newPostContent}
-                  onChange={(e) => setNewPostContent(e.target.value)}
-                  className="min-h-[80px] resize-none"
-                />
-                <div className="flex items-center justify-between">
-                  <Select value={selectedPet} onValueChange={setSelectedPet}>
-                    <SelectTrigger className="w-[200px]">
-                      <SelectValue placeholder="Select pet" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {myPets.map((pet) => (
-                        <SelectItem key={pet.id} value={pet.id}>
-                          {pet.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Button onClick={handleCreatePost} disabled={!newPostContent.trim()}>
-                    Post
-                  </Button>
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <Link href={`/profile/${user.username}/pets`}>
+          <Card className="hover:shadow-lg transition-all cursor-pointer">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">My Pets</p>
+                  <p className="text-3xl font-bold mt-1">{stats[0].value}</p>
                 </div>
+                <PawPrint className="h-8 w-8 text-blue-500" />
               </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Feed Posts */}
-      <div className="space-y-4">
-        {feedPosts.length === 0 ? (
-          <Card>
-            <CardContent className="p-12 text-center">
-              <MessageCircle className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <p className="text-muted-foreground">
-                {filter === "following" ? "No posts from accounts you follow yet" : "No posts to show yet"}
-              </p>
             </CardContent>
           </Card>
-        ) : (
-          feedPosts.map((post) => (
-            <FeedPostCard
-              key={post.id}
-              post={post}
-              onReaction={handleReaction}
-              onDelete={handleDelete}
-              onEdit={handleEdit}
-              onShare={handleShare}
-              currentUser={user}
-            />
-          ))
-        )}
+        </Link>
+        <Link href={`/user/${user.username}/following`}>
+          <Card className="hover:shadow-lg transition-all cursor-pointer">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Following</p>
+                  <p className="text-3xl font-bold mt-1">{stats[1].value}</p>
+                </div>
+                <Users className="h-8 w-8 text-green-500" />
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+        <Link href={`/user/${user.username}/followers`}>
+          <Card className="hover:shadow-lg transition-all cursor-pointer">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Followers</p>
+                  <p className="text-3xl font-bold mt-1">{stats[2].value}</p>
+                </div>
+                <Heart className="h-8 w-8 text-red-500" />
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+        <Link href={`/profile/${user.username}/posts`}>
+          <Card className="hover:shadow-lg transition-all cursor-pointer">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Total Posts</p>
+                  <p className="text-3xl font-bold mt-1">{stats[3].value}</p>
+                </div>
+                <BookOpen className="h-8 w-8 text-purple-500" />
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Main Content */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* My Pets Section */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>My Pets</CardTitle>
+              <Link href={`/profile/${user.username}/add-pet`}>
+                <Button size="sm">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Pet
+                </Button>
+              </Link>
+            </CardHeader>
+            <CardContent>
+              {myPets.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {myPets.map((pet) => (
+                    <Link key={pet.id} href={getPetUrlFromPet(pet, user.username)}>
+                      <div className="flex items-center gap-3 p-3 rounded-lg hover:bg-accent transition-colors cursor-pointer">
+                        <Avatar className="h-12 w-12">
+                          <AvatarImage src={pet.avatar || "/placeholder.svg"} alt={pet.name} />
+                          <AvatarFallback>{pet.name.charAt(0)}</AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold">{pet.name}</p>
+                          <p className="text-sm text-muted-foreground capitalize">{pet.breed || pet.species}</p>
+                        </div>
+                        <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                          <Heart className="h-3 w-3" />
+                          {pet.followers.length}
+                        </div>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <PawPrint className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                  <p>You haven{"'"}t added any pets yet</p>
+                  <Link href={`/profile/${user.username}/add-pet`}>
+                    <Button className="mt-4">Add Your First Pet</Button>
+                  </Link>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Filter and Create Post */}
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-2xl font-bold">Feed</h2>
+            <div className="flex gap-2">
+              <Button variant={filter === "all" ? "default" : "outline"} size="sm" onClick={() => setFilter("all")}>
+                All Posts
+              </Button>
+              <Button
+                variant={filter === "following" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setFilter("following")}
+              >
+                Following
+              </Button>
+            </div>
+          </div>
+
+          {/* Create Post Card */}
+          {myPets.length > 0 && (
+            <Card className="mb-6">
+              <CardContent className="p-4">
+                <div className="flex gap-3">
+                  <Avatar className="h-10 w-10">
+                    <AvatarImage src={user.avatar || "/placeholder.svg"} />
+                    <AvatarFallback>{user.fullName.charAt(0)}</AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 space-y-3">
+                    <Textarea
+                      placeholder="What's on your pet's mind?"
+                      value={newPostContent}
+                      onChange={(e) => setNewPostContent(e.target.value)}
+                      className="min-h-[80px] resize-none"
+                    />
+                    <div className="flex items-center justify-between">
+                      <Select value={selectedPet} onValueChange={setSelectedPet}>
+                        <SelectTrigger className="w-[200px]">
+                          <SelectValue placeholder="Select pet" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {myPets.map((pet) => (
+                            <SelectItem key={pet.id} value={pet.id}>
+                              {pet.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Button onClick={handleCreatePost} disabled={!newPostContent.trim()}>
+                        Post
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Feed Posts */}
+          <div className="space-y-4">
+            {feedPosts.length === 0 ? (
+              <Card>
+                <CardContent className="p-12 text-center">
+                  <MessageCircle className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <p className="text-muted-foreground">
+                    {filter === "following" ? "No posts from accounts you follow yet" : "No posts to show yet"}
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              feedPosts.map((post) => (
+                <FeedPostCard
+                  key={post.id}
+                  post={post}
+                  onReaction={handleReaction}
+                  onDelete={handleDelete}
+                  onEdit={handleEdit}
+                  onShare={handleShare}
+                  currentUser={user}
+                />
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Sidebar */}
+        <div className="space-y-6">
+          {/* Trending Posts */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="h-5 w-5" />
+                Trending Posts
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {trendingPosts.length > 0 ? (
+                <div className="space-y-4">
+                  {trendingPosts.map((post) => {
+                    const pet = getPets().find((p) => p.id === post.petId)
+                    return (
+                      <Link key={post.id} href={`/blog/${post.id}`}>
+                        <div className="flex gap-3 p-3 rounded-lg hover:bg-accent transition-colors cursor-pointer">
+                          {post.coverImage && (
+                            <div className="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0">
+                              <img
+                                src={post.coverImage || "/placeholder.svg"}
+                                alt={post.title}
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="font-semibold line-clamp-2 text-sm">{post.title}</p>
+                            <p className="text-xs text-muted-foreground mt-1">By {pet?.name}</p>
+                            <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+                              <div className="flex items-center gap-1">
+                                <Heart className="h-3 w-3 fill-current text-red-500" />
+                                {post.reactions
+                                  ? Object.values(post.reactions).reduce((sum, arr) => sum + arr.length, 0)
+                                  : post.likes.length}
+                              </div>
+                              <div className="flex gap-1">
+                                {post.tags.slice(0, 2).map((tag: string) => (
+                                  <Badge key={tag} variant="secondary" className="text-xs">
+                                    {tag}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </Link>
+                    )
+                  })}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-4">No trending posts yet</p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Suggested Users */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Suggested Users</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {suggestedUsers.length > 0 ? (
+                <div className="space-y-4">
+                  {suggestedUsers.map((suggestedUser) => (
+                    <div key={suggestedUser.id} className="flex items-center justify-between">
+                      <Link href={`/profile/${suggestedUser.username}`} className="flex items-center gap-3 flex-1">
+                        <Avatar className="h-10 w-10">
+                          <AvatarImage src={suggestedUser.avatar || "/placeholder.svg"} alt={suggestedUser.fullName} />
+                          <AvatarFallback>{suggestedUser.fullName.charAt(0)}</AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-sm truncate">{suggestedUser.fullName}</p>
+                          <p className="text-xs text-muted-foreground truncate">@{suggestedUser.username}</p>
+                        </div>
+                      </Link>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleFollowSuggested(suggestedUser.id)}
+                      >
+                        Follow
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-4">No suggestions available</p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Quick Links */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Quick Links</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <Link href="/blog">
+                <Button variant="ghost" className="w-full justify-start">
+                  <BookOpen className="h-4 w-4 mr-2" />
+                  Browse All Blogs
+                </Button>
+              </Link>
+              <Link href="/wiki">
+                <Button variant="ghost" className="w-full justify-start">
+                  <BookOpen className="h-4 w-4 mr-2" />
+                  Pet Care Wiki
+                </Button>
+              </Link>
+              <Link href={`/profile/${user.username}`}>
+                <Button variant="ghost" className="w-full justify-start">
+                  <Users className="h-4 w-4 mr-2" />
+                  My Profile
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   )
@@ -340,15 +659,20 @@ function FeedPostCard({
         {(post.tags.length > 0 || (post.hashtags && post.hashtags.length > 0)) && (
           <div className="flex flex-wrap gap-2 mb-3">
             {post.tags.slice(0, 3).map((tag) => (
-              <Badge key={tag} variant="secondary" className="text-xs">
-                {tag}
-              </Badge>
+              <Link key={tag} href={`/blog/tag/${encodeURIComponent(tag.toLowerCase())}`}>
+                <Badge
+                  variant="secondary"
+                  className="text-xs cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors"
+                >
+                  {tag}
+                </Badge>
+              </Link>
             ))}
             {post.hashtags?.slice(0, 3).map((tag) => (
-              <Link key={tag} href={`/explore/hashtag/${tag}`}>
+              <Link key={tag} href={`/explore/hashtag/${encodeURIComponent(tag)}`}>
                 <Badge
                   variant="outline"
-                  className="text-xs cursor-pointer hover:bg-primary hover:text-primary-foreground"
+                  className="text-xs cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors"
                 >
                   #{tag}
                 </Badge>

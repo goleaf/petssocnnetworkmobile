@@ -248,10 +248,29 @@ export default function BlogPostPage({ params }: { params: Promise<{ id: string 
           <h1 className="text-4xl font-bold leading-tight">{post.title}</h1>
           <div className="flex flex-wrap gap-2">
             {post.tags.map((tag) => (
-              <Badge key={tag} variant="secondary">
-                {tag}
-              </Badge>
+              <Link key={tag} href={`/blog/tag/${encodeURIComponent(tag.toLowerCase())}`}>
+                <Badge
+                  variant="secondary"
+                  className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors"
+                >
+                  {tag}
+                </Badge>
+              </Link>
             ))}
+            {post.hashtags && post.hashtags.length > 0 && (
+              <>
+                {post.hashtags.map((hashtag) => (
+                  <Link key={hashtag} href={`/explore/hashtag/${encodeURIComponent(hashtag)}`}>
+                    <Badge
+                      variant="outline"
+                      className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors"
+                    >
+                      #{hashtag}
+                    </Badge>
+                  </Link>
+                ))}
+              </>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <Button onClick={handleLike} variant={hasLiked ? "default" : "outline"} size="sm">
