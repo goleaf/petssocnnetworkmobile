@@ -240,12 +240,6 @@ export default function FeedPage() {
 
   const stats = [
     {
-      title: "My Pets",
-      value: myPets.length,
-      icon: PawPrint,
-      color: "text-blue-500",
-    },
-    {
       title: "Following",
       value: user.following.length,
       icon: Users,
@@ -281,7 +275,7 @@ export default function FeedPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs text-muted-foreground">Following</p>
-                  <p className="text-2xl font-bold">{stats[1].value}</p>
+                  <p className="text-2xl font-bold">{stats[0].value}</p>
                 </div>
                 <Users className="h-6 w-6 text-green-500" />
               </div>
@@ -294,7 +288,7 @@ export default function FeedPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs text-muted-foreground">Followers</p>
-                  <p className="text-2xl font-bold">{stats[2].value}</p>
+                  <p className="text-2xl font-bold">{stats[1].value}</p>
                 </div>
                 <Heart className="h-6 w-6 text-red-500" />
               </div>
@@ -307,7 +301,7 @@ export default function FeedPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs text-muted-foreground">Total Posts</p>
-                  <p className="text-2xl font-bold">{stats[3].value}</p>
+                  <p className="text-2xl font-bold">{stats[2].value}</p>
                 </div>
                 <BookOpen className="h-6 w-6 text-purple-500" />
               </div>
