@@ -29,6 +29,7 @@ import {
   Home,
   Heart,
   TrendingUp,
+  Users,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { NotificationsDropdown } from "@/components/notifications-dropdown"
@@ -51,6 +52,7 @@ export function Navigation() {
       : []),
     { href: "/blog", label: "Blogs", icon: FileText },
     { href: "/wiki", label: "Wiki", icon: BookOpen },
+    { href: "/groups", label: "Groups", icon: Users },
     { href: "/shelters", label: "Shelters", icon: Heart },
     { href: "/search", label: "Search", icon: Search },
   ]
