@@ -8,7 +8,8 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { getBlogPosts, getPets, getUsers } from "@/lib/storage"
-import { PawPrint, Heart, Users, BookOpen, TrendingUp, Loader2 } from "lucide-react"
+import { PawPrint, Heart, Users, BookOpen, TrendingUp } from "lucide-react"
+import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 
@@ -49,20 +50,12 @@ export default function HomePage() {
 
   // Show loading spinner while checking auth and loading data
   if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    )
+    return <LoadingSpinner fullScreen />
   }
 
   // If user is logged in, redirect to feed (handled by useEffect above)
   if (isAuthenticated && user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    )
+    return <LoadingSpinner fullScreen />
   }
 
   // If user is not logged in, show landing page
