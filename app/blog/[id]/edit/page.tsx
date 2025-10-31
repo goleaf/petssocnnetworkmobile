@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useEffect, use, useRef, useCallback } from "react"
+import { useState, useEffect, use } from "react"
 import { useAuth } from "@/lib/auth"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -11,6 +11,7 @@ import { BackButton } from "@/components/ui/back-button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { TagInput } from "@/components/ui/tag-input"
 import { getBlogPostById, getPetsByOwnerId, updateBlogPost } from "@/lib/storage"
 import type { BlogPost, PrivacyLevel } from "@/lib/types"
 import { Save, X } from "lucide-react"
@@ -18,8 +19,6 @@ import Link from "next/link"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import RichTextEditor from "reactjs-tiptap-editor"
 import { BaseKit } from "reactjs-tiptap-editor"
-import Tags from "@yaireo/tagify/react"
-import "@yaireo/tagify/dist/tagify.css"
 import "reactjs-tiptap-editor/style.css"
 
 export default function EditBlogPage({ params }: { params: Promise<{ id: string }> }) {
@@ -31,8 +30,6 @@ export default function EditBlogPage({ params }: { params: Promise<{ id: string 
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [content, setContent] = useState("")
-  const tagifyRef = useRef<any>(null)
-  const hashtagRef = useRef<any>(null)
 
   const [formData, setFormData] = useState({
     petId: "",
