@@ -264,10 +264,11 @@ export default function ProfilePage({ params }: { params: Promise<{ username: st
                         <div className="p-1 rounded-full bg-muted">
                           <Lock className="h-3 w-3 text-muted-foreground" />
                         </div>
-                        <div>
-                          <p className="text-base font-bold text-muted-foreground">—</p>
-                          <p className="text-[10px] font-medium text-muted-foreground">Followers</p>
-                        </div>
+                          <div>
+                            <p className="text-base font-bold text-muted-foreground">—</p>
+                            <p className="text-[10px] font-medium text-muted-foreground">Followers</p>
+                            <p className="text-[9px] text-muted-foreground/70">— people</p>
+                          </div>
                       </div>
                     </CardContent>
                   </Card>
@@ -285,6 +286,7 @@ export default function ProfilePage({ params }: { params: Promise<{ username: st
                               {user.following.length}
                             </p>
                             <p className="text-[10px] font-medium text-muted-foreground">Following</p>
+                            <p className="text-[9px] text-muted-foreground/70">{user.following.length} {user.following.length === 1 ? "person" : "people"}</p>
                           </div>
                         </div>
                       </CardContent>
@@ -297,10 +299,11 @@ export default function ProfilePage({ params }: { params: Promise<{ username: st
                         <div className="p-1 rounded-full bg-muted">
                           <Lock className="h-3 w-3 text-muted-foreground" />
                         </div>
-                        <div>
-                          <p className="text-base font-bold text-muted-foreground">—</p>
-                          <p className="text-[10px] font-medium text-muted-foreground">Following</p>
-                        </div>
+                          <div>
+                            <p className="text-base font-bold text-muted-foreground">—</p>
+                            <p className="text-[10px] font-medium text-muted-foreground">Following</p>
+                            <p className="text-[9px] text-muted-foreground/70">— people</p>
+                          </div>
                       </div>
                     </CardContent>
                   </Card>

@@ -203,6 +203,13 @@ export default function WikiArticlePage({ params }: { params: Promise<{ slug: st
 
   const totalCommentsCount = comments.length
 
+  const handleScrollToComments = () => {
+    const commentsSection = document.getElementById("comments-section")
+    if (commentsSection) {
+      commentsSection.scrollIntoView({ behavior: "smooth", block: "start" })
+    }
+  }
+
   const reactionEmojis: Record<ReactionType, string> = {
     like: "👍",
     love: "❤️",
@@ -284,7 +291,7 @@ export default function WikiArticlePage({ params }: { params: Promise<{ slug: st
               <Heart className={`h-4 w-4 mr-2 ${hasLiked ? "fill-current" : ""}`} />
               {article.likes.length} {article.likes.length === 1 ? "Like" : "Likes"}
             </Button>
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" onClick={handleScrollToComments}>
               <MessageCircle className="h-4 w-4 mr-2" />
               {totalCommentsCount} {totalCommentsCount === 1 ? "Comment" : "Comments"}
             </Button>
@@ -296,7 +303,7 @@ export default function WikiArticlePage({ params }: { params: Promise<{ slug: st
       </Card>
 
       {/* Comments Section */}
-      <Card className="mt-6 border-2">
+      <Card id="comments-section" className="mt-6 border-2">
         <CardHeader className="border-b pb-4">
           <div className="flex items-center justify-between">
             <h2 className="text-2xl font-bold">Comments</h2>
