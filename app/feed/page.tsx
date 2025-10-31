@@ -42,6 +42,7 @@ import { formatDate } from "@/lib/utils/date"
 import type { BlogPost, Pet, User as UserType, ReactionType } from "@/lib/types"
 import { getPetUrlFromPet } from "@/lib/utils/pet-url"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { LoadingSpinner } from "@/components/ui/loading-spinner"
 
 export default function FeedPage() {
   const { user, isAuthenticated } = useAuth()
@@ -53,6 +54,7 @@ export default function FeedPage() {
   const [newPostContent, setNewPostContent] = useState("")
   const [selectedPet, setSelectedPet] = useState("")
   const [filter, setFilter] = useState<"all" | "following">("all")
+  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -61,6 +63,7 @@ export default function FeedPage() {
     }
 
     if (user) {
+      setIsLoading(true)
       const pets = getPetsByOwnerId(user.id)
       setMyPets(pets)
       if (pets.length > 0 && !selectedPet) {
@@ -69,6 +72,7 @@ export default function FeedPage() {
       loadFeed()
       loadTrending()
       loadSuggestedUsers()
+      setIsLoading(false)
     }
   }, [user, isAuthenticated, router, filter])
 
@@ -185,7 +189,9 @@ export default function FeedPage() {
     loadSuggestedUsers()
   }
 
-  if (!user) return null
+  if (!user || isLoading) {
+    return <LoadingSpinner fullScreen />
+  }
 
   const stats = [
     {

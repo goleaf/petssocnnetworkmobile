@@ -31,8 +31,8 @@ import {
   Smile,
   ThumbsUp,
   MessageCircle,
-  Loader2,
 } from "lucide-react"
+import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import Link from "next/link"
 import ReactMarkdown from "react-markdown"
 import type { Comment, ReactionType } from "@/lib/types"
@@ -213,11 +213,7 @@ export default function WikiArticlePage({ params }: { params: Promise<{ slug: st
   }
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    )
+    return <LoadingSpinner fullScreen />
   }
 
   if (!article || !author) {

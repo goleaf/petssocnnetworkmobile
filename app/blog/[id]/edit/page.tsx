@@ -15,7 +15,7 @@ import { getBlogPostById, getPetsByOwnerId, updateBlogPost } from "@/lib/storage
 import type { BlogPost, PrivacyLevel } from "@/lib/types"
 import { ArrowLeft, Save } from "lucide-react"
 import Link from "next/link"
-import { Loader2 } from "lucide-react"
+import { LoadingSpinner } from "@/components/ui/loading-spinner"
 
 export default function EditBlogPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
@@ -97,11 +97,7 @@ export default function EditBlogPage({ params }: { params: Promise<{ id: string 
   }
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    )
+    return <LoadingSpinner fullScreen />
   }
 
   if (!post) {

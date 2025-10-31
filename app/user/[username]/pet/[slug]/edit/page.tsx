@@ -12,7 +12,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { getPetByUsernameAndSlug, updatePet, generatePetSlug, getUsers } from "@/lib/storage"
 import type { Pet } from "@/lib/types"
-import { ArrowLeft, Save, Loader2 } from "lucide-react"
+import { ArrowLeft, Save } from "lucide-react"
+import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import Link from "next/link"
 import { getPetUrlFromPet } from "@/lib/utils/pet-url"
 
@@ -122,11 +123,7 @@ export default function EditPetPage({ params }: { params: Promise<{ username: st
   }
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    )
+    return <LoadingSpinner fullScreen />
   }
 
   if (!pet || !user) {

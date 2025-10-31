@@ -99,6 +99,7 @@ export interface Comment {
   id: string
   postId?: string // For blog posts
   wikiArticleId?: string // For wiki articles
+  petPhotoId?: string // For pet photos (format: petId:photoIndex)
   userId: string
   content: string
   createdAt: string

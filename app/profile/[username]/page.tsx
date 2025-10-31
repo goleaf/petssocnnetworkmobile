@@ -8,7 +8,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { getUsers, getPets, getBlogPosts, updateUser } from "@/lib/storage"
 import { useAuth } from "@/lib/auth"
-import { MapPin, Calendar, Users, Heart, Loader2, PawPrint, FileText } from "lucide-react"
+import { MapPin, Calendar, Users, Heart, PawPrint, FileText } from "lucide-react"
+import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import Link from "next/link"
 import { useState, useEffect } from "react"
 import { formatDate } from "@/lib/utils/date"
@@ -68,11 +69,7 @@ export default function ProfilePage({ params }: { params: Promise<{ username: st
   }
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    )
+    return <LoadingSpinner fullScreen />
   }
 
   if (!user) {

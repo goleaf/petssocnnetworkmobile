@@ -32,8 +32,8 @@ import {
   AlertCircle,
   FileText,
   Sparkles,
-  Loader2,
 } from "lucide-react"
+import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import Link from "next/link"
 
 export default function PetProfilePage({ params }: { params: Promise<{ id: string }> }) {
@@ -92,11 +92,7 @@ export default function PetProfilePage({ params }: { params: Promise<{ id: strin
   }
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    )
+    return <LoadingSpinner fullScreen />
   }
 
   if (!pet || !owner) {

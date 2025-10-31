@@ -7,12 +7,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { getBlogPosts } from "@/lib/storage"
 import Link from "next/link"
 import { Hash, TrendingUp, Sparkles } from "lucide-react"
+import { LoadingSpinner } from "@/components/ui/loading-spinner"
 
 export default function ExplorePage() {
   const [trendingHashtags, setTrendingHashtags] = useState<{ tag: string; count: number }[]>([])
   const [recentPosts, setRecentPosts] = useState<any[]>([])
+  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
+    setIsLoading(true)
     const posts = getBlogPosts()
     setRecentPosts(posts.slice(0, 10))
 
@@ -30,7 +33,12 @@ export default function ExplorePage() {
       .slice(0, 20)
 
     setTrendingHashtags(trending)
+    setIsLoading(false)
   }, [])
+
+  if (isLoading) {
+    return <LoadingSpinner fullScreen />
+  }
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">

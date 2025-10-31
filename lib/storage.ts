@@ -332,6 +332,10 @@ export function getCommentsByWikiArticleId(articleId: string): Comment[] {
   return getComments().filter((c) => c.wikiArticleId === articleId)
 }
 
+export function getCommentsByPetPhotoId(petPhotoId: string): Comment[] {
+  return getComments().filter((c) => c.petPhotoId === petPhotoId)
+}
+
 export function addComment(comment: Comment) {
   if (typeof window === "undefined") return
   const comments = getComments()
@@ -419,6 +423,61 @@ export function updateWikiArticle(article: WikiArticle) {
     articles[index] = article
     localStorage.setItem(STORAGE_KEYS.WIKI_ARTICLES, JSON.stringify(articles))
   }
+}
+
+// Photo reactions - stored in pets photos array metadata
+export function getPhotoReactions(petId: string, photoIndex: number): Record<string, Record<ReactionType, string[]>> {
+  if (typeof window === "undefined") return {}
+  const pets = getPets()
+  const pet = pets.find((p) => p.id === petId)
+  if (!pet || !pet.photos || photoIndex >= pet.photos.length) return {}
+  
+  // Use a key format: petId:photoIndex
+  const photoKey = `${petId}:${photoIndex}`
+  const reactionsKey = `pet_photo_reactions_${photoKey}`
+  const data = localStorage.getItem(reactionsKey)
+  return data ? JSON.parse(data) : {}
+}
+
+export function togglePhotoReaction(petId: string, photoIndex: number, userId: string, reactionType: ReactionType) {
+  if (typeof window === "undefined") return
+  const photoKey = `${petId}:${photoIndex}`
+  const reactionsKey = `pet_photo_reactions_${photoKey}`
+  const currentReactions = getPhotoReactions(petId, photoIndex)[photoKey] || {
+    like: [],
+    love: [],
+    laugh: [],
+    wow: [],
+    sad: [],
+    angry: [],
+  }
+  
+  const reactionArray = currentReactions[reactionType] || []
+  const hasReacted = reactionArray.includes(userId)
+  
+  const updatedReactions = { ...currentReactions }
+  
+  if (hasReacted) {
+    // Remove reaction
+    updatedReactions[reactionType] = reactionArray.filter((id) => id !== userId)
+  } else {
+    // Remove from other reactions first (user can only have one reaction)
+    Object.keys(updatedReactions).forEach((key) => {
+      if (key !== reactionType) {
+        updatedReactions[key as ReactionType] = updatedReactions[key as ReactionType].filter(
+          (id) => id !== userId
+        )
+      }
+    })
+    // Add reaction
+    updatedReactions[reactionType] = [...reactionArray, userId]
+  }
+  
+  const allReactions: Record<string, Record<ReactionType, string[]>> = {
+    [photoKey]: updatedReactions,
+  }
+  
+  localStorage.setItem(reactionsKey, JSON.stringify(allReactions))
 }
 
 // Activity operations

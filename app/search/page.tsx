@@ -12,6 +12,7 @@ import { Search, User, PawPrint, FileText, BookOpen, Hash, Filter, MapPin } from
 import Link from "next/link"
 import { getUsers, getPets, getBlogPosts, getWikiArticles } from "@/lib/storage"
 import type { User as UserType, Pet, BlogPost, WikiArticle } from "@/lib/types"
+import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -41,8 +42,10 @@ export default function SearchPage() {
     wiki: [] as WikiArticle[],
     hashtags: [] as string[],
   })
+  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
+    setIsLoading(true)
     if (
       !query.trim() &&
       filters.species.length === 0 &&
@@ -123,6 +126,7 @@ export default function SearchPage() {
       wiki,
       hashtags: Array.from(allHashtags),
     })
+    setIsLoading(false)
   }, [query, filters])
 
   const toggleSpeciesFilter = (species: string) => {

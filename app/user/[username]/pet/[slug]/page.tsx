@@ -32,10 +32,12 @@ import {
   AlertCircle,
   FileText,
   Sparkles,
-  Loader2,
 } from "lucide-react"
+import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import Link from "next/link"
 import { formatDate } from "@/lib/utils/date"
+
+import { PhotoViewer } from "@/components/photo-viewer"
 
 export default function PetProfilePage({ params }: { params: Promise<{ username: string; slug: string }> }) {
   const { username, slug } = use(params)
@@ -46,6 +48,8 @@ export default function PetProfilePage({ params }: { params: Promise<{ username:
   const [isFollowing, setIsFollowing] = useState(false)
   const [friends, setFriends] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [photoViewerOpen, setPhotoViewerOpen] = useState(false)
+  const [selectedPhotoIndex, setSelectedPhotoIndex] = useState(0)
 
   useEffect(() => {
     setIsLoading(true)
@@ -93,11 +97,7 @@ export default function PetProfilePage({ params }: { params: Promise<{ username:
   }
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    )
+    return <LoadingSpinner fullScreen />
   }
 
   if (!pet || !owner) {
@@ -677,17 +677,33 @@ export default function PetProfilePage({ params }: { params: Promise<{ username:
             </CardHeader>
             <CardContent>
               {pet.photos && pet.photos.length > 0 ? (
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {pet.photos.map((photo, idx) => (
-                    <div key={idx} className="aspect-square rounded-lg overflow-hidden">
-                      <img
-                        src={photo || "/placeholder.svg"}
-                        alt={`${pet.name} photo ${idx + 1}`}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                  ))}
-                </div>
+                <>
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    {pet.photos.map((photo, idx) => (
+                      <div
+                        key={idx}
+                        className="aspect-square rounded-lg overflow-hidden cursor-pointer hover:opacity-90 transition-opacity group"
+                        onClick={() => {
+                          setSelectedPhotoIndex(idx)
+                          setPhotoViewerOpen(true)
+                        }}
+                      >
+                        <img
+                          src={photo || "/placeholder.svg"}
+                          alt={`${pet.name} photo ${idx + 1}`}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  <PhotoViewer
+                    photos={pet.photos}
+                    initialIndex={selectedPhotoIndex}
+                    isOpen={photoViewerOpen}
+                    onClose={() => setPhotoViewerOpen(false)}
+                    petName={pet.name}
+                  />
+                </>
               ) : (
                 <div className="text-center py-12">
                   <Camera className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
