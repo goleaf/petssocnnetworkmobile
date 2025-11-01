@@ -67,8 +67,8 @@ export function sanitizeLocationForStorage(user: Partial<User>): Partial<User> {
 
   // If precise coordinates exist but privacy doesn't allow them, remove them
   if (!allowsPrecise && user.locationPrecise) {
-    const sanitized = { ...user }
-    delete sanitized.locationPrecise
+    // Explicitly create new object without locationPrecise
+    const { locationPrecise, ...sanitized } = user
     return sanitized
   }
 

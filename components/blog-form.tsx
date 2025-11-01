@@ -19,6 +19,8 @@ import {
 } from "@/components/ui/tooltip"
 import { TagInput } from "@/components/ui/tag-input"
 import { PrivacySelector } from "@/components/privacy-selector"
+import { Switch } from "@/components/ui/switch"
+import { BookOpen } from "lucide-react"
 import { MarkdownEditor } from "@/components/markdown-editor"
 import { MediaAttachmentsEditor } from "@/components/media-attachments-editor"
 import { BrandAffiliationDisclosure } from "@/components/brand-affiliation-disclosure"
@@ -82,6 +84,7 @@ export interface BlogFormData {
     organizationName?: string
     organizationType?: "brand" | "organization" | "sponsor" | "affiliate"
   }
+  disableWikiLinks?: boolean
 }
 
 interface BlogFormProps {
@@ -131,6 +134,7 @@ export function BlogForm({
     brandAffiliation: initialData?.brandAffiliation || {
       disclosed: false,
     },
+    disableWikiLinks: initialData?.disableWikiLinks || false,
   })
 
   const [errors, setErrors] = useState<ValidationErrors>({})
@@ -620,7 +624,29 @@ export function BlogForm({
               </div>
             </div>
 
-            <div className="border-t pt-4">
+            <div className="border-t pt-4 space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5 flex-1">
+                  <LabelWithTooltip 
+                    htmlFor="disableWikiLinks"
+                    tooltip="When enabled, recognized wiki terms in your post will automatically link to wiki articles with hover previews. You can disable this for individual posts."
+                  >
+                    <div className="flex items-center gap-2">
+                      <BookOpen className="h-4 w-4 text-muted-foreground" />
+                      Auto-link Wiki Terms
+                    </div>
+                  </LabelWithTooltip>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Automatically detect and link recognized terms to wiki articles with hover previews
+                  </p>
+                </div>
+                <Switch
+                  id="disableWikiLinks"
+                  checked={!formData.disableWikiLinks}
+                  onCheckedChange={(checked) => handleFieldChange("disableWikiLinks", !checked)}
+                />
+              </div>
+
               <LabelWithTooltip
                 tooltip="Attach optional photos, videos, and helpful resources to give your audience more ways to engage with your story."
               >

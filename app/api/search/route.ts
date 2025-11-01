@@ -56,18 +56,7 @@ async function performFTSSearch(
 
   // Build ranked search query with weights
   // Weights: A=title(1.0), B=type(0.5), C=content(0.25)
-  const results = await db.$queryRawUnsafe<
-    Array<{
-      id: string
-      petId: string
-      authorId: string
-      title: string
-      content: string
-      type: string
-      rank: number
-      snippet: string
-    }>
-  >`
+  const results = (await db.$queryRawUnsafe(`
     WITH ranked_posts AS (
       SELECT 
         bp.id,
@@ -101,11 +90,16 @@ async function performFTSSearch(
     WHERE rp.search_vector @@ to_tsquery('english', $1)
     ORDER BY rank DESC, rp."createdAt" DESC
     LIMIT $2 OFFSET $3
-  `,
-    tsQuery,
-    limit,
-    offset
-  )
+  `, tsQuery, limit, offset)) as Array<{
+    id: string
+    petId: string
+    authorId: string
+    title: string
+    content: string
+    type: string
+    rank: number
+    snippet: string
+  }>
 
   return results
 }

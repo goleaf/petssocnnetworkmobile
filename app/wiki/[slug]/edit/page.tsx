@@ -7,7 +7,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { BackButton } from "@/components/ui/back-button"
 import { WikiForm, type WikiFormData } from "@/components/wiki-form"
 import { getWikiArticleBySlug, updateWikiArticle, generateWikiSlug } from "@/lib/storage"
+import { getPermissionResult } from "@/lib/policy"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { AlertCircle } from "lucide-react"
 import { Save } from "lucide-react"
 
 export default function EditWikiPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -16,6 +19,7 @@ export default function EditWikiPage({ params }: { params: Promise<{ slug: strin
   const router = useRouter()
   const [article, setArticle] = useState<any | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [permissionError, setPermissionError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!user) {
@@ -29,8 +33,14 @@ export default function EditWikiPage({ params }: { params: Promise<{ slug: strin
       return
     }
 
-    // Check if user owns the article
-    if (fetchedArticle.authorId !== user.id) {
+    // Check permission using centralized policy
+    const permissionResult = getPermissionResult("edit_wiki", {
+      user,
+      resource: { type: "wiki", ...fetchedArticle },
+    })
+
+    if (!permissionResult.allowed) {
+      setPermissionError(permissionResult.reason || "Permission denied")
       router.push(`/wiki/${slug}`)
       return
     }
@@ -116,7 +126,15 @@ export default function EditWikiPage({ params }: { params: Promise<{ slug: strin
       <div className="container mx-auto px-4 py-8 max-w-7xl">
         <Card>
           <CardContent className="p-8 text-center">
-            <p className="text-muted-foreground mb-4">Article not found or you don't have permission to edit.</p>
+            {permissionError ? (
+              <Alert variant="destructive" className="mb-4">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Permission Denied</AlertTitle>
+                <AlertDescription>{permissionError}</AlertDescription>
+              </Alert>
+            ) : (
+              <p className="text-muted-foreground mb-4">Article not found or you don't have permission to edit.</p>
+            )}
             <BackButton href="/wiki" label="Back to Wiki" />
           </CardContent>
         </Card>

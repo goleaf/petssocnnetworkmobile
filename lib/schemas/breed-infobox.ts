@@ -59,18 +59,6 @@ export const breedInfoboxSchema = z.object({
   images: z.array(z.string().url("Each image must be a valid URL")).default([]).optional(),
 }).refine(
   (data) => {
-    // At least one weight field should be filled if size class is specified
-    if (data.sizeClass && !data.maleAvgWeightKg && !data.femaleAvgWeightKg) {
-      return false
-    }
-    return true
-  },
-  {
-    message: "Please provide at least one average weight if size class is specified",
-    path: ["maleAvgWeightKg", "femaleAvgWeightKg"],
-  }
-).refine(
-  (data) => {
     // If gender-specific weights are provided, they should be different enough
     if (data.maleAvgWeightKg && data.femaleAvgWeightKg) {
       const diff = Math.abs(data.maleAvgWeightKg - data.femaleAvgWeightKg)

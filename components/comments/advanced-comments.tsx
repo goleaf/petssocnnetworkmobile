@@ -36,6 +36,8 @@ import { formatCommentDate } from "@/lib/utils/date"
 import { replaceEmoticons } from "@/lib/utils/emoticon-replacer"
 import { cn } from "@/lib/utils"
 import { CommentEditor } from "./comment-editor"
+import { BrandAffiliationLabel } from "@/components/brand-affiliation-label"
+import { BrandAffiliationDisclosure } from "@/components/brand-affiliation-disclosure"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -196,6 +198,7 @@ export function AdvancedComments({
   const [replyDraft, setReplyDraft] = useState("")
   const [editTargetId, setEditTargetId] = useState<string | null>(null)
   const [editDraft, setEditDraft] = useState("")
+  const [editBrandAffiliation, setEditBrandAffiliation] = useState<{ disclosed: boolean; organizationName?: string; organizationType?: "brand" | "organization" | "sponsor" | "affiliate" }>({ disclosed: false })
   const [flagDialog, setFlagDialog] = useState<FlagDialogState>({
     open: false,
     target: null,
@@ -387,6 +390,7 @@ export function AdvancedComments({
     setReplyTargetId(null)
     setEditTargetId(comment.id)
     setEditDraft(comment.content)
+    setEditBrandAffiliation(comment.brandAffiliation || { disclosed: false })
   }
 
   const handleSaveEdit = () => {
@@ -397,15 +401,21 @@ export function AdvancedComments({
     if (!canUserEditComment(target, currentUser)) return
 
     const processedContent = replaceEmoticons(editDraft.trim())
-    updateComment(editTargetId, processedContent, { editorId: currentUser!.id, format: "markdown" })
+    updateComment(editTargetId, processedContent, { 
+      editorId: currentUser!.id, 
+      format: "markdown",
+      brandAffiliation: editBrandAffiliation.disclosed ? editBrandAffiliation : undefined,
+    })
     setEditTargetId(null)
     setEditDraft("")
+    setEditBrandAffiliation({ disclosed: false })
     loadComments()
   }
 
   const handleCancelEdit = () => {
     setEditTargetId(null)
     setEditDraft("")
+    setEditBrandAffiliation({ disclosed: false })
   }
 
   const handleToggleReaction = (commentId: string, reactionType: ReactionType) => {
@@ -499,6 +509,8 @@ export function AdvancedComments({
       editDraft={editTargetId === node.id ? editDraft : ""}
       setEditDraft={setEditDraft}
       isEditing={editTargetId === node.id}
+      editBrandAffiliation={editTargetId === node.id ? editBrandAffiliation : { disclosed: false }}
+      setEditBrandAffiliation={setEditBrandAffiliation}
       onDelete={() => handleDelete(node)}
       onToggleReaction={(reaction) => handleToggleReaction(node.id, reaction)}
       getUserReaction={() => getUserReaction(node)}
@@ -786,6 +798,8 @@ function CommentCard({
   editDraft,
   setEditDraft,
   isEditing,
+  editBrandAffiliation,
+  setEditBrandAffiliation,
   onDelete,
   onToggleReaction,
   getUserReaction,
@@ -810,11 +824,11 @@ function CommentCard({
     <div
       className={cn(
         "rounded-lg border bg-card p-4 shadow-sm",
-        depth > 0 ? "ml-6 border-l-4 border-l-primary/30" : "",
+        depth > 0 ? "border-l-4 border-l-primary/30" : "",
         isHidden ? "bg-muted/40" : "",
       )}
       style={{
-        marginLeft: depth > 0 ? depth * 16 : 0,
+        marginLeft: depth > 0 ? `${depth * 16}px` : 0,
       }}
     >
       <div className="flex gap-3">
@@ -836,6 +850,9 @@ function CommentCard({
                 </div>
                 <span className="text-xs text-muted-foreground">{formatCommentDate(node.createdAt)}</span>
                 {node.updatedAt && <span className="text-xs text-muted-foreground italic">(edited)</span>}
+                {node.brandAffiliation && (
+                  <BrandAffiliationLabel brandAffiliation={node.brandAffiliation} variant="compact" />
+                )}
               </div>
               <div className="mt-1 flex flex-wrap items-center gap-2">
                 {isOwner && <Badge variant="outline">You</Badge>}
@@ -916,15 +933,22 @@ function CommentCard({
             {isHidden && !viewerCanModerate && !isOwner ? (
               <p>This comment has been hidden by moderators.</p>
             ) : isEditing ? (
-              <CommentEditor
-                value={editDraft}
-                onChange={setEditDraft}
-                onSubmit={onSaveEdit}
-                onCancel={onCancelEdit}
-                submitLabel="Save changes"
-                autoFocus
-                minRows={4}
-              />
+              <div className="space-y-3">
+                <CommentEditor
+                  value={editDraft}
+                  onChange={setEditDraft}
+                  onSubmit={onSaveEdit}
+                  onCancel={onCancelEdit}
+                  submitLabel="Save changes"
+                  autoFocus
+                  minRows={4}
+                />
+                <BrandAffiliationDisclosure
+                  value={editBrandAffiliation}
+                  onChange={setEditBrandAffiliation}
+                  showReminder={true}
+                />
+              </div>
             ) : (
               <ReactMarkdown>{node.content}</ReactMarkdown>
             )}

@@ -129,7 +129,7 @@ export function WikiFooter({ article, maxRelated = 5 }: WikiFooterProps) {
     return { nodes: Array.from(nodes.values()), links }
   }, [article, articles])
 
-  const hasContent = relatedArticles.length > 0 || linkGraphData
+  const hasContent = relatedArticles.length > 0 || (linkGraphData && linkGraphData.links.length > 0)
 
   if (!hasContent) return null
 

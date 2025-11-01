@@ -63,6 +63,7 @@ import {
 import Link from "next/link"
 import { BadgeDisplay } from "@/components/badge-display"
 import { RoleBadge } from "@/components/role-badge"
+import { TierBadge } from "@/components/tier-badge"
 import { SidebarUserList } from "@/components/sidebar-user-list"
 import { getPetUrlFromPet } from "@/lib/utils/pet-url"
 import { formatDate } from "@/lib/utils/date"
@@ -335,6 +336,7 @@ export default function UserProfilePage() {
                       <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold">{user.fullName}</h1>
                       <BadgeDisplay user={user} size="lg" />
                       <RoleBadge role={user.role} size="md" />
+                      <TierBadge user={user} size="md" showPoints={isOwnProfile} />
                     </div>
                     <p className="text-muted-foreground text-sm sm:text-base">@{user.username}</p>
                     {user.isPro && user.proExpiresAt && (

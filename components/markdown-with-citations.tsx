@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useMemo } from "react"
+import React, { useEffect, useState, useMemo } from "react"
 import ReactMarkdown from "react-markdown"
 import { ReferenceList } from "@/components/reference-list"
 import { InlineCitation } from "@/components/citation-renderer"
@@ -36,31 +36,14 @@ export function MarkdownWithCitations({ content, className }: MarkdownWithCitati
   // Custom renderer for ReactMarkdown that handles citations
   const components = {
     p: ({ children, ...props }: any) => {
-      // Process paragraph content to render citations
-      const processNode = (node: any): any => {
-        if (typeof node === "string") {
-          return processTextWithCitations(node)
-        }
-        if (Array.isArray(node)) {
-          return node.map((child, idx) => (
-            <span key={idx}>{processNode(child)}</span>
-          ))
-        }
-        if (node?.props?.children) {
-          return {
-            ...node,
-            props: {
-              ...node.props,
-              children: processNode(node.props.children),
-            },
-          }
-        }
-        return node
-      }
+      // Convert children to string first for processing
+      const childrenString = React.Children.toArray(children)
+        .map((child: any) => (typeof child === "string" ? child : child?.props?.children || ""))
+        .join("")
 
-      const processedChildren = processNode(children)
+      const processed = processTextWithCitations(childrenString)
 
-      return <p {...props}>{processedChildren}</p>
+      return <p {...props}>{processed}</p>
     },
   }
 

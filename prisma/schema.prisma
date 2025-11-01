@@ -24,6 +24,7 @@ model Article {
   revisions   Revision[]
   tags        ArticleTag[]
   props       ArticleProp[]
+  searchIndex ArticleSearchIndex?
 
   @@unique([slug, type])
   @@map("articles")

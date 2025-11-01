@@ -1078,7 +1078,7 @@ export function PetForm({ mode, initialData, onSubmit, onCancel, petName }: PetF
                         <div className="space-y-2">
                           <LabelWithTooltip
                             htmlFor={`achievement-title-${achievement.id}`}
-                            tooltip="Give this achievement a memorable title. For example: \"Agility Champion\"."
+                            tooltip='Give this achievement a memorable title. For example: "Agility Champion".'
                           >
                             Title
                           </LabelWithTooltip>

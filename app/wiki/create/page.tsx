@@ -7,15 +7,18 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { BackButton } from "@/components/ui/back-button"
 import { WikiForm, type WikiFormData } from "@/components/wiki-form"
 import { addWikiArticle, generateWikiSlug } from "@/lib/storage"
-import { FileText, FolderOpen } from "lucide-react"
+import { getPermissionResult } from "@/lib/policy"
+import { FileText, FolderOpen, AlertCircle } from "lucide-react"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { Button } from "@/components/ui/button"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import Link from "next/link"
 
 export default function CreateWikiPage() {
   const { user } = useAuth()
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(true)
+  const [permissionError, setPermissionError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!user) {
@@ -27,6 +30,19 @@ export default function CreateWikiPage() {
 
   const handleSubmit = async (formData: WikiFormData) => {
     if (!user) return
+
+    // Check permission using centralized policy
+    const permissionResult = getPermissionResult("create_wiki", {
+      user,
+      resource: { type: "wiki", category: formData.category },
+    })
+
+    if (!permissionResult.allowed) {
+      setPermissionError(permissionResult.reason || "Permission denied")
+      return
+    }
+
+    setPermissionError(null)
 
     const newArticle = {
       id: String(Date.now()),
@@ -84,6 +100,14 @@ export default function CreateWikiPage() {
           </div>
         </CardHeader>
       </Card>
+
+      {permissionError && (
+        <Alert variant="destructive" className="mb-6">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Permission Denied</AlertTitle>
+          <AlertDescription>{permissionError}</AlertDescription>
+        </Alert>
+      )}
 
       <WikiForm
         mode="create"

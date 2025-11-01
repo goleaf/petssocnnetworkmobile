@@ -322,6 +322,21 @@ export interface Comment {
   }
 }
 
+// Editorial Discussion - separate from public comments, for editorial/administrative discussions
+export interface EditorialDiscussion {
+  id: string
+  articleId: string // Blog post ID
+  articleType: "blog" // Currently only for blog posts, can be extended to "wiki" later
+  userId: string
+  content: string
+  createdAt: string
+  updatedAt?: string
+  parentDiscussionId?: string // For replies within editorial discussions
+  reactions?: Record<ReactionType, string[]> // User IDs who reacted with each type
+  format?: "markdown" | "plaintext"
+  editedBy?: string
+}
+
 export type WikiRevisionStatus = "draft" | "stable" | "deprecated"
 
 export interface WikiRevision {
@@ -1099,6 +1114,24 @@ export interface ExpertProfile {
   licenseNo?: string
   region?: string
   verifiedAt?: string
+  credentialFileUrls?: string[] // URLs of uploaded credential files
+}
+
+export type ExpertVerificationStatus = "pending" | "approved" | "rejected"
+
+export interface ExpertVerificationRequest {
+  id: string
+  userId: string
+  status: ExpertVerificationStatus
+  credential: string // e.g., "DVM", "Veterinary Technician", "Animal Behaviorist"
+  licenseNo?: string
+  region?: string
+  credentialFileUrls: string[] // URLs of uploaded credential files
+  reason?: string // Reason for rejection (if rejected)
+  reviewedBy?: string // Admin/moderator user ID who reviewed
+  reviewedAt?: string // Timestamp of review
+  createdAt: string // When the request was created
+  updatedAt: string // When the request was last updated
 }
 
 export type PlaceModerationStatus = "pending" | "approved" | "rejected"
@@ -1160,6 +1193,41 @@ export interface EditRequestAuditLog {
   performedBy: string
   performedAt: string
   reason?: string
+  metadata?: Record<string, unknown>
+}
+
+// Flagged Revisions Queue for Health/Regulatory Content
+export type FlaggedRevisionStatus = "flagged" | "pending" | "approved" | "rejected"
+
+export interface FlaggedRevision {
+  id: string
+  revisionId: string
+  articleId: string
+  flaggedBy?: string // User who flagged the revision (optional - can be auto-flagged)
+  flaggedAt: string
+  status: FlaggedRevisionStatus
+  flagReason?: string // Reason why it was flagged
+  reviewedBy?: string // Admin/moderator who reviewed
+  reviewedAt?: string // Timestamp of review
+  rationale?: string // Rationale for approve/reject decision
+  priority?: "low" | "medium" | "high" | "urgent"
+  category?: "health" | "regulatory" // Content category
+  notes?: string // Additional notes
+  createdAt: string
+  updatedAt: string
+}
+
+export interface FlaggedRevisionAuditLog {
+  id: string
+  flaggedRevisionId: string
+  action: "flagged" | "approved" | "rejected" | "status_changed" | "priority_changed" | "note_added"
+  performedBy: string
+  performedAt: string
+  rationale?: string // Rationale for the action
+  previousStatus?: FlaggedRevisionStatus
+  newStatus?: FlaggedRevisionStatus
+  previousPriority?: string
+  newPriority?: string
   metadata?: Record<string, unknown>
 }
 

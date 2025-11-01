@@ -29,85 +29,92 @@ export interface DiffSummary {
  */
 export function computeDiff(oldText: string, newText: string): DiffBlock[] {
   const changes = diffLines(oldText, newText);
-  const blocks: DiffBlock[] = [];
+  const rawBlocks: Array<{
+    id: string;
+    type: "added" | "removed" | "unchanged";
+    oldStartLine: number;
+    oldEndLine: number;
+    newStartLine: number;
+    newEndLine: number;
+    oldContent: string;
+    newContent: string;
+    changes: Change[];
+  }> = [];
   let oldLineNum = 1;
   let newLineNum = 1;
   let blockIdCounter = 0;
 
+  // First pass: create raw blocks
   for (const change of changes) {
     const blockId = `block-${blockIdCounter++}`;
     const lines = change.value.split("\n");
-    const lineCount = lines.length - (change.value.endsWith("\n") ? 0 : 1);
+    // Handle trailing newline: if value ends with \n, the last element is empty string
+    const lineCount = change.value.length > 0
+      ? (change.value.endsWith("\n") ? lines.length - 1 : lines.length)
+      : 0;
 
     if (change.added) {
-      blocks.push({
+      rawBlocks.push({
         id: blockId,
         type: "added",
-        oldStartLine: oldLineNum - 1,
-        oldEndLine: oldLineNum - 1,
+        oldStartLine: oldLineNum > 0 ? oldLineNum - 1 : 0,
+        oldEndLine: oldLineNum > 0 ? oldLineNum - 1 : 0,
         newStartLine: newLineNum,
-        newEndLine: newLineNum + lineCount - 1,
+        newEndLine: lineCount > 0 ? newLineNum + lineCount - 1 : newLineNum,
         oldContent: "",
         newContent: change.value,
         changes: [change],
       });
-      newLineNum += lineCount;
+      if (lineCount > 0) {
+        newLineNum += lineCount;
+      }
     } else if (change.removed) {
-      blocks.push({
+      rawBlocks.push({
         id: blockId,
         type: "removed",
         oldStartLine: oldLineNum,
-        oldEndLine: oldLineNum + lineCount - 1,
-        newStartLine: newLineNum - 1,
-        newEndLine: newLineNum - 1,
+        oldEndLine: lineCount > 0 ? oldLineNum + lineCount - 1 : oldLineNum,
+        newStartLine: newLineNum > 0 ? newLineNum - 1 : 0,
+        newEndLine: newLineNum > 0 ? newLineNum - 1 : 0,
         oldContent: change.value,
         newContent: "",
         changes: [change],
       });
-      oldLineNum += lineCount;
-    } else {
-      // Check if next change is a modification
-      const nextChangeIdx = changes.indexOf(change) + 1;
-      const nextChange = changes[nextChangeIdx];
-      const prevChange = changes[nextChangeIdx - 2];
-
-      // Detect modifications: removed followed by added (or vice versa)
-      if (
-        (prevChange?.removed && nextChange?.added) ||
-        (prevChange?.added && nextChange?.removed)
-      ) {
-        // This is part of a modification block, skip for now
+      if (lineCount > 0) {
         oldLineNum += lineCount;
-        newLineNum += lineCount;
-        continue;
       }
-
-      blocks.push({
+    } else {
+      // Unchanged
+      rawBlocks.push({
         id: blockId,
         type: "unchanged",
         oldStartLine: oldLineNum,
-        oldEndLine: oldLineNum + lineCount - 1,
+        oldEndLine: lineCount > 0 ? oldLineNum + lineCount - 1 : oldLineNum,
         newStartLine: newLineNum,
-        newEndLine: newLineNum + lineCount - 1,
+        newEndLine: lineCount > 0 ? newLineNum + lineCount - 1 : newLineNum,
         oldContent: change.value,
         newContent: change.value,
         changes: [change],
       });
-      oldLineNum += lineCount;
-      newLineNum += lineCount;
+      if (lineCount > 0) {
+        oldLineNum += lineCount;
+        newLineNum += lineCount;
+      }
     }
   }
 
-  // Post-process to merge adjacent removed/added blocks into modifications
+  // Second pass: merge adjacent removed/added into modifications
   const processedBlocks: DiffBlock[] = [];
-  for (let i = 0; i < blocks.length; i++) {
-    const current = blocks[i];
-    const next = blocks[i + 1];
+  for (let i = 0; i < rawBlocks.length; i++) {
+    const current = rawBlocks[i];
+    const next = rawBlocks[i + 1];
 
+    // Check if we should merge removed+added or added+removed into a modification
     if (
       current.type === "removed" &&
       next?.type === "added" &&
-      Math.abs(current.oldEndLine - next.newStartLine) <= 1
+      current.oldEndLine >= current.oldStartLine &&
+      next.newStartLine <= next.newEndLine
     ) {
       // Merge into modification
       processedBlocks.push({
@@ -122,26 +129,12 @@ export function computeDiff(oldText: string, newText: string): DiffBlock[] {
         changes: [...current.changes, ...next.changes],
       });
       i++; // Skip next block
-    } else if (
-      current.type === "added" &&
-      next?.type === "removed" &&
-      Math.abs(current.newEndLine - next.oldStartLine) <= 1
-    ) {
-      // Merge into modification (added then removed)
-      processedBlocks.push({
-        id: `${next.id}-${current.id}`,
-        type: "modified",
-        oldStartLine: next.oldStartLine,
-        oldEndLine: next.oldEndLine,
-        newStartLine: current.newStartLine,
-        newEndLine: current.newEndLine,
-        oldContent: next.oldContent,
-        newContent: current.newContent,
-        changes: [...next.changes, ...current.changes],
-      });
-      i++; // Skip next block
     } else {
-      processedBlocks.push(current);
+      // Keep as-is
+      processedBlocks.push({
+        ...current,
+        type: current.type as DiffBlockType,
+      });
     }
   }
 

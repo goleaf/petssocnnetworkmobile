@@ -69,9 +69,12 @@ export function findWikiTermsInText(text: string): WikiMatch[] {
         // Check word boundaries - ensure we're matching whole words
         const charBefore = index > 0 ? text[index - 1] : " "
         const charAfter = index + title.length < text.length ? text[index + title.length] : " "
-        const isWordBoundary = /[\s\p{P}]/u.test(charBefore) && /[\s\p{P}]/u.test(charAfter)
+        // Allow word boundaries (whitespace, punctuation, or start/end of string)
+        const isWordBoundary = 
+          (index === 0 || /[\s\p{P}]/u.test(charBefore)) && 
+          (index + title.length === text.length || /[\s\p{P}]/u.test(charAfter))
         
-        if (isWordBoundary || index === 0 || index + title.length === text.length) {
+        if (isWordBoundary) {
           matches.push({
             term: text.substring(index, index + title.length),
             article,

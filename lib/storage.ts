@@ -64,6 +64,7 @@ import { calculateAge } from "./utils/date"
 import { addNotification, createMentionNotification } from "./notifications"
 import { extractMentions } from "./utils/mentions"
 import { normalizeCategoryList } from "./utils/categories"
+import { invalidateCache } from "./cache"
 import { sanitizeLocationForStorage } from "./utils/location-obfuscation"
 
 const STORAGE_KEYS = {
@@ -788,6 +789,9 @@ export function initializeStorage() {
   }
   if (!localStorage.getItem(STORAGE_KEYS.WIKI_ARTICLES)) {
     localStorage.setItem(STORAGE_KEYS.WIKI_ARTICLES, JSON.stringify(mockWikiArticles))
+  }
+  if (!localStorage.getItem(STORAGE_KEYS.WIKI_REVISIONS)) {
+    localStorage.setItem(STORAGE_KEYS.WIKI_REVISIONS, JSON.stringify([]))
   }
   if (!localStorage.getItem(STORAGE_KEYS.CONVERSATIONS)) {
     localStorage.setItem(STORAGE_KEYS.CONVERSATIONS, JSON.stringify(mockConversations))
@@ -2941,7 +2945,7 @@ function setAllGroupBans(bans: GroupBan[]): void {
   writeData(STORAGE_KEYS.GROUP_BANS, bans)
 }
 
-function getAllModerationActions(): ModerationAction[] {
+export function getAllModerationActions(): ModerationAction[] {
   return readData(STORAGE_KEYS.MODERATION_ACTIONS, DEFAULT_MODERATION_ACTIONS)
 }
 
@@ -3272,6 +3276,21 @@ export function getWikiArticlesByCategory(category: string): WikiArticle[] {
   return getWikiArticles().filter((a) => a.category === category)
 }
 
+export function addWikiArticle(article: WikiArticle) {
+  if (typeof window === "undefined") return
+  const articles = getWikiArticles()
+  // Check if article with same id already exists
+  const existingIndex = articles.findIndex((a) => a.id === article.id)
+  if (existingIndex === -1) {
+    articles.push(article)
+    localStorage.setItem(STORAGE_KEYS.WIKI_ARTICLES, JSON.stringify(articles))
+  } else {
+    // If exists, update it
+    articles[existingIndex] = article
+    localStorage.setItem(STORAGE_KEYS.WIKI_ARTICLES, JSON.stringify(articles))
+  }
+}
+
 export function updateWikiArticle(article: WikiArticle) {
   if (typeof window === "undefined") return
   const articles = getWikiArticles()
@@ -3279,14 +3298,17 @@ export function updateWikiArticle(article: WikiArticle) {
   if (index !== -1) {
     articles[index] = article
     localStorage.setItem(STORAGE_KEYS.WIKI_ARTICLES, JSON.stringify(articles))
+    
+    // Invalidate cache when breed article is updated
+    if (article.category === "breeds") {
+      invalidateCache()
+    }
   }
 }
 
 // Wiki revision operations
 export function getWikiRevisions(): WikiRevision[] {
-  if (typeof window === "undefined") return []
-  const data = localStorage.getItem(STORAGE_KEYS.WIKI_REVISIONS)
-  return data ? JSON.parse(data) : []
+  return readData<WikiRevision[]>(STORAGE_KEYS.WIKI_REVISIONS, [])
 }
 
 export function getWikiRevisionsByArticleId(articleId: string): WikiRevision[] {
@@ -3298,19 +3320,17 @@ export function getWikiRevisionById(revisionId: string): WikiRevision | undefine
 }
 
 export function addWikiRevision(revision: WikiRevision): void {
-  if (typeof window === "undefined") return
   const revisions = getWikiRevisions()
   revisions.push(revision)
-  localStorage.setItem(STORAGE_KEYS.WIKI_REVISIONS, JSON.stringify(revisions))
+  writeData(STORAGE_KEYS.WIKI_REVISIONS, revisions)
 }
 
-export function updateWikiRevision(revision: WikiRevision): void {
-  if (typeof window === "undefined") return
+export function updateWikiRevision(id: string, updates: Partial<WikiRevision>): void {
   const revisions = getWikiRevisions()
-  const index = revisions.findIndex((r) => r.id === revision.id)
+  const index = revisions.findIndex((rev) => rev.id === id)
   if (index !== -1) {
-    revisions[index] = revision
-    localStorage.setItem(STORAGE_KEYS.WIKI_REVISIONS, JSON.stringify(revisions))
+    revisions[index] = { ...revisions[index], ...updates }
+    writeData(STORAGE_KEYS.WIKI_REVISIONS, revisions)
   }
 }
 
@@ -3368,14 +3388,15 @@ export function rollbackToStableRevision(
   updateWikiArticle(updatedArticle)
 
   // Create audit log entry
+  // Note: Using empty groupId for wiki articles as they are not group-specific
   addModerationAction({
-    id: `mod_action_${Date.now()}`,
+    id: `wiki_rollback_${Date.now()}`,
     groupId: "", // Not group-specific, but required by type
     actionType: "other",
     targetId: articleId,
     targetType: "other",
     performedBy,
-    reason: `Rolled back wiki article to stable revision ${stableRevision.id}`,
+    reason: `Rolled back wiki article "${article.title}" to stable revision ${stableRevision.id}`,
     timestamp: new Date().toISOString(),
   })
 
@@ -3586,34 +3607,6 @@ export function updateExpertProfile(userId: string, updates: Partial<ExpertProfi
   }
 }
 
-// Wiki revision functions
-export function getWikiRevisions(): WikiRevision[] {
-  return readData<WikiRevision[]>(STORAGE_KEYS.WIKI_REVISIONS, [])
-}
-
-export function getWikiRevisionById(id: string): WikiRevision | undefined {
-  return getWikiRevisions().find((rev) => rev.id === id)
-}
-
-export function getWikiRevisionsByArticleId(articleId: string): WikiRevision[] {
-  return getWikiRevisions().filter((rev) => rev.articleId === articleId)
-}
-
-export function addWikiRevision(revision: WikiRevision): void {
-  const revisions = getWikiRevisions()
-  revisions.push(revision)
-  writeData(STORAGE_KEYS.WIKI_REVISIONS, revisions)
-}
-
-export function updateWikiRevision(id: string, updates: Partial<WikiRevision>): void {
-  const revisions = getWikiRevisions()
-  const index = revisions.findIndex((rev) => rev.id === id)
-  if (index !== -1) {
-    revisions[index] = { ...revisions[index], ...updates }
-    writeData(STORAGE_KEYS.WIKI_REVISIONS, revisions)
-  }
-}
-
 // Expert verification check for health content
 export function canPublishStableHealthRevision(userId: string): boolean {
   const user = getUserById(userId)
@@ -3661,12 +3654,6 @@ export function markRevisionAsStable(
         error: "Only verified experts can publish stable health revisions" 
       }
     }
-    
-    // Update healthData with review information
-    if (article.healthData) {
-      article.healthData.lastReviewedDate = new Date().toISOString()
-      article.healthData.expertReviewer = userId
-    }
   }
 
   // Mark revision as stable
@@ -3682,11 +3669,25 @@ export function markRevisionAsStable(
     currentRevisionId: revisionId,
     approvedAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
+    // Update healthData with review information if health article
+    healthData: article.category === "health" && article.healthData ? {
+      ...article.healthData,
+      lastReviewedDate: new Date().toISOString(),
+      expertReviewer: userId,
+    } : article.healthData,
   }
 
   updateWikiArticle(updatedArticle)
 
   return { success: true }
+}
+
+export function getDraftRevisions(): WikiRevision[] {
+  return getWikiRevisions().filter((r) => r.status === "draft")
+}
+
+export function getDraftRevisionsByArticleId(articleId: string): WikiRevision[] {
+  return getWikiRevisionsByArticleId(articleId).filter((r) => r.status === "draft")
 }
 
 // Edit Request Functions
@@ -3854,4 +3855,51 @@ export function getWatchEntriesForTarget(targetId: string, targetType: "post" | 
   return getWatchEntries().filter(
     (entry) => entry.targetId === targetId && entry.targetType === targetType && entry.enabled
   )
+}
+
+export function notifyWatchers(
+  targetId: string,
+  targetType: "post" | "wiki",
+  eventType: "update" | "comment" | "reaction",
+  actorId: string,
+  actorName: string,
+  targetTitle: string,
+  eventData?: Record<string, unknown>
+): void {
+  if (typeof window === "undefined") return
+  
+  const watchers = getWatchEntriesForTarget(targetId, targetType)
+  
+  watchers.forEach((watch) => {
+    // Skip if the watcher is the actor
+    if (watch.userId === actorId) return
+    
+    // Check if this event type is being watched
+    if (!watch.watchEvents.includes(eventType)) return
+    
+    // Create notification for this watcher
+    addNotification({
+      id: `notif_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      userId: watch.userId,
+      type: "watch_update",
+      actorId,
+      targetId,
+      targetType,
+      message: eventType === "update"
+        ? `${actorName} updated ${targetTitle}`
+        : eventType === "comment"
+        ? `${actorName} commented on ${targetTitle}`
+        : `${actorName} reacted to ${targetTitle}`,
+      read: false,
+      createdAt: new Date().toISOString(),
+      category: targetType === "post" ? "community" : "reminders",
+      priority: "normal",
+      channels: ["in_app", "email", "push"],
+      metadata: {
+        targetType,
+        eventType,
+        ...eventData,
+      },
+    })
+  })
 }

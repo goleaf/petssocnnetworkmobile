@@ -42,8 +42,8 @@ export function PlaceMap({ lat, lng, name, address, className = "" }: PlaceMapPr
   }, [lat, lng, name, address])
 
   return (
-    <div className={`w-full rounded-lg overflow-hidden border ${className}`} style={{ minHeight: "300px" }}>
-      <div ref={mapRef} className="w-full h-full" style={{ minHeight: "300px" }} />
+    <div className={`w-full rounded-lg overflow-hidden border min-h-[300px] ${className}`}>
+      <div ref={mapRef} className="w-full h-full min-h-[300px]" />
       <div className="bg-muted p-2 text-xs text-center text-muted-foreground border-t">
         <a
           href={`https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}&zoom=15`}

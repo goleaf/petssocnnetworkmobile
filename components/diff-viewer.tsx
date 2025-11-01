@@ -228,6 +228,13 @@ export function DiffViewer({
     return lines;
   }, [selectedBlockIndex, changedBlocks]);
 
+  // Performance optimization: Use memoized diff computation and show diff only for large files
+  const isLargeDiff = useMemo(() => {
+    const oldLines = oldValue.split("\n").length;
+    const newLines = newValue.split("\n").length;
+    return oldLines > 500 || newLines > 500;
+  }, [oldValue, newValue]);
+
   // Performance optimization: Use memoized diff computation
   const diffViewerProps = useMemo(
     () => ({
@@ -237,9 +244,9 @@ export function DiffViewer({
       leftTitle,
       rightTitle,
       compareMethod: DiffMethod.LINES,
-      disableWordDiff: false,
-      showDiffOnly: false,
-      extraLinesSurroundingDiff: 3,
+      disableWordDiff: isLargeDiff, // Disable word diff for large files for performance
+      showDiffOnly: isLargeDiff, // Show only diffs for large files
+      extraLinesSurroundingDiff: isLargeDiff ? 2 : 3,
       styles: customStyles,
       highlightLines,
       onLineNumberClick: (lineId: string) => {
@@ -263,7 +270,16 @@ export function DiffViewer({
         }
       },
     }),
-    [oldValue, newValue, leftTitle, rightTitle, customStyles, highlightLines, changedBlocks]
+    [
+      oldValue,
+      newValue,
+      leftTitle,
+      rightTitle,
+      isLargeDiff,
+      customStyles,
+      highlightLines,
+      changedBlocks,
+    ]
   );
 
   return (

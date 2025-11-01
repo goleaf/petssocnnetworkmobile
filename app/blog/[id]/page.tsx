@@ -23,6 +23,7 @@ import { formatDate } from "@/lib/utils/date"
 import { getPetUrlFromPet } from "@/lib/utils/pet-url"
 import { PostShareDialog } from "@/components/post-share-dialog"
 import { AdvancedComments } from "@/components/comments/advanced-comments"
+import { BrandAffiliationLabel } from "@/components/brand-affiliation-label"
 import { canViewPost } from "@/lib/utils/privacy"
 import { MediaGallery } from "@/components/media-gallery"
 import type { BlogPostMedia } from "@/lib/types"
@@ -179,6 +180,9 @@ export default function BlogPostPage({ params }: { params: Promise<{ id: string 
                   {author.fullName}
                 </Link>{" "}
                 • {formatDate(post.createdAt)}
+                {post.updatedAt && post.updatedAt !== post.createdAt && (
+                  <span className="text-xs italic ml-2">(edited)</span>
+                )}
               </p>
             </div>
           </div>
@@ -225,6 +229,9 @@ export default function BlogPostPage({ params }: { params: Promise<{ id: string 
             )}
           </div>
           <div className="flex items-center gap-2 flex-wrap">
+            {post.brandAffiliation && (
+              <BrandAffiliationLabel brandAffiliation={post.brandAffiliation} />
+            )}
             <Button
               onClick={handleLike}
               variant={hasLiked ? "default" : "outline"}

@@ -31,6 +31,7 @@ import {
 } from "lucide-react"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import Link from "next/link"
+import { useSearchParams } from "next/navigation"
 import ReactMarkdown from "react-markdown"
 import { AdvancedComments } from "@/components/comments/advanced-comments"
 import { MarkdownWithCitations } from "@/components/markdown-with-citations"
@@ -38,9 +39,13 @@ import { cn } from "@/lib/utils"
 import type { WikiArticle } from "@/lib/types"
 import { UrgencyBanner } from "@/components/wiki/urgency-banner"
 import { WikiFooter } from "@/components/wiki/wiki-footer"
+import { BrandAffiliationLabel } from "@/components/brand-affiliation-label"
+import { getTranslatedContent, getBaseLanguage, isRTL } from "@/lib/utils/translations"
+import { Languages } from "lucide-react"
 
 export default function WikiArticlePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params)
+  const searchParams = useSearchParams()
   const { user: currentUser } = useAuth()
   const [article, setArticle] = useState<WikiArticle | null>(null)
   const [author, setAuthor] = useState<any | null>(null)
@@ -52,6 +57,15 @@ export default function WikiArticlePage({ params }: { params: Promise<{ slug: st
   const [viewingStable, setViewingStable] = useState(true)
   const [isRollingBack, setIsRollingBack] = useState(false)
   const [rollbackError, setRollbackError] = useState<string | null>(null)
+  
+  // Translation support
+  const languageCode = searchParams.get("lang") || null
+  const [translatedContent, setTranslatedContent] = useState<{
+    title: string
+    content: string
+    isTranslated: boolean
+    isRTL: boolean
+  } | null>(null)
 
   useEffect(() => {
     // Load data only on client side
@@ -77,6 +91,14 @@ export default function WikiArticlePage({ params }: { params: Promise<{ slug: st
         setArticle(loadedArticle)
         setViewingStable(false)
       }
+      // Load translated content if language is specified
+      if (languageCode) {
+        const translated = getTranslatedContent(loadedArticle, languageCode)
+        setTranslatedContent(translated)
+      } else {
+        setTranslatedContent(null)
+      }
+      
       setAuthor(getUserById(loadedArticle.authorId))
       setCommentCount(getCommentsByWikiArticleId(loadedArticle.id).length)
       if (currentUser) {
@@ -84,7 +106,7 @@ export default function WikiArticlePage({ params }: { params: Promise<{ slug: st
       }
     }
     setIsLoading(false)
-  }, [slug, currentUser])
+  }, [slug, currentUser, languageCode])
 
   useEffect(() => {
     // Increment view count
@@ -138,6 +160,15 @@ export default function WikiArticlePage({ params }: { params: Promise<{ slug: st
     }
   }
 
+  const handleScrollToComments = () => {
+    const commentsSection = document.getElementById("comments-section")
+    if (commentsSection) {
+      commentsSection.scrollIntoView({ behavior: "smooth", block: "start" })
+      setHighlightComments(true)
+      setTimeout(() => setHighlightComments(false), 2000)
+    }
+  }
+
   const handleRollback = async () => {
     if (!article || !currentUser) return
     setIsRollingBack(true)
@@ -167,11 +198,7 @@ export default function WikiArticlePage({ params }: { params: Promise<{ slug: st
   const totalCommentsCount = commentCount
 
   // Check if content is stale
-  // For health articles, check lastReviewedDate; otherwise use approvedAt
-  const reviewDate = article?.category === "health" && article?.healthData?.lastReviewedDate
-    ? article.healthData.lastReviewedDate
-    : article?.approvedAt
-  const isStale = reviewDate ? isStaleContent(reviewDate) : false
+  const isStale = article?.approvedAt ? isStaleContent(article.approvedAt) : false
   const canModerate = canUserModerate(currentUser)
   const hasStableRevision = article?.stableRevisionId !== undefined
   const hasLatestRevision = getLatestRevision(article?.id || "") !== undefined
@@ -194,11 +221,6 @@ export default function WikiArticlePage({ params }: { params: Promise<{ slug: st
     <div className="container mx-auto px-4 py-8 max-w-7xl">
       <BackButton href="/wiki" label="Back to Wiki" />
 
-      {/* Urgency banner for health articles */}
-      {isHealthPage && article?.healthData?.urgency && (
-        <UrgencyBanner urgency={article.healthData.urgency} />
-      )}
-
       {/* Stale content banner */}
       {isStale && (
         <Alert variant="default" className="mb-6 border-yellow-500 bg-yellow-50 dark:bg-yellow-950">
@@ -208,7 +230,7 @@ export default function WikiArticlePage({ params }: { params: Promise<{ slug: st
           </AlertTitle>
           <AlertDescription className="text-yellow-700 dark:text-yellow-300">
             {isHealthPage
-              ? "This article was last reviewed by an expert more than 12 months ago. The information may be outdated. Please consult a veterinarian for current guidance."
+              ? "This article was last approved more than 12 months ago. The information may be outdated. Please consult a veterinarian for current guidance."
               : "This article was last approved more than 12 months ago. The information may be outdated. Please verify with current sources."}
           </AlertDescription>
         </Alert>
@@ -247,7 +269,15 @@ export default function WikiArticlePage({ params }: { params: Promise<{ slug: st
               Author
             </Badge>
           </div>
-          <h1 className="text-4xl md:text-5xl font-bold leading-tight tracking-tight">{article.title}</h1>
+          <h1 
+            className={cn(
+              "text-4xl md:text-5xl font-bold leading-tight tracking-tight",
+              translatedContent?.isRTL && "rtl"
+            )}
+            dir={translatedContent?.isRTL ? "rtl" : "ltr"}
+          >
+            {translatedContent?.title || article.title}
+          </h1>
           <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground pt-2">
             <Link href={`/profile/${author.username}`} className="flex items-center gap-2 hover:text-foreground transition-colors">
               <Avatar className="h-8 w-8">
@@ -282,10 +312,26 @@ export default function WikiArticlePage({ params }: { params: Promise<{ slug: st
                 {!isLiking && <Heart className={`h-4 w-4 ${hasLiked ? "fill-current" : ""}`} />}
                 {article.likes.length} {article.likes.length === 1 ? "Like" : "Likes"}
               </Button>
-              <Button variant="outline" size="sm" onClick={handleScrollToComments} className="gap-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => {
+                  const commentsSection = document.getElementById("comments-section")
+                  commentsSection?.scrollIntoView({ behavior: "smooth" })
+                  setHighlightComments(true)
+                  setTimeout(() => setHighlightComments(false), 2000)
+                }} 
+                className="gap-2"
+              >
                 <MessageCircle className="h-4 w-4" />
                 {totalCommentsCount} {totalCommentsCount === 1 ? "Comment" : "Comments"}
               </Button>
+              <Link href={`/wiki/${slug}/translate${languageCode ? `?lang=${languageCode}` : ""}`}>
+                <Button variant="outline" size="sm" className="gap-2">
+                  <Languages className="h-4 w-4" />
+                  Translate
+                </Button>
+              </Link>
             </div>
             <div className="flex items-center gap-2">
               {currentUser && currentUser.id === article.authorId && (
@@ -332,12 +378,21 @@ export default function WikiArticlePage({ params }: { params: Promise<{ slug: st
             </div>
           )}
         </CardHeader>
-        <CardContent className="prose prose-lg prose-slate max-w-none dark:prose-invert">
+        <CardContent 
+          className={cn(
+            "prose prose-lg prose-slate max-w-none dark:prose-invert",
+            translatedContent?.isRTL && "rtl"
+          )}
+          dir={translatedContent?.isRTL ? "rtl" : "ltr"}
+        >
           <div className="prose-headings:font-bold prose-headings:tracking-tight prose-h1:text-3xl prose-h2:text-2xl prose-h3:text-xl prose-p:leading-7 prose-a:text-primary prose-a:no-underline hover:prose-a:underline prose-strong:font-semibold prose-code:text-sm prose-code:bg-muted prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-pre:bg-muted prose-pre:border">
-            <MarkdownWithCitations content={article.content} />
+            <MarkdownWithCitations content={translatedContent?.content || article.content} />
           </div>
         </CardContent>
       </Card>
+
+      {/* Related Pages Footer */}
+      {article && <WikiFooter article={article} maxRelated={5} />}
 
       {/* Comments Section */}
       <Card

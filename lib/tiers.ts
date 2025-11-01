@@ -102,6 +102,7 @@ const DIMINISHING_RETURNS_THRESHOLD: Record<PointActionType, number> = {
 }
 
 // Calculate points with diminishing returns
+// dailyActionCount is the count AFTER performing this action
 export function calculatePoints(
   actionType: PointActionType,
   dailyActionCount: number,
@@ -115,9 +116,10 @@ export function calculatePoints(
 
   // Diminishing returns: 50% points after threshold, then 25% after 2x threshold
   const excess = dailyActionCount - threshold
-  const multiplier = excess >= threshold ? 0.25 : 0.5
+  const multiplier = excess > threshold ? 0.25 : 0.5
 
-  return Math.round(basePoints * multiplier)
+  const result = basePoints * multiplier
+  return Math.max(1, Math.round(result)) // Minimum 1 point
 }
 
 // Get today's date string (YYYY-MM-DD)
@@ -159,8 +161,9 @@ export function awardPoints(
 ): { pointsAwarded: number; newTotalPoints: number; dailyData: DailyPointsData } {
   const dailyData = getDailyPointsData(user)
   const actionCount = dailyData.actions[actionType] || 0
+  const nextActionCount = actionCount + 1
 
-  const pointsAwarded = calculatePoints(actionType, actionCount)
+  const pointsAwarded = calculatePoints(actionType, nextActionCount)
 
   const updatedDailyData: DailyPointsData = {
     ...dailyData,
@@ -268,19 +271,10 @@ export function computeTiersForAllUsers(users: User[]): User[] {
 
     const currentPoints = user.points || 0
     const newTier = computeTier(currentPoints)
-    const currentTier = user.tier || "bronze"
-
-    // Only update if tier changed
-    if (newTier !== currentTier) {
-      return {
-        ...user,
-        tier: newTier,
-        tierLastComputed: today,
-      }
-    }
 
     return {
       ...user,
+      tier: newTier,
       tierLastComputed: today,
     }
   })

@@ -17,6 +17,12 @@ jest.mock("next/navigation", () => ({
   notFound: jest.fn(),
 }))
 
+// Mock react-markdown
+jest.mock("react-markdown", () => ({
+  __esModule: true,
+  default: ({ children }: { children: string }) => <div>{children}</div>,
+}))
+
 // Mock environment variables
 process.env.NEXT_PUBLIC_SITE_URL = "https://pawsocial.com"
 

@@ -144,6 +144,7 @@ export default function CreateBlogPage() {
         links: formData.media.links.map((link) => ({ ...link })),
       },
       hashtags: allHashtags,
+      disableWikiLinks: formData.disableWikiLinks || false,
     }
 
     addBlogPost(newPost)

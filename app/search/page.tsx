@@ -8,6 +8,8 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Typeahead, type TypeaheadOption } from "@/components/ui/typeahead"
+import { TypeFilter, SpeciesFilter, TagsFilter, RadiusFilter } from "@/components/ui/search-filters"
 import {
   Search,
   User,
@@ -38,11 +40,12 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import { getUsers, getPets, getBlogPosts, getWikiArticles, getComments, getGroups, getGroupEvents } from "@/lib/storage"
-import type { User as UserType, Pet, BlogPost, WikiArticle, Group, GroupEvent } from "@/lib/types"
+import type { User as UserType, Pet, BlogPost, WikiArticle, Group, GroupEvent, SearchContentType } from "@/lib/types"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { getPetUrlFromPet } from "@/lib/utils/pet-url"
 import { formatCommentDate, formatDate } from "@/lib/utils/date"
 import { useAuth } from "@/lib/auth"
+import { trackSearchQuery, trackResultClick } from "@/lib/utils/search-analytics"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -1199,6 +1202,20 @@ export default function SearchPage() {
           localStorage.setItem(STORAGE_KEYS.SEARCH_HISTORY, JSON.stringify(updatedHistory))
           return updatedHistory
         })
+
+        // Track search analytics
+        try {
+          trackSearchQuery({
+            query: normalizedQuery || undefined,
+            filters: effectiveFilters,
+            resultCount: totalResultsCount,
+            contentType: activeTab === "all" ? undefined : (activeTab as SearchContentType),
+            isAuthenticated: Boolean(user),
+          })
+        } catch (error) {
+          // Silently fail analytics tracking to not disrupt search
+          console.debug("Analytics tracking error:", error)
+        }
       }
 
       const params = new URLSearchParams()
@@ -2583,12 +2600,26 @@ function UserCard({ user, query }: { user: UserType; query: string }) {
 }
 
 function PetCard({ pet, query }: { pet: Pet; query: string }) {
+  const { user: currentUser } = useAuth()
   const users = getUsers()
   const owner = users.find((u) => u.id === pet.ownerId)
   const petUrl = owner ? getPetUrlFromPet(pet, owner.username) : `/pet/${pet.id}`
 
+  const handleClick = () => {
+    try {
+      trackResultClick({
+        query: query || undefined,
+        clickedResultType: "pet",
+        clickedResultId: pet.id,
+        isAuthenticated: Boolean(currentUser),
+      })
+    } catch (error) {
+      console.debug("Analytics tracking error:", error)
+    }
+  }
+
   return (
-    <Link href={petUrl}>
+    <Link href={petUrl} onClick={handleClick}>
       <Card className="hover:bg-muted/50 transition-colors cursor-pointer h-full">
         <CardContent className="p-4">
           <div className="flex items-start gap-3">
@@ -2621,6 +2652,7 @@ function PetCard({ pet, query }: { pet: Pet; query: string }) {
 }
 
 function BlogCard({ post, query }: { post: BlogPost; query: string }) {
+  const { user: currentUser } = useAuth()
   const users = getUsers()
   const pets = getPets()
   const author = users.find((u) => u.id === post.authorId)
@@ -2632,8 +2664,21 @@ function BlogCard({ post, query }: { post: BlogPost; query: string }) {
 
   const comments = getComments().filter((c) => c.postId === post.id).length
 
+  const handleClick = () => {
+    try {
+      trackResultClick({
+        query: query || undefined,
+        clickedResultType: "blog",
+        clickedResultId: post.id,
+        isAuthenticated: Boolean(currentUser),
+      })
+    } catch (error) {
+      console.debug("Analytics tracking error:", error)
+    }
+  }
+
   return (
-    <Link href={`/blog/${post.id}`}>
+    <Link href={`/blog/${post.id}`} onClick={handleClick}>
       <Card className="hover:bg-muted/50 transition-colors cursor-pointer">
         <CardContent className="p-4">
           <div className="flex gap-4">
@@ -2683,11 +2728,25 @@ function BlogCard({ post, query }: { post: BlogPost; query: string }) {
 }
 
 function WikiCard({ article, query }: { article: WikiArticle; query: string }) {
+  const { user: currentUser } = useAuth()
   const users = getUsers()
   const author = users.find((u) => u.id === article.authorId)
 
+  const handleClick = () => {
+    try {
+      trackResultClick({
+        query: query || undefined,
+        clickedResultType: "wiki",
+        clickedResultId: article.id,
+        isAuthenticated: Boolean(currentUser),
+      })
+    } catch (error) {
+      console.debug("Analytics tracking error:", error)
+    }
+  }
+
   return (
-    <Link href={`/wiki/${article.slug}`}>
+    <Link href={`/wiki/${article.slug}`} onClick={handleClick}>
       <Card className="hover:bg-muted/50 transition-colors cursor-pointer">
         <CardContent className="p-4">
           <div className="flex items-start gap-3">
@@ -2803,6 +2862,103 @@ function EventCard({ event, query }: { event: GroupEvent; query: string }) {
               )}
             </div>
           </div>
+          {event.description && (
+            <p className="text-sm text-muted-foreground line-clamp-2">
+              {highlightText(event.description, query)}
+            </p>
+          )}
+        </CardContent>
+      </Card>
+    </Link>
+  )
+}
+
+function Pagination({
+  currentPage,
+  totalPages,
+  onPageChange,
+  totalItems,
+}: {
+  currentPage: number
+  totalPages: number
+  onPageChange: (page: number) => void
+  totalItems: number
+}) {
+  const startItem = (currentPage - 1) * RESULTS_PER_PAGE + 1
+  const endItem = Math.min(currentPage * RESULTS_PER_PAGE, totalItems)
+
+  return (
+    <div className="flex items-center justify-between mt-6">
+      <p className="text-sm text-muted-foreground">
+        Showing {startItem}-{endItem} of {totalItems} results
+      </p>
+      <div className="flex items-center gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => onPageChange(currentPage - 1)}
+          disabled={currentPage === 1}
+        >
+          <ChevronLeft className="h-4 w-4" />
+          Previous
+        </Button>
+        <div className="flex items-center gap-1">
+          {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+            let pageNum: number
+            if (totalPages <= 5) {
+              pageNum = i + 1
+            } else if (currentPage <= 3) {
+              pageNum = i + 1
+            } else if (currentPage >= totalPages - 2) {
+              pageNum = totalPages - 4 + i
+            } else {
+              pageNum = currentPage - 2 + i
+            }
+            return (
+              <Button
+                key={pageNum}
+                variant={currentPage === pageNum ? "default" : "outline"}
+                size="sm"
+                onClick={() => onPageChange(pageNum)}
+                className="w-10"
+              >
+                {pageNum}
+              </Button>
+            )
+          })}
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => onPageChange(currentPage + 1)}
+          disabled={currentPage === totalPages}
+        >
+          Next
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+function highlightText(text: string, searchTerm: string) {
+  if (!searchTerm.trim()) return text
+  const parts = text.split(new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`, "gi"))
+  return (
+    <span>
+      {parts.map((part, i) =>
+        part.toLowerCase() === searchTerm.toLowerCase() ? (
+          <mark key={i} className="bg-yellow-200 dark:bg-yellow-900 rounded px-0.5">
+            {part}
+          </mark>
+        ) : (
+          part
+        ),
+      )}
+    </span>
+  )
+}
+
           {event.description && (
             <p className="text-sm text-muted-foreground line-clamp-2">
               {highlightText(event.description, query)}

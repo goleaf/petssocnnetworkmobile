@@ -8,7 +8,9 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
-import type { BlogPostMedia } from "@/lib/types"
+import type { BlogPostMedia, User } from "@/lib/types"
+import { canAddExternalLink, getUserPrivileges } from "@/lib/tiers"
+import { useAuth } from "@/lib/auth"
 import {
   classifyMediaQuality,
   formatMediaDuration,
@@ -36,6 +38,7 @@ interface MediaAttachmentsEditorProps {
 }
 
 export function MediaAttachmentsEditor({ media, onChange, className }: MediaAttachmentsEditorProps) {
+  const { user } = useAuth()
   const [imageUrl, setImageUrl] = useState("")
   const [videoUrl, setVideoUrl] = useState("")
   const [linkUrl, setLinkUrl] = useState("")
@@ -273,6 +276,17 @@ export function MediaAttachmentsEditor({ media, onChange, className }: MediaAtta
     const url = linkUrl.trim()
     const title = linkTitle.trim()
     if (!url) return
+
+    // Check external link quota
+    if (user) {
+      const canAdd = canAddExternalLink(user, media.links.length)
+      if (!canAdd) {
+        alert(
+          `You've reached your external link quota for your tier. Upgrade your tier by earning more points to add more links.`,
+        )
+        return
+      }
+    }
 
     onChange({
       images: [...media.images],
@@ -516,7 +530,14 @@ export function MediaAttachmentsEditor({ media, onChange, className }: MediaAtta
           <Link2 className="h-4 w-4 text-primary" />
           Links
         </Label>
-        <p className="text-xs text-muted-foreground">Highlight helpful resources or related articles.</p>
+        <div className="flex items-center justify-between">
+          <p className="text-xs text-muted-foreground">Highlight helpful resources or related articles.</p>
+          {user && (
+            <p className="text-xs text-muted-foreground">
+              {media.links.length} / {getUserPrivileges(user).externalLinkQuota} links
+            </p>
+          )}
+        </div>
         <div className="flex flex-col gap-2 sm:flex-row">
           <Input
             value={linkUrl}
@@ -530,7 +551,12 @@ export function MediaAttachmentsEditor({ media, onChange, className }: MediaAtta
             placeholder="Optional title"
             className="sm:flex-1"
           />
-          <Button type="button" onClick={handleAddLink} disabled={!linkUrl.trim()} className="sm:w-auto">
+          <Button
+            type="button"
+            onClick={handleAddLink}
+            disabled={!linkUrl.trim() || (user && !canAddExternalLink(user, media.links.length))}
+            className="sm:w-auto"
+          >
             <Plus className="mr-2 h-4 w-4" />
             Add Link
           </Button>

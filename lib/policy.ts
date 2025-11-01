@@ -17,6 +17,7 @@ export type PermissionAction =
   | "create_wiki"
   | "edit_wiki"
   | "publish_health"
+  | "publish_stable_health"
   | "protect_content"
   | "publish_blog"
   | "promote_blog"
@@ -235,6 +236,10 @@ export function hasPermission(
       return canEditWiki(user, resource as WikiArticle | undefined)
 
     case "publish_health":
+      return canPublishHealth(user)
+
+    case "publish_stable_health":
+      // Publishing stable health revisions requires expert status
       return canPublishHealth(user)
 
     case "protect_content":
