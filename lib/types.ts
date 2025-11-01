@@ -9,7 +9,14 @@ export interface User {
   role?: UserRole
   avatar?: string
   bio?: string
-  location?: string
+  location?: string // Text description (e.g., "San Francisco, CA")
+  locationGrid?: string // Grid identifier for obfuscated locations (for non-public profiles)
+  locationPrecise?: {
+    // PRECISE COORDINATES SHOULD ONLY BE STORED FOR PUBLIC PROFILES
+    // Never stored for private or followers-only location privacy
+    latitude: number
+    longitude: number
+  }
   joinedAt: string
   followers: string[]
   following: string[]
@@ -202,6 +209,14 @@ export interface BlogPost {
   promotionStatus?: "pending" | "approved" | "rejected"
   promotionBudget?: number
   media?: BlogPostMedia
+  brandAffiliation?: {
+    disclosed: boolean
+    organizationName?: string
+    organizationType?: "brand" | "organization" | "sponsor" | "affiliate"
+    lastEditDisclosure?: boolean // Whether disclosure was provided on last edit
+    disclosureMissing?: boolean // Flag for moderation if disclosure is missing
+  }
+  disableWikiLinks?: boolean // Per-post opt-out for wiki term auto-linking
 }
 
 export type ReactionType = "like" | "love" | "laugh" | "wow" | "sad" | "angry"
@@ -298,6 +313,58 @@ export interface Comment {
   flags?: CommentFlag[]
   moderation?: CommentModeration
   editedBy?: string
+  brandAffiliation?: {
+    disclosed: boolean
+    organizationName?: string
+    organizationType?: "brand" | "organization" | "sponsor" | "affiliate"
+    lastEditDisclosure?: boolean // Whether disclosure was provided on last edit
+    disclosureMissing?: boolean // Flag for moderation if disclosure is missing
+  }
+}
+
+export type WikiRevisionStatus = "draft" | "stable" | "deprecated"
+
+export interface WikiRevision {
+  id: string
+  articleId: string
+  content: string
+  status: WikiRevisionStatus
+  authorId: string
+  verifiedBy?: string // Expert userId who verified (for health content)
+  createdAt: string
+  updatedAt: string
+  healthData?: HealthArticleData // Health-specific data for health category articles
+}
+
+// Health-specific fields for health category wiki articles
+export type UrgencyLevel = "emergency" | "urgent" | "routine"
+
+export interface HealthArticleData {
+  symptoms: string[]
+  urgency: UrgencyLevel
+  onsetAge?: string | number // Age when condition typically appears
+  riskFactors: string[]
+  diagnosisMethods: string[]
+  treatments: string[]
+  prevention: string[]
+  lastReviewedDate?: string // ISO date string
+  expertReviewer?: string // User ID of expert who reviewed
+}
+
+export type TranslationStatus = "draft" | "published" | "review" | "outdated"
+
+export interface WikiTranslation {
+  id: string
+  articleId: string
+  languageCode: string // ISO 639-1 code (e.g., "en", "ar", "es")
+  title?: string
+  content?: string
+  status: TranslationStatus
+  translatorId?: string
+  reviewedBy?: string
+  createdAt: string
+  updatedAt: string
+  baseVersion?: string // Reference to the base language version used
 }
 
 export interface WikiArticle {
@@ -312,8 +379,16 @@ export interface WikiArticle {
   authorId: string
   views: number
   likes: string[]
+  tags?: string[] // Tags for related articles and link graph
+  relatedArticles?: string[] // Explicitly related article IDs
   createdAt: string
   updatedAt: string
+  currentRevisionId?: string
+  stableRevisionId?: string // ID of the approved/stable revision
+  revisions?: WikiRevision[]
+  baseLanguage?: string // Default: "en"
+  approvedAt?: string // Timestamp when stable version was approved
+  healthData?: HealthArticleData // Health-specific data (only for health category)
 }
 
 export interface Activity {
@@ -459,6 +534,7 @@ export type NotificationType =
   | "friend_request_declined"
   | "friend_request_cancelled"
   | "message"
+  | "watch_update"
 
 export type NotificationPriority = "low" | "normal" | "high" | "urgent"
 
@@ -972,4 +1048,239 @@ export interface MessageSearchResult {
   senderId: string
   content: string
   createdAt: string
+}
+
+export interface Source {
+  id: string
+  title: string
+  url: string
+  publisher?: string
+  date?: string
+  license?: string
+  brokenAt?: string // Timestamp when link was detected as broken
+  isValid?: boolean // Whether the URL is valid (checked via API)
+  lastChecked?: string // Timestamp when URL was last validated
+}
+
+export interface Citation {
+  id: string // Unique citation ID (e.g., "1", "2", "citation-needed")
+  sourceId?: string // Reference to a Source, if applicable
+  url?: string // Direct URL if no source is referenced
+  text?: string // Citation text/note
+  locator?: string // Location reference (e.g., "p. 42", "section 3.2", "timestamp 1:23")
+  isCitationNeeded?: boolean // Flag for "citation needed" tags
+}
+
+export interface LinkValidationResult {
+  url: string
+  isValid: boolean
+  statusCode?: number
+  error?: string
+  checkedAt: string
+}
+
+export type OrganizationType = "clinic" | "shelter" | "rescue" | "non-profit" | "other"
+
+export interface Organization {
+  id: string
+  name: string
+  type: OrganizationType
+  verifiedAt?: string
+  website?: string
+  locGeo?: {
+    latitude: number
+    longitude: number
+  }
+}
+
+export interface ExpertProfile {
+  userId: string
+  credential: string
+  licenseNo?: string
+  region?: string
+  verifiedAt?: string
+}
+
+export type PlaceModerationStatus = "pending" | "approved" | "rejected"
+
+export interface Place {
+  id: string
+  name: string
+  address: string
+  lat: number
+  lng: number
+  fenced: boolean
+  smallDogArea: boolean
+  waterStation: boolean
+  amenities: string[]
+  rules: string[]
+  hazards: string[]
+  parkingInfo?: string
+  photos: string[]
+  moderationStatus: PlaceModerationStatus
+  createdAt: string
+  updatedAt: string
+}
+
+export interface PlacePhoto {
+  id: string
+  placeId: string
+  url: string
+  caption?: string
+  uploadedById: string
+  createdAt: string
+}
+
+// Edit Request System for Content Moderation
+export type EditRequestType = "blog" | "wiki" | "pet" | "user"
+
+export type EditRequestStatus = "pending" | "approved" | "rejected"
+
+export interface EditRequest {
+  id: string
+  type: EditRequestType
+  contentId: string // ID of the content being edited
+  authorId: string // User who made the edit
+  reporterId?: string // User who reported the content (for edits triggered by reports)
+  status: EditRequestStatus
+  originalData: Record<string, unknown> // Original content data
+  editedData: Record<string, unknown> // New content data
+  changesSummary: string // Human-readable summary of changes
+  reason?: string // Reason for rejection (if rejected)
+  reviewedBy?: string // Admin/moderator who reviewed
+  reviewedAt?: string // Timestamp of review
+  createdAt: string // When the edit was requested
+  priority?: "low" | "medium" | "high" // Manual priority assignment
+}
+
+export interface EditRequestAuditLog {
+  id: string
+  editRequestId: string
+  action: "created" | "approved" | "rejected" | "priority_changed"
+  performedBy: string
+  performedAt: string
+  reason?: string
+  metadata?: Record<string, unknown>
+}
+
+// Search Analytics Types
+export type SearchAnalyticsEventType = "query" | "result_click" | "zero_result"
+
+export type SearchContentType = "user" | "pet" | "blog" | "wiki" | "hashtag" | "shelter" | "group" | "event" | "all"
+
+export interface SearchQueryFilters {
+  species?: string[]
+  location?: string
+  breed?: string
+  category?: string[]
+  gender?: string[]
+  tags?: string[]
+  types?: string[]
+  nearby?: boolean
+  ageMin?: number
+  ageMax?: number
+  dateFrom?: string
+  dateTo?: string
+  verified?: boolean
+}
+
+export interface SearchAnalyticsEvent {
+  id: string
+  eventType: SearchAnalyticsEventType
+  schemaVersion: string // Event schema version for backward compatibility
+  sessionId: string // Anonymized session identifier
+  timestamp: string
+  
+  // Query Information
+  query?: string // Original query (may be scrubbed)
+  normalizedQuery?: string // Normalized version for aggregation
+  hasQuery: boolean // Whether a text query was provided
+  
+  // Filter Information
+  filters?: SearchQueryFilters
+  hasFilters: boolean // Whether any filters were applied
+  filterCount: number // Number of filter categories applied
+  
+  // Result Information
+  resultCount?: number
+  isZeroResult?: boolean // True if no results returned
+  contentType?: SearchContentType // Type of content being searched
+  clickedResultType?: SearchContentType // Type of result clicked (for CTR)
+  clickedResultId?: string // Result ID clicked (hashed/anonymized)
+  
+  // User Context (anonymized)
+  isAuthenticated: boolean
+  userSegment?: string // Anonymized user segment classification
+  
+  // Metadata
+  metadata?: Record<string, unknown>
+}
+
+export interface SearchAnalyticsAggregation {
+  period: "day" | "week" | "month"
+  startDate: string
+  endDate: string
+  
+  // Query Metrics
+  totalQueries: number
+  uniqueQueries: number
+  averageQueryLength?: number
+  
+  // Zero Result Metrics
+  zeroResultQueries: number
+  zeroResultRate: number // Percentage of queries with zero results
+  topZeroResultQueries: Array<{
+    query: string
+    count: number
+  }>
+  
+  // CTR Metrics
+  totalResultClicks: number
+  clickThroughRate: number // Percentage of impressions that resulted in clicks
+  clicksByContentType: Record<SearchContentType, number>
+  
+  // Content Type Breakdown
+  queriesByContentType: Record<SearchContentType, number>
+  topContentTypes: Array<{
+    type: SearchContentType
+    queries: number
+  }>
+  
+  // Filter Usage
+  filterUsageCount: number
+  averageFiltersPerQuery: number
+  mostUsedFilters: Array<{
+    filterType: string
+    count: number
+  }>
+  
+  // Trend Data
+  dailyBreakdown?: Array<{
+    date: string
+    queries: number
+    zeroResults: number
+    clicks: number
+    ctr: number
+  }>
+}
+
+export interface SearchAnalyticsSummary {
+  totalQueries: number
+  totalZeroResultQueries: number
+  totalClicks: number
+  overallCTR: number
+  overallZeroResultRate: number
+  period: SearchAnalyticsAggregation["period"]
+  generatedAt: string
+}
+
+export interface WatchEntry {
+  id: string
+  userId: string
+  targetId: string
+  targetType: "post" | "wiki"
+  watchEvents: string[] // ["update", "comment", "reaction"]
+  enabled: boolean
+  createdAt: string
+  updatedAt: string
 }

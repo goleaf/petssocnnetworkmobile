@@ -7,8 +7,11 @@ import type {
   CommentFlagReason,
   CommentModeration,
   CommentStatus,
+  EditRequest,
+  EditRequestAuditLog,
   EventLocationShare,
   EventRSVP,
+  ExpertProfile,
   FriendCategory,
   FriendRequest,
   Group,
@@ -24,6 +27,7 @@ import type {
   GroupTopic,
   GroupTopicStatus,
   GroupWarning,
+  Organization,
   Pet,
   PetPlaydateInvite,
   PetRelationship,
@@ -35,10 +39,17 @@ import type {
   ReactionType,
   ModerationAction,
   User,
+  WatchEntry,
   WikiArticle,
+  WikiRevision,
+  WikiRevisionStatus,
+  WikiTranslation,
+  TranslationStatus,
   Conversation,
   DirectMessage,
   MessageSearchResult,
+  Place,
+  PlacePhoto,
 } from "./types"
 import {
   mockUsers,
@@ -50,8 +61,10 @@ import {
   mockDirectMessages,
 } from "./mock-data"
 import { calculateAge } from "./utils/date"
-import { addNotification } from "./notifications"
+import { addNotification, createMentionNotification } from "./notifications"
+import { extractMentions } from "./utils/mentions"
 import { normalizeCategoryList } from "./utils/categories"
+import { sanitizeLocationForStorage } from "./utils/location-obfuscation"
 
 const STORAGE_KEYS = {
   USERS: "pet_social_users",
@@ -59,6 +72,7 @@ const STORAGE_KEYS = {
   BLOG_POSTS: "pet_social_blog_posts",
   COMMENTS: "pet_social_comments",
   WIKI_ARTICLES: "pet_social_wiki_articles",
+  WIKI_REVISIONS: "pet_social_wiki_revisions",
   ACTIVITIES: "pet_social_activities",
   CURRENT_USER: "pet_social_current_user",
   FRIEND_REQUESTS: "pet_social_friend_requests",
@@ -77,6 +91,14 @@ const STORAGE_KEYS = {
   MODERATION_ACTIONS: "pet_social_moderation_actions",
   CONVERSATIONS: "pet_social_conversations",
   DIRECT_MESSAGES: "pet_social_direct_messages",
+  PLACES: "pet_social_places",
+  PLACE_PHOTOS: "pet_social_place_photos",
+  WIKI_TRANSLATIONS: "pet_social_wiki_translations",
+  EDIT_REQUESTS: "pet_social_edit_requests",
+  EDIT_REQUEST_AUDIT_LOGS: "pet_social_edit_request_audit_logs",
+  ORGANIZATIONS: "pet_social_organizations",
+  EXPERT_PROFILES: "pet_social_expert_profiles",
+  WATCH_ENTRIES: "pet_social_watch_entries",
 }
 
 const DEFAULT_CONVERSATIONS: Conversation[] = JSON.parse(JSON.stringify(mockConversations)) as Conversation[]
@@ -866,7 +888,14 @@ export function updateUser(userId: string, updates: Partial<User>) {
   const users = getUsers()
   const index = users.findIndex((u) => u.id === userId)
   if (index !== -1) {
-    users[index] = { ...users[index], ...updates }
+    const existingUser = users[index]
+    const mergedUser = { ...existingUser, ...updates }
+
+    // Sanitize location data to ensure privacy compliance
+    // This ensures precise coordinates are never stored for non-public profiles
+    const sanitizedUser = sanitizeLocationForStorage(mergedUser)
+
+    users[index] = sanitizedUser as User
     localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users))
   }
 }
@@ -1909,6 +1938,13 @@ export function addPet(pet: Pet) {
   const petWithSlug = pet.slug ? pet : { ...pet, slug: generatePetSlug(pet.name) }
   pets.push(normalizePet(petWithSlug))
   persistPets(pets)
+
+  // Award points for adding a pet
+  if (typeof window !== "undefined") {
+    import("./points-integration").then(({ awardPointsToUser }) => {
+      awardPointsToUser(pet.ownerId, "pet_add")
+    })
+  }
 }
 
 export function addFriendCategory(petId: string, category: FriendCategory) {
@@ -2017,7 +2053,14 @@ export function updateBlogPost(post: BlogPost) {
   const posts = getBlogPosts()
   const index = posts.findIndex((p) => p.id === post.id)
   if (index !== -1) {
-    posts[index] = normalizeBlogPost({ ...posts[index], ...post })
+    const updatedPost = normalizeBlogPost({ ...posts[index], ...post })
+    
+    // If disclosure is missing, mark post for moderation review
+    if (updatedPost.brandAffiliation?.disclosureMissing) {
+      // The status can be checked by moderators via the brandAffiliation.disclosureMissing flag
+    }
+    
+    posts[index] = updatedPost
     localStorage.setItem(STORAGE_KEYS.BLOG_POSTS, JSON.stringify(posts))
   }
 }
@@ -2059,6 +2102,13 @@ export function togglePostReaction(postId: string, userId: string, reactionType:
       })
       // Add reaction
       reactions[reactionType as keyof typeof reactions] = [...reactionArray, userId]
+
+      // Award points for liking a post
+      if (reactionType === "like" && typeof window !== "undefined") {
+        import("./points-integration").then(({ awardPointsToUser }) => {
+          awardPointsToUser(userId, "post_like")
+        })
+      }
     }
     posts[index] = normalizeBlogPost(posts[index])
     localStorage.setItem(STORAGE_KEYS.BLOG_POSTS, JSON.stringify(posts))
@@ -2464,6 +2514,40 @@ export function addGroupTopic(topic: GroupTopic): void {
   topics.push(topic)
   setAllGroupTopics(topics)
   refreshGroupTopicCount(topic.groupId)
+
+  // Process mentions in topic content
+  const mentionUsernames = extractMentions(topic.content)
+  if (mentionUsernames.length > 0) {
+    const author = getUserById(topic.authorId)
+    if (author) {
+      const authorName = author.fullName || author.username || "Someone"
+      const group = getGroupById(topic.groupId)
+
+      // Determine thread ID - use parent topic ID if this is a reply, otherwise use this topic's ID
+      const threadId = topic.parentTopicId || topic.id
+
+      for (const username of mentionUsernames) {
+        const mentionedUser = getUserByUsername(username)
+        if (!mentionedUser) continue
+
+        // Don't notify if user mentioned themselves
+        if (mentionedUser.id === topic.authorId) continue
+
+        // Don't notify if users are blocked
+        if (areUsersBlocked(topic.authorId, mentionedUser.id)) continue
+
+        createMentionNotification({
+          mentionerId: topic.authorId,
+          mentionerName: authorName,
+          mentionedUserId: mentionedUser.id,
+          threadId,
+          threadType: "group_topic",
+          threadTitle: topic.title || undefined,
+          groupSlug: group?.slug,
+        })
+      }
+    }
+  }
 }
 
 export function updateGroupTopic(topicId: string, updates: Partial<GroupTopic>): void {
@@ -3011,6 +3095,14 @@ export function addComment(comment: Comment) {
   const normalized = normalizeComment(comment)
   comments.push(normalized)
   localStorage.setItem(STORAGE_KEYS.COMMENTS, JSON.stringify(comments))
+
+  // Award points for commenting
+  if (typeof window !== "undefined") {
+    import("./points-integration").then(({ awardPointsToUser }) => {
+      const actionType = comment.parentCommentId ? "comment_reply" : "post_comment"
+      awardPointsToUser(comment.userId, actionType)
+    })
+  }
 }
 
 export function updateComment(
@@ -3190,6 +3282,106 @@ export function updateWikiArticle(article: WikiArticle) {
   }
 }
 
+// Wiki revision operations
+export function getWikiRevisions(): WikiRevision[] {
+  if (typeof window === "undefined") return []
+  const data = localStorage.getItem(STORAGE_KEYS.WIKI_REVISIONS)
+  return data ? JSON.parse(data) : []
+}
+
+export function getWikiRevisionsByArticleId(articleId: string): WikiRevision[] {
+  return getWikiRevisions().filter((r) => r.articleId === articleId)
+}
+
+export function getWikiRevisionById(revisionId: string): WikiRevision | undefined {
+  return getWikiRevisions().find((r) => r.id === revisionId)
+}
+
+export function addWikiRevision(revision: WikiRevision): void {
+  if (typeof window === "undefined") return
+  const revisions = getWikiRevisions()
+  revisions.push(revision)
+  localStorage.setItem(STORAGE_KEYS.WIKI_REVISIONS, JSON.stringify(revisions))
+}
+
+export function updateWikiRevision(revision: WikiRevision): void {
+  if (typeof window === "undefined") return
+  const revisions = getWikiRevisions()
+  const index = revisions.findIndex((r) => r.id === revision.id)
+  if (index !== -1) {
+    revisions[index] = revision
+    localStorage.setItem(STORAGE_KEYS.WIKI_REVISIONS, JSON.stringify(revisions))
+  }
+}
+
+export function getStableRevision(articleId: string): WikiRevision | undefined {
+  const article = getWikiArticles().find((a) => a.id === articleId)
+  if (!article || !article.stableRevisionId) return undefined
+  return getWikiRevisionById(article.stableRevisionId)
+}
+
+export function getLatestRevision(articleId: string): WikiRevision | undefined {
+  const revisions = getWikiRevisionsByArticleId(articleId)
+  if (revisions.length === 0) return undefined
+  // Get most recent revision (not deprecated)
+  const activeRevisions = revisions.filter((r) => r.status !== "deprecated")
+  if (activeRevisions.length === 0) return undefined
+  return activeRevisions.sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  )[0]
+}
+
+export function isStaleContent(approvedAt?: string): boolean {
+  if (!approvedAt) return false
+  const approvedDate = new Date(approvedAt)
+  const now = new Date()
+  const monthsDiff = (now.getTime() - approvedDate.getTime()) / (1000 * 60 * 60 * 24 * 30)
+  return monthsDiff > 12
+}
+
+export function rollbackToStableRevision(
+  articleId: string,
+  performedBy: string
+): { success: boolean; error?: string } {
+  if (typeof window === "undefined") {
+    return { success: false, error: "Not available in server context" }
+  }
+
+  const article = getWikiArticles().find((a) => a.id === articleId)
+  if (!article) {
+    return { success: false, error: "Article not found" }
+  }
+
+  const stableRevision = getStableRevision(articleId)
+  if (!stableRevision) {
+    return { success: false, error: "No stable revision found" }
+  }
+
+  // Update article content to stable revision
+  const updatedArticle: WikiArticle = {
+    ...article,
+    content: stableRevision.content,
+    currentRevisionId: stableRevision.id,
+    updatedAt: new Date().toISOString(),
+  }
+
+  updateWikiArticle(updatedArticle)
+
+  // Create audit log entry
+  addModerationAction({
+    id: `mod_action_${Date.now()}`,
+    groupId: "", // Not group-specific, but required by type
+    actionType: "other",
+    targetId: articleId,
+    targetType: "other",
+    performedBy,
+    reason: `Rolled back wiki article to stable revision ${stableRevision.id}`,
+    timestamp: new Date().toISOString(),
+  })
+
+  return { success: true }
+}
+
 // Activity operations
 export function getActivities(): Activity[] {
   if (typeof window === "undefined") return []
@@ -3247,4 +3439,419 @@ export function updateDirectMessage(messageId: string, updates: Partial<DirectMe
       snippet: merged.content ?? existing.content,
     })
   }
+}
+
+// Place Functions
+export function getPlaces(): Place[] {
+  return readData<Place[]>(STORAGE_KEYS.PLACES, [])
+}
+
+export function getPlaceById(id: string): Place | undefined {
+  return getPlaces().find((place) => place.id === id)
+}
+
+export function getApprovedPlaces(): Place[] {
+  return getPlaces().filter((place) => place.moderationStatus === "approved")
+}
+
+export function getPlacesNearLocation(lat: number, lng: number, radiusKm: number = 10): Place[] {
+  const places = getApprovedPlaces()
+  return places.filter((place) => {
+    const distance = calculateDistance(lat, lng, place.lat, place.lng)
+    return distance <= radiusKm
+  })
+}
+
+export function addPlace(place: Place): void {
+  const places = getPlaces()
+  places.push(place)
+  writeData(STORAGE_KEYS.PLACES, places)
+}
+
+export function updatePlace(id: string, updates: Partial<Place>): void {
+  const places = getPlaces()
+  const index = places.findIndex((place) => place.id === id)
+  if (index !== -1) {
+    places[index] = { ...places[index], ...updates, updatedAt: new Date().toISOString() }
+    writeData(STORAGE_KEYS.PLACES, places)
+  }
+}
+
+export function deletePlace(id: string): void {
+  const places = getPlaces()
+  const filtered = places.filter((place) => place.id !== id)
+  writeData(STORAGE_KEYS.PLACES, filtered)
+  
+  // Also delete associated photos
+  const photos = getPlacePhotos()
+  const filteredPhotos = photos.filter((photo) => photo.placeId !== id)
+  writeData(STORAGE_KEYS.PLACE_PHOTOS, filteredPhotos)
+}
+
+// Place Photo Functions
+export function getPlacePhotos(): PlacePhoto[] {
+  return readData<PlacePhoto[]>(STORAGE_KEYS.PLACE_PHOTOS, [])
+}
+
+export function getPlacePhotosByPlaceId(placeId: string): PlacePhoto[] {
+  return getPlacePhotos().filter((photo) => photo.placeId === placeId)
+}
+
+export function getPlacePhotoById(id: string): PlacePhoto | undefined {
+  return getPlacePhotos().find((photo) => photo.id === id)
+}
+
+export function addPlacePhoto(photo: PlacePhoto): void {
+  const photos = getPlacePhotos()
+  photos.push(photo)
+  writeData(STORAGE_KEYS.PLACE_PHOTOS, photos)
+}
+
+export function deletePlacePhoto(id: string): void {
+  const photos = getPlacePhotos()
+  const filtered = photos.filter((photo) => photo.id !== id)
+  writeData(STORAGE_KEYS.PLACE_PHOTOS, filtered)
+}
+
+// Helper function to calculate distance between two points in kilometers
+function calculateDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371 // Radius of the Earth in km
+  const dLat = ((lat2 - lat1) * Math.PI) / 180
+  const dLng = ((lng2 - lng1) * Math.PI) / 180
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) * Math.sin(dLng / 2)
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+  return R * c
+}
+
+// Organization functions
+export function getOrganizations(): Organization[] {
+  return readData<Organization[]>(STORAGE_KEYS.ORGANIZATIONS, [])
+}
+
+export function getOrganizationById(id: string): Organization | undefined {
+  return getOrganizations().find((org) => org.id === id)
+}
+
+export function getVerifiedOrganizations(): Organization[] {
+  return getOrganizations().filter((org) => org.verifiedAt)
+}
+
+export function addOrganization(organization: Organization): void {
+  const organizations = getOrganizations()
+  organizations.push(organization)
+  writeData(STORAGE_KEYS.ORGANIZATIONS, organizations)
+}
+
+export function updateOrganization(id: string, updates: Partial<Organization>): void {
+  const organizations = getOrganizations()
+  const index = organizations.findIndex((org) => org.id === id)
+  if (index !== -1) {
+    organizations[index] = { ...organizations[index], ...updates }
+    writeData(STORAGE_KEYS.ORGANIZATIONS, organizations)
+  }
+}
+
+// Expert profile functions
+export function getExpertProfiles(): ExpertProfile[] {
+  return readData<ExpertProfile[]>(STORAGE_KEYS.EXPERT_PROFILES, [])
+}
+
+export function getExpertProfileByUserId(userId: string): ExpertProfile | undefined {
+  return getExpertProfiles().find((profile) => profile.userId === userId)
+}
+
+export function getVerifiedExpertProfiles(): ExpertProfile[] {
+  return getExpertProfiles().filter((profile) => profile.verifiedAt)
+}
+
+export function isExpertVerified(userId: string): boolean {
+  const profile = getExpertProfileByUserId(userId)
+  return profile?.verifiedAt !== undefined
+}
+
+export function addExpertProfile(profile: ExpertProfile): void {
+  const profiles = getExpertProfiles()
+  profiles.push(profile)
+  writeData(STORAGE_KEYS.EXPERT_PROFILES, profiles)
+}
+
+export function updateExpertProfile(userId: string, updates: Partial<ExpertProfile>): void {
+  const profiles = getExpertProfiles()
+  const index = profiles.findIndex((profile) => profile.userId === userId)
+  if (index !== -1) {
+    profiles[index] = { ...profiles[index], ...updates }
+    writeData(STORAGE_KEYS.EXPERT_PROFILES, profiles)
+  }
+}
+
+// Wiki revision functions
+export function getWikiRevisions(): WikiRevision[] {
+  return readData<WikiRevision[]>(STORAGE_KEYS.WIKI_REVISIONS, [])
+}
+
+export function getWikiRevisionById(id: string): WikiRevision | undefined {
+  return getWikiRevisions().find((rev) => rev.id === id)
+}
+
+export function getWikiRevisionsByArticleId(articleId: string): WikiRevision[] {
+  return getWikiRevisions().filter((rev) => rev.articleId === articleId)
+}
+
+export function addWikiRevision(revision: WikiRevision): void {
+  const revisions = getWikiRevisions()
+  revisions.push(revision)
+  writeData(STORAGE_KEYS.WIKI_REVISIONS, revisions)
+}
+
+export function updateWikiRevision(id: string, updates: Partial<WikiRevision>): void {
+  const revisions = getWikiRevisions()
+  const index = revisions.findIndex((rev) => rev.id === id)
+  if (index !== -1) {
+    revisions[index] = { ...revisions[index], ...updates }
+    writeData(STORAGE_KEYS.WIKI_REVISIONS, revisions)
+  }
+}
+
+// Expert verification check for health content
+export function canPublishStableHealthRevision(userId: string): boolean {
+  const user = getUserById(userId)
+  if (!user) return false
+  
+  // Check if user has vet badge (from policy.ts)
+  if (user.badge === "vet") return true
+  
+  // Check if user has verified expert profile
+  return isExpertVerified(userId)
+}
+
+/**
+ * Mark a revision as stable (for health articles, requires expert status)
+ * 
+ * @param articleId - Article ID
+ * @param revisionId - Revision ID to mark as stable
+ * @param userId - User ID attempting to publish
+ * @returns Success status and error message if failed
+ */
+export function markRevisionAsStable(
+  articleId: string,
+  revisionId: string,
+  userId: string
+): { success: boolean; error?: string } {
+  if (typeof window === "undefined") {
+    return { success: false, error: "Not available in server context" }
+  }
+
+  const article = getWikiArticles().find((a) => a.id === articleId)
+  if (!article) {
+    return { success: false, error: "Article not found" }
+  }
+
+  const revision = getWikiRevisionById(revisionId)
+  if (!revision) {
+    return { success: false, error: "Revision not found" }
+  }
+
+  // For health articles, require expert status
+  if (article.category === "health") {
+    if (!canPublishStableHealthRevision(userId)) {
+      return { 
+        success: false, 
+        error: "Only verified experts can publish stable health revisions" 
+      }
+    }
+    
+    // Update healthData with review information
+    if (article.healthData) {
+      article.healthData.lastReviewedDate = new Date().toISOString()
+      article.healthData.expertReviewer = userId
+    }
+  }
+
+  // Mark revision as stable
+  updateWikiRevision(revisionId, {
+    status: "stable",
+    verifiedBy: article.category === "health" ? userId : undefined,
+  })
+
+  // Update article to reference stable revision
+  const updatedArticle: WikiArticle = {
+    ...article,
+    stableRevisionId: revisionId,
+    currentRevisionId: revisionId,
+    approvedAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  }
+
+  updateWikiArticle(updatedArticle)
+
+  return { success: true }
+}
+
+// Edit Request Functions
+export function getEditRequests(): EditRequest[] {
+  return readData<EditRequest[]>(STORAGE_KEYS.EDIT_REQUESTS, [])
+}
+
+export function getEditRequestById(id: string): EditRequest | undefined {
+  return getEditRequests().find((req) => req.id === id)
+}
+
+export function getEditRequestsByType(type: string): EditRequest[] {
+  return getEditRequests().filter((req) => req.type === type)
+}
+
+export function getPendingEditRequests(): EditRequest[] {
+  return getEditRequests().filter((req) => req.status === "pending")
+}
+
+export function getEditRequestsByAuthor(authorId: string): EditRequest[] {
+  return getEditRequests().filter((req) => req.authorId === authorId)
+}
+
+export function addEditRequest(request: EditRequest): void {
+  const requests = getEditRequests()
+  requests.push(request)
+  writeData(STORAGE_KEYS.EDIT_REQUESTS, requests)
+  
+  // Create audit log entry
+  addEditRequestAuditLog({
+    id: `audit_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    editRequestId: request.id,
+    action: "created",
+    performedBy: request.authorId,
+    performedAt: new Date().toISOString(),
+  })
+}
+
+export function updateEditRequest(id: string, updates: Partial<EditRequest>): void {
+  const requests = getEditRequests()
+  const index = requests.findIndex((req) => req.id === id)
+  if (index !== -1) {
+    const oldRequest = requests[index]
+    requests[index] = { ...oldRequest, ...updates }
+    writeData(STORAGE_KEYS.EDIT_REQUESTS, requests)
+    
+    // Create audit log for status changes
+    if (updates.status) {
+      const action = updates.status === "approved" ? "approved" : "rejected"
+      addEditRequestAuditLog({
+        id: `audit_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        editRequestId: id,
+        action: action as "approved" | "rejected",
+        performedBy: updates.reviewedBy || oldRequest.authorId,
+        performedAt: new Date().toISOString(),
+        reason: updates.reason,
+      })
+    }
+    
+    // Create audit log for priority changes
+    if (updates.priority && updates.priority !== oldRequest.priority) {
+      addEditRequestAuditLog({
+        id: `audit_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        editRequestId: id,
+        action: "priority_changed",
+        performedBy: updates.reviewedBy || oldRequest.authorId,
+        performedAt: new Date().toISOString(),
+        metadata: { oldPriority: oldRequest.priority, newPriority: updates.priority },
+      })
+    }
+  }
+}
+
+export function deleteEditRequest(id: string): void {
+  const requests = getEditRequests()
+  const filtered = requests.filter((req) => req.id !== id)
+  writeData(STORAGE_KEYS.EDIT_REQUESTS, filtered)
+}
+
+// Edit Request Audit Log Functions
+export function getEditRequestAuditLogs(): EditRequestAuditLog[] {
+  return readData<EditRequestAuditLog[]>(STORAGE_KEYS.EDIT_REQUEST_AUDIT_LOGS, [])
+}
+
+export function getEditRequestAuditLogsByRequestId(editRequestId: string): EditRequestAuditLog[] {
+  return getEditRequestAuditLogs().filter((log) => log.editRequestId === editRequestId)
+}
+
+export function addEditRequestAuditLog(log: EditRequestAuditLog): void {
+  const logs = getEditRequestAuditLogs()
+  logs.push(log)
+  writeData(STORAGE_KEYS.EDIT_REQUEST_AUDIT_LOGS, logs)
+}
+
+export function getEditRequestAuditLogById(id: string): EditRequestAuditLog | undefined {
+  return getEditRequestAuditLogs().find((log) => log.id === id)
+}
+
+// Watch Functions
+export function getWatchEntries(): WatchEntry[] {
+  return readData<WatchEntry[]>(STORAGE_KEYS.WATCH_ENTRIES, [])
+}
+
+export function getWatchEntriesByUserId(userId: string): WatchEntry[] {
+  return getWatchEntries().filter((entry) => entry.userId === userId && entry.enabled)
+}
+
+export function getWatchEntryByTarget(userId: string, targetId: string, targetType: "post" | "wiki"): WatchEntry | undefined {
+  return getWatchEntries().find(
+    (entry) => entry.userId === userId && entry.targetId === targetId && entry.targetType === targetType
+  )
+}
+
+export function isWatching(userId: string, targetId: string, targetType: "post" | "wiki"): boolean {
+  const entry = getWatchEntryByTarget(userId, targetId, targetType)
+  return entry !== undefined && entry.enabled
+}
+
+export function addWatchEntry(entry: WatchEntry): void {
+  const entries = getWatchEntries()
+  entries.push(entry)
+  writeData(STORAGE_KEYS.WATCH_ENTRIES, entries)
+}
+
+export function updateWatchEntry(id: string, updates: Partial<WatchEntry>): void {
+  const entries = getWatchEntries()
+  const index = entries.findIndex((entry) => entry.id === id)
+  if (index !== -1) {
+    entries[index] = { ...entries[index], ...updates, updatedAt: new Date().toISOString() }
+    writeData(STORAGE_KEYS.WATCH_ENTRIES, entries)
+  }
+}
+
+export function removeWatchEntry(id: string): void {
+  const entries = getWatchEntries()
+  const filtered = entries.filter((entry) => entry.id !== id)
+  writeData(STORAGE_KEYS.WATCH_ENTRIES, filtered)
+}
+
+export function toggleWatch(userId: string, targetId: string, targetType: "post" | "wiki", watchEvents: string[]): WatchEntry {
+  const existing = getWatchEntryByTarget(userId, targetId, targetType)
+  
+  if (existing) {
+    // Toggle enabled state
+    updateWatchEntry(existing.id, { enabled: !existing.enabled })
+    return { ...existing, enabled: !existing.enabled }
+  } else {
+    // Create new watch entry
+    const newEntry: WatchEntry = {
+      id: `watch_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      userId,
+      targetId,
+      targetType,
+      watchEvents,
+      enabled: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    }
+    addWatchEntry(newEntry)
+    return newEntry
+  }
+}
+
+export function getWatchEntriesForTarget(targetId: string, targetType: "post" | "wiki"): WatchEntry[] {
+  return getWatchEntries().filter(
+    (entry) => entry.targetId === targetId && entry.targetType === targetType && entry.enabled
+  )
 }

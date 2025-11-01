@@ -61,6 +61,14 @@ export default function EditBlogPage({ params }: { params: Promise<{ id: string 
     const manualHashtags = formData.hashtags || []
     const allHashtags = [...new Set([...contentHashtags, ...manualHashtags])]
 
+    // Check if disclosure is missing and flag for moderation
+    const disclosureMissing = formData.brandAffiliation && !formData.brandAffiliation.disclosed
+    const brandAffiliation = formData.brandAffiliation ? {
+      ...formData.brandAffiliation,
+      lastEditDisclosure: formData.brandAffiliation.disclosed,
+      disclosureMissing,
+    } : undefined
+
     const updatedPost: BlogPost = {
       ...post,
       petId: formData.petId,
@@ -77,6 +85,7 @@ export default function EditBlogPage({ params }: { params: Promise<{ id: string 
         links: formData.media.links.map((link) => ({ ...link })),
       },
       updatedAt: new Date().toISOString(),
+      brandAffiliation,
     }
 
     updateBlogPost(updatedPost)

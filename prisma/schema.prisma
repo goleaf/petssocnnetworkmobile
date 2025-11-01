@@ -1,0 +1,237 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Article {
+  id          String   @id @default(uuid())
+  slug        String
+  title       String
+  type        String
+  status      String
+  createdById String
+  updatedAt   DateTime @updatedAt
+  createdAt   DateTime @default(now())
+
+  // Relations
+  revisions   Revision[]
+  tags        ArticleTag[]
+  props       ArticleProp[]
+
+  @@unique([slug, type])
+  @@map("articles")
+}
+
+model Revision {
+  id           String    @id @default(uuid())
+  articleId    String
+  rev          Int
+  authorId     String
+  summary      String?
+  contentJSON  Json
+  infoboxJSON  Json?
+  approvedById String?
+  approvedAt   DateTime?
+  createdAt    DateTime  @default(now())
+
+  // Relations
+  article      Article   @relation(fields: [articleId], references: [id], onDelete: Cascade)
+
+  @@unique([articleId, rev])
+  @@index([articleId])
+  @@index([contentJSON(ops: JsonbPathOps)], type: Gin)
+  @@map("revisions")
+}
+
+model ArticleTag {
+  articleId String
+  tag       String
+
+  // Relations
+  article   Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
+
+  @@id([articleId, tag])
+  @@index([tag])
+  @@map("article_tags")
+}
+
+model ArticleProp {
+  articleId String
+  key       String
+  value     Json
+
+  // Relations
+  article   Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
+
+  @@id([articleId, key])
+  @@index([articleId])
+  @@index([value(ops: JsonbPathOps)], type: Gin)
+  @@map("article_props")
+}
+
+// Blog Post model for FTS search
+model BlogPost {
+  id          String   @id @default(uuid())
+  petId       String
+  authorId    String
+  title       String
+  content     String
+  coverImage  String?
+  tags        String[]
+  categories  String[]
+  likes       String[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  privacy     String   @default("public")
+  isDraft     Boolean  @default(false)
+  hashtags    String[]
+  type        String   @default("blog_post")
+
+  // Relations
+  postTags    BlogPostTag[]
+  searchIndex BlogPostSearchIndex?
+
+  @@map("blog_posts")
+}
+
+// Join table for blog post tags
+model BlogPostTag {
+  postId String
+  tag    String
+
+  post   BlogPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@id([postId, tag])
+  @@index([tag])
+  @@map("blog_post_tags")
+}
+
+// FTS search index for blog posts
+// Note: tsvector type should be handled via raw SQL in migrations
+model BlogPostSearchIndex {
+  postId  String @id
+  post    BlogPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  content String // tsvector in actual database, but mapped as String in Prisma
+
+  @@map("blog_post_search_index")
+}
+
+// Synonyms for FTS search expansion
+model Synonym {
+  id        String   @id @default(uuid())
+  term      String   @unique
+  synonyms  String[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([term])
+  @@map("synonyms")
+}
+
+// Telemetry for search queries
+model SearchTelemetry {
+  id          String   @id @default(uuid())
+  query       String
+  resultCount Int      @default(0)
+  hasResults  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  ipAddress   String?
+  userAgent   String?
+
+  @@index([createdAt])
+  @@index([hasResults])
+  @@map("search_telemetry")
+}
+
+// Breed model
+model Breed {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  species     String   // dog, cat, bird, etc.
+  description String?
+  characteristics Json? // JSON field for breed characteristics
+  averageWeight String?
+  averageLifespan String?
+  temperament String[]
+  origin      String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([species])
+  @@index([name])
+  @@map("breeds")
+}
+
+// City model
+model City {
+  id          String   @id @default(uuid())
+  name        String
+  country     String
+  state       String?
+  latitude    Float?
+  longitude   Float?
+  population  Int?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  places      Place[]
+
+  @@unique([name, country, state])
+  @@index([name])
+  @@index([country])
+  @@map("cities")
+}
+
+// Place model
+model Place {
+  id               String   @id @default(uuid())
+  name             String
+  address          String
+  cityId           String
+  latitude         Float
+  longitude        Float
+  amenities        String[]
+  rules            String[]
+  moderationStatus String   @default("approved") // approved, pending, rejected
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  // Relations
+  city             City     @relation(fields: [cityId], references: [id], onDelete: Cascade)
+
+  @@index([cityId])
+  @@index([moderationStatus])
+  @@index([latitude, longitude])
+  @@map("places")
+}
+
+// Product model
+model Product {
+  id          String   @id @default(uuid())
+  name        String
+  brand       String?
+  category    String   // food, toys, accessories, health, etc.
+  description String?
+  price       Float?
+  currency    String   @default("USD")
+  imageUrl    String?
+  tags        String[]
+  inStock     Boolean  @default(true)
+  rating      Float?
+  reviewCount Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([category])
+  @@index([brand])
+  @@index([name])
+  @@map("products")
+}

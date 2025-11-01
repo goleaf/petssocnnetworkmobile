@@ -191,6 +191,23 @@ function buildNotificationUrl(notification: AppNotification): string {
     return "/notifications"
   }
 
+  // Handle mention notifications with thread deep links
+  if (notification.type === "mention" && notification.metadata) {
+    const threadType = notification.metadata.threadType as string | undefined
+    const groupSlug = notification.metadata.groupSlug as string | undefined
+    const threadId = notification.targetId
+    const commentId = notification.metadata.commentId as string | undefined
+    const postId = notification.metadata.postId as string | undefined
+
+    if (threadType === "group_topic" && groupSlug && threadId) {
+      return `/groups/${groupSlug}/topics/${threadId}`
+    }
+
+    if (threadType === "comment" && postId) {
+      return `/blog/${postId}${commentId ? `#comment-${commentId}` : ""}`
+    }
+  }
+
   if (notification.targetType === "post" && notification.targetId) {
     return `/blog/${notification.targetId}`
   }

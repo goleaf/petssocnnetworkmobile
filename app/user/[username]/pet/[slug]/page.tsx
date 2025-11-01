@@ -46,6 +46,8 @@ import { PhotoViewer } from "@/components/photo-viewer"
 import { PetAchievementsSection } from "@/components/pet-achievements"
 import { FriendRequestButton, FriendRequestsSection } from "@/components/friend-requests-manager"
 import { canViewPet, canInteractWithPet } from "@/lib/utils/privacy"
+import { PetBreedSummary } from "@/components/pet-breed-summary"
+import { PetCareChecklist } from "@/components/pet-care-checklist"
 
 const formatSpecies = (species: string) => species.charAt(0).toUpperCase() + species.slice(1)
 
@@ -405,6 +407,12 @@ export default function PetProfilePage({ params }: { params: Promise<{ username:
         </TabsList>
 
         <TabsContent value="about" className="space-y-6">
+          {/* Breed Summary and Care Checklist */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <PetBreedSummary pet={pet} />
+            <PetCareChecklist pet={pet} />
+          </div>
+
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Personality Traits */}
             {pet.personality && (

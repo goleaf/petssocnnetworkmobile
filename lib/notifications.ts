@@ -1100,6 +1100,81 @@ export function createFriendRequestCancelledNotification(params: {
   addNotification(notification)
 }
 
+export function createMentionNotification(params: {
+  mentionerId: string
+  mentionerName: string
+  mentionedUserId: string
+  threadId: string
+  threadType: "comment" | "group_topic"
+  threadTitle?: string
+  groupSlug?: string
+  commentId?: string
+  postId?: string
+}) {
+  const {
+    mentionerId,
+    mentionerName,
+    mentionedUserId,
+    threadId,
+    threadType,
+    threadTitle,
+    groupSlug,
+    commentId,
+    postId,
+  } = params
+
+  // Determine deep link URL based on thread type
+  let targetUrl: string
+  if (threadType === "group_topic" && groupSlug) {
+    targetUrl = `/groups/${groupSlug}/topics/${threadId}`
+  } else if (threadType === "comment" && postId) {
+    targetUrl = `/blog/${postId}${commentId ? `#comment-${commentId}` : ""}`
+  } else {
+    targetUrl = "/notifications"
+  }
+
+  const targetTypeLabel = threadType === "group_topic" ? "thread" : "comment"
+  const batchKey = `mention_${threadType}_${threadId}_${mentionedUserId}`
+
+  const notification: Notification = {
+    id: `notif_${Date.now()}_${Math.random()}`,
+    userId: mentionedUserId,
+    type: "mention",
+    actorId: mentionerId,
+    targetId: threadId,
+    targetType: threadType === "group_topic" ? "post" : "post", // Using "post" as generic target type
+    message: threadTitle
+      ? `${mentionerName} mentioned you in a ${targetTypeLabel}: "${threadTitle}"`
+      : `${mentionerName} mentioned you in a ${targetTypeLabel}`,
+    read: false,
+    createdAt: nowIso(),
+    priority: "high",
+    category: "social",
+    channels: ["in_app", "push", "email"],
+    batchKey, // Used to prevent duplicate notifications for same thread mention
+    metadata: {
+      actorName: mentionerName,
+      targetTitle: threadTitle,
+      targetTypeLabel,
+      actorId: mentionerId,
+      threadType,
+      groupSlug,
+      commentId,
+      postId,
+    },
+    actions: [
+      {
+        id: "view-thread",
+        label: "View thread",
+        action: "view",
+        targetUrl,
+      },
+    ],
+  }
+
+  addNotification(notification)
+}
+
 export function generateFakeNotificationsForUser(userId: string) {
   if (typeof window === "undefined") return
 

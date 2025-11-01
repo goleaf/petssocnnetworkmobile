@@ -19,6 +19,7 @@ import Link from "next/link"
 import { canViewPost } from "@/lib/utils/privacy"
 import { useStorageListener } from "@/lib/hooks/use-storage-listener"
 import type { BlogPost, Pet, User as UserType } from "@/lib/types"
+import { PostContent } from "@/components/post/post-content"
 
 const POSTS_PER_PAGE = 9
 const STORAGE_KEYS_TO_WATCH = ["pet_social_blog_posts", "pet_social_users", "pet_social_pets"]
@@ -211,7 +212,9 @@ export default function BlogPage() {
               </div>
             </div>
             <h3 className="font-semibold text-lg line-clamp-2 mb-2">{post.title}</h3>
-            <p className="text-sm text-muted-foreground line-clamp-3 mb-3 flex-1">{stripHtml(post.content)}</p>
+            <div className="text-sm text-muted-foreground line-clamp-3 mb-3 flex-1">
+              <PostContent content={post.content} post={post} />
+            </div>
             <div className="flex items-center justify-between text-sm text-muted-foreground">
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-1">

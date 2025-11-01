@@ -27,6 +27,9 @@ import { canViewPost } from "@/lib/utils/privacy"
 import { MediaGallery } from "@/components/media-gallery"
 import type { BlogPostMedia } from "@/lib/types"
 import { formatCategoryLabel, slugifyCategory } from "@/lib/utils/categories"
+import { PostContent } from "@/components/post/post-content"
+import { WatchButton } from "@/components/watch-button"
+import { isWatching } from "@/lib/storage"
 
 export default function BlogPostPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
@@ -36,6 +39,7 @@ export default function BlogPostPage({ params }: { params: Promise<{ id: string 
   const [author, setAuthor] = useState(() => (post ? getUserById(post.authorId) : null))
   const [commentCount, setCommentCount] = useState(() => (post ? getCommentsByPostId(post.id).length : 0))
   const [hasLiked, setHasLiked] = useState(false)
+  const [isWatchingPost, setIsWatchingPost] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false)
   const [accessDenied, setAccessDenied] = useState(false)
@@ -54,6 +58,7 @@ export default function BlogPostPage({ params }: { params: Promise<{ id: string 
   useEffect(() => {
     if (post && currentUser) {
       setHasLiked(post.likes.includes(currentUser.id))
+      setIsWatchingPost(isWatching(currentUser.id, post.id, "post"))
     }
   }, [post, currentUser])
 
@@ -233,6 +238,9 @@ export default function BlogPostPage({ params }: { params: Promise<{ id: string 
               <MessageCircle className="h-4 w-4 mr-2" />
               {totalCommentsCount} {totalCommentsCount === 1 ? "Comment" : "Comments"}
             </Button>
+            {currentUser && currentUser.id !== post.authorId && (
+              <WatchButton targetId={post.id} targetType="post" initialWatching={isWatchingPost} />
+            )}
             {currentUser && currentUser.id === post.authorId && (
               <>
                 <Link href={`/blog/${post.id}/edit`}>
@@ -252,7 +260,7 @@ export default function BlogPostPage({ params }: { params: Promise<{ id: string 
         </CardHeader>
         <CardContent className="px-6 pb-6 space-y-6">
           <div className="prose prose-lg max-w-none">
-            <p className="text-foreground leading-relaxed whitespace-pre-wrap">{post.content}</p>
+            <PostContent content={post.content} post={post} className="text-foreground leading-relaxed whitespace-pre-wrap" />
           </div>
 
           {(galleryMedia.images.length > 0 || galleryMedia.videos.length > 0) && (

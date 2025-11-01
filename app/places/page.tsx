@@ -1,0 +1,201 @@
+"use client"
+
+import { useState } from "react"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Badge } from "@/components/ui/badge"
+import { MapPin, Search, Plus, CheckCircle, Clock, X, Fence, Droplets, Dog } from "lucide-react"
+import Link from "next/link"
+import { getApprovedPlaces } from "@/lib/storage"
+import type { Place } from "@/lib/types"
+
+export default function PlacesPage() {
+  const [searchQuery, setSearchQuery] = useState("")
+  const places = getApprovedPlaces()
+
+  const filteredPlaces = places.filter((place) => {
+    const matchesSearch =
+      place.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      place.address.toLowerCase().includes(searchQuery.toLowerCase())
+    return matchesSearch
+  })
+
+  const getModerationStatusBadge = (status: Place["moderationStatus"]) => {
+    switch (status) {
+      case "approved":
+        return (
+          <Badge variant="default" className="bg-green-500">
+            <CheckCircle className="h-3 w-3 mr-1" />
+            Approved
+          </Badge>
+        )
+      case "pending":
+        return (
+          <Badge variant="secondary">
+            <Clock className="h-3 w-3 mr-1" />
+            Pending
+          </Badge>
+        )
+      case "rejected":
+        return (
+          <Badge variant="destructive">
+            <X className="h-3 w-3 mr-1" />
+            Rejected
+          </Badge>
+        )
+    }
+  }
+
+  return (
+    <div className="container mx-auto px-4 py-8 max-w-7xl">
+      <div className="mb-8 flex justify-between items-start">
+        <div>
+          <h1 className="text-4xl font-bold mb-2">Pet-Friendly Places</h1>
+          <p className="text-muted-foreground">Discover dog parks, trails, and pet-friendly locations near you</p>
+        </div>
+        <Link href="/places/create">
+          <Button>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Place
+          </Button>
+        </Link>
+      </div>
+
+      <div className="mb-6">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search places by name or location..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+      </div>
+
+      {filteredPlaces.length === 0 ? (
+        <div className="text-center py-12">
+          <MapPin className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+          <h3 className="text-xl font-semibold mb-2">No places found</h3>
+          <p className="text-muted-foreground mb-4">
+            {places.length === 0 ? "Be the first to add a pet-friendly place!" : "Try adjusting your search query."}
+          </p>
+          {places.length === 0 && (
+            <Link href="/places/create">
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                Add First Place
+              </Button>
+            </Link>
+          )}
+        </div>
+      ) : (
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {filteredPlaces.map((place) => (
+            <Card key={place.id} className="overflow-hidden hover:shadow-lg transition-shadow">
+              <CardHeader>
+                <div className="flex items-start justify-between mb-2">
+                  <CardTitle className="text-lg">{place.name}</CardTitle>
+                  {getModerationStatusBadge(place.moderationStatus)}
+                </div>
+                <CardDescription className="flex items-start gap-1">
+                  <MapPin className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                  <span className="text-xs">{place.address}</span>
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Feature Badges */}
+                {(place.fenced || place.smallDogArea || place.waterStation) && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {place.fenced && (
+                      <Badge variant="default" className="text-xs gap-1">
+                        <Fence className="h-3 w-3" />
+                        Fenced
+                      </Badge>
+                    )}
+                    {place.smallDogArea && (
+                      <Badge variant="default" className="text-xs gap-1">
+                        <Dog className="h-3 w-3" />
+                        Small Dog Area
+                      </Badge>
+                    )}
+                    {place.waterStation && (
+                      <Badge variant="default" className="text-xs gap-1">
+                        <Droplets className="h-3 w-3" />
+                        Water Station
+                      </Badge>
+                    )}
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  <h4 className="text-sm font-semibold">Amenities</h4>
+                  <div className="flex flex-wrap gap-1">
+                    {place.amenities.slice(0, 3).map((amenity) => (
+                      <Badge key={amenity} variant="secondary" className="text-xs">
+                        {amenity}
+                      </Badge>
+                    ))}
+                    {place.amenities.length > 3 && (
+                      <Badge variant="secondary" className="text-xs">
+                        +{place.amenities.length - 3} more
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+
+                {place.hazards.length > 0 && (
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-semibold text-orange-600 flex items-center gap-1">
+                      <X className="h-3 w-3" />
+                      Hazards
+                    </h4>
+                    <div className="flex flex-wrap gap-1">
+                      {place.hazards.slice(0, 2).map((hazard, idx) => (
+                        <Badge key={idx} variant="outline" className="text-xs border-orange-300 text-orange-700">
+                          {hazard}
+                        </Badge>
+                      ))}
+                      {place.hazards.length > 2 && (
+                        <Badge variant="outline" className="text-xs border-orange-300 text-orange-700">
+                          +{place.hazards.length - 2} more
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  <h4 className="text-sm font-semibold">Rules</h4>
+                  <ul className="text-xs text-muted-foreground space-y-1">
+                    {place.rules.slice(0, 2).map((rule, idx) => (
+                      <li key={idx} className="flex items-start gap-1">
+                        <span className="mt-0.5">•</span>
+                        <span className="line-clamp-1">{rule}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                {place.parkingInfo && (
+                  <div className="text-xs text-muted-foreground bg-muted p-2 rounded">
+                    <span className="font-semibold">Parking: </span>
+                    <span className="line-clamp-2">{place.parkingInfo}</span>
+                  </div>
+                )}
+
+                <Link href={`/places/${place.id}`}>
+                  <Button variant="outline" className="w-full">
+                    View Details
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+

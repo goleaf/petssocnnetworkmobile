@@ -36,6 +36,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { canSendFollowRequest, canViewUserPosts, canViewPost } from "@/lib/utils/privacy"
 import { getPrivacyNotice } from "@/lib/utils/privacy-messages"
+import { PostContent } from "@/components/post/post-content"
 
 type SortOption = "recent" | "popular" | "oldest"
 
@@ -411,9 +412,9 @@ export default function UserPostsPage({ params }: { params: Promise<{ username: 
                           <h3 className="font-bold text-base sm:text-lg md:text-xl line-clamp-2 mb-2 hover:text-primary transition-colors">
                             {post.title}
                           </h3>
-                          <p className="text-xs sm:text-sm text-muted-foreground line-clamp-3 mb-3 flex-1 leading-relaxed">
-                            {post.content}
-                          </p>
+                          <div className="text-xs sm:text-sm text-muted-foreground line-clamp-3 mb-3 flex-1 leading-relaxed">
+                            <PostContent content={post.content} post={post} />
+                          </div>
                           <div className="flex items-center justify-between text-xs sm:text-sm text-muted-foreground mb-3">
                             <div className="flex items-center gap-3">
                               <div className="flex items-center gap-1">

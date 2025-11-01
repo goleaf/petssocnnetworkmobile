@@ -78,3 +78,5 @@ Thumbs.db
 .cache/
 node_modules
 node_modules
+
+/lib/generated/prisma

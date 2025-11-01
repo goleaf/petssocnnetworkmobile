@@ -45,6 +45,13 @@ export default function EditWikiPage({ params }: { params: Promise<{ slug: strin
     // Generate new slug if title changed
     const newSlug = article.title !== formData.title ? generateWikiSlug(formData.title) : article.slug
 
+    // Check if disclosure is missing and flag for moderation
+    const disclosureMissing = formData.brandAffiliation && !formData.brandAffiliation.disclosed
+    const brandAffiliation = formData.brandAffiliation ? {
+      ...formData.brandAffiliation,
+      disclosureMissing,
+    } : undefined
+
     const updatedArticle = {
       ...article,
       title: formData.title,
@@ -54,7 +61,42 @@ export default function EditWikiPage({ params }: { params: Promise<{ slug: strin
       species: formData.species && formData.species.length > 0 ? formData.species : undefined,
       content: formData.content,
       coverImage: formData.coverImage || undefined,
+      tags: formData.tags && formData.tags.length > 0 ? formData.tags : undefined,
       updatedAt: new Date().toISOString(),
+      brandAffiliation,
+      healthData: formData.category === "health" && formData.healthData ? formData.healthData : undefined,
+    }
+
+    // Create revision with brand affiliation if editing
+    if (brandAffiliation) {
+      const { addWikiRevision } = await import("@/lib/storage")
+      const revisionId = `revision_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+      addWikiRevision({
+        id: revisionId,
+        articleId: article.id,
+        content: formData.content,
+        status: disclosureMissing ? "draft" : "stable",
+        authorId: user.id,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        brandAffiliation,
+      })
+      
+      // Update article to reference this revision
+      updatedArticle.currentRevisionId = revisionId
+      if (!updatedArticle.revisions) {
+        updatedArticle.revisions = []
+      }
+      updatedArticle.revisions.push({
+        id: revisionId,
+        articleId: article.id,
+        content: formData.content,
+        status: disclosureMissing ? "draft" : "stable",
+        authorId: user.id,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        brandAffiliation,
+      })
     }
 
     updateWikiArticle(updatedArticle)

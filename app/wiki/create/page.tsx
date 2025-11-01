@@ -37,11 +37,13 @@ export default function CreateWikiPage() {
       species: formData.species && formData.species.length > 0 ? formData.species : undefined,
       content: formData.content,
       coverImage: formData.coverImage || undefined,
+      tags: formData.tags && formData.tags.length > 0 ? formData.tags : undefined,
       authorId: user.id,
       views: 0,
       likes: [],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
+      healthData: formData.category === "health" && formData.healthData ? formData.healthData : undefined,
     }
 
     addWikiArticle(newArticle)

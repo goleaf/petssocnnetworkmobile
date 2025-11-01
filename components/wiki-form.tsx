@@ -37,6 +37,8 @@ import {
 } from "lucide-react"
 import { MarkdownEditor } from "@/components/markdown-editor"
 import { ANIMAL_TYPES } from "@/lib/animal-types"
+import { BrandAffiliationDisclosure } from "@/components/brand-affiliation-disclosure"
+import type { HealthArticleData, UrgencyLevel } from "@/lib/types"
 
 // Label with Tooltip Component
 interface LabelWithTooltipProps {
@@ -154,6 +156,13 @@ export interface WikiFormData {
   species?: string[]
   content: string
   coverImage?: string
+  tags?: string[]
+  brandAffiliation?: {
+    disclosed: boolean
+    organizationName?: string
+    organizationType?: "brand" | "organization" | "sponsor" | "affiliate"
+  }
+  healthData?: HealthArticleData // Health-specific fields
 }
 
 interface WikiFormProps {
@@ -235,6 +244,18 @@ export function WikiForm({ mode, initialData, onSubmit, onCancel }: WikiFormProp
     species: initialData?.species || [],
     content: initialData?.content || "",
     coverImage: initialData?.coverImage || "",
+    tags: initialData?.tags || [],
+    brandAffiliation: initialData?.revisions?.[initialData.revisions.length - 1]?.brandAffiliation || {
+      disclosed: false,
+    },
+    healthData: initialData?.healthData || (initialData?.category === "health" ? {
+      symptoms: [],
+      urgency: "routine",
+      riskFactors: [],
+      diagnosisMethods: [],
+      treatments: [],
+      prevention: [],
+    } : undefined),
   })
 
   const [errors, setErrors] = useState<ValidationErrors>({})
@@ -573,6 +594,234 @@ export function WikiForm({ mode, initialData, onSubmit, onCancel }: WikiFormProp
 
             <div className="space-y-2">
               <LabelWithTooltip 
+                htmlFor="tags"
+                tooltip="Add tags to help users discover related articles and build the article link graph."
+              >
+                Tags
+              </LabelWithTooltip>
+              <ArrayTagInput
+                value={formData.tags || []}
+                onChange={(value) => handleFieldChange("tags", value)}
+                placeholder="Enter tags (e.g., beginner, training, health)"
+              />
+            </div>
+
+            {/* Health-specific fields */}
+            {formData.category === "health" && (
+              <Card>
+                <CardHeaderWithIcon
+                  title="Health Information"
+                  description="Provide detailed health information for this condition"
+                  icon={Stethoscope}
+                />
+                <CardContent className="space-y-6">
+                  <div className="space-y-2">
+                    <LabelWithTooltip 
+                      htmlFor="urgency"
+                      required
+                      tooltip="Select the urgency level for this health condition."
+                    >
+                      Urgency Level
+                    </LabelWithTooltip>
+                    <Select
+                      value={formData.healthData?.urgency || "routine"}
+                      onValueChange={(value: UrgencyLevel) => {
+                        setFormData((prev) => ({
+                          ...prev,
+                          healthData: {
+                            ...prev.healthData,
+                            urgency: value,
+                            symptoms: prev.healthData?.symptoms || [],
+                            riskFactors: prev.healthData?.riskFactors || [],
+                            diagnosisMethods: prev.healthData?.diagnosisMethods || [],
+                            treatments: prev.healthData?.treatments || [],
+                            prevention: prev.healthData?.prevention || [],
+                          } as HealthArticleData,
+                        }))
+                      }}
+                    >
+                      <SelectTrigger className="h-10 w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="emergency">Emergency</SelectItem>
+                        <SelectItem value="urgent">Urgent</SelectItem>
+                        <SelectItem value="routine">Routine</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <LabelWithTooltip 
+                      htmlFor="symptoms"
+                      required
+                      tooltip="List the symptoms associated with this condition. Press Enter or comma to add each symptom."
+                    >
+                      Symptoms
+                    </LabelWithTooltip>
+                    <ArrayTagInput
+                      value={formData.healthData?.symptoms || []}
+                      onChange={(value) => {
+                        setFormData((prev) => ({
+                          ...prev,
+                          healthData: {
+                            ...prev.healthData,
+                            symptoms: value,
+                            urgency: prev.healthData?.urgency || "routine",
+                            riskFactors: prev.healthData?.riskFactors || [],
+                            diagnosisMethods: prev.healthData?.diagnosisMethods || [],
+                            treatments: prev.healthData?.treatments || [],
+                            prevention: prev.healthData?.prevention || [],
+                          } as HealthArticleData,
+                        }))
+                      }}
+                      placeholder="Enter symptoms (e.g., vomiting, lethargy, loss of appetite)"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <LabelWithTooltip 
+                      htmlFor="onsetAge"
+                      tooltip="The typical age when this condition appears (e.g., '6 months', 'senior')."
+                    >
+                      Onset Age
+                    </LabelWithTooltip>
+                    <Input
+                      id="onsetAge"
+                      value={formData.healthData?.onsetAge || ""}
+                      onChange={(e) => {
+                        setFormData((prev) => ({
+                          ...prev,
+                          healthData: {
+                            ...prev.healthData,
+                            onsetAge: e.target.value,
+                            symptoms: prev.healthData?.symptoms || [],
+                            urgency: prev.healthData?.urgency || "routine",
+                            riskFactors: prev.healthData?.riskFactors || [],
+                            diagnosisMethods: prev.healthData?.diagnosisMethods || [],
+                            treatments: prev.healthData?.treatments || [],
+                            prevention: prev.healthData?.prevention || [],
+                          } as HealthArticleData,
+                        }))
+                      }}
+                      placeholder="e.g., 6 months, senior, 1-3 years"
+                      className="h-10"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <LabelWithTooltip 
+                      htmlFor="riskFactors"
+                      tooltip="List risk factors that may contribute to this condition."
+                    >
+                      Risk Factors
+                    </LabelWithTooltip>
+                    <ArrayTagInput
+                      value={formData.healthData?.riskFactors || []}
+                      onChange={(value) => {
+                        setFormData((prev) => ({
+                          ...prev,
+                          healthData: {
+                            ...prev.healthData,
+                            riskFactors: value,
+                            symptoms: prev.healthData?.symptoms || [],
+                            urgency: prev.healthData?.urgency || "routine",
+                            diagnosisMethods: prev.healthData?.diagnosisMethods || [],
+                            treatments: prev.healthData?.treatments || [],
+                            prevention: prev.healthData?.prevention || [],
+                          } as HealthArticleData,
+                        }))
+                      }}
+                      placeholder="Enter risk factors (e.g., age, breed, obesity)"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <LabelWithTooltip 
+                      htmlFor="diagnosisMethods"
+                      tooltip="List methods used to diagnose this condition."
+                    >
+                      Diagnosis Methods
+                    </LabelWithTooltip>
+                    <ArrayTagInput
+                      value={formData.healthData?.diagnosisMethods || []}
+                      onChange={(value) => {
+                        setFormData((prev) => ({
+                          ...prev,
+                          healthData: {
+                            ...prev.healthData,
+                            diagnosisMethods: value,
+                            symptoms: prev.healthData?.symptoms || [],
+                            urgency: prev.healthData?.urgency || "routine",
+                            riskFactors: prev.healthData?.riskFactors || [],
+                            treatments: prev.healthData?.treatments || [],
+                            prevention: prev.healthData?.prevention || [],
+                          } as HealthArticleData,
+                        }))
+                      }}
+                      placeholder="Enter diagnosis methods (e.g., blood test, X-ray, physical exam)"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <LabelWithTooltip 
+                      htmlFor="treatments"
+                      tooltip="List treatment options for this condition."
+                    >
+                      Treatments
+                    </LabelWithTooltip>
+                    <ArrayTagInput
+                      value={formData.healthData?.treatments || []}
+                      onChange={(value) => {
+                        setFormData((prev) => ({
+                          ...prev,
+                          healthData: {
+                            ...prev.healthData,
+                            treatments: value,
+                            symptoms: prev.healthData?.symptoms || [],
+                            urgency: prev.healthData?.urgency || "routine",
+                            riskFactors: prev.healthData?.riskFactors || [],
+                            diagnosisMethods: prev.healthData?.diagnosisMethods || [],
+                            prevention: prev.healthData?.prevention || [],
+                          } as HealthArticleData,
+                        }))
+                      }}
+                      placeholder="Enter treatments (e.g., medication, surgery, dietary changes)"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <LabelWithTooltip 
+                      htmlFor="prevention"
+                      tooltip="List prevention strategies for this condition."
+                    >
+                      Prevention
+                    </LabelWithTooltip>
+                    <ArrayTagInput
+                      value={formData.healthData?.prevention || []}
+                      onChange={(value) => {
+                        setFormData((prev) => ({
+                          ...prev,
+                          healthData: {
+                            ...prev.healthData,
+                            prevention: value,
+                            symptoms: prev.healthData?.symptoms || [],
+                            urgency: prev.healthData?.urgency || "routine",
+                            riskFactors: prev.healthData?.riskFactors || [],
+                            diagnosisMethods: prev.healthData?.diagnosisMethods || [],
+                            treatments: prev.healthData?.treatments || [],
+                          } as HealthArticleData,
+                        }))
+                      }}
+                      placeholder="Enter prevention methods (e.g., vaccination, regular checkups, diet)"
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            <div className="space-y-2">
+              <LabelWithTooltip 
                 htmlFor="content" 
                 required
                 tooltip="Write the main content of your article. You can use Markdown formatting for rich text. Minimum 50 characters required."
@@ -593,6 +842,16 @@ export function WikiForm({ mode, initialData, onSubmit, onCancel }: WikiFormProp
             </div>
           </CardContent>
         </Card>
+
+        {/* Brand Affiliation Disclosure */}
+        {mode === "edit" && (
+          <BrandAffiliationDisclosure
+            value={formData.brandAffiliation || { disclosed: false }}
+            onChange={(affiliation) => setFormData((prev) => ({ ...prev, brandAffiliation: affiliation }))}
+            showReminder={true}
+            className="mt-6"
+          />
+        )}
 
         {/* Submit Buttons */}
         <div className="mt-6 pt-6">

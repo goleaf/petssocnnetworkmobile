@@ -85,6 +85,7 @@ import {
 } from "@/lib/utils/privacy"
 import { getPrivacyNotice } from "@/lib/utils/privacy-messages"
 import { useStorageListener } from "@/lib/hooks/use-storage-listener"
+import { PostContent } from "@/components/post/post-content"
 
 const STORAGE_KEYS_TO_WATCH = ["pet_social_users", "pet_social_pets", "pet_social_blog_posts"]
 
@@ -584,7 +585,7 @@ export default function UserProfilePage() {
                                 </div>
                               </div>
                             ) : (
-                              <p className="text-foreground text-sm sm:text-base whitespace-pre-wrap break-words leading-relaxed">{post.content}</p>
+                              <PostContent content={post.content} post={post} className="text-foreground text-sm sm:text-base whitespace-pre-wrap break-words leading-relaxed" />
                             )}
                             {post.images && post.images.length > 0 && (
                               <div className={`grid gap-2 ${post.images.length === 1 ? 'grid-cols-1' :
@@ -687,7 +688,9 @@ export default function UserProfilePage() {
                             <Link href={`/blog/${post.id}`}>
                               <div className="space-y-3 cursor-pointer hover:opacity-80 transition-opacity">
                                 <h3 className="text-lg sm:text-xl md:text-2xl font-bold line-clamp-2">{post.title}</h3>
-                                <p className="text-sm sm:text-base text-muted-foreground line-clamp-3 leading-relaxed">{post.content}</p>
+                                <div className="text-sm sm:text-base text-muted-foreground line-clamp-3 leading-relaxed">
+                                  <PostContent content={post.content} post={post} />
+                                </div>
                                 {post.coverImage && (
                                   <div className="w-full overflow-hidden rounded-lg">
                                     <img

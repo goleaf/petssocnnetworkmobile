@@ -1,0 +1,23 @@
+[
+  {"name": "New York", "country": "United States", "state": "New York", "latitude": 40.7128, "longitude": -74.0060, "population": 8336817},
+  {"name": "Los Angeles", "country": "United States", "state": "California", "latitude": 34.0522, "longitude": -118.2437, "population": 3971883},
+  {"name": "Chicago", "country": "United States", "state": "Illinois", "latitude": 41.8781, "longitude": -87.6298, "population": 2693976},
+  {"name": "Houston", "country": "United States", "state": "Texas", "latitude": 29.7604, "longitude": -95.3698, "population": 2320268},
+  {"name": "Phoenix", "country": "United States", "state": "Arizona", "latitude": 33.4484, "longitude": -112.0740, "population": 1680992},
+  {"name": "Philadelphia", "country": "United States", "state": "Pennsylvania", "latitude": 39.9526, "longitude": -75.1652, "population": 1584064},
+  {"name": "San Antonio", "country": "United States", "state": "Texas", "latitude": 29.4241, "longitude": -98.4936, "population": 1547253},
+  {"name": "San Diego", "country": "United States", "state": "California", "latitude": 32.7157, "longitude": -117.1611, "population": 1423851},
+  {"name": "Dallas", "country": "United States", "state": "Texas", "latitude": 32.7767, "longitude": -96.7970, "population": 1343573},
+  {"name": "San Jose", "country": "United States", "state": "California", "latitude": 37.3382, "longitude": -121.8863, "population": 1021795},
+  {"name": "Toronto", "country": "Canada", "state": "Ontario", "latitude": 43.6532, "longitude": -79.3832, "population": 2930000},
+  {"name": "Vancouver", "country": "Canada", "state": "British Columbia", "latitude": 49.2827, "longitude": -123.1207, "population": 675218},
+  {"name": "Montreal", "country": "Canada", "state": "Quebec", "latitude": 45.5017, "longitude": -73.5673, "population": 1780000},
+  {"name": "London", "country": "United Kingdom", "state": null, "latitude": 51.5074, "longitude": -0.1278, "population": 8982000},
+  {"name": "Paris", "country": "France", "state": null, "latitude": 48.8566, "longitude": 2.3522, "population": 2161000},
+  {"name": "Berlin", "country": "Germany", "state": null, "latitude": 52.5200, "longitude": 13.4050, "population": 3677472},
+  {"name": "Sydney", "country": "Australia", "state": "New South Wales", "latitude": -33.8688, "longitude": 151.2093, "population": 5312163},
+  {"name": "Melbourne", "country": "Australia", "state": "Victoria", "latitude": -37.8136, "longitude": 144.9631, "population": 5078193},
+  {"name": "Tokyo", "country": "Japan", "state": null, "latitude": 35.6762, "longitude": 139.6503, "population": 13960000},
+  {"name": "Singapore", "country": "Singapore", "state": null, "latitude": 1.3521, "longitude": 103.8198, "population": 5703569}
+]
+

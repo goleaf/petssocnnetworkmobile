@@ -24,6 +24,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { MediaGallery } from "@/components/media-gallery"
 import { getFriendSuggestions, type FriendSuggestion } from "@/lib/friend-suggestions"
 import { useStorageListener } from "@/lib/hooks/use-storage-listener"
+import { PostContent } from "@/components/post/post-content"
 
 const STORAGE_KEYS_TO_WATCH = ["pet_social_blog_posts", "pet_social_users", "pet_social_pets"]
 
@@ -949,7 +950,9 @@ function FeedPostCard({
           <Link href={`/blog/${post.id}`}>
             <h3 className="font-semibold text-lg mb-2 hover:underline cursor-pointer">{post.title}</h3>
           </Link>
-          <p className="text-muted-foreground line-clamp-3">{post.content}</p>
+          <div className="text-muted-foreground line-clamp-3">
+            <PostContent content={post.content} post={post} />
+          </div>
         </div>
 
         {(media.images.length > 0 || media.videos.length > 0 || media.links.length > 0) && (

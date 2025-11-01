@@ -21,6 +21,7 @@ import { TagInput } from "@/components/ui/tag-input"
 import { PrivacySelector } from "@/components/privacy-selector"
 import { MarkdownEditor } from "@/components/markdown-editor"
 import { MediaAttachmentsEditor } from "@/components/media-attachments-editor"
+import { BrandAffiliationDisclosure } from "@/components/brand-affiliation-disclosure"
 import type { BlogPost, BlogPostMedia, PrivacyLevel } from "@/lib/types"
 import { normalizeCategoryList } from "@/lib/utils/categories"
 import {
@@ -76,6 +77,11 @@ export interface BlogFormData {
   hashtags: string[]
   coverImage?: string
   media: BlogPostMedia
+  brandAffiliation?: {
+    disclosed: boolean
+    organizationName?: string
+    organizationType?: "brand" | "organization" | "sponsor" | "affiliate"
+  }
 }
 
 interface BlogFormProps {
@@ -121,6 +127,9 @@ export function BlogForm({
       images: initialData?.media?.images ? [...initialData.media.images] : [],
       videos: initialData?.media?.videos ? [...initialData.media.videos] : [],
       links: initialData?.media?.links ? initialData.media.links.map((link) => ({ ...link })) : [],
+    },
+    brandAffiliation: initialData?.brandAffiliation || {
+      disclosed: false,
     },
   })
 
@@ -635,6 +644,16 @@ export function BlogForm({
             </div>
           </CardContent>
         </Card>
+
+        {/* Brand Affiliation Disclosure */}
+        {mode === "edit" && (
+          <BrandAffiliationDisclosure
+            value={formData.brandAffiliation || { disclosed: false }}
+            onChange={(affiliation) => setFormData((prev) => ({ ...prev, brandAffiliation: affiliation }))}
+            showReminder={true}
+            className="mt-6"
+          />
+        )}
 
         {/* Submit Buttons */}
         <div className="mt-6 pt-6">
