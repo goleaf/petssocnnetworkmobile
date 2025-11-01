@@ -15,3 +15,6 @@ export function stripHtml(html: string): string {
     .replace(/&#39;/g, "'") // Replace &#39; with '
     .trim() // Remove leading/trailing whitespace
 }
+
+
+
