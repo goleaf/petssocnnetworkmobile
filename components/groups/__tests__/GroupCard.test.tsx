@@ -28,6 +28,10 @@ describe('GroupCard', () => {
     rules: [],
     createdAt: '2024-01-15T10:00:00Z',
     updatedAt: '2024-03-20T14:30:00Z',
+    visibility: {
+      discoverable: true,
+      content: 'everyone',
+    },
   }
 
   const mockCategory = {
@@ -73,15 +77,41 @@ describe('GroupCard', () => {
   })
 
   it('should display closed group badge', () => {
-    const closedGroup = { ...mockGroup, type: 'closed' as const }
+    const closedGroup = {
+      ...mockGroup,
+      type: 'closed' as const,
+      visibility: { discoverable: true, content: 'members' },
+    }
     render(<GroupCard group={closedGroup} />)
     expect(screen.getByText(/closed/i)).toBeInTheDocument()
   })
 
   it('should display secret group badge', () => {
-    const secretGroup = { ...mockGroup, type: 'secret' as const }
+    const secretGroup = {
+      ...mockGroup,
+      type: 'secret' as const,
+      visibility: { discoverable: false, content: 'members' },
+    }
     render(<GroupCard group={secretGroup} />)
     expect(screen.getByText(/secret/i)).toBeInTheDocument()
+  })
+
+  it('should display members-only badge when content is restricted', () => {
+    const restrictedGroup = {
+      ...mockGroup,
+      visibility: { discoverable: true, content: 'members' },
+    }
+    render(<GroupCard group={restrictedGroup} />)
+    expect(screen.getByText(/members-only content/i)).toBeInTheDocument()
+  })
+
+  it('should display hidden badge when group is not discoverable', () => {
+    const hiddenGroup = {
+      ...mockGroup,
+      visibility: { discoverable: false, content: 'everyone' },
+    }
+    render(<GroupCard group={hiddenGroup} />)
+    expect(screen.getByText(/hidden from search/i)).toBeInTheDocument()
   })
 
   it('should not display badge for open groups', () => {
@@ -141,4 +171,3 @@ describe('GroupCard', () => {
     expect(screen.getByText('This is a very long group name that should be truncated')).toBeInTheDocument()
   })
 })
-

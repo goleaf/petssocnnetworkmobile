@@ -12,8 +12,7 @@ import { GroupCard } from "@/components/groups/GroupCard"
 import {
   getGroupCategoryBySlug,
   getGroupsByCategory,
-  canUserViewGroup,
-  searchGroups,
+  canUserDiscoverGroup,
 } from "@/lib/storage"
 import type { Group, GroupCategory } from "@/lib/types"
 import { useAuth } from "@/lib/auth"
@@ -83,21 +82,15 @@ export default function GroupCategoryPage({
     }
 
     setCategory(foundCategory)
-    let categoryGroups = getGroupsByCategory(foundCategory.id)
+    const categoryGroups = getGroupsByCategory(foundCategory.id)
+    const visibleGroups = categoryGroups.filter((group) =>
+      isAuthenticated && user
+        ? canUserDiscoverGroup(group.id, user.id)
+        : canUserDiscoverGroup(group.id)
+    )
 
-    // Filter by visibility
-    if (isAuthenticated && user) {
-      categoryGroups = categoryGroups.filter((g) =>
-        canUserViewGroup(g.id, user.id)
-      )
-    } else {
-      categoryGroups = categoryGroups.filter(
-        (g) => g.type === "open" || g.type === "closed"
-      )
-    }
-
-    setGroups(categoryGroups)
-    setFilteredGroups(categoryGroups)
+    setGroups(visibleGroups)
+    setFilteredGroups(visibleGroups)
     setIsLoading(false)
   }, [categorySlug, user, isAuthenticated, router])
 
@@ -266,4 +259,3 @@ export default function GroupCategoryPage({
     </div>
   )
 }
-

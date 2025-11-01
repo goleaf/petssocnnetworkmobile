@@ -23,6 +23,7 @@ import {
   Lock,
   Globe,
   CheckCircle,
+  EyeOff,
 } from "lucide-react"
 import Link from "next/link"
 import {
@@ -30,7 +31,7 @@ import {
   getGroupCategories,
   searchGroups,
   getGroupsByCategory,
-  canUserViewGroup,
+  canUserDiscoverGroup,
 } from "@/lib/storage"
 import type { Group, GroupCategory } from "@/lib/types"
 import { GroupCard } from "@/components/groups/GroupCard"
@@ -49,6 +50,8 @@ import { getAnimalConfigLucide } from "@/lib/animal-types"
 const GROUPS_PER_PAGE = 6
 
 type SortOption = "recent" | "popular" | "members"
+type GroupTypeFilter = "all" | "open" | "closed" | "secret"
+const GROUP_TYPE_FILTERS: GroupTypeFilter[] = ["all", "open", "closed", "secret"]
 
 // Map category IDs to animal types or custom icons
 const getCategoryIcon = (categoryId: string) => {
@@ -85,15 +88,14 @@ export default function GroupsPage() {
 
   const initialQuery = searchParams.get("q") || ""
   const initialCategory = searchParams.get("category") || "all"
-  const initialType = searchParams.get("type") || "all"
+  const typeParam = (searchParams.get("type") || "all") as GroupTypeFilter
+  const initialType = GROUP_TYPE_FILTERS.includes(typeParam) ? typeParam : "all"
   const initialSort = (searchParams.get("sort") as SortOption) || "recent"
   const initialPage = parseInt(searchParams.get("page") || "1", 10)
 
   const [query, setQuery] = useState(initialQuery)
   const [selectedCategory, setSelectedCategory] = useState(initialCategory)
-  const [selectedType, setSelectedType] = useState<"all" | "open" | "closed">(
-    initialType as "all" | "open" | "closed"
-  )
+  const [selectedType, setSelectedType] = useState<GroupTypeFilter>(initialType)
   const [sortBy, setSortBy] = useState<SortOption>(initialSort)
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
   const [currentPage, setCurrentPage] = useState(initialPage)
@@ -150,15 +152,11 @@ export default function GroupsPage() {
     }
 
     // Filter by visibility (secret groups only visible to members)
-    if (isAuthenticated && user) {
-      filteredGroups = filteredGroups.filter((g) =>
-        canUserViewGroup(g.id, user.id)
-      )
-    } else {
-      filteredGroups = filteredGroups.filter(
-        (g) => g.type === "open" || g.type === "closed"
-      )
-    }
+    filteredGroups = filteredGroups.filter((g) =>
+      isAuthenticated && user
+        ? canUserDiscoverGroup(g.id, user.id)
+        : canUserDiscoverGroup(g.id)
+    )
 
     // Sort
     filteredGroups.sort((a, b) => {
@@ -293,18 +291,31 @@ export default function GroupsPage() {
           {/* Secondary filters - Grid on mobile, flex on desktop */}
           <div className="grid grid-cols-2 md:flex md:flex-wrap md:items-center gap-2 md:gap-4">
             {/* Type Filter */}
-            <Select value={selectedType} onValueChange={(value) => setSelectedType(value as "all" | "open" | "closed")}>
+            <Select value={selectedType} onValueChange={(value) => setSelectedType(value as GroupTypeFilter)}>
               <SelectTrigger className="w-full md:w-[150px]">
                 <SelectValue>
                   <div className="flex items-center gap-2">
                     {selectedType === "all" && <CheckCircle className="h-4 w-4" />}
                     {selectedType === "open" && <Globe className="h-4 w-4" />}
                     {selectedType === "closed" && <Lock className="h-4 w-4" />}
+                    {selectedType === "secret" && <EyeOff className="h-4 w-4" />}
                     <span className="hidden sm:inline">
-                      {selectedType === "all" ? "All Types" : selectedType === "open" ? "Open" : "Closed"}
+                      {selectedType === "all"
+                        ? "All Types"
+                        : selectedType === "open"
+                        ? "Open"
+                        : selectedType === "closed"
+                        ? "Closed"
+                        : "Secret"}
                     </span>
                     <span className="sm:hidden">
-                      {selectedType === "all" ? "All" : selectedType === "open" ? "Open" : "Closed"}
+                      {selectedType === "all"
+                        ? "All"
+                        : selectedType === "open"
+                        ? "Open"
+                        : selectedType === "closed"
+                        ? "Closed"
+                        : "Secret"}
                     </span>
                   </div>
                 </SelectValue>
@@ -326,6 +337,12 @@ export default function GroupsPage() {
                   <div className="flex items-center gap-2">
                     <Lock className="h-4 w-4" />
                     Closed
+                  </div>
+                </SelectItem>
+                <SelectItem value="secret">
+                  <div className="flex items-center gap-2">
+                    <EyeOff className="h-4 w-4" />
+                    Secret
                   </div>
                 </SelectItem>
               </SelectContent>
@@ -541,4 +558,3 @@ export default function GroupsPage() {
     </div>
   )
 }
-

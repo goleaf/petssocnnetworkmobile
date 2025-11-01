@@ -1,12 +1,13 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { getWikiArticles } from "@/lib/storage"
+import type { WikiArticle } from "@/lib/types"
 import { Search, Eye, Heart, BookOpen, ChevronLeft, ChevronRight, Stethoscope, GraduationCap, Apple, Brain, Sparkles } from "lucide-react"
 import Link from "next/link"
 
@@ -17,7 +18,11 @@ export default function WikiPage() {
   const [selectedCategory, setSelectedCategory] = useState("all")
   const [selectedSubcategory, setSelectedSubcategory] = useState<string | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
-  const articles = getWikiArticles()
+  const [articles, setArticles] = useState<WikiArticle[]>([])
+
+  useEffect(() => {
+    setArticles(getWikiArticles())
+  }, [])
 
   // Define subcategories for each main category
   const subcategories: Record<string, { value: string; label: string }[]> = {
@@ -96,7 +101,7 @@ export default function WikiPage() {
   }
 
   // Reset to page 1 when filters change
-  useMemo(() => {
+  useEffect(() => {
     setCurrentPage(1)
   }, [searchQuery, selectedCategory, selectedSubcategory])
 
@@ -192,54 +197,54 @@ export default function WikiPage() {
             <TabsContent key={category.value} value={category.value}>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
                 {paginatedArticles.map((article) => (
-                <Link key={article.id} href={`/wiki/${article.slug}`}>
-                  <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full overflow-hidden p-0">
-                    {article.coverImage && (
-                      <div className="aspect-video w-full overflow-hidden">
-                        <img
-                          src={article.coverImage || "/placeholder.svg"}
-                          alt={article.title}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                    )}
-                    <CardHeader className="px-6 pt-6">
-                      <div className="flex items-start justify-between gap-2 mb-2 flex-wrap">
-                        <div className="flex gap-2 flex-wrap">
-                          <Badge variant="secondary" className="capitalize">
-                            {article.category}
-                          </Badge>
-                          {article.subcategory && (
+                  <Link key={article.id} href={`/wiki/${article.slug}`}>
+                    <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full overflow-hidden p-0">
+                      {article.coverImage && (
+                        <div className="aspect-video w-full overflow-hidden">
+                          <img
+                            src={article.coverImage || "/placeholder.svg"}
+                            alt={article.title}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      )}
+                      <CardHeader className="px-6 pt-6">
+                        <div className="flex items-start justify-between gap-2 mb-2 flex-wrap">
+                          <div className="flex gap-2 flex-wrap">
+                            <Badge variant="secondary" className="capitalize">
+                              {article.category}
+                            </Badge>
+                            {article.subcategory && (
+                              <Badge variant="outline" className="capitalize">
+                                {article.subcategory.replace(/-/g, " ")}
+                              </Badge>
+                            )}
+                          </div>
+                          {article.species && article.species.length > 0 && (
                             <Badge variant="outline" className="capitalize">
-                              {article.subcategory.replace(/-/g, " ")}
+                              {article.species[0]}
                             </Badge>
                           )}
                         </div>
-                        {article.species && article.species.length > 0 && (
-                          <Badge variant="outline" className="capitalize">
-                            {article.species[0]}
-                          </Badge>
-                        )}
-                      </div>
-                      <CardTitle className="line-clamp-2">{article.title}</CardTitle>
-                    </CardHeader>
-                    <CardContent className="px-6 pb-6">
-                      <p className="text-sm text-muted-foreground line-clamp-3">
-                        {article.content.substring(0, 150)}...
-                      </p>
-                      <div className="flex items-center gap-4 mt-4 text-sm text-muted-foreground">
-                        <div className="flex items-center gap-1">
-                          <Eye className="h-4 w-4" />
-                          {article.views}
+                        <CardTitle className="line-clamp-2">{article.title}</CardTitle>
+                      </CardHeader>
+                      <CardContent className="px-6 pb-6">
+                        <p className="text-sm text-muted-foreground line-clamp-3">
+                          {article.content.substring(0, 150)}...
+                        </p>
+                        <div className="flex items-center gap-4 mt-4 text-sm text-muted-foreground">
+                          <div className="flex items-center gap-1">
+                            <Eye className="h-4 w-4" />
+                            {article.views}
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Heart className="h-4 w-4" />
+                            {article.likes.length}
+                          </div>
                         </div>
-                        <div className="flex items-center gap-1">
-                          <Heart className="h-4 w-4" />
-                          {article.likes.length}
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </Link>
+                      </CardContent>
+                    </Card>
+                  </Link>
                 ))}
               </div>
               

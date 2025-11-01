@@ -40,6 +40,8 @@ export function EventCreator({
     maxAttendees: initialData?.maxAttendees?.toString() || "",
     coverImage: initialData?.coverImage || "",
     isCancelled: initialData?.isCancelled || false,
+    locationSharingEnabled: initialData?.locationSharingEnabled || false,
+    locationSharingDescription: initialData?.locationSharingDescription || "",
   })
 
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -137,6 +139,10 @@ export function EventCreator({
         coverImage: formData.coverImage.trim() || undefined,
         attendeeCount: initialData?.attendeeCount || 0,
         isCancelled: formData.isCancelled,
+        locationSharingEnabled: formData.locationSharingEnabled,
+        locationSharingDescription: formData.locationSharingEnabled
+          ? formData.locationSharingDescription.trim() || undefined
+          : undefined,
       })
     } finally {
       setIsSubmitting(false)
@@ -239,6 +245,31 @@ export function EventCreator({
             />
           </div>
 
+          <div className="space-y-3 pt-4 border-t">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="locationSharing">Enable attendee location sharing</Label>
+              <Switch
+                id="locationSharing"
+                checked={formData.locationSharingEnabled}
+                onCheckedChange={(checked) => handleFieldChange("locationSharingEnabled", checked)}
+              />
+            </div>
+            {formData.locationSharingEnabled && (
+              <div className="space-y-2">
+                <Label htmlFor="locationSharingDescription">
+                  Guidance for attendees (optional)
+                </Label>
+                <Textarea
+                  id="locationSharingDescription"
+                  value={formData.locationSharingDescription}
+                  onChange={(e) => handleFieldChange("locationSharingDescription", e.target.value)}
+                  placeholder="Let attendees know how location sharing will be used or where to meet."
+                  rows={3}
+                />
+              </div>
+            )}
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="coverImage">Cover Image URL (optional)</Label>
             <Input
@@ -310,4 +341,3 @@ export function EventCreator({
     </form>
   )
 }
-

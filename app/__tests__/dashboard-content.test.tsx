@@ -3,6 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import DashboardContent from '../dashboard-content'
 import * as storage from '@/lib/storage'
 import type { User } from '@/lib/types'
+import { getFriendSuggestions } from '@/lib/friend-suggestions'
 
 // Mock storage
 jest.mock('@/lib/storage', () => ({
@@ -12,6 +13,9 @@ jest.mock('@/lib/storage', () => ({
   getPetsByOwnerId: jest.fn(),
 }))
 
+jest.mock('@/lib/friend-suggestions', () => ({
+  getFriendSuggestions: jest.fn(),
+}))
 // Mock next/link
 jest.mock('next/link', () => {
   return ({ children, href }: { children: React.ReactNode; href: string }) => {
@@ -56,6 +60,7 @@ describe('DashboardContent', () => {
     ;(storage.getPets as jest.Mock).mockReturnValue([mockPet])
     ;(storage.getBlogPosts as jest.Mock).mockReturnValue([mockPost])
     ;(storage.getUsers as jest.Mock).mockReturnValue([mockUser])
+    ;(getFriendSuggestions as jest.Mock).mockReturnValue([])
   })
 
   it('should render dashboard content', () => {
@@ -119,6 +124,13 @@ describe('DashboardContent', () => {
       following: [],
     }
     ;(storage.getUsers as jest.Mock).mockReturnValue([mockUser, otherUser])
+    ;(getFriendSuggestions as jest.Mock).mockReturnValue([
+      {
+        user: otherUser,
+        score: 33,
+        reasons: ['Test overlap'],
+      },
+    ])
     
     render(<DashboardContent user={mockUser} />)
     
@@ -140,4 +152,3 @@ describe('DashboardContent', () => {
     })
   })
 })
-

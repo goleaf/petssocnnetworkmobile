@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { useAuth } from "@/lib/auth"
 import { LoginForm } from "@/components/auth/login-form"
 import { RegisterForm } from "@/components/auth/register-form"
@@ -10,16 +10,22 @@ import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { PrivacySelector } from "@/components/privacy-selector"
 import { getBlogPosts, getPets, getUsers, getPetsByOwnerId, addBlogPost, deleteBlogPost, togglePostReaction, toggleFollow } from "@/lib/storage"
-import { PawPrint, Heart, Users, BookOpen, TrendingUp, MessageCircle, Share2, MoreHorizontal, Globe, UsersIcon, Lock, Edit2, Trash2, Smile, Plus, Filter, Send, UserPlus, Rocket, ArrowRight, FileText } from "lucide-react"
+import { PawPrint, Heart, Users, BookOpen, TrendingUp, MessageCircle, Share2, MoreHorizontal, Globe, UsersIcon, Lock, Edit2, Trash2, Smile, Plus, Filter, Send, UserPlus, Rocket, ArrowRight, FileText, Video, Link2, ExternalLink, ShieldCheck } from "lucide-react"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { formatDate } from "@/lib/utils/date"
-import type { BlogPost, Pet, User as UserType, ReactionType } from "@/lib/types"
+import type { BlogPost, BlogPostMedia, Pet, User as UserType, ReactionType, PrivacyLevel } from "@/lib/types"
 import { getPetUrlFromPet } from "@/lib/utils/pet-url"
 import { canViewPost } from "@/lib/utils/privacy"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { MediaGallery } from "@/components/media-gallery"
+import { getFriendSuggestions, type FriendSuggestion } from "@/lib/friend-suggestions"
+import { useStorageListener } from "@/lib/hooks/use-storage-listener"
+
+const STORAGE_KEYS_TO_WATCH = ["pet_social_blog_posts", "pet_social_users", "pet_social_pets"]
 
 export default function HomePage() {
   const { user, isAuthenticated } = useAuth()
@@ -37,113 +43,169 @@ export default function HomePage() {
   const [feedPosts, setFeedPosts] = useState<BlogPost[]>([])
   const [myPets, setMyPets] = useState<Pet[]>([])
   const [trendingPosts, setTrendingPosts] = useState<BlogPost[]>([])
-  const [suggestedUsers, setSuggestedUsers] = useState<UserType[]>([])
+  const [suggestedUsers, setSuggestedUsers] = useState<FriendSuggestion[]>([])
   const [newPostContent, setNewPostContent] = useState("")
+  const [newPostPrivacy, setNewPostPrivacy] = useState<PrivacyLevel>("public")
   const [selectedPet, setSelectedPet] = useState("")
   const [filter, setFilter] = useState<"all" | "following">("all")
   const [isFeedLoading, setIsFeedLoading] = useState(true)
 
-  useEffect(() => {
-    // Get featured posts (most liked)
+  const refreshFeatured = useCallback(() => {
     const posts = getBlogPosts()
-    const featured = [...posts].sort((a, b) => b.likes.length - a.likes.length).slice(0, 6)
-    setFeaturedPosts(featured)
+    const users = getUsers()
+    const viewerId = user?.id || null
 
-    // Calculate stats only on client
+    const visiblePosts = posts.filter((post) => {
+      const author = users.find((candidate) => candidate.id === post.authorId)
+      if (!author) return false
+      return canViewPost(post, author, viewerId)
+    })
+
+    const featured = [...visiblePosts].sort((a, b) => {
+      const aLikes = a.reactions
+        ? Object.values(a.reactions).reduce((sum, arr) => sum + (arr?.length || 0), 0)
+        : a.likes.length
+      const bLikes = b.reactions
+        ? Object.values(b.reactions).reduce((sum, arr) => sum + (arr?.length || 0), 0)
+        : b.likes.length
+      return bLikes - aLikes
+    })
+
+    setFeaturedPosts(featured.slice(0, 6))
+
     setStats([
-      { label: "Active Users", value: getUsers().length, icon: Users },
+      { label: "Active Users", value: users.length, icon: Users },
       { label: "Pets", value: getPets().length, icon: PawPrint },
-      { label: "Blog Posts", value: getBlogPosts().length, icon: BookOpen },
+      { label: "Blog Posts", value: posts.length, icon: BookOpen },
     ])
-    
+
     setIsLoading(false)
-  }, [])
+  }, [user?.id])
 
-  useEffect(() => {
-    // Load feed data if user is authenticated
-    if (isAuthenticated && user) {
-      setIsFeedLoading(true)
-      const pets = getPetsByOwnerId(user.id)
-      setMyPets(pets)
-      if (pets.length > 0 && !selectedPet) {
-        setSelectedPet(pets[0].id)
-      }
-      loadFeed()
-      loadTrending()
-      loadSuggestedUsers()
-      setIsFeedLoading(false)
+  const loadFeed = useCallback(() => {
+    if (!user) {
+      setFeedPosts([])
+      return
     }
-  }, [user, isAuthenticated, filter])
-
-  const loadFeed = () => {
-    if (!user) return
 
     const allPosts = getBlogPosts()
     const allUsers = getUsers()
+    const allPets = getPets()
 
     if (filter === "following") {
       const followedPosts = allPosts.filter((post) => {
-        const author = allUsers.find((u) => u.id === post.authorId)
+        const author = allUsers.find((candidate) => candidate.id === post.authorId)
         if (!author) return false
-        
-        const pet = getPets().find((p) => p.id === post.petId)
-        const isFollowingUser = user.following.includes(post.authorId)
-        const isFollowingPet = pet && pet.followers.includes(user.id)
-        
+
+        const pet = allPets.find((p) => p.id === post.petId)
+        const isFollowingUser = user.following?.includes(post.authorId) ?? false
+        const isFollowingPet = pet?.followers?.includes(user.id) ?? false
+
         if (!isFollowingUser && !isFollowingPet) return false
-        
+
         return canViewPost(post, author, user.id)
       })
       setFeedPosts(followedPosts)
-    } else {
-      const visiblePosts = allPosts.filter((post) => {
-        const author = allUsers.find((u) => u.id === post.authorId)
-        if (!author) return false
-        return canViewPost(post, author, user.id)
-      })
-      setFeedPosts(visiblePosts)
+      return
     }
-  }
 
-  const loadTrending = () => {
-    if (!user) return
-    
-    const allPosts = getBlogPosts()
-    const allUsers = getUsers()
-    
     const visiblePosts = allPosts.filter((post) => {
-      const author = allUsers.find((u) => u.id === post.authorId)
+      const author = allUsers.find((candidate) => candidate.id === post.authorId)
       if (!author) return false
       return canViewPost(post, author, user.id)
     })
-    
+    setFeedPosts(visiblePosts)
+  }, [user, filter])
+
+  const loadTrending = useCallback(() => {
+    if (!user) {
+      setTrendingPosts([])
+      return
+    }
+
+    const allPosts = getBlogPosts()
+    const allUsers = getUsers()
+
+    const visiblePosts = allPosts.filter((post) => {
+      const author = allUsers.find((candidate) => candidate.id === post.authorId)
+      if (!author) return false
+      return canViewPost(post, author, user.id)
+    })
+
     const trending = [...visiblePosts].sort((a, b) => {
       const aLikes = a.reactions
-        ? Object.values(a.reactions).reduce((sum, arr) => sum + arr.length, 0)
+        ? Object.values(a.reactions).reduce((sum, arr) => sum + (arr?.length || 0), 0)
         : a.likes.length
       const bLikes = b.reactions
-        ? Object.values(b.reactions).reduce((sum, arr) => sum + arr.length, 0)
+        ? Object.values(b.reactions).reduce((sum, arr) => sum + (arr?.length || 0), 0)
         : b.likes.length
       return bLikes - aLikes
     })
     setTrendingPosts(trending.slice(0, 3))
-  }
+  }, [user])
 
-  const loadSuggestedUsers = () => {
-    if (!user) return
-    const allUsers = getUsers()
-    const suggested = allUsers
-      .filter((u) => {
-        if (u.id === user.id) return false
-        if (user.following.includes(u.id)) return false
-        if (u.blockedUsers?.includes(user.id)) return false
-        if (user.blockedUsers?.includes(u.id)) return false
-        if (u.privacy?.searchable === false) return false
-        return true
-      })
-      .slice(0, 4)
-    setSuggestedUsers(suggested)
-  }
+  const loadSuggestedUsers = useCallback(() => {
+    if (!user) {
+      setSuggestedUsers([])
+      return
+    }
+
+    const suggestions = getFriendSuggestions(user, { limit: 4 })
+    setSuggestedUsers(suggestions)
+  }, [user])
+
+  const refreshFeedData = useCallback(() => {
+    loadFeed()
+    loadTrending()
+    loadSuggestedUsers()
+  }, [loadFeed, loadTrending, loadSuggestedUsers])
+
+  const refreshPersonalData = useCallback(() => {
+    if (!isAuthenticated || !user) {
+      setFeedPosts([])
+      setTrendingPosts([])
+      setSuggestedUsers([])
+      setMyPets([])
+      setIsFeedLoading(false)
+      return
+    }
+
+    setIsFeedLoading(true)
+    const pets = getPetsByOwnerId(user.id)
+    setMyPets(pets)
+    setSelectedPet((prev) => {
+      if (prev && pets.some((pet) => pet.id === prev)) {
+        return prev
+      }
+      return pets[0]?.id ?? ""
+    })
+    refreshFeedData()
+    setIsFeedLoading(false)
+  }, [isAuthenticated, user, refreshFeedData])
+
+  useEffect(() => {
+    refreshFeatured()
+  }, [refreshFeatured])
+
+  useEffect(() => {
+    refreshPersonalData()
+  }, [refreshPersonalData])
+
+  useEffect(() => {
+    if (!user) {
+      setNewPostPrivacy("public")
+      return
+    }
+
+    setNewPostPrivacy(user.privacy?.posts || "public")
+  }, [user?.id])
+
+  const refreshAll = useCallback(() => {
+    refreshFeatured()
+    refreshPersonalData()
+  }, [refreshFeatured, refreshPersonalData])
+
+  useStorageListener(STORAGE_KEYS_TO_WATCH, refreshAll)
 
   const handleCreatePost = () => {
     if (!user || !newPostContent.trim() || !selectedPet) return
@@ -155,24 +217,23 @@ export default function HomePage() {
       title: newPostContent.substring(0, 50) + (newPostContent.length > 50 ? "..." : ""),
       content: newPostContent,
       tags: [],
+      categories: [],
       likes: [],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      privacy: "public",
+      privacy: newPostPrivacy,
       hashtags: [],
     }
 
     addBlogPost(newPost)
     setNewPostContent("")
-    loadFeed()
-    loadTrending()
+    refreshFeedData()
   }
 
   const handleDelete = (postId: string) => {
     if (!window.confirm("Are you sure you want to delete this post?")) return
     deleteBlogPost(postId)
-    loadFeed()
-    loadTrending()
+    refreshFeedData()
   }
 
   const handleEdit = (post: BlogPost) => {
@@ -182,8 +243,7 @@ export default function HomePage() {
   const handleReaction = (postId: string, reactionType: ReactionType) => {
     if (!user) return
     togglePostReaction(postId, user.id, reactionType)
-    loadFeed()
-    loadTrending()
+    refreshFeedData()
   }
 
   const handleShare = (post: BlogPost) => {
@@ -214,6 +274,7 @@ export default function HomePage() {
   const handleFollowSuggested = (userId: string) => {
     if (!user) return
     toggleFollow(user.id, userId)
+    setSuggestedUsers((prev) => prev.filter((suggestion) => suggestion.user.id !== userId))
     loadSuggestedUsers()
   }
 
@@ -353,39 +414,49 @@ export default function HomePage() {
                         onChange={(e) => setNewPostContent(e.target.value)}
                         className="min-h-[80px] resize-none"
                       />
-                      <div className="flex items-center justify-between">
-                        <Select value={selectedPet} onValueChange={setSelectedPet}>
-                          <SelectTrigger className="w-[200px]">
-                            <SelectValue placeholder="Select pet">
-                              {selectedPet && (() => {
-                                const selectedPetObj = myPets.find((p) => p.id === selectedPet)
-                                return selectedPetObj ? (
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-3 flex-1">
+                          <Select value={selectedPet} onValueChange={setSelectedPet}>
+                            <SelectTrigger className="w-full sm:w-[200px]">
+                              <SelectValue placeholder="Select pet">
+                                {selectedPet &&
+                                  (() => {
+                                    const selectedPetObj = myPets.find((p) => p.id === selectedPet)
+                                    return selectedPetObj ? (
+                                      <div className="flex items-center gap-2">
+                                        <Avatar className="h-5 w-5 flex-shrink-0">
+                                          <AvatarImage src={selectedPetObj.avatar || "/placeholder.svg"} alt={selectedPetObj.name} />
+                                          <AvatarFallback className="text-xs">
+                                            {selectedPetObj.name.charAt(0)}
+                                          </AvatarFallback>
+                                        </Avatar>
+                                        <span className="truncate">{selectedPetObj.name}</span>
+                                      </div>
+                                    ) : null
+                                  })()}
+                              </SelectValue>
+                            </SelectTrigger>
+                            <SelectContent>
+                              {myPets.map((pet) => (
+                                <SelectItem key={pet.id} value={pet.id}>
                                   <div className="flex items-center gap-2">
-                                    <Avatar className="h-5 w-5 flex-shrink-0">
-                                      <AvatarImage src={selectedPetObj.avatar || "/placeholder.svg"} alt={selectedPetObj.name} />
-                                      <AvatarFallback className="text-xs">{selectedPetObj.name.charAt(0)}</AvatarFallback>
+                                    <Avatar className="h-6 w-6 flex-shrink-0">
+                                      <AvatarImage src={pet.avatar || "/placeholder.svg"} alt={pet.name} />
+                                      <AvatarFallback className="text-xs">{pet.name.charAt(0)}</AvatarFallback>
                                     </Avatar>
-                                    <span className="truncate">{selectedPetObj.name}</span>
+                                    <span>{pet.name}</span>
                                   </div>
-                                ) : null
-                              })()}
-                            </SelectValue>
-                          </SelectTrigger>
-                          <SelectContent>
-                            {myPets.map((pet) => (
-                              <SelectItem key={pet.id} value={pet.id}>
-                                <div className="flex items-center gap-2">
-                                  <Avatar className="h-6 w-6 flex-shrink-0">
-                                    <AvatarImage src={pet.avatar || "/placeholder.svg"} alt={pet.name} />
-                                    <AvatarFallback className="text-xs">{pet.name.charAt(0)}</AvatarFallback>
-                                  </Avatar>
-                                  <span>{pet.name}</span>
-                                </div>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <Button onClick={handleCreatePost} disabled={!newPostContent.trim()}>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <PrivacySelector
+                            value={newPostPrivacy}
+                            onChange={setNewPostPrivacy}
+                            className="w-full sm:w-[180px] justify-between"
+                          />
+                        </div>
+                        <Button onClick={handleCreatePost} disabled={!newPostContent.trim() || !selectedPet}>
                           <Send className="h-4 w-4 mr-2" />
                           Post
                         </Button>
@@ -432,24 +503,27 @@ export default function HomePage() {
                   <TrendingUp className="h-5 w-5" />
                   Trending Posts
                 </CardTitle>
+                <p className="text-xs text-muted-foreground mt-1">Most popular posts from the community</p>
               </CardHeader>
               <CardContent>
                 {trendingPosts.length > 0 ? (
                   <div className="space-y-4">
                     {trendingPosts.map((post) => {
                       const pet = getPets().find((p) => p.id === post.petId)
+                      const previewImage = post.coverImage || post.media?.images?.[0]
+                      const hasVideoPreview = !previewImage && (post.media?.videos?.length || 0) > 0
                       return (
                         <Link key={post.id} href={`/blog/${post.id}`}>
                           <div className="flex gap-3 p-3 rounded-lg hover:bg-accent transition-colors cursor-pointer">
-                            {post.coverImage && (
-                              <div className="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0">
-                                <img
-                                  src={post.coverImage || "/placeholder.svg"}
-                                  alt={post.title}
-                                  className="w-full h-full object-cover"
-                                />
+                            {previewImage ? (
+                              <div className="h-20 w-20 flex-shrink-0 overflow-hidden rounded-lg">
+                                <img src={previewImage} alt={post.title} className="h-full w-full object-cover" />
                               </div>
-                            )}
+                            ) : hasVideoPreview ? (
+                              <div className="h-20 w-20 flex-shrink-0 rounded-lg bg-muted flex items-center justify-center">
+                                <Video className="h-6 w-6 text-primary" />
+                              </div>
+                            ) : null}
                             <div className="flex-1 min-w-0">
                               <p className="font-semibold line-clamp-2 text-sm">{post.title}</p>
                               <p className="text-xs text-muted-foreground mt-1">By {pet?.name}</p>
@@ -488,22 +562,31 @@ export default function HomePage() {
               <CardContent>
                 {suggestedUsers.length > 0 ? (
                   <div className="space-y-4">
-                    {suggestedUsers.map((suggestedUser) => (
-                      <div key={suggestedUser.id} className="flex items-center justify-between">
-                        <Link href={`/profile/${suggestedUser.username}`} className="flex items-center gap-3 flex-1">
+                    {suggestedUsers.map((suggestion) => (
+                      <div key={suggestion.user.id} className="flex items-center justify-between">
+                        <Link href={`/profile/${suggestion.user.username}`} className="flex items-center gap-3 flex-1">
                           <Avatar className="h-10 w-10">
-                            <AvatarImage src={suggestedUser.avatar || "/placeholder.svg"} alt={suggestedUser.fullName} />
-                            <AvatarFallback>{suggestedUser.fullName.charAt(0)}</AvatarFallback>
+                            <AvatarImage src={suggestion.user.avatar || "/placeholder.svg"} alt={suggestion.user.fullName} />
+                            <AvatarFallback>{suggestion.user.fullName.charAt(0)}</AvatarFallback>
                           </Avatar>
                           <div className="flex-1 min-w-0">
-                            <p className="font-semibold text-sm truncate">{suggestedUser.fullName}</p>
-                            <p className="text-xs text-muted-foreground truncate">@{suggestedUser.username}</p>
+                            <p className="font-semibold text-sm truncate">{suggestion.user.fullName}</p>
+                            <p className="text-xs text-muted-foreground truncate">@{suggestion.user.username}</p>
+                            {suggestion.reasons.length > 0 && (
+                              <div className="flex flex-wrap gap-1 mt-2">
+                                {suggestion.reasons.slice(0, 2).map((reason) => (
+                                  <Badge key={`${suggestion.user.id}-${reason}`} variant="secondary" className="text-xs font-normal">
+                                    {reason}
+                                  </Badge>
+                                ))}
+                              </div>
+                            )}
                           </div>
                         </Link>
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => handleFollowSuggested(suggestedUser.id)}
+                          onClick={() => handleFollowSuggested(suggestion.user.id)}
                         >
                           <UserPlus className="h-4 w-4 mr-2" />
                           Follow
@@ -649,6 +732,18 @@ export default function HomePage() {
               </p>
             </CardContent>
           </Card>
+          <Card className="h-full sm:col-span-2 lg:col-span-1">
+            <CardContent className="p-4 sm:p-5 md:p-6 space-y-3">
+              <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-lg bg-emerald-500/10 flex items-center justify-center flex-shrink-0">
+                <ShieldCheck className="h-5 w-5 sm:h-6 sm:w-6 text-emerald-500" />
+              </div>
+              <h3 className="text-lg sm:text-xl md:text-2xl font-semibold">Message Privacy</h3>
+              <p className="text-muted-foreground text-sm sm:text-base">
+                Keep sensitive conversations secure with automatic end-to-end encryption for direct messages and shared
+                attachments.
+              </p>
+            </CardContent>
+          </Card>
         </div>
       </div>
 
@@ -673,15 +768,12 @@ export default function HomePage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 md:gap-6">
             {featuredPosts.map((post) => {
               const pet = getPets().find((p) => p.id === post.petId)
+              const featureImage = post.coverImage || post.media?.images?.[0]
               return (
                 <Card key={post.id} className="overflow-hidden hover:shadow-lg transition-shadow p-0 h-full flex flex-col">
-                  {post.coverImage && (
+                  {featureImage && (
                     <div className="aspect-video w-full overflow-hidden flex-shrink-0">
-                      <img
-                        src={post.coverImage || "/placeholder.svg"}
-                        alt={post.title}
-                        className="w-full h-full object-cover"
-                      />
+                      <img src={featureImage} alt={post.title} className="h-full w-full object-cover" />
                     </div>
                   )}
                   <CardContent className="p-4 sm:p-5 flex flex-col flex-1">
@@ -743,10 +835,21 @@ function FeedPostCard({
   onShare: (post: BlogPost) => void
   currentUser: UserType
 }) {
+  const media = (post.media ?? { images: [], videos: [], links: [] }) as BlogPostMedia
   const pet = getPets().find((p) => p.id === post.petId)
   const author = getUsers().find((u) => u.id === post.authorId)
   const [showReactionsMenu, setShowReactionsMenu] = useState(false)
   const isOwner = post.authorId === currentUser.id
+
+  const previewLinks = media.links.slice(0, 2)
+
+  const formatHost = (url: string): string => {
+    try {
+      return new URL(url).hostname.replace(/^www\./, "")
+    } catch (error) {
+      return url
+    }
+  }
 
   const reactionEmojis: Record<ReactionType, string> = {
     like: "👍",
@@ -848,6 +951,38 @@ function FeedPostCard({
           </Link>
           <p className="text-muted-foreground line-clamp-3">{post.content}</p>
         </div>
+
+        {(media.images.length > 0 || media.videos.length > 0 || media.links.length > 0) && (
+          <div className="mb-3 space-y-3">
+            {(media.images.length > 0 || media.videos.length > 0) && (
+              <MediaGallery media={media} mode="compact" />
+            )}
+
+            {media.links.length > 0 && (
+              <div className="space-y-2">
+                {previewLinks.map((link, index) => (
+                  <a
+                    key={`${link.url}-${index}`}
+                    href={link.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-3 rounded-md border px-3 py-2 text-xs sm:text-sm hover:bg-accent transition-colors"
+                  >
+                    <Link2 className="h-4 w-4 text-primary" />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-medium">{link.title || formatHost(link.url)}</p>
+                      <p className="truncate text-[11px] text-muted-foreground sm:text-xs">{link.url}</p>
+                    </div>
+                    <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
+                  </a>
+                ))}
+                {media.links.length > previewLinks.length && (
+                  <span className="text-xs text-muted-foreground">+{media.links.length - previewLinks.length} more links</span>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Post Tags/Hashtags */}
         {(post.tags.length > 0 || (post.hashtags && post.hashtags.length > 0)) && (

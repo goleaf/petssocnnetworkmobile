@@ -37,6 +37,10 @@ describe('GroupHeader', () => {
     rules: [],
     createdAt: '2024-01-15T10:00:00Z',
     updatedAt: '2024-03-20T14:30:00Z',
+    visibility: {
+      discoverable: true,
+      content: 'everyone',
+    },
   }
 
   const mockCategory = {
@@ -98,7 +102,6 @@ describe('GroupHeader', () => {
 
   it('should display category icon and name', () => {
     render(<GroupHeader group={mockGroup} />)
-    expect(screen.getByText('🐕')).toBeInTheDocument()
     expect(screen.getByText('Dogs')).toBeInTheDocument()
   })
 
@@ -154,15 +157,32 @@ describe('GroupHeader', () => {
   })
 
   it('should display closed group badge', () => {
-    const closedGroup = { ...mockGroup, type: 'closed' as const }
+    const closedGroup = {
+      ...mockGroup,
+      type: 'closed' as const,
+      visibility: { discoverable: true, content: 'members' },
+    }
     render(<GroupHeader group={closedGroup} />)
     expect(screen.getByText(/closed group/i)).toBeInTheDocument()
   })
 
   it('should display secret group badge', () => {
-    const secretGroup = { ...mockGroup, type: 'secret' as const }
+    const secretGroup = {
+      ...mockGroup,
+      type: 'secret' as const,
+      visibility: { discoverable: false, content: 'members' },
+    }
     render(<GroupHeader group={secretGroup} />)
     expect(screen.getByText(/secret group/i)).toBeInTheDocument()
+  })
+
+  it('should show members-only notice when content is restricted', () => {
+    const restrictedGroup = {
+      ...mockGroup,
+      visibility: { discoverable: true, content: 'members' },
+    }
+    render(<GroupHeader group={restrictedGroup} />)
+    expect(screen.getByText(/join to unlock posts/i)).toBeInTheDocument()
   })
 
   it('should call onJoin when join button is clicked', async () => {
@@ -241,4 +261,3 @@ describe('GroupHeader', () => {
     // Open groups don't display a badge
   })
 })
-

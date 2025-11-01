@@ -1,45 +1,77 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import type { User } from "@/lib/types"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { getPets, getBlogPosts, getUsers, getPetsByOwnerId } from "@/lib/storage"
-import { Heart, MessageCircle, TrendingUp, Users, PawPrint, BookOpen, Plus, UserPlus } from "lucide-react"
+import { Heart, MessageCircle, TrendingUp, Users, PawPrint, BookOpen, Plus, UserPlus, CalendarClock } from "lucide-react"
 import Link from "next/link"
 import { formatDate } from "@/lib/utils/date"
 import { getPetUrlFromPet } from "@/lib/utils/pet-url"
+import { getFriendSuggestions, type FriendSuggestion } from "@/lib/friend-suggestions"
+import { canViewPost } from "@/lib/utils/privacy"
+import { useStorageListener } from "@/lib/hooks/use-storage-listener"
+
+const STORAGE_KEYS_TO_WATCH = ["pet_social_blog_posts", "pet_social_users", "pet_social_pets"]
 
 export default function DashboardContent({ user }: { user: User }) {
   const [myPets, setMyPets] = useState<any[]>([])
   const [recentPosts, setRecentPosts] = useState<any[]>([])
   const [trendingPosts, setTrendingPosts] = useState<any[]>([])
-  const [suggestedUsers, setSuggestedUsers] = useState<any[]>([])
+  const [suggestedUsers, setSuggestedUsers] = useState<FriendSuggestion[]>([])
 
-  useEffect(() => {
-    // Get user's pets
-    const pets = getPetsByOwnerId(user.id)
-    setMyPets(pets)
+  const refreshData = useCallback(() => {
+    const ownedPets = getPetsByOwnerId(user.id)
+    setMyPets(ownedPets)
 
-    // Get recent posts from followed users and pets
     const allPosts = getBlogPosts()
+    const allUsers = getUsers()
+    const allPets = getPets()
+    const viewerId = user.id
+
     const followedPosts = allPosts.filter((post) => {
-      const pet = getPets().find((p) => p.id === post.petId)
-      return pet && (user.following.includes(post.authorId) || pet.followers.includes(user.id))
+      const author = allUsers.find((candidate) => candidate.id === post.authorId)
+      if (!author) return false
+
+      const pet = allPets.find((candidatePet) => candidatePet.id === post.petId)
+      const isFollowingUser = user.following?.includes(post.authorId) ?? false
+      const isFollowingPet = pet?.followers?.includes(user.id) ?? false
+
+      if (!isFollowingUser && !isFollowingPet) return false
+
+      return canViewPost(post, author, viewerId)
     })
     setRecentPosts(followedPosts.slice(0, 5))
 
-    // Get trending posts (most liked)
-    const trending = [...allPosts].sort((a, b) => b.likes.length - a.likes.length).slice(0, 3)
-    setTrendingPosts(trending)
+    const visiblePosts = allPosts.filter((post) => {
+      const author = allUsers.find((candidate) => candidate.id === post.authorId)
+      if (!author) return false
+      return canViewPost(post, author, viewerId)
+    })
 
-    // Get suggested users (not following)
-    const allUsers = getUsers()
-    const suggested = allUsers.filter((u) => u.id !== user.id && !user.following.includes(u.id)).slice(0, 4)
-    setSuggestedUsers(suggested)
+    const trending = [...visiblePosts].sort((a, b) => {
+      const aLikes = a.reactions
+        ? Object.values(a.reactions).reduce((sum, arr) => sum + (arr?.length || 0), 0)
+        : a.likes.length
+      const bLikes = b.reactions
+        ? Object.values(b.reactions).reduce((sum, arr) => sum + (arr?.length || 0), 0)
+        : b.likes.length
+      return bLikes - aLikes
+    })
+    setTrendingPosts(trending.slice(0, 3))
+
+    const suggestions = getFriendSuggestions(user, { limit: 4 })
+    setSuggestedUsers(suggestions)
   }, [user])
+
+  useEffect(() => {
+    refreshData()
+  }, [refreshData])
+
+  useStorageListener(STORAGE_KEYS_TO_WATCH, refreshData)
 
   const stats = [
     {
@@ -267,26 +299,43 @@ export default function DashboardContent({ user }: { user: User }) {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {suggestedUsers.map((suggestedUser) => (
-                  <div key={suggestedUser.id} className="flex items-center justify-between">
-                    <Link href={`/profile/${suggestedUser.username}`} className="flex items-center gap-3 flex-1">
-                      <Avatar className="h-10 w-10">
-                        <AvatarImage src={suggestedUser.avatar || "/placeholder.svg"} alt={suggestedUser.fullName} />
-                        <AvatarFallback>{suggestedUser.fullName.charAt(0)}</AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-sm">{suggestedUser.fullName}</p>
-                        <p className="text-xs text-muted-foreground">@{suggestedUser.username}</p>
-                      </div>
-                    </Link>
-                    <Button size="sm" variant="outline">
-                      <UserPlus className="h-4 w-4 mr-2" />
-                      Follow
-                    </Button>
-                  </div>
-                ))}
-              </div>
+              {suggestedUsers.length > 0 ? (
+                <div className="space-y-4">
+                  {suggestedUsers.map((suggestion) => (
+                    <div key={suggestion.user.id} className="flex items-center justify-between gap-3">
+                      <Link href={`/profile/${suggestion.user.username}`} className="flex items-center gap-3 flex-1 min-w-0">
+                        <Avatar className="h-10 w-10">
+                          <AvatarImage src={suggestion.user.avatar || "/placeholder.svg"} alt={suggestion.user.fullName} />
+                          <AvatarFallback>{suggestion.user.fullName.charAt(0)}</AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-sm truncate">{suggestion.user.fullName}</p>
+                          <p className="text-xs text-muted-foreground truncate">@{suggestion.user.username}</p>
+                          {suggestion.reasons.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-2">
+                              {suggestion.reasons.slice(0, 2).map((reason) => (
+                                <Badge
+                                  key={`${suggestion.user.id}-${reason}`}
+                                  variant="secondary"
+                                  className="text-[11px] font-normal"
+                                >
+                                  {reason}
+                                </Badge>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </Link>
+                      <Button size="sm" variant="outline">
+                        <UserPlus className="h-4 w-4 mr-2" />
+                        Follow
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-4">No suggestions available</p>
+              )}
             </CardContent>
           </Card>
 
@@ -301,6 +350,12 @@ export default function DashboardContent({ user }: { user: User }) {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
+              <Link href="/dashboard/schedule">
+                <Button variant="ghost" className="w-full justify-start">
+                  <CalendarClock className="h-4 w-4 mr-2" />
+                  Schedule Posts
+                </Button>
+              </Link>
               <Link href="/blog">
                 <Button variant="ghost" className="w-full justify-start">
                   <BookOpen className="h-4 w-4 mr-2" />
@@ -326,4 +381,3 @@ export default function DashboardContent({ user }: { user: User }) {
     </div>
   )
 }
-

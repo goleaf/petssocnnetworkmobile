@@ -11,14 +11,31 @@ import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { FormActions } from "@/components/ui/form-actions"
+import { Switch } from "@/components/ui/switch"
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import type { Pet, PersonalityTraits, FavoriteThings, DietInfo, VetInfo, InsuranceInfo, HealthRecord, Vaccination, Medication, TrainingProgress } from "@/lib/types"
+import type {
+  Pet,
+  PersonalityTraits,
+  FavoriteThings,
+  DietInfo,
+  VetInfo,
+  InsuranceInfo,
+  HealthRecord,
+  Vaccination,
+  Medication,
+  TrainingProgress,
+  PrivacyLevel,
+  Achievement,
+  AchievementCategory,
+} from "@/lib/types"
 import { ANIMAL_TYPES } from "@/lib/animal-types"
+import { calculateAge } from "@/lib/utils/date"
+import { PrivacySelector } from "@/components/privacy-selector"
 import {
   Save,
   PawPrint,
@@ -55,7 +72,10 @@ import {
   Target,
   GraduationCap,
   CheckCircle2,
+  Award,
   Info,
+  Eye,
+  Lock,
 } from "lucide-react"
 
 // Label with Tooltip Component
@@ -166,6 +186,18 @@ function ArrayTagInput({
   )
 }
 
+const ACHIEVEMENT_TYPE_OPTIONS: { value: AchievementCategory; label: string; description: string }[] = [
+  { value: "milestone", label: "Milestone", description: "Important life events or memorable moments" },
+  { value: "training", label: "Training", description: "Skills mastered or obedience accomplishments" },
+  { value: "competition", label: "Competition", description: "Awards from shows, races, or contests" },
+  { value: "service", label: "Service", description: "Therapy, service, or volunteer certifications" },
+  { value: "health", label: "Health", description: "Wellness wins or recovery milestones" },
+  { value: "community", label: "Community", description: "Recognition from the community or media" },
+  { value: "adventure", label: "Adventure", description: "Travel achievements or exploration milestones" },
+  { value: "social", label: "Social", description: "Friendship or socialization successes" },
+  { value: "wellness", label: "Wellness", description: "Calmness, balance, or lifestyle improvements" },
+]
+
 // Form Data Type
 export interface PetFormData {
   name: string
@@ -174,6 +206,8 @@ export interface PetFormData {
   age: string
   gender: Pet["gender"]
   bio: string
+  privacyVisibility: PrivacyLevel
+  privacyInteractions: PrivacyLevel
   birthday: string
   weight: string
   color: string
@@ -190,6 +224,7 @@ export interface PetFormData {
   healthRecords: HealthRecord[]
   vaccinations: Vaccination[]
   medications: Medication[]
+  achievements: Achievement[]
   trainingProgress: TrainingProgress[]
 }
 
@@ -207,6 +242,27 @@ interface ValidationErrors {
 }
 
 export function PetForm({ mode, initialData, onSubmit, onCancel, petName }: PetFormProps) {
+  const resolvedPrivacy = (() => {
+    const rawPrivacy = initialData?.privacy
+    if (
+      rawPrivacy &&
+      typeof rawPrivacy === "object" &&
+      "visibility" in rawPrivacy &&
+      "interactions" in rawPrivacy
+    ) {
+      return {
+        visibility: rawPrivacy.visibility as PrivacyLevel,
+        interactions: rawPrivacy.interactions as PrivacyLevel,
+      }
+    }
+
+    const fallback = (rawPrivacy as PrivacyLevel | undefined) || "public"
+    return {
+      visibility: fallback,
+      interactions: fallback,
+    }
+  })()
+
   const [formData, setFormData] = useState<PetFormData>({
     name: initialData?.name || "",
     species: initialData?.species || "dog",
@@ -214,6 +270,8 @@ export function PetForm({ mode, initialData, onSubmit, onCancel, petName }: PetF
     age: initialData?.age?.toString() || "",
     gender: initialData?.gender || "male",
     bio: initialData?.bio || "",
+    privacyVisibility: resolvedPrivacy.visibility,
+    privacyInteractions: resolvedPrivacy.interactions,
     birthday: initialData?.birthday || "",
     weight: initialData?.weight || "",
     color: initialData?.color || "",
@@ -260,12 +318,41 @@ export function PetForm({ mode, initialData, onSubmit, onCancel, petName }: PetF
     healthRecords: initialData?.healthRecords || [],
     vaccinations: initialData?.vaccinations || [],
     medications: initialData?.medications || [],
+    achievements: initialData?.achievements || [],
     trainingProgress: initialData?.trainingProgress || [],
   })
 
   const [errors, setErrors] = useState<ValidationErrors>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
+
+  useEffect(() => {
+    if (!formData.birthday) {
+      setErrors((prev) => {
+        if (!prev.age) {
+          return prev
+        }
+        const { age, ...rest } = prev
+        return rest
+      })
+      return
+    }
+
+    const computedAge = calculateAge(formData.birthday)
+    const nextAgeValue = computedAge !== undefined ? computedAge.toString() : ""
+
+    setFormData((prev) => (prev.age === nextAgeValue ? prev : { ...prev, age: nextAgeValue }))
+    setErrors((prev) => {
+      if (computedAge === undefined) {
+        return { ...prev, age: "Unable to calculate age from the selected birthday." }
+      }
+      if (!prev.age) {
+        return prev
+      }
+      const { age, ...rest } = prev
+      return rest
+    })
+  }, [formData.birthday])
 
   // Real-time validation
   const validateField = (name: string, value: any): string | undefined => {
@@ -443,6 +530,38 @@ export function PetForm({ mode, initialData, onSubmit, onCancel, petName }: PetF
     })
   }
 
+  // Achievement functions
+  const addAchievement = () => {
+    setFormData({
+      ...formData,
+      achievements: [
+        ...formData.achievements,
+        {
+          id: `ach-${Date.now()}`,
+          title: "",
+          description: "",
+          icon: "🏆",
+          earnedAt: new Date().toISOString().split("T")[0],
+          type: "milestone",
+          highlight: false,
+        },
+      ],
+    })
+  }
+
+  const updateAchievement = (index: number, field: keyof Achievement, value: Achievement[keyof Achievement]) => {
+    const updated = [...formData.achievements]
+    updated[index] = { ...updated[index], [field]: value }
+    setFormData({ ...formData, achievements: updated })
+  }
+
+  const removeAchievement = (index: number) => {
+    setFormData({
+      ...formData,
+      achievements: formData.achievements.filter((_, i) => i !== index),
+    })
+  }
+
   // Training progress functions
   const addTrainingProgress = () => {
     setFormData({
@@ -519,7 +638,7 @@ export function PetForm({ mode, initialData, onSubmit, onCancel, petName }: PetF
         )}
 
         <Tabs defaultValue="basic" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2 h-auto p-2">
+          <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2 h-auto p-2">
             <TabsTrigger value="basic" className="flex items-center gap-2">
               <FileText className="h-4 w-4" />
               <span className="hidden sm:inline">Basic</span>
@@ -539,6 +658,10 @@ export function PetForm({ mode, initialData, onSubmit, onCancel, petName }: PetF
             <TabsTrigger value="health" className="flex items-center gap-2">
               <Stethoscope className="h-4 w-4" />
               <span className="hidden sm:inline">Health</span>
+            </TabsTrigger>
+            <TabsTrigger value="achievements" className="flex items-center gap-2">
+              <Award className="h-4 w-4" />
+              <span className="hidden sm:inline">Achievements</span>
             </TabsTrigger>
             <TabsTrigger value="training" className="flex items-center gap-2">
               <GraduationCap className="h-4 w-4" />
@@ -681,7 +804,7 @@ export function PetForm({ mode, initialData, onSubmit, onCancel, petName }: PetF
                   <div className="space-y-2">
                     <LabelWithTooltip 
                       htmlFor="age"
-                      tooltip="Enter your pet's age in years. This helps other users understand your pet's life stage."
+                      tooltip="Age is calculated automatically when a birthday is provided."
                     >
                       Age (years)
                     </LabelWithTooltip>
@@ -691,10 +814,20 @@ export function PetForm({ mode, initialData, onSubmit, onCancel, petName }: PetF
                       min="0"
                       max="50"
                       value={formData.age}
-                      onChange={(e) => handleFieldChange("age", e.target.value)}
+                      onChange={(e) => {
+                        if (!formData.birthday) {
+                          handleFieldChange("age", e.target.value)
+                        }
+                      }}
+                      readOnly={Boolean(formData.birthday)}
                       placeholder="0"
                       className={`h-10 ${errors.age ? "border-destructive" : ""}`}
                     />
+                    {formData.birthday && (
+                      <p className="text-xs text-muted-foreground">
+                        Age updates automatically from the selected birthday.
+                      </p>
+                    )}
                     {errors.age && <p className="text-xs text-destructive">{errors.age}</p>}
                   </div>
 
@@ -710,7 +843,20 @@ export function PetForm({ mode, initialData, onSubmit, onCancel, petName }: PetF
                       id="birthday"
                       type="date"
                       value={formData.birthday}
-                      onChange={(e) => handleFieldChange("birthday", e.target.value)}
+                      onChange={(e) => {
+                        const value = e.target.value
+                        handleFieldChange("birthday", value)
+                        if (!value) {
+                          setFormData((prev) => ({ ...prev, age: "" }))
+                          setErrors((prev) => {
+                            if (!prev.age) {
+                              return prev
+                            }
+                            const { age, ...rest } = prev
+                            return rest
+                          })
+                        }
+                      }}
                       className="h-10"
                     />
                   </div>
@@ -854,13 +1000,197 @@ export function PetForm({ mode, initialData, onSubmit, onCancel, petName }: PetF
                     className={`resize-none ${errors.bio ? "border-destructive" : ""}`}
                   />
                   {errors.bio && <p className="text-xs text-destructive">{errors.bio}</p>}
-                  <p className="text-xs text-muted-foreground">
-                    {formData.bio.length}/1000 characters
-                  </p>
+              <p className="text-xs text-muted-foreground">
+                {formData.bio.length}/1000 characters
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Shield className="h-5 w-5" />
+              Privacy Controls
+            </CardTitle>
+            <CardDescription>Decide who can view or interact with this pet profile</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="space-y-2">
+              <LabelWithTooltip
+                htmlFor="privacyVisibility"
+                tooltip="Choose who is allowed to view this pet's profile, photos, and activity."
+              >
+                <Eye className="h-4 w-4" />
+                Profile Visibility
+              </LabelWithTooltip>
+              <PrivacySelector
+                value={formData.privacyVisibility}
+                onChange={(value) => handleFieldChange("privacyVisibility", value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Followers-only makes this pet visible to people who already follow you. Private keeps the profile for you only.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <LabelWithTooltip
+                htmlFor="privacyInteractions"
+                tooltip="Control who can follow, react to, or otherwise engage with this pet."
+              >
+                <Lock className="h-4 w-4" />
+                Interaction Access
+              </LabelWithTooltip>
+              <PrivacySelector
+                value={formData.privacyInteractions}
+                onChange={(value) => handleFieldChange("privacyInteractions", value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Limit interactions to existing followers or keep them private if you want to manage engagement tightly.
+              </p>
+            </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Achievements Tab */}
+        <TabsContent value="achievements" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Award className="h-5 w-5" />
+                Achievements & Milestones
+              </CardTitle>
+              <CardDescription>Celebrate your pet&apos;s standout moments and special recognitions</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {formData.achievements.length > 0 ? (
+                formData.achievements.map((achievement, index) => (
+                  <Card key={achievement.id} className="border-l-4 border-primary">
+                    <CardContent className="pt-6 space-y-4">
+                      <div className="flex justify-between items-start">
+                        <h4 className="font-semibold">Achievement {index + 1}</h4>
+                        <Button type="button" variant="ghost" size="icon" onClick={() => removeAchievement(index)}>
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <LabelWithTooltip
+                            htmlFor={`achievement-title-${achievement.id}`}
+                            tooltip="Give this achievement a memorable title. For example: \"Agility Champion\"."
+                          >
+                            Title
+                          </LabelWithTooltip>
+                          <Input
+                            id={`achievement-title-${achievement.id}`}
+                            value={achievement.title}
+                            onChange={(e) => updateAchievement(index, "title", e.target.value)}
+                            placeholder="e.g., Therapy Dog Certified"
+                            className="h-10"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <LabelWithTooltip
+                            htmlFor={`achievement-icon-${achievement.id}`}
+                            tooltip="Use an emoji or short symbol to represent this achievement."
+                          >
+                            Icon
+                          </LabelWithTooltip>
+                          <Input
+                            id={`achievement-icon-${achievement.id}`}
+                            value={achievement.icon}
+                            onChange={(e) => updateAchievement(index, "icon", e.target.value)}
+                            placeholder="🏆"
+                            className="h-10"
+                            maxLength={4}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <LabelWithTooltip
+                            htmlFor={`achievement-date-${achievement.id}`}
+                            tooltip="When did your pet earn this achievement? Use an approximate date if needed."
+                          >
+                            Earned Date
+                          </LabelWithTooltip>
+                          <Input
+                            id={`achievement-date-${achievement.id}`}
+                            type="date"
+                            value={achievement.earnedAt}
+                            onChange={(e) => updateAchievement(index, "earnedAt", e.target.value)}
+                            className="h-10"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <LabelWithTooltip tooltip="Helps group achievements on the profile.">
+                            Category
+                          </LabelWithTooltip>
+                          <Select
+                            value={achievement.type || "milestone"}
+                            onValueChange={(value: AchievementCategory) => updateAchievement(index, "type", value)}
+                          >
+                            <SelectTrigger className="h-10">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {ACHIEVEMENT_TYPE_OPTIONS.map((option) => (
+                                <SelectItem key={option.value} value={option.value}>
+                                  <div className="flex flex-col gap-0.5">
+                                    <span className="font-medium">{option.label}</span>
+                                    <span className="text-xs text-muted-foreground">{option.description}</span>
+                                  </div>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2 md:col-span-2">
+                          <LabelWithTooltip
+                            htmlFor={`achievement-description-${achievement.id}`}
+                            tooltip="Share what made this moment special. Include details like scores, milestones, or people involved."
+                          >
+                            Description
+                          </LabelWithTooltip>
+                          <Textarea
+                            id={`achievement-description-${achievement.id}`}
+                            value={achievement.description}
+                            onChange={(e) => updateAchievement(index, "description", e.target.value)}
+                            placeholder="Describe what your pet accomplished and why it matters."
+                            rows={3}
+                            className="resize-none"
+                          />
+                        </div>
+                        <div className="md:col-span-2">
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-md border border-dashed bg-muted/40 px-3 py-3">
+                            <div>
+                              <p className="text-sm font-medium">Feature as special highlight</p>
+                              <p className="text-xs text-muted-foreground">
+                                Highlighted achievements appear more prominently on the pet profile.
+                              </p>
+                            </div>
+                            <Switch
+                              checked={Boolean(achievement.highlight)}
+                              onCheckedChange={(value) => updateAchievement(index, "highlight", value)}
+                              aria-label="Toggle highlight for this achievement"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+              ) : (
+                <div className="rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground">
+                  No achievements yet. Add milestones or badges to share your pet&apos;s story.
                 </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+              )}
+              <Button type="button" variant="outline" onClick={addAchievement} className="w-full">
+                <Plus className="h-4 w-4 mr-2" />
+                Add Achievement
+              </Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
           {/* Personality Tab - Continue with remaining tabs */}
           {/* Due to length limits, I'll continue in a follow-up message if needed */}
@@ -1772,4 +2102,3 @@ export function PetForm({ mode, initialData, onSubmit, onCancel, petName }: PetF
     </TooltipProvider>
   )
 }
-

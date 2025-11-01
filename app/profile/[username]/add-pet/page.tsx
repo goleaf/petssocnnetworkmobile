@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, use } from "react"
+import { useState, useEffect, use } from "react"
 import { useAuth } from "@/lib/auth"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -15,6 +15,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { addPet } from "@/lib/storage"
 import type { Pet } from "@/lib/types"
+import { calculateAge } from "@/lib/utils/date"
 import { ANIMAL_TYPES } from "@/lib/animal-types"
 import { ArrowLeft, Plus, PawPrint, User } from "lucide-react"
 import Link from "next/link"
@@ -36,19 +37,29 @@ export default function AddPetPage({ params }: { params: Promise<{ username: str
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
 
+  useEffect(() => {
+    if (!formData.birthday) {
+      return
+    }
+    const computedAge = calculateAge(formData.birthday)
+    const nextAge = computedAge !== undefined ? computedAge.toString() : ""
+    setFormData((prev) => (prev.age === nextAge ? prev : { ...prev, age: nextAge }))
+  }, [formData.birthday])
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!user) return
 
     setIsSubmitting(true)
 
+    const computedAge = formData.birthday ? calculateAge(formData.birthday) : undefined
     const newPet: Pet = {
       id: String(Date.now()),
       ownerId: user.id,
       name: formData.name,
       species: formData.species,
       breed: formData.breed || undefined,
-      age: formData.age ? Number.parseInt(formData.age) : undefined,
+      age: computedAge ?? (formData.age ? Number.parseInt(formData.age, 10) : undefined),
       gender: formData.gender,
       bio: formData.bio || undefined,
       birthday: formData.birthday || undefined,
@@ -198,10 +209,21 @@ export default function AddPetPage({ params }: { params: Promise<{ username: str
                   type="number"
                   min="0"
                   value={formData.age}
-                  onChange={(e) => setFormData({ ...formData, age: e.target.value })}
+                  onChange={(e) => {
+                    if (!formData.birthday) {
+                      const value = e.target.value
+                      setFormData((prev) => ({ ...prev, age: value }))
+                    }
+                  }}
+                  readOnly={Boolean(formData.birthday)}
                   placeholder="0"
                   className="h-10"
                 />
+                {formData.birthday && (
+                  <p className="text-xs text-muted-foreground">
+                    Age updates automatically from the selected birthday.
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -210,7 +232,14 @@ export default function AddPetPage({ params }: { params: Promise<{ username: str
                   id="birthday"
                   type="date"
                   value={formData.birthday}
-                  onChange={(e) => setFormData({ ...formData, birthday: e.target.value })}
+                  onChange={(e) => {
+                    const value = e.target.value
+                    setFormData((prev) => ({
+                      ...prev,
+                      birthday: value,
+                      age: value ? prev.age : "",
+                    }))
+                  }}
                   className="h-10"
                 />
               </div>
@@ -268,4 +297,3 @@ export default function AddPetPage({ params }: { params: Promise<{ username: str
     </div>
   )
 }
-

@@ -34,7 +34,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { canViewUserPosts, canViewPost } from "@/lib/utils/privacy"
+import { canSendFollowRequest, canViewUserPosts, canViewPost } from "@/lib/utils/privacy"
+import { getPrivacyNotice } from "@/lib/utils/privacy-messages"
 
 type SortOption = "recent" | "popular" | "oldest"
 
@@ -174,6 +175,13 @@ export default function UserPostsPage({ params }: { params: Promise<{ username: 
   const isOwnProfile = currentUser?.id === user.id
   const viewerId = currentUser?.id || null
   const canViewPosts = canViewUserPosts(user, viewerId)
+  const canFollow = canSendFollowRequest(user, viewerId)
+  const privacyMessage = getPrivacyNotice({
+    profileUser: user,
+    scope: "posts",
+    viewerId,
+    canRequestAccess: canFollow,
+  })
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background via-background to-muted/30">
@@ -186,7 +194,7 @@ export default function UserPostsPage({ params }: { params: Promise<{ username: 
               <p className="text-sm sm:text-base text-muted-foreground">
                 {canViewPosts 
                   ? `${filteredAndSortedPosts.length} ${filteredAndSortedPosts.length === 1 ? "post" : "posts"}`
-                  : "Private"
+                  : privacyMessage
                 }
               </p>
             </div>
@@ -290,7 +298,7 @@ export default function UserPostsPage({ params }: { params: Promise<{ username: 
         <Card className="shadow-md mt-6 sm:mt-8">
           <CardContent className="p-8 sm:p-12 text-center space-y-4">
             <Lock className="h-12 w-12 sm:h-16 sm:w-16 mx-auto text-muted-foreground/50" />
-            <p className="text-sm sm:text-base text-muted-foreground">This user{"'"}s posts are private</p>
+            <p className="text-sm sm:text-base leading-relaxed text-muted-foreground">{privacyMessage}</p>
           </CardContent>
         </Card>
       ) : groupedPosts.length === 0 ? (

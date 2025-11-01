@@ -20,15 +20,15 @@ import {
 import { TagInput } from "@/components/ui/tag-input"
 import { PrivacySelector } from "@/components/privacy-selector"
 import { MarkdownEditor } from "@/components/markdown-editor"
-import type { BlogPost, PrivacyLevel } from "@/lib/types"
+import { MediaAttachmentsEditor } from "@/components/media-attachments-editor"
+import type { BlogPost, BlogPostMedia, PrivacyLevel } from "@/lib/types"
+import { normalizeCategoryList } from "@/lib/utils/categories"
 import {
   Save,
-  Loader2,
   FileText,
   AlertCircle,
   CheckCircle2,
   Info,
-  X,
   Upload,
   Image as ImageIcon,
   Trash2,
@@ -71,9 +71,11 @@ export interface BlogFormData {
   title: string
   content: string
   tags: string[]
+  categories: string[]
   privacy: PrivacyLevel
   hashtags: string[]
   coverImage?: string
+  media: BlogPostMedia
 }
 
 interface BlogFormProps {
@@ -110,10 +112,16 @@ export function BlogForm({
     petId: initialData?.petId || (pets.length > 0 ? pets[0].id : ""),
     title: initialData?.title || "",
     content: initialData?.content || "",
-    tags: initialData?.tags || [],
+    tags: initialData?.tags ? [...initialData.tags] : [],
+    categories: initialData?.categories ? [...initialData.categories] : [],
     privacy: (initialData?.privacy || "public") as PrivacyLevel,
-    hashtags: initialData?.hashtags || [],
+    hashtags: initialData?.hashtags ? [...initialData.hashtags] : [],
     coverImage: initialData?.coverImage || undefined,
+    media: {
+      images: initialData?.media?.images ? [...initialData.media.images] : [],
+      videos: initialData?.media?.videos ? [...initialData.media.videos] : [],
+      links: initialData?.media?.links ? initialData.media.links.map((link) => ({ ...link })) : [],
+    },
   })
 
   const [errors, setErrors] = useState<ValidationErrors>({})
@@ -291,7 +299,13 @@ export function BlogForm({
     setMessage(null)
 
     try {
-      await onSubmit(formData)
+      const sanitizedCategories = normalizeCategoryList(formData.categories)
+      const payload: BlogFormData = {
+        ...formData,
+        categories: sanitizedCategories,
+      }
+      await onSubmit(payload)
+      setFormData((prev) => ({ ...prev, categories: sanitizedCategories }))
       setMessage({ 
         type: "success", 
         text: mode === "create" ? "Blog post created successfully!" : "Blog post updated successfully!" 
@@ -397,7 +411,7 @@ export function BlogForm({
               <div className="space-y-2">
                 <LabelWithTooltip 
                   htmlFor="privacy"
-                  tooltip="Control who can see your blog post. Public: anyone, Followers Only: your followers, Private: only you."
+                  tooltip="Control who can see your blog post. Public: anyone, Friends Only: your friends, Private: only you."
                 >
                   Privacy
                 </LabelWithTooltip>
@@ -533,7 +547,29 @@ export function BlogForm({
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <LabelWithTooltip
+                  htmlFor="categories"
+                  tooltip="Create or select categories to help organize your post. Categories power the blog filters."
+                >
+                  Categories
+                </LabelWithTooltip>
+                <TagInput
+                  value={formData.categories.join(", ")}
+                  onChange={(value) => {
+                    const categories = normalizeCategoryList(
+                      value
+                        .split(",")
+                        .map((category) => category.trim())
+                        .filter((category) => category),
+                    )
+                    handleFieldChange("categories", categories)
+                  }}
+                  placeholder="Adventure, Training, Funny"
+                />
+              </div>
+
               <div className="space-y-2">
                 <LabelWithTooltip 
                   htmlFor="tags"
@@ -574,6 +610,29 @@ export function BlogForm({
                 />
               </div>
             </div>
+
+            <div className="border-t pt-4">
+              <LabelWithTooltip
+                tooltip="Attach optional photos, videos, and helpful resources to give your audience more ways to engage with your story."
+              >
+                Rich Media Attachments
+              </LabelWithTooltip>
+              <MediaAttachmentsEditor
+                className="mt-3"
+                media={formData.media}
+                onChange={(updatedMedia) => {
+                  const clonedMedia: BlogPostMedia = {
+                    images: [...updatedMedia.images],
+                    videos: [...updatedMedia.videos],
+                    links: updatedMedia.links.map((link) => ({ ...link })),
+                  }
+                  setFormData((prev) => ({ ...prev, media: clonedMedia }))
+                  if (message) {
+                    setMessage(null)
+                  }
+                }}
+              />
+            </div>
           </CardContent>
         </Card>
 
@@ -592,4 +651,3 @@ export function BlogForm({
     </TooltipProvider>
   )
 }
-

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -10,9 +10,13 @@ import { Input } from "@/components/ui/input"
 import { getUserByUsername, getUsers, toggleFollow } from "@/lib/storage"
 import { useAuth } from "@/lib/auth"
 import type { User } from "@/lib/types"
-import { ArrowLeft, Search, UserPlus, UserMinus, Heart, Lock } from "lucide-react"
+import { Search, UserPlus, UserMinus, Heart, Lock } from "lucide-react"
 import Link from "next/link"
-import { canViewFollowing } from "@/lib/utils/privacy"
+import { canSendFollowRequest, canViewFollowing, canViewProfile } from "@/lib/utils/privacy"
+import { getPrivacyNotice } from "@/lib/utils/privacy-messages"
+import { useStorageListener } from "@/lib/hooks/use-storage-listener"
+
+const STORAGE_KEYS_TO_WATCH = ["pet_social_users"]
 
 export default function FollowingPage() {
   const params = useParams()
@@ -22,35 +26,68 @@ export default function FollowingPage() {
   const [following, setFollowing] = useState<User[]>([])
   const [searchQuery, setSearchQuery] = useState("")
 
-  useEffect(() => {
-    const username = params.username as string
-    const fetchedUser = getUserByUsername(username)
+  const loadFollowing = useCallback(() => {
+    const usernameParam = params.username as string
+    const fetchedUser = getUserByUsername(usernameParam)
 
     if (!fetchedUser) {
+      setUser(null)
+      setFollowing([])
+      router.push("/")
+      return
+    }
+
+    const viewer = useAuth.getState().user
+    const viewerId = viewer?.id || null
+
+    if (!canViewProfile(fetchedUser, viewerId)) {
+      setUser(null)
+      setFollowing([])
       router.push("/")
       return
     }
 
     setUser(fetchedUser)
 
-    const viewerId = currentUser?.id || null
     if (canViewFollowing(fetchedUser, viewerId)) {
-      // Get all following
       const allUsers = getUsers()
       const followingUsers = allUsers.filter((u) => fetchedUser.following.includes(u.id))
       setFollowing(followingUsers)
     } else {
       setFollowing([])
     }
-  }, [params.username, router, currentUser])
+  }, [params.username, router])
+
+  useEffect(() => {
+    loadFollowing()
+  }, [loadFollowing, currentUser?.id])
+
+  useStorageListener(STORAGE_KEYS_TO_WATCH, loadFollowing)
 
   const handleFollow = (userId: string) => {
     if (!currentUser) return
+
+    const isCurrentlyFollowing = currentUser.following.includes(userId)
     toggleFollow(currentUser.id, userId)
-    // Refresh following list
-    const allUsers = getUsers()
-    const followingUsers = allUsers.filter((u) => user?.following.includes(u.id))
-    setFollowing(followingUsers)
+
+    const updatedFollowing = isCurrentlyFollowing
+      ? currentUser.following.filter((id) => id !== userId)
+      : [...new Set([...currentUser.following, userId])]
+
+    useAuth.setState((state) => {
+      if (!state.user || state.user.id !== currentUser.id) {
+        return state
+      }
+      return {
+        ...state,
+        user: {
+          ...state.user,
+          following: updatedFollowing,
+        },
+      }
+    })
+
+    loadFollowing()
   }
 
   const filteredFollowing = following.filter(
@@ -63,6 +100,13 @@ export default function FollowingPage() {
 
   const viewerId = currentUser?.id || null
   const canViewFollowingList = canViewFollowing(user, viewerId)
+  const canFollow = canSendFollowRequest(user, viewerId)
+  const privacyMessage = getPrivacyNotice({
+    profileUser: user,
+    scope: "following",
+    viewerId,
+    canRequestAccess: canFollow,
+  })
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background via-background to-muted/30">
@@ -76,7 +120,7 @@ export default function FollowingPage() {
                 <Heart className="h-5 w-5 sm:h-6 sm:w-6" />
                 <span className="truncate">{user.fullName}'s Following</span>
                 <span className="text-muted-foreground text-base sm:text-lg">
-                  {canViewFollowingList ? `(${following.length})` : "(Private)"}
+                  {canViewFollowingList ? `(${following.length})` : "(Hidden)"}
                 </span>
               </CardTitle>
             </div>
@@ -87,6 +131,7 @@ export default function FollowingPage() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10 w-full"
+                disabled={!canViewFollowingList}
               />
             </div>
           </CardHeader>
@@ -94,7 +139,7 @@ export default function FollowingPage() {
             {!canViewFollowingList ? (
               <div className="text-center py-12 sm:py-16 text-muted-foreground">
                 <Lock className="h-12 w-12 sm:h-16 sm:w-16 mx-auto mb-3 opacity-50" />
-                <p className="text-sm sm:text-base">This user{"'"}s following list is private</p>
+                <p className="text-sm sm:text-base leading-relaxed">{privacyMessage}</p>
               </div>
             ) : filteredFollowing.length > 0 ? (
               <div className="space-y-3 sm:space-y-4">

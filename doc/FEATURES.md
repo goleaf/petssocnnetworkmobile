@@ -9,6 +9,7 @@ This document provides a comprehensive list of all features available in the Pet
 - [Blog Posts](#blog-posts)
 - [Wiki Articles](#wiki-articles)
 - [Social Features](#social-features)
+- [Group & Community Management](#group--community-management)
 - [Search & Discovery](#search--discovery)
 - [Notifications](#notifications)
 - [Privacy & Settings](#privacy--settings)
@@ -237,6 +238,10 @@ This document provides a comprehensive list of all features available in the Pet
   - Reaction counts display
   - User reaction tracking
   - Reaction menu with emojis
+- **Sharing & Embeds**
+  - Share dialog from feed and post pages with native share support
+  - Copyable iframe embed code for publishing posts on external sites
+  - Lightweight embed view available at `/embed/post/[id]`
 
 - **Comments**
   - Comment on posts
@@ -260,14 +265,9 @@ This document provides a comprehensive list of all features available in the Pet
 ### Blog Feed & Discovery
 - **Blog Listing**
   - Main blog page (`/blog`)
-  - Category filtering:
-    - All Posts
-    - Adventure
-    - Training
-    - Funny
-    - Photos
-    - Playtime
-    - My Posts (authenticated users)
+  - Category filtering with dynamic tabs generated from post categories
+    - Always includes All Posts and My Posts (for authenticated users)
+    - Category badges display on cards and detailed posts
   - Sort options:
     - Most Recent
     - Most Popular
@@ -411,6 +411,34 @@ This document provides a comprehensive list of all features available in the Pet
 - Block users
 - Friend requests (for pets)
 
+### Direct Messaging (`/messages`)
+- Inbox with conversation list sorted by latest activity
+- Typing-safe message composer with support for plain text updates
+- Real-time read tracking per participant stored locally
+- Conversation-wide search with interactive filters
+  - Keyword matching with highlighted snippets
+  - Filter by conversation, sender, date range, and unread status
+  - Sort results by relevance, newest, or oldest and jump straight into the thread
+- Media sharing:
+  - Image previews with full-size view support
+  - Inline video playback for shared clips
+  - Document attachments with download links
+- Attachment guardrails (5 files per message, 5MB per file) with inline validation
+- Persistent storage via localStorage mock data for conversations and message history
+- Responsive layout that adapts from stacked (mobile) to split-pane (desktop)
+
+---
+
+## Group & Community Management
+
+### Interactive Polls
+- Dedicated polls hub at `/groups/[slug]/polls` surfaces active and historical votes for each community.
+- Group members can launch new polls with custom questions, answer options, and optional expiration dates.
+- Support for single-choice or multi-select voting to match different decision scenarios.
+- Authenticated users with access to the group can cast or change votes prior to closure, with selections synced immediately.
+- Live vote counts and percentage breakdowns appear after voting, with badges that flag closed or expired polls.
+- Poll creators and moderators can remove polls when decisions are finalized or content needs moderation.
+
 ---
 
 ## Search & Discovery
@@ -487,6 +515,7 @@ This document provides a comprehensive list of all features available in the Pet
 - Searchable status
 - Follow request settings
 - Tagging permissions
+- Message privacy with end-to-end encrypted direct messages
 
 ### User Settings
 - Profile customization
@@ -679,4 +708,3 @@ Features that may be planned for future releases:
 ---
 
 *Last updated: Based on current codebase implementation*
-

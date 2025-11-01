@@ -68,8 +68,14 @@ export default function EditBlogPage({ params }: { params: Promise<{ id: string 
       content: formData.content,
       coverImage: formData.coverImage || undefined,
       tags: formData.tags || [],
+      categories: formData.categories || [],
       hashtags: allHashtags,
       privacy: formData.privacy,
+      media: {
+        images: [...formData.media.images],
+        videos: [...formData.media.videos],
+        links: formData.media.links.map((link) => ({ ...link })),
+      },
       updatedAt: new Date().toISOString(),
     }
 

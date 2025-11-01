@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -11,8 +11,17 @@ import { Badge } from "@/components/ui/badge"
 import { CategoryTabs, type TabItem } from "@/components/ui/category-tabs"
 import { TabsContent } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
-import { getUserByUsername, getUserById, getPetsByOwnerId, getBlogPosts, getFeedPosts, getFeedPostsByAuthorId, toggleFollow, updateFeedPost, deleteFeedPost, updateBlogPost, deleteBlogPost } from "@/lib/storage"
-import type { User, FeedPost, BlogPost } from "@/lib/types"
+import {
+  getUserByUsername,
+  getPetsByOwnerId,
+  getBlogPosts,
+  toggleFollow,
+  updateBlogPost,
+  deleteBlogPost,
+  blockUser,
+  unblockUser,
+} from "@/lib/storage"
+import type { User, BlogPost } from "@/lib/types"
 import {
   MapPin,
   Calendar,
@@ -27,6 +36,7 @@ import {
   X,
   UserPlus,
   UserMinus,
+  Lock,
   User as UserIcon,
   MessageCircle,
   MoreHorizontal,
@@ -48,6 +58,7 @@ import {
   Dumbbell,
   Baby,
   ShieldCheck,
+  Ban,
 } from "lucide-react"
 import Link from "next/link"
 import { BadgeDisplay } from "@/components/badge-display"
@@ -72,41 +83,55 @@ import {
   canSendFollowRequest,
   canViewPost,
 } from "@/lib/utils/privacy"
+import { getPrivacyNotice } from "@/lib/utils/privacy-messages"
+import { useStorageListener } from "@/lib/hooks/use-storage-listener"
+
+const STORAGE_KEYS_TO_WATCH = ["pet_social_users", "pet_social_pets", "pet_social_blog_posts"]
 
 export default function UserProfilePage() {
   const params = useParams()
   const router = useRouter()
-  const { user: currentUser, isAuthenticated } = useAuth()
+  const { user: currentUser, isAuthenticated, initialize } = useAuth()
   const [user, setUser] = useState<User | null>(null)
   const [pets, setPets] = useState<any[]>([])
-  const [feedPosts, setFeedPosts] = useState<FeedPost[]>([])
+  const [feedPosts, setFeedPosts] = useState<BlogPost[]>([])
   const [blogPosts, setBlogPosts] = useState<BlogPost[]>([])
   const [isFollowing, setIsFollowing] = useState(false)
   const [activeTab, setActiveTab] = useState("feed")
   const [editingPostId, setEditingPostId] = useState<string | null>(null)
   const [editPostContent, setEditPostContent] = useState("")
   const [editingBlogPostId, setEditingBlogPostId] = useState<string | null>(null)
+  const [blockActionPending, setBlockActionPending] = useState(false)
 
-  useEffect(() => {
-    const username = params.username as string
-    const fetchedUser = getUserByUsername(username)
+  const loadProfile = useCallback(() => {
+    const usernameParam = params.username as string
+    const fetchedUser = getUserByUsername(usernameParam)
 
     if (!fetchedUser) {
+      setUser(null)
+      setPets([])
+      setFeedPosts([])
+      setBlogPosts([])
+      setIsFollowing(false)
       router.push("/")
       return
     }
 
-    const viewerId = currentUser?.id || null
+    const viewer = useAuth.getState().user
+    const viewerId = viewer?.id || null
 
-    // Check if viewer can see profile
     if (!canViewProfile(fetchedUser, viewerId)) {
+      setUser(null)
+      setPets([])
+      setFeedPosts([])
+      setBlogPosts([])
+      setIsFollowing(false)
       router.push("/")
       return
     }
 
     setUser(fetchedUser)
 
-    // Filter pets and posts based on privacy
     if (canViewUserPets(fetchedUser, viewerId)) {
       setPets(getPetsByOwnerId(fetchedUser.id))
     } else {
@@ -114,40 +139,90 @@ export default function UserProfilePage() {
     }
 
     if (canViewUserPosts(fetchedUser, viewerId)) {
-      // Get feed posts
-      const allFeedPosts = getFeedPostsByAuthorId(fetchedUser.id).filter((post) => {
-        if (!post.privacy || post.privacy === "public") return true
-        if (post.privacy === "private" && post.authorId !== viewerId) return false
-        if (post.privacy === "followers-only" && viewerId && !getUserById(viewerId || "")?.following.includes(post.authorId)) return false
-        return true
-      })
-      setFeedPosts(allFeedPosts)
-
-      // Get blog posts
-      const allBlogPosts = getBlogPosts()
-        .filter((post) => post.authorId === fetchedUser.id)
+      const authorPosts = getBlogPosts().filter((post) => post.authorId === fetchedUser.id)
+      const visiblePosts = authorPosts
         .filter((post) => canViewPost(post, fetchedUser, viewerId))
-      setBlogPosts(allBlogPosts)
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      setFeedPosts(visiblePosts)
+      setBlogPosts(visiblePosts)
     } else {
       setFeedPosts([])
       setBlogPosts([])
     }
 
-    if (currentUser) {
-      setIsFollowing(currentUser.following.includes(fetchedUser.id))
-    }
-  }, [params.username, currentUser, router])
+    setIsFollowing(viewer ? viewer.following.includes(fetchedUser.id) : false)
+  }, [params.username, router])
+
+  useEffect(() => {
+    loadProfile()
+  }, [loadProfile, currentUser?.id])
+
+  useStorageListener(STORAGE_KEYS_TO_WATCH, loadProfile)
 
   const handleFollow = () => {
     if (!currentUser || !user) return
+    const isCurrentlyFollowing = currentUser.following.includes(user.id)
+
     toggleFollow(currentUser.id, user.id)
-    setIsFollowing(!isFollowing)
-    // Refresh user data
-    const updatedUser = getUserByUsername(user.username)
-    if (updatedUser) setUser(updatedUser)
+
+    const updatedFollowing = isCurrentlyFollowing
+      ? currentUser.following.filter((id) => id !== user.id)
+      : [...new Set([...currentUser.following, user.id])]
+
+    useAuth.setState((state) => {
+      if (!state.user || state.user.id !== currentUser.id) {
+        return state
+      }
+      return {
+        ...state,
+        user: {
+          ...state.user,
+          following: updatedFollowing,
+        },
+      }
+    })
+
+    setIsFollowing(!isCurrentlyFollowing)
+    loadProfile()
   }
 
-  const handleEditPost = (post: FeedPost) => {
+  const handleBlockUser = () => {
+    if (!currentUser || !user) return
+
+    const confirmed = window.confirm(
+      `Block ${user.fullName}? They will no longer be able to interact with you or see your content.`,
+    )
+    if (!confirmed) {
+      return
+    }
+
+    setBlockActionPending(true)
+    try {
+      blockUser(currentUser.id, user.id)
+      initialize()
+      router.push("/")
+    } finally {
+      setBlockActionPending(false)
+    }
+  }
+
+  const handleUnblockUser = () => {
+    if (!currentUser || !user) return
+
+    setBlockActionPending(true)
+    try {
+      unblockUser(currentUser.id, user.id)
+      initialize()
+      const refreshedUser = getUserByUsername(user.username)
+      if (refreshedUser) {
+        setUser(refreshedUser)
+      }
+    } finally {
+      setBlockActionPending(false)
+    }
+  }
+
+  const handleEditPost = (post: BlogPost) => {
     setEditingPostId(post.id)
     setEditPostContent(post.content)
   }
@@ -157,33 +232,20 @@ export default function UserProfilePage() {
     const post = feedPosts.find((p) => p.id === postId)
     if (!post) return
 
-    const updatedPost: FeedPost = {
+    const updatedPost: BlogPost = {
       ...post,
       content: editPostContent.trim(),
       updatedAt: new Date().toISOString(),
     }
 
     try {
-      updateFeedPost(updatedPost, currentUser.id)
+      updateBlogPost(updatedPost)
     } catch (error) {
       alert(error instanceof Error ? error.message : "Failed to update post")
       return
     }
 
-    // Refresh posts
-    const username = params.username as string
-    const fetchedUser = getUserByUsername(username)
-    if (fetchedUser) {
-      const viewerId = currentUser?.id || null
-      const allFeedPosts = getFeedPostsByAuthorId(fetchedUser.id).filter((post) => {
-        if (!post.privacy || post.privacy === "public") return true
-        if (post.privacy === "private" && post.authorId !== viewerId) return false
-        if (post.privacy === "followers-only" && viewerId && !getUserById(viewerId || "")?.following.includes(post.authorId)) return false
-        return true
-      })
-      setFeedPosts(allFeedPosts)
-    }
-
+    loadProfile()
     setEditingPostId(null)
     setEditPostContent("")
   }
@@ -198,34 +260,26 @@ export default function UserProfilePage() {
     if (!window.confirm("Are you sure you want to delete this post?")) return
 
     try {
-      deleteFeedPost(postId, currentUser.id)
+      deleteBlogPost(postId)
     } catch (error) {
       alert(error instanceof Error ? error.message : "Failed to delete post")
       return
     }
 
-    // Refresh posts
-    const username = params.username as string
-    const fetchedUser = getUserByUsername(username)
-    if (fetchedUser) {
-      const viewerId = currentUser?.id || null
-      const allFeedPosts = getFeedPostsByAuthorId(fetchedUser.id).filter((post) => {
-        if (!post.privacy || post.privacy === "public") return true
-        if (post.privacy === "private" && post.authorId !== viewerId) return false
-        if (post.privacy === "followers-only" && viewerId && !getUserById(viewerId || "")?.following.includes(post.authorId)) return false
-        return true
-      })
-      setFeedPosts(allFeedPosts)
-    }
+    loadProfile()
   }
 
   const handleDeleteBlogPost = (postId: string) => {
     if (!window.confirm("Are you sure you want to delete this blog post?")) return
 
-    deleteBlogPost(postId)
+    try {
+      deleteBlogPost(postId)
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Failed to delete post")
+      return
+    }
 
-    // Refresh blog posts by filtering out the deleted one
-    setBlogPosts(blogPosts.filter((p) => p.id !== postId))
+    loadProfile()
   }
 
   if (!user) return null
@@ -237,6 +291,19 @@ export default function UserProfilePage() {
   const canViewFollowersList = canViewFollowers(user, viewerId)
   const canViewFollowingList = canViewFollowing(user, viewerId)
   const canFollow = canSendFollowRequest(user, viewerId)
+  const viewerHasBlocked = viewerId ? currentUser?.blockedUsers?.includes(user.id) ?? false : false
+  const profileHasBlockedViewer = viewerId ? user.blockedUsers?.includes(viewerId) ?? false : false
+  const isInteractionBlocked = Boolean(viewerHasBlocked || profileHasBlockedViewer)
+  const blockMenuLabel = viewerHasBlocked ? "Unblock User" : "Block User"
+  const blockMenuAction = viewerHasBlocked ? handleUnblockUser : handleBlockUser
+
+  const getPrivacyMessage = (scope: "pets" | "posts" | "followers" | "following") =>
+    getPrivacyNotice({
+      profileUser: user,
+      scope,
+      viewerId,
+      canRequestAccess: canFollow,
+    })
 
   const stats = [
     { label: "Pets", value: canViewPets ? pets.length : 0, icon: PawPrint, canView: canViewPets },
@@ -276,7 +343,7 @@ export default function UserProfilePage() {
                     )}
                   </div>
 
-                  <div className="flex gap-2 w-full sm:w-auto">
+                  <div className="flex gap-2 w-full sm:w-auto items-center">
                     {isOwnProfile ? (
                       <EditButton onClick={() => router.push(`/user/${user.username}/edit`)} className="w-full sm:w-auto">
                         Edit Profile
@@ -284,17 +351,57 @@ export default function UserProfilePage() {
                     ) : (
                       isAuthenticated && (
                         <>
-                          {isFollowing ? (
-                            <Button onClick={handleFollow} variant="outline" className="w-full sm:w-auto">
-                              <UserMinus className="h-4 w-4 mr-2" />
-                              Unfollow
-                            </Button>
-                          ) : canFollow ? (
-                            <Button onClick={handleFollow} variant="default" className="w-full sm:w-auto">
-                              <UserPlus className="h-4 w-4 mr-2" />
-                              Follow
-                            </Button>
-                          ) : null}
+                          {isInteractionBlocked ? (
+                            <Badge
+                              variant="secondary"
+                              className="w-full sm:w-auto flex items-center justify-center gap-2 px-3 py-2 text-sm"
+                            >
+                              <Ban className="h-4 w-4" />
+                              <span>Blocked</span>
+                            </Badge>
+                          ) : (
+                            <>
+                              {isFollowing ? (
+                                <Button
+                                  onClick={handleFollow}
+                                  variant="outline"
+                                  className="w-full sm:w-auto"
+                                  disabled={blockActionPending}
+                                >
+                                  <UserMinus className="h-4 w-4 mr-2" />
+                                  Unfollow
+                                </Button>
+                              ) : canFollow ? (
+                                <Button
+                                  onClick={handleFollow}
+                                  variant="default"
+                                  className="w-full sm:w-auto"
+                                  disabled={blockActionPending}
+                                >
+                                  <UserPlus className="h-4 w-4 mr-2" />
+                                  Follow
+                                </Button>
+                              ) : null}
+                            </>
+                          )}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="outline" size="icon" className="h-10 w-10">
+                                <MoreHorizontal className="h-4 w-4" />
+                                <span className="sr-only">Profile actions</span>
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onClick={blockMenuAction}
+                                disabled={blockActionPending}
+                                className={`flex items-center gap-2 ${viewerHasBlocked ? "" : "text-destructive focus:text-destructive"}`}
+                              >
+                                <Ban className="h-4 w-4" />
+                                {blockMenuLabel}
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </>
                       )
                     )}
@@ -409,7 +516,7 @@ export default function UserProfilePage() {
                   <Card>
                     <CardContent className="p-12 text-center text-muted-foreground">
                       <MessageCircle className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                      <p>This user{"'"}s feed posts are private</p>
+                      <p>{getPrivacyMessage("posts")}</p>
                     </CardContent>
                   </Card>
                 ) : feedPosts.length > 0 ? (
@@ -527,7 +634,7 @@ export default function UserProfilePage() {
                   <Card>
                     <CardContent className="p-12 text-center text-muted-foreground">
                       <BookOpen className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                      <p>This user{"'"}s blog posts are private</p>
+                      <p>{getPrivacyMessage("posts")}</p>
                     </CardContent>
                   </Card>
                 ) : blogPosts.length > 0 ? (
@@ -625,7 +732,7 @@ export default function UserProfilePage() {
                   <Card>
                     <CardContent className="p-12 text-center text-muted-foreground">
                       <PawPrint className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                      <p>This user{"'"}s pets are private</p>
+                      <p>{getPrivacyMessage("pets")}</p>
                     </CardContent>
                   </Card>
                 ) : pets.length > 0 ? (
@@ -904,7 +1011,7 @@ export default function UserProfilePage() {
 
           {/* Sidebar */}
           <div className="space-y-4 sm:space-y-6 mt-6 lg:mt-0">
-            {canViewFollowersList && (
+            {canViewFollowersList ? (
               <SidebarUserList
                 title="Followers"
                 icon={Users}
@@ -914,8 +1021,15 @@ export default function UserProfilePage() {
                 emptyMessage="No followers yet"
                 viewAllMessage={`View all ${user.followers.length} followers`}
               />
+            ) : (
+              <Card>
+                <CardContent className="p-6 text-center text-muted-foreground space-y-3">
+                  <Lock className="h-10 w-10 mx-auto opacity-50" />
+                  <p className="text-sm leading-relaxed">{getPrivacyMessage("followers")}</p>
+                </CardContent>
+              </Card>
             )}
-            {canViewFollowingList && (
+            {canViewFollowingList ? (
               <SidebarUserList
                 title="Following"
                 icon={Heart}
@@ -925,6 +1039,13 @@ export default function UserProfilePage() {
                 emptyMessage="Not following anyone yet"
                 viewAllMessage={`View all ${user.following.length} following`}
               />
+            ) : (
+              <Card>
+                <CardContent className="p-6 text-center text-muted-foreground space-y-3">
+                  <Lock className="h-10 w-10 mx-auto opacity-50" />
+                  <p className="text-sm leading-relaxed">{getPrivacyMessage("following")}</p>
+                </CardContent>
+              </Card>
             )}
           </div>
         </div>

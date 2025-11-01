@@ -20,14 +20,12 @@ const formatDistanceToNowFn = (date, options) => {
 
 // Create a minimal mock that only exports what we need
 const mockModule = {
+  ...actualDateFns,
   formatDistanceToNow: formatDistanceToNowFn,
   __esModule: true,
 }
 
-// Also add default property to formatDistanceToNow for Babel transformed imports
-formatDistanceToNowFn.default = formatDistanceToNowFn
+mockModule.default = mockModule
 
 module.exports = mockModule
-module.exports.default = mockModule
-
 

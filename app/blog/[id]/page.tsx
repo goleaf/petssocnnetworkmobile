@@ -7,32 +7,26 @@ import { EditButton } from "@/components/ui/edit-button"
 import { Badge } from "@/components/ui/badge"
 import { BackButton } from "@/components/ui/back-button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Textarea } from "@/components/ui/textarea"
 import {
   getBlogPostById,
   getPetById,
   getUserById,
   getCommentsByPostId,
-  addComment,
-  updateComment,
-  deleteComment,
+  areUsersBlocked,
   updateBlogPost,
-  toggleCommentReaction,
 } from "@/lib/storage"
 import { useAuth } from "@/lib/auth"
-import { Heart, MessageCircle, ArrowLeft, Send, Reply, Edit2, Trash2, X, Check, Smile } from "lucide-react"
+import { Heart, MessageCircle, Share2, BarChart3, Link2, ExternalLink, ShieldAlert, Tag } from "lucide-react"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import Link from "next/link"
-import type { Comment, ReactionType } from "@/lib/types"
-import { formatCommentDate, formatDate } from "@/lib/utils/date"
+import { formatDate } from "@/lib/utils/date"
 import { getPetUrlFromPet } from "@/lib/utils/pet-url"
-import { replaceEmoticons } from "@/lib/utils/emoticon-replacer"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+import { PostShareDialog } from "@/components/post-share-dialog"
+import { AdvancedComments } from "@/components/comments/advanced-comments"
+import { canViewPost } from "@/lib/utils/privacy"
+import { MediaGallery } from "@/components/media-gallery"
+import type { BlogPostMedia } from "@/lib/types"
+import { formatCategoryLabel, slugifyCategory } from "@/lib/utils/categories"
 
 export default function BlogPostPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
@@ -40,9 +34,11 @@ export default function BlogPostPage({ params }: { params: Promise<{ id: string 
   const [post, setPost] = useState(() => getBlogPostById(id))
   const [pet, setPet] = useState(() => (post ? getPetById(post.petId) : null))
   const [author, setAuthor] = useState(() => (post ? getUserById(post.authorId) : null))
-  const [comments, setComments] = useState<Comment[]>(() => (post ? getCommentsByPostId(post.id) : []))
+  const [commentCount, setCommentCount] = useState(() => (post ? getCommentsByPostId(post.id).length : 0))
   const [hasLiked, setHasLiked] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  const [isShareDialogOpen, setIsShareDialogOpen] = useState(false)
+  const [accessDenied, setAccessDenied] = useState(false)
 
   useEffect(() => {
     // Load data only on client side
@@ -51,24 +47,32 @@ export default function BlogPostPage({ params }: { params: Promise<{ id: string 
       setPost(loadedPost)
       setPet(getPetById(loadedPost.petId))
       setAuthor(getUserById(loadedPost.authorId))
-      setComments(getCommentsByPostId(loadedPost.id))
+      setCommentCount(getCommentsByPostId(loadedPost.id).length)
     }
     setIsLoading(false)
   }, [id])
-  const [newComment, setNewComment] = useState("")
-  const [replyingTo, setReplyingTo] = useState<string | null>(null)
-  const [replyContent, setReplyContent] = useState("")
-  const [editingCommentId, setEditingCommentId] = useState<string | null>(null)
-  const [editContent, setEditContent] = useState("")
-
   useEffect(() => {
     if (post && currentUser) {
       setHasLiked(post.likes.includes(currentUser.id))
     }
   }, [post, currentUser])
 
+  useEffect(() => {
+    if (!post || !author) {
+      setAccessDenied(false)
+      return
+    }
+    const viewerId = currentUser?.id ?? null
+    const canView = canViewPost(post, author, viewerId)
+    setAccessDenied(!canView)
+  }, [post, author, currentUser])
+
   const handleLike = () => {
-    if (!currentUser || !post) return
+    if (!currentUser || !post || !author) return
+    if (isInteractionBlocked) {
+      window.alert(interactionBlockedMessage)
+      return
+    }
 
     const updatedPost = { ...post }
 
@@ -83,127 +87,13 @@ export default function BlogPostPage({ params }: { params: Promise<{ id: string 
     setHasLiked(!hasLiked)
   }
 
-  const handleAddComment = () => {
-    if (!currentUser || !post || !newComment.trim()) return
-
-    // Replace emoticons in comment
-    const processedContent = replaceEmoticons(newComment.trim())
-
-    const comment: Comment = {
-      id: String(Date.now()),
-      postId: post.id,
-      userId: currentUser.id,
-      content: processedContent,
-      createdAt: new Date().toISOString(),
-      reactions: {
-        like: [],
-        love: [],
-        laugh: [],
-        wow: [],
-        sad: [],
-        angry: [],
-      },
-    }
-
-    addComment(comment)
-    const updatedComments = getCommentsByPostId(post.id)
-    setComments(updatedComments)
-    setNewComment("")
-  }
-
-  const handleReply = (parentCommentId: string) => {
-    if (!currentUser || !post || !replyContent.trim()) return
-
-    // Replace emoticons in reply
-    const processedContent = replaceEmoticons(replyContent.trim())
-
-    const reply: Comment = {
-      id: String(Date.now()),
-      postId: post.id,
-      userId: currentUser.id,
-      content: processedContent,
-      createdAt: new Date().toISOString(),
-      parentCommentId,
-      reactions: {
-        like: [],
-        love: [],
-        laugh: [],
-        wow: [],
-        sad: [],
-        angry: [],
-      },
-    }
-
-    addComment(reply)
-    const updatedComments = getCommentsByPostId(post.id)
-    setComments(updatedComments)
-    setReplyContent("")
-    setReplyingTo(null)
-  }
-
-  const handleStartEdit = (comment: Comment) => {
-    setEditingCommentId(comment.id)
-    setEditContent(comment.content)
-  }
-
-  const handleSaveEdit = (commentId: string) => {
-    if (!editContent.trim() || !post) return
-    // Replace emoticons in edited comment
-    const processedContent = replaceEmoticons(editContent.trim())
-    updateComment(commentId, processedContent)
-    const updatedComments = getCommentsByPostId(post.id)
-    setComments(updatedComments)
-    setEditingCommentId(null)
-    setEditContent("")
-  }
-
-  const handleDelete = (commentId: string) => {
-    if (!post) return
-    if (window.confirm("Are you sure you want to delete this comment?")) {
-      deleteComment(commentId)
-      const updatedComments = getCommentsByPostId(post.id)
-      setComments(updatedComments)
-    }
-  }
-
-  const handleReaction = (commentId: string, reactionType: ReactionType) => {
-    if (!currentUser || !post) return
-    toggleCommentReaction(commentId, currentUser.id, reactionType)
-    const updatedComments = getCommentsByPostId(post.id)
-    setComments(updatedComments)
-  }
-
-  const getUserReaction = (comment: Comment): ReactionType | null => {
-    if (!currentUser || !comment.reactions) return null
-    for (const [type, userIds] of Object.entries(comment.reactions)) {
-      if (userIds.includes(currentUser.id)) {
-        return type as ReactionType
-      }
-    }
-    return null
-  }
-
-  const getTotalReactions = (comment: Comment): number => {
-    if (!comment.reactions) return 0
-    return Object.values(comment.reactions).reduce((sum, arr) => sum + arr.length, 0)
-  }
-
-  // Organize comments into parent and replies
-  const topLevelComments = comments.filter((c) => !c.parentCommentId)
-  const getReplies = (commentId: string) => {
-    return comments.filter((c) => c.parentCommentId === commentId)
-  }
-
-  const totalCommentsCount = comments.length
-
-  const reactionEmojis: Record<ReactionType, string> = {
-    like: "👍",
-    love: "❤️",
-    laugh: "😄",
-    wow: "😮",
-    sad: "😢",
-    angry: "😡",
-  }
+  const totalCommentsCount = commentCount
+  const isInteractionBlocked = Boolean(currentUser && author && areUsersBlocked(currentUser.id, author.id))
+  const interactionBlockedMessage = isInteractionBlocked
+    ? currentUser?.blockedUsers?.includes(author?.id ?? "")
+      ? `You have blocked ${author?.fullName ?? "this author"}. Unblock them to interact.`
+      : `${author?.fullName ?? "This author"} has blocked you. Interactions are disabled.`
+    : ""
 
   if (isLoading) {
     return <LoadingSpinner fullScreen />
@@ -217,14 +107,53 @@ export default function BlogPostPage({ params }: { params: Promise<{ id: string 
     )
   }
 
+  if (accessDenied) {
+    return (
+      <div className="container mx-auto px-4 py-12 max-w-3xl">
+        <Card>
+          <CardContent className="p-8 text-center space-y-4">
+            <ShieldAlert className="mx-auto h-10 w-10 text-destructive" />
+            <h2 className="text-xl font-semibold">You can&apos;t view this post</h2>
+            <p className="text-sm text-muted-foreground">
+              Access to this content is restricted due to privacy or blocking settings.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  const media = post.media ?? { images: [], videos: [], links: [] }
+  const heroImage = post.coverImage || media.images[0]
+  const galleryImages = post.coverImage ? media.images : media.images.slice(heroImage ? 1 : 0)
+  const galleryMedia: BlogPostMedia = {
+    images: galleryImages,
+    videos: media.videos,
+    links: media.links,
+  }
+
+  const formatHost = (url: string): string => {
+    try {
+      return new URL(url).hostname.replace(/^www\./, "")
+    } catch (error) {
+      return url
+    }
+  }
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
-      <BackButton href="/blog" label="Back to Blogs" />
+      <div className="flex items-center justify-between gap-4 mb-6">
+        <BackButton href="/blog" label="Back to Blogs" />
+        <Button variant="outline" size="sm" onClick={() => setIsShareDialogOpen(true)}>
+          <Share2 className="h-4 w-4 mr-2" />
+          Share
+        </Button>
+      </div>
 
       <Card className="overflow-hidden p-0">
-        {post.coverImage && (
+        {heroImage && (
           <div className="aspect-video w-full overflow-hidden">
-            <img src={post.coverImage || "/placeholder.svg"} alt={post.title} className="w-full h-full object-cover" />
+            <img src={heroImage} alt={post.title} className="h-full w-full object-cover" />
           </div>
         )}
         <CardHeader className="space-y-4 px-6 pt-6">
@@ -250,6 +179,21 @@ export default function BlogPostPage({ params }: { params: Promise<{ id: string 
           </div>
           <h1 className="text-4xl font-bold leading-tight">{post.title}</h1>
           <div className="flex flex-wrap gap-2">
+            {post.categories?.length
+              ? post.categories.map((category) => {
+                  const slug = slugifyCategory(category)
+                  return (
+                    <Badge
+                      key={`category-${slug}`}
+                      variant="outline"
+                      className="flex items-center gap-1 cursor-default"
+                    >
+                      <Tag className="h-3 w-3" />
+                      {formatCategoryLabel(category)}
+                    </Badge>
+                  )
+                })
+              : null}
             {post.tags.map((tag) => (
               <Link key={tag} href={`/blog/tag/${encodeURIComponent(tag.toLowerCase())}`}>
                 <Badge
@@ -276,7 +220,12 @@ export default function BlogPostPage({ params }: { params: Promise<{ id: string 
             )}
           </div>
           <div className="flex items-center gap-2 flex-wrap">
-            <Button onClick={handleLike} variant={hasLiked ? "default" : "outline"} size="sm">
+            <Button
+              onClick={handleLike}
+              variant={hasLiked ? "default" : "outline"}
+              size="sm"
+              disabled={!currentUser || isInteractionBlocked}
+            >
               <Heart className={`h-4 w-4 mr-2 ${hasLiked ? "fill-current" : ""}`} />
               {post.likes.length} {post.likes.length === 1 ? "Like" : "Likes"}
             </Button>
@@ -285,16 +234,61 @@ export default function BlogPostPage({ params }: { params: Promise<{ id: string 
               {totalCommentsCount} {totalCommentsCount === 1 ? "Comment" : "Comments"}
             </Button>
             {currentUser && currentUser.id === post.authorId && (
-              <Link href={`/blog/${post.id}/edit`}>
-                <EditButton asChild size="sm">
-                  Edit
-                </EditButton>
-              </Link>
+              <>
+                <Link href={`/blog/${post.id}/edit`}>
+                  <EditButton asChild size="sm">
+                    Edit
+                  </EditButton>
+                </Link>
+                <Button asChild variant="outline" size="sm" className="gap-2">
+                  <Link href={`/blog/${post.id}/analytics`}>
+                    <BarChart3 className="h-4 w-4" />
+                    Analytics
+                  </Link>
+                </Button>
+              </>
             )}
           </div>
         </CardHeader>
-        <CardContent className="prose prose-lg max-w-none px-6 pb-6">
-          <p className="text-foreground leading-relaxed whitespace-pre-wrap">{post.content}</p>
+        <CardContent className="px-6 pb-6 space-y-6">
+          <div className="prose prose-lg max-w-none">
+            <p className="text-foreground leading-relaxed whitespace-pre-wrap">{post.content}</p>
+          </div>
+
+          {(galleryMedia.images.length > 0 || galleryMedia.videos.length > 0) && (
+            <div className="not-prose">
+              <MediaGallery media={galleryMedia} caption="Rich media attachments" />
+            </div>
+          )}
+
+          {media.links.length > 0 && (
+            <div className="not-prose space-y-3">
+              <h3 className="flex items-center gap-2 text-lg font-semibold">
+                <Link2 className="h-5 w-5 text-primary" />
+                Helpful Resources
+              </h3>
+              <div className="space-y-2">
+                {media.links.map((link, index) => (
+                  <a
+                    key={`${link.url}-${index}`}
+                    href={link.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-start gap-3 rounded-lg border px-4 py-3 transition-colors hover:bg-accent"
+                  >
+                    <div className="mt-0.5 rounded-full bg-primary/10 p-2">
+                      <Link2 className="h-4 w-4 text-primary" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-medium">{link.title || formatHost(link.url)}</p>
+                      <p className="truncate text-sm text-muted-foreground">{link.url}</p>
+                    </div>
+                    <ExternalLink className="mt-1 h-4 w-4 text-muted-foreground" />
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -302,483 +296,22 @@ export default function BlogPostPage({ params }: { params: Promise<{ id: string 
       <Card className="mt-6 border-2">
         <CardHeader className="border-b pb-4">
           <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold">Comments</h2>
+            <h2 className="text-2xl font-bold">Comments</h2>
             <Badge variant="secondary" className="text-sm">
               {totalCommentsCount} {totalCommentsCount === 1 ? "Comment" : "Comments"}
             </Badge>
           </div>
         </CardHeader>
-        <CardContent className="p-6 space-y-6">
-          {/* Add Comment */}
-          {currentUser && (
-            <div className="flex gap-4 pb-6 border-b">
-              <Avatar className="h-12 w-12 ring-2 ring-primary/20">
-                <AvatarImage src={currentUser.avatar || "/placeholder.svg"} alt={currentUser.fullName} />
-                <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-                  {currentUser.fullName.charAt(0)}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex-1 space-y-3">
-                <Textarea
-                  placeholder="Share your thoughts..."
-                  value={newComment}
-                  onChange={(e) => {
-                    const value = e.target.value
-                    setNewComment(value)
-                    // Auto-replace emoticons when user types space or punctuation
-                    const lastChar = value[value.length - 1]
-                    if (lastChar === ' ' || lastChar === '\n' || /[.,!?;:]/.test(lastChar)) {
-                      const replaced = replaceEmoticons(value)
-                      if (replaced !== value) {
-                        setNewComment(replaced)
-                      }
-                    }
-                  }}
-                  rows={4}
-                  className="min-h-[100px] resize-none text-base"
-                />
-                <div className="flex justify-end">
-                  <Button
-                    onClick={handleAddComment}
-                    disabled={!newComment.trim()}
-                    size="lg"
-                    className="px-6"
-                  >
-                  <Send className="h-4 w-4 mr-2" />
-                  Post Comment
-                </Button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Comments List */}
-          <div className="space-y-6">
-            {topLevelComments.map((comment) => {
-              const commentUser = getUserById(comment.userId)
-              const replies = getReplies(comment.id)
-              const isOwner = currentUser?.id === comment.userId
-              const isEditing = editingCommentId === comment.id
-              const userReaction = getUserReaction(comment)
-              const totalReactions = getTotalReactions(comment)
-
-              return (
-                <div key={comment.id} className="group">
-                  <div className="flex gap-4">
-                    <Link href={`/profile/${commentUser?.username}`} className="flex-shrink-0">
-                      <Avatar className="h-11 w-11 ring-2 ring-border hover:ring-primary/50 transition-all">
-                      <AvatarImage src={commentUser?.avatar || "/placeholder.svg"} alt={commentUser?.fullName} />
-                        <AvatarFallback className="bg-gradient-to-br from-primary/20 to-primary/10 text-primary font-semibold">
-                          {commentUser?.fullName.charAt(0)}
-                        </AvatarFallback>
-                      </Avatar>
-                    </Link>
-                    <div className="flex-1 min-w-0">
-                      <div className="bg-muted/50 rounded-xl p-4 border border-border/50 hover:border-border transition-all">
-                        <div className="flex items-start justify-between mb-3">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <Link
-                              href={`/profile/${commentUser?.username}`}
-                              className="font-semibold text-sm hover:text-primary transition-colors"
-                            >
-                              {commentUser?.fullName}
-                            </Link>
-                            {post.authorId === comment.userId && (
-                              <Badge variant="default" className="text-xs font-medium">
-                                Author
-                              </Badge>
-                            )}
-                            <span className="text-xs text-muted-foreground">
-                              {formatCommentDate(comment.createdAt)}
-                              {comment.updatedAt && (
-                                <span className="italic ml-1">(edited)</span>
-                              )}
-                            </span>
-                          </div>
-                          {isOwner && !isEditing && (
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <MessageCircle className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => handleStartEdit(comment)}>
-                                  <Edit2 className="h-4 w-4 mr-2" />
-                                  Edit
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleDelete(comment.id)} variant="destructive">
-                                  <Trash2 className="h-4 w-4 mr-2" />
-                                  Delete
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          )}
-                        </div>
-                        {isEditing ? (
-                          <div className="space-y-3">
-                            <Textarea
-                              value={editContent}
-                              onChange={(e) => {
-                                const value = e.target.value
-                                setEditContent(value)
-                                // Auto-replace emoticons when user types space or punctuation
-                                const lastChar = value[value.length - 1]
-                                if (lastChar === ' ' || lastChar === '\n' || /[.,!?;:]/.test(lastChar)) {
-                                  const replaced = replaceEmoticons(value)
-                                  if (replaced !== value) {
-                                    setEditContent(replaced)
-                                  }
-                                }
-                              }}
-                              rows={4}
-                              className="bg-background text-base min-h-[100px]"
-                            />
-                            <div className="flex gap-2 justify-end">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => {
-                                  setEditingCommentId(null)
-                                  setEditContent("")
-                                }}
-                              >
-                                <X className="h-4 w-4 mr-1" />
-                                Cancel
-                              </Button>
-                              <Button size="sm" onClick={() => handleSaveEdit(comment.id)}>
-                                <Check className="h-4 w-4 mr-1" />
-                                Save
-                              </Button>
-                            </div>
-                          </div>
-                        ) : (
-                          <p className="text-sm leading-relaxed text-foreground whitespace-pre-wrap">{comment.content}</p>
-                        )}
-                      </div>
-                      {!isEditing && (
-                        <div className="flex items-center gap-4 mt-3">
-                          {currentUser && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 text-xs text-muted-foreground hover:text-foreground"
-                              onClick={() => {
-                                setReplyingTo(replyingTo === comment.id ? null : comment.id)
-                                setReplyContent("")
-                              }}
-                            >
-                              <Reply className="h-3.5 w-3.5 mr-1.5" />
-                              Reply
-                            </Button>
-                          )}
-
-                          {/* Reactions */}
-                          {currentUser && (
-                            <div className="flex items-center gap-1">
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-8 px-2 text-xs hover:bg-primary/10 hover:text-primary"
-                                  >
-                                    <Smile className="h-4 w-4 mr-1.5" />
-                                    {totalReactions > 0 ? (
-                                      <span className="font-medium">{totalReactions}</span>
-                                    ) : (
-                                      <span className="text-muted-foreground">React</span>
-                                    )}
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="start" className="w-40">
-                                  {Object.entries(reactionEmojis).map(([type, emoji]) => {
-                                    const reactionType = type as ReactionType
-                                    const isActive = userReaction === reactionType
-                                    const count = comment.reactions?.[reactionType]?.length || 0
-                                    return (
-                                      <DropdownMenuItem
-                                        key={type}
-                                        onClick={() => handleReaction(comment.id, reactionType)}
-                                        className={`cursor-pointer ${isActive ? "bg-primary/10 font-medium" : ""}`}
-                                      >
-                                        <span className="mr-2 text-lg">{emoji}</span>
-                                        <span className="capitalize flex-1">{type}</span>
-                                        {count > 0 && (
-                                          <span className="text-xs text-muted-foreground">({count})</span>
-                                        )}
-                                      </DropdownMenuItem>
-                                    )
-                                  })}
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                              {userReaction && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-8 px-2 text-xs bg-primary/10 text-primary hover:bg-primary/20"
-                                  onClick={() => handleReaction(comment.id, userReaction)}
-                                >
-                                  <span className="text-base mr-1">{reactionEmojis[userReaction]}</span>
-                                  <span className="font-medium">{comment.reactions?.[userReaction]?.length || 0}</span>
-                                </Button>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Reply Input */}
-                      {replyingTo === comment.id && currentUser && (
-                        <div className="mt-4 ml-4 pl-4 border-l-2 border-primary/30 space-y-3">
-                          <div className="flex gap-3">
-                            <Avatar className="h-9 w-9 ring-2 ring-border">
-                              <AvatarImage src={currentUser.avatar || "/placeholder.svg"} alt={currentUser.fullName} />
-                              <AvatarFallback className="bg-primary/10 text-primary text-xs">
-                                {currentUser.fullName.charAt(0)}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className="flex-1 space-y-2">
-                              <Textarea
-                                placeholder={`Reply to ${commentUser?.fullName}...`}
-                                value={replyContent}
-                                onChange={(e) => {
-                                  const value = e.target.value
-                                  setReplyContent(value)
-                                  // Auto-replace emoticons when user types space or punctuation
-                                  const lastChar = value[value.length - 1]
-                                  if (lastChar === ' ' || lastChar === '\n' || /[.,!?;:]/.test(lastChar)) {
-                                    const replaced = replaceEmoticons(value)
-                                    if (replaced !== value) {
-                                      setReplyContent(replaced)
-                                    }
-                                  }
-                                }}
-                                rows={3}
-                                className="bg-background text-sm min-h-[80px] resize-none"
-                              />
-                              <div className="flex gap-2 justify-end">
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => {
-                                    setReplyingTo(null)
-                                    setReplyContent("")
-                                  }}
-                                >
-                                  <X className="h-3.5 w-3.5 mr-1.5" />
-                                  Cancel
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  onClick={() => handleReply(comment.id)}
-                                  disabled={!replyContent.trim()}
-                                >
-                                  <Send className="h-3.5 w-3.5 mr-1.5" />
-                                  Reply
-                                </Button>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Replies */}
-                      {replies.length > 0 && (
-                        <div className="mt-5 ml-4 pl-5 space-y-4 border-l-2 border-primary/20">
-                          {replies.map((reply) => {
-                            const replyUser = getUserById(reply.userId)
-                            const isReplyOwner = currentUser?.id === reply.userId
-                            const isEditingReply = editingCommentId === reply.id
-                            const replyUserReaction = getUserReaction(reply)
-                            const replyTotalReactions = getTotalReactions(reply)
-
-                            return (
-                              <div key={reply.id} className="group/reply">
-                                <div className="flex gap-3">
-                                  <Link href={`/profile/${replyUser?.username}`} className="flex-shrink-0">
-                                    <Avatar className="h-9 w-9 ring-2 ring-border hover:ring-primary/50 transition-all">
-                                      <AvatarImage
-                                        src={replyUser?.avatar || "/placeholder.svg"}
-                                        alt={replyUser?.fullName}
-                                      />
-                                      <AvatarFallback className="bg-gradient-to-br from-primary/20 to-primary/10 text-primary text-xs font-semibold">
-                                        {replyUser?.fullName.charAt(0)}
-                                      </AvatarFallback>
-                    </Avatar>
-                  </Link>
-                                  <div className="flex-1 min-w-0">
-                                    <div className="bg-muted/40 rounded-lg p-3.5 border border-border/50 hover:border-border transition-all">
-                                      <div className="flex items-start justify-between mb-2">
-                                        <div className="flex items-center gap-2 flex-wrap">
-                                          <Link
-                                            href={`/profile/${replyUser?.username}`}
-                                            className="font-semibold text-xs hover:text-primary transition-colors"
-                                          >
-                                            {replyUser?.fullName}
-                                          </Link>
-                                          {post.authorId === reply.userId && (
-                                            <Badge variant="default" className="text-[10px] font-medium px-1.5 py-0">
-                                              Author
-                                            </Badge>
-                                          )}
-                                          <span className="text-[10px] text-muted-foreground">replied to</span>
-                      <Link
-                        href={`/profile/${commentUser?.username}`}
-                                            className="text-xs font-medium hover:text-primary transition-colors"
-                      >
-                        {commentUser?.fullName}
-                      </Link>
-                                          <span className="text-[10px] text-muted-foreground">
-                                            {formatCommentDate(reply.createdAt)}
-                                            {reply.updatedAt && <span className="italic ml-1">(edited)</span>}
-                                          </span>
-                                        </div>
-                                        {isReplyOwner && !isEditingReply && (
-                                          <DropdownMenu>
-                                            <DropdownMenuTrigger asChild>
-                                              <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                className="h-7 w-7 opacity-0 group-hover/reply:opacity-100 transition-opacity"
-                                              >
-                                                <MessageCircle className="h-3.5 w-3.5" />
-                                              </Button>
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end">
-                                              <DropdownMenuItem onClick={() => handleStartEdit(reply)}>
-                                                <Edit2 className="h-4 w-4 mr-2" />
-                                                Edit
-                                              </DropdownMenuItem>
-                                              <DropdownMenuItem
-                                                onClick={() => handleDelete(reply.id)}
-                                                variant="destructive"
-                                              >
-                                                <Trash2 className="h-4 w-4 mr-2" />
-                                                Delete
-                                              </DropdownMenuItem>
-                                            </DropdownMenuContent>
-                                          </DropdownMenu>
-                                        )}
-                                      </div>
-                                      {isEditingReply ? (
-                                        <div className="space-y-2">
-                                          <Textarea
-                                            value={editContent}
-                                            onChange={(e) => {
-                                              const value = e.target.value
-                                              setEditContent(value)
-                                              // Auto-replace emoticons when user types space or punctuation
-                                              const lastChar = value[value.length - 1]
-                                              if (lastChar === ' ' || lastChar === '\n' || /[.,!?;:]/.test(lastChar)) {
-                                                const replaced = replaceEmoticons(value)
-                                                if (replaced !== value) {
-                                                  setEditContent(replaced)
-                                                }
-                                              }
-                                            }}
-                                            rows={3}
-                                            className="bg-background text-sm min-h-[80px]"
-                                          />
-                                          <div className="flex gap-2 justify-end">
-                                            <Button
-                                              size="sm"
-                                              variant="outline"
-                                              onClick={() => {
-                                                setEditingCommentId(null)
-                                                setEditContent("")
-                                              }}
-                                            >
-                                              <X className="h-3 w-3 mr-1" />
-                                              Cancel
-                                            </Button>
-                                            <Button size="sm" onClick={() => handleSaveEdit(reply.id)}>
-                                              <Check className="h-3 w-3 mr-1" />
-                                              Save
-                                            </Button>
-                                          </div>
-                                        </div>
-                                      ) : (
-                                        <p className="text-xs leading-relaxed text-foreground whitespace-pre-wrap mt-1">
-                                          {reply.content}
-                                        </p>
-                                      )}
-                                    </div>
-                                    {!isEditingReply && currentUser && (
-                                      <div className="flex items-center gap-2 mt-2">
-                                        <DropdownMenu>
-                                          <DropdownMenuTrigger asChild>
-                                            <Button
-                                              variant="ghost"
-                                              size="sm"
-                                              className="h-7 px-2 text-[10px] hover:bg-primary/10 hover:text-primary"
-                                            >
-                                              <Smile className="h-3.5 w-3.5 mr-1" />
-                                              {replyTotalReactions > 0 ? (
-                                                <span className="font-medium">{replyTotalReactions}</span>
-                                              ) : (
-                                                <span className="text-muted-foreground">React</span>
-                                              )}
-                                            </Button>
-                                          </DropdownMenuTrigger>
-                                          <DropdownMenuContent align="start" className="w-40">
-                                            {Object.entries(reactionEmojis).map(([type, emoji]) => {
-                                              const reactionType = type as ReactionType
-                                              const isActive = replyUserReaction === reactionType
-                                              const count = reply.reactions?.[reactionType]?.length || 0
-                                              return (
-                                                <DropdownMenuItem
-                                                  key={type}
-                                                  onClick={() => handleReaction(reply.id, reactionType)}
-                                                  className={`cursor-pointer ${isActive ? "bg-primary/10 font-medium" : ""}`}
-                                                >
-                                                  <span className="mr-2 text-lg">{emoji}</span>
-                                                  <span className="capitalize flex-1">{type}</span>
-                                                  {count > 0 && (
-                                                    <span className="text-xs text-muted-foreground">({count})</span>
-                                                  )}
-                                                </DropdownMenuItem>
-                                              )
-                                            })}
-                                          </DropdownMenuContent>
-                                        </DropdownMenu>
-                                        {replyUserReaction && (
-                                          <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            className="h-7 px-2 text-[10px] bg-primary/10 text-primary hover:bg-primary/20"
-                                            onClick={() => handleReaction(reply.id, replyUserReaction)}
-                                          >
-                                            <span className="text-sm mr-1">{reactionEmojis[replyUserReaction]}</span>
-                                            <span className="font-medium">{reply.reactions?.[replyUserReaction]?.length || 0}</span>
-                                          </Button>
-                                        )}
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-                            )
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-
-          {topLevelComments.length === 0 && (
-            <div className="text-center py-12">
-              <MessageCircle className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
-              <p className="text-muted-foreground text-sm">
-                {currentUser ? "No comments yet. Be the first to comment!" : "No comments yet."}
-              </p>
-            </div>
-          )}
+        <CardContent className="p-6">
+          <AdvancedComments
+            context={{ type: "post", id: post.id }}
+            header={null}
+            emptyStateMessage="No comments yet. Be the first to comment!"
+            onCountChange={setCommentCount}
+          />
         </CardContent>
       </Card>
+      <PostShareDialog post={post} open={isShareDialogOpen} onOpenChange={setIsShareDialogOpen} />
     </div>
   )
 }

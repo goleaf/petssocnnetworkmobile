@@ -1,5 +1,5 @@
 import React from 'react'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, act, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import GroupPage from '../page'
 import * as storage from '@/lib/storage'
@@ -20,6 +20,12 @@ jest.mock('next/navigation', () => ({
   }),
   useParams: () => ({ slug: 'golden-retriever-owners' }),
 }))
+
+const renderGroupPage = async (slug: string = 'golden-retriever-owners') => {
+  await act(async () => {
+    render(<GroupPage params={Promise.resolve({ slug })} />)
+  })
+}
 
 describe('GroupPage', () => {
   const mockGroup = {
@@ -43,6 +49,10 @@ describe('GroupPage', () => {
     ],
     createdAt: '2024-01-15T10:00:00Z',
     updatedAt: '2024-03-20T14:30:00Z',
+    visibility: {
+      discoverable: true,
+      content: 'everyone',
+    },
   }
 
   const mockTopics = [
@@ -146,6 +156,7 @@ describe('GroupPage', () => {
     ;(storage.getGroupResourcesByGroupId as jest.Mock).mockReturnValue(mockResources)
     ;(storage.getGroupActivitiesByGroupId as jest.Mock).mockReturnValue(mockActivities)
     ;(storage.canUserViewGroup as jest.Mock).mockReturnValue(true)
+    ;(storage.canUserViewGroupContent as jest.Mock).mockReturnValue(true)
     ;(storage.isUserMemberOfGroup as jest.Mock).mockReturnValue(false)
     ;(auth.useAuth as jest.Mock).mockReturnValue({
       user: null,
@@ -155,12 +166,11 @@ describe('GroupPage', () => {
 
   it('should render group page with loading state initially', () => {
     render(<GroupPage params={Promise.resolve({ slug: 'golden-retriever-owners' })} />)
-    // The component will show loading state initially
     expect(screen.queryByText('Golden Retriever Owners')).not.toBeInTheDocument()
   })
 
   it('should display group information after loading', async () => {
-    render(<GroupPage params={Promise.resolve({ slug: 'golden-retriever-owners' })} />)
+    await renderGroupPage()
     
     await waitFor(() => {
       expect(screen.getByText('Golden Retriever Owners')).toBeInTheDocument()
@@ -168,7 +178,7 @@ describe('GroupPage', () => {
   })
 
   it('should show feed tab by default', async () => {
-    render(<GroupPage params={Promise.resolve({ slug: 'golden-retriever-owners' })} />)
+    await renderGroupPage()
     
     await waitFor(() => {
       expect(screen.getByText(/group feed/i)).toBeInTheDocument()
@@ -176,7 +186,7 @@ describe('GroupPage', () => {
   })
 
   it('should display all tabs', async () => {
-    render(<GroupPage params={Promise.resolve({ slug: 'golden-retriever-owners' })} />)
+    await renderGroupPage()
     
     await waitFor(() => {
       expect(screen.getByText('Feed')).toBeInTheDocument()
@@ -190,17 +200,12 @@ describe('GroupPage', () => {
   })
 
   it('should switch to topics tab and display topics', async () => {
-    render(<GroupPage params={Promise.resolve({ slug: 'golden-retriever-owners' })} />)
+    await renderGroupPage()
     
     await waitFor(() => {
-      const topicsTab = screen.getByText('Topics')
+      const topicsTab = screen.getAllByRole('tab', { name: /topics/i })[0]
       userEvent.click(topicsTab)
     }, { timeout: 3000 })
-    
-    await waitFor(() => {
-      expect(screen.getByText(/topics/i)).toBeInTheDocument()
-    }, { timeout: 3000 })
-    
     await waitFor(() => {
       expect(screen.getByText('Training Tips')).toBeInTheDocument()
       expect(screen.getByText('Health Questions')).toBeInTheDocument()
@@ -208,21 +213,19 @@ describe('GroupPage', () => {
   })
 
   it('should show topic count badges', async () => {
-    render(<GroupPage params={Promise.resolve({ slug: 'golden-retriever-owners' })} />)
+    await renderGroupPage()
     
     await waitFor(() => {
-      const topicsTab = screen.getByText('Topics')
-      expect(topicsTab).toBeInTheDocument()
-      // Topic count should be displayed
-      expect(screen.getByText(/89 views/i)).toBeInTheDocument()
+      const topicsTab = screen.getAllByRole('tab', { name: /topics/i })[0]
+      expect(within(topicsTab).getByText(String(mockTopics.length))).toBeInTheDocument()
     }, { timeout: 3000 })
   })
 
   it('should display pinned topic badge', async () => {
-    render(<GroupPage params={Promise.resolve({ slug: 'golden-retriever-owners' })} />)
+    await renderGroupPage()
     
     await waitFor(() => {
-      const topicsTab = screen.getByText('Topics')
+      const topicsTab = screen.getAllByRole('tab', { name: /topics/i })[0]
       userEvent.click(topicsTab)
     }, { timeout: 3000 })
     
@@ -232,49 +235,61 @@ describe('GroupPage', () => {
   })
 
   it('should switch to polls tab and display polls', async () => {
-    render(<GroupPage params={Promise.resolve({ slug: 'golden-retriever-owners' })} />)
+    await renderGroupPage()
     
     await waitFor(() => {
-      const pollsTab = screen.getByText('Polls')
+      const pollsTab = screen.getAllByRole('tab', { name: /polls/i })[0]
       userEvent.click(pollsTab)
     }, { timeout: 3000 })
     
     await waitFor(() => {
-      expect(screen.getByText(/polls/i)).toBeInTheDocument()
       expect(screen.getByText('What is your favorite food brand?')).toBeInTheDocument()
     }, { timeout: 3000 })
   })
 
   it('should switch to events tab and display events', async () => {
-    render(<GroupPage params={Promise.resolve({ slug: 'golden-retriever-owners' })} />)
+    await renderGroupPage()
     
     await waitFor(() => {
-      const eventsTab = screen.getByText('Events')
+      const eventsTab = screen.getAllByRole('tab', { name: /events/i })[0]
       userEvent.click(eventsTab)
     }, { timeout: 3000 })
     
     await waitFor(() => {
-      expect(screen.getByText(/events/i)).toBeInTheDocument()
       expect(screen.getByText('Dog Park Meetup')).toBeInTheDocument()
     }, { timeout: 3000 })
   })
 
   it('should switch to resources tab and display resources', async () => {
-    render(<GroupPage params={Promise.resolve({ slug: 'golden-retriever-owners' })} />)
+    await renderGroupPage()
     
     await waitFor(() => {
-      const resourcesTab = screen.getByText('Resources')
+      const resourcesTab = screen.getAllByRole('tab', { name: /resources/i })[0]
       userEvent.click(resourcesTab)
     }, { timeout: 3000 })
     
     await waitFor(() => {
-      expect(screen.getByText(/resources/i)).toBeInTheDocument()
       expect(screen.getByText('Golden Retriever Care Guide')).toBeInTheDocument()
     }, { timeout: 3000 })
   })
 
+  it('should show members-only notice when content is restricted', async () => {
+    const restrictedGroup = {
+      ...mockGroup,
+      visibility: { discoverable: true, content: 'members' },
+    }
+    ;(storage.getGroupBySlug as jest.Mock).mockReturnValue(restrictedGroup)
+    ;(storage.canUserViewGroupContent as jest.Mock).mockReturnValue(false)
+
+    await renderGroupPage()
+
+    await waitFor(() => {
+      expect(screen.getAllByText(/members-only content/i).length).toBeGreaterThan(0)
+    }, { timeout: 3000 })
+  })
+
   it('should not show new topic button for non-members', async () => {
-    render(<GroupPage params={Promise.resolve({ slug: 'golden-retriever-owners' })} />)
+    await renderGroupPage()
     
     await waitFor(() => {
       expect(screen.queryByText(/new topic/i)).not.toBeInTheDocument()
@@ -288,7 +303,7 @@ describe('GroupPage', () => {
       isAuthenticated: true,
     })
     
-    render(<GroupPage params={Promise.resolve({ slug: 'golden-retriever-owners' })} />)
+    await renderGroupPage()
     
     await waitFor(() => {
       expect(screen.getByText(/new topic/i)).toBeInTheDocument()
@@ -298,10 +313,10 @@ describe('GroupPage', () => {
   it('should show empty state when no topics exist', async () => {
     ;(storage.getGroupTopicsByGroupId as jest.Mock).mockReturnValue([])
     
-    render(<GroupPage params={Promise.resolve({ slug: 'golden-retriever-owners' })} />)
+    await renderGroupPage()
     
     await waitFor(() => {
-      const topicsTab = screen.getByText('Topics')
+      const topicsTab = screen.getByRole('tab', { name: /topics/i })
       userEvent.click(topicsTab)
     }, { timeout: 3000 })
     
@@ -313,10 +328,10 @@ describe('GroupPage', () => {
   it('should show empty state when no polls exist', async () => {
     ;(storage.getGroupPollsByGroupId as jest.Mock).mockReturnValue([])
     
-    render(<GroupPage params={Promise.resolve({ slug: 'golden-retriever-owners' })} />)
+    await renderGroupPage()
     
     await waitFor(() => {
-      const pollsTab = screen.getByText('Polls')
+      const pollsTab = screen.getAllByRole('tab', { name: /polls/i })[0]
       userEvent.click(pollsTab)
     }, { timeout: 3000 })
     
@@ -328,10 +343,10 @@ describe('GroupPage', () => {
   it('should show empty state when no events exist', async () => {
     ;(storage.getGroupEventsByGroupId as jest.Mock).mockReturnValue([])
     
-    render(<GroupPage params={Promise.resolve({ slug: 'golden-retriever-owners' })} />)
+    await renderGroupPage()
     
     await waitFor(() => {
-      const eventsTab = screen.getByText('Events')
+      const eventsTab = screen.getAllByRole('tab', { name: /events/i })[0]
       userEvent.click(eventsTab)
     }, { timeout: 3000 })
     
@@ -350,7 +365,7 @@ describe('GroupPage', () => {
       useRouter: () => mockRouter,
     }))
     
-    render(<GroupPage params={Promise.resolve({ slug: 'non-existent' })} />)
+    await renderGroupPage('non-existent')
     
     await waitFor(() => {
       // Should redirect, component won't render content
@@ -358,11 +373,16 @@ describe('GroupPage', () => {
   })
 
   it('should not display secret groups to non-authenticated users', async () => {
-    const secretGroup = { ...mockGroup, type: 'secret' as const }
+    const secretGroup = {
+      ...mockGroup,
+      type: 'secret' as const,
+      visibility: { discoverable: false, content: 'members' },
+    }
     ;(storage.getGroupBySlug as jest.Mock).mockReturnValue(secretGroup)
     ;(storage.canUserViewGroup as jest.Mock).mockReturnValue(false)
-    
-    render(<GroupPage params={Promise.resolve({ slug: 'secret-group' })} />)
+    ;(storage.canUserViewGroupContent as jest.Mock).mockReturnValue(false)
+
+    await renderGroupPage('secret-group')
     
     await waitFor(() => {
       // Should redirect, component won't render content
@@ -370,7 +390,7 @@ describe('GroupPage', () => {
   })
 
   it('should display topic view and comment counts', async () => {
-    render(<GroupPage params={Promise.resolve({ slug: 'golden-retriever-owners' })} />)
+    await renderGroupPage()
     
     await waitFor(() => {
       const topicsTab = screen.getByText('Topics')
@@ -384,7 +404,7 @@ describe('GroupPage', () => {
   })
 
   it('should navigate to topic detail page', async () => {
-    render(<GroupPage params={Promise.resolve({ slug: 'golden-retriever-owners' })} />)
+    await renderGroupPage()
     
     await waitFor(() => {
       const topicsTab = screen.getByText('Topics')
@@ -398,7 +418,7 @@ describe('GroupPage', () => {
   })
 
   it('should display poll vote counts', async () => {
-    render(<GroupPage params={Promise.resolve({ slug: 'golden-retriever-owners' })} />)
+    await renderGroupPage()
     
     await waitFor(() => {
       const pollsTab = screen.getByText('Polls')
@@ -411,7 +431,7 @@ describe('GroupPage', () => {
   })
 
   it('should display event attendee counts', async () => {
-    render(<GroupPage params={Promise.resolve({ slug: 'golden-retriever-owners' })} />)
+    await renderGroupPage()
     
     await waitFor(() => {
       const eventsTab = screen.getByText('Events')
@@ -424,10 +444,10 @@ describe('GroupPage', () => {
   })
 
   it('should navigate to members page from members tab', async () => {
-    render(<GroupPage params={Promise.resolve({ slug: 'golden-retriever-owners' })} />)
+    await renderGroupPage()
     
     await waitFor(() => {
-      const membersTab = screen.getByText('Members')
+      const membersTab = screen.getAllByRole('tab', { name: /members/i })[0]
       userEvent.click(membersTab)
     }, { timeout: 3000 })
     
@@ -438,10 +458,10 @@ describe('GroupPage', () => {
   })
 
   it('should navigate to settings page from settings tab', async () => {
-    render(<GroupPage params={Promise.resolve({ slug: 'golden-retriever-owners' })} />)
+    await renderGroupPage()
     
     await waitFor(() => {
-      const settingsTab = screen.getByText('Settings')
+      const settingsTab = screen.getAllByRole('tab', { name: /settings/i })[0]
       userEvent.click(settingsTab)
     }, { timeout: 3000 })
     
@@ -454,7 +474,7 @@ describe('GroupPage', () => {
   it('should show no activity message when group has no activities', async () => {
     ;(storage.getGroupActivitiesByGroupId as jest.Mock).mockReturnValue([])
     
-    render(<GroupPage params={Promise.resolve({ slug: 'golden-retriever-owners' })} />)
+    await renderGroupPage()
     
     await waitFor(() => {
       expect(screen.getByText(/no activity yet/i)).toBeInTheDocument()
@@ -462,7 +482,7 @@ describe('GroupPage', () => {
   })
 
   it('should display activities in feed tab', async () => {
-    render(<GroupPage params={Promise.resolve({ slug: 'golden-retriever-owners' })} />)
+    await renderGroupPage()
     
     await waitFor(() => {
       // Activities should be rendered in the feed tab
@@ -470,4 +490,3 @@ describe('GroupPage', () => {
     }, { timeout: 3000 })
   })
 })
-

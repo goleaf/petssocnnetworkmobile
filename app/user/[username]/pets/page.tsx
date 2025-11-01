@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { getUserByUsername, getPetsByOwnerId, deletePet, getPets } from "@/lib/storage"
+import type { PrivacyLevel } from "@/lib/types"
 import { EditButton } from "@/components/ui/edit-button"
 import { DeleteButton } from "@/components/ui/delete-button"
 import { CreateButton } from "@/components/ui/create-button"
@@ -37,7 +38,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { canViewUserPets } from "@/lib/utils/privacy"
+import { canSendFollowRequest, canViewUserPets, canViewPet } from "@/lib/utils/privacy"
+import { getPrivacyNotice } from "@/lib/utils/privacy-messages"
 import { ANIMAL_TYPES } from "@/lib/animal-types"
 
 type SortOption = "name" | "recent" | "oldest" | "species"
@@ -84,6 +86,11 @@ export default function UserPetsPage({ params }: { params: Promise<{ username: s
   const filteredAndSortedPets = useMemo(() => {
     let filtered = [...pets]
 
+    if (user) {
+      const viewerId = currentUser?.id ?? null
+      filtered = filtered.filter((pet) => canViewPet(pet, user, viewerId))
+    }
+
     // Search filter - maximum search functionality
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim()
@@ -125,7 +132,7 @@ export default function UserPetsPage({ params }: { params: Promise<{ username: s
     }
 
     return filtered
-  }, [pets, searchQuery, sortBy, speciesFilter])
+  }, [pets, searchQuery, sortBy, speciesFilter, user, currentUser])
 
   // Group pets by species
   const groupedPets = useMemo(() => {
@@ -169,6 +176,12 @@ export default function UserPetsPage({ params }: { params: Promise<{ username: s
 
   const hasActiveFilters = searchQuery || speciesFilter !== "all"
 
+  const privacyLabelMap: Record<PrivacyLevel, string> = {
+    public: "Public",
+    "followers-only": "Followers Only",
+    private: "Private",
+  }
+
   // Get all unique species from user's pets - MUST be before any conditional returns
   const availableSpecies = useMemo(() => {
     const species = new Set<string>()
@@ -183,6 +196,13 @@ export default function UserPetsPage({ params }: { params: Promise<{ username: s
   const isOwnProfile = currentUser?.id === user.id
   const viewerId = currentUser?.id || null
   const canViewPets = canViewUserPets(user, viewerId)
+  const canFollow = canSendFollowRequest(user, viewerId)
+  const privacyMessage = getPrivacyNotice({
+    profileUser: user,
+    scope: "pets",
+    viewerId,
+    canRequestAccess: canFollow,
+  })
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background via-background to-muted/30">
@@ -195,7 +215,7 @@ export default function UserPetsPage({ params }: { params: Promise<{ username: s
               <p className="text-sm sm:text-base text-muted-foreground">
                 {canViewPets
                   ? `${filteredAndSortedPets.length} ${filteredAndSortedPets.length === 1 ? "pet" : "pets"}`
-                  : "Private"
+                  : privacyMessage
                 }
               </p>
             </div>
@@ -288,7 +308,7 @@ export default function UserPetsPage({ params }: { params: Promise<{ username: s
           <Card className="shadow-md mt-6 sm:mt-8">
             <CardContent className="p-8 sm:p-12 text-center space-y-4">
               <Lock className="h-12 w-12 sm:h-16 sm:w-16 mx-auto text-muted-foreground/50" />
-              <p className="text-sm sm:text-base text-muted-foreground">This user{"'"}s pets are private</p>
+              <p className="text-sm sm:text-base leading-relaxed text-muted-foreground">{privacyMessage}</p>
             </CardContent>
           </Card>
         ) : groupedPets.length === 0 ? (
@@ -344,6 +364,20 @@ export default function UserPetsPage({ params }: { params: Promise<{ username: s
                     {speciesPets.map((pet) => {
                       const isOwner = isOwnProfile && currentUser?.id === pet.ownerId
                       const petUrl = getPetUrlFromPet(pet, user.username)
+                      const ownerPrivacyFallback = (user.privacy?.sections?.pets ?? user.privacy?.pets ?? "public") as PrivacyLevel
+                      const rawPrivacy = pet.privacy
+                      const visibilitySetting =
+                        rawPrivacy && typeof rawPrivacy === "object" && "visibility" in rawPrivacy
+                          ? (rawPrivacy.visibility as PrivacyLevel)
+                          : typeof rawPrivacy === "string"
+                            ? (rawPrivacy as PrivacyLevel)
+                            : ownerPrivacyFallback
+                      const interactionSetting =
+                        rawPrivacy && typeof rawPrivacy === "object" && "interactions" in rawPrivacy
+                          ? (rawPrivacy.interactions as PrivacyLevel)
+                          : typeof rawPrivacy === "string"
+                            ? (rawPrivacy as PrivacyLevel)
+                            : ownerPrivacyFallback
 
                       return (
                         <Card key={pet.id} className="hover:shadow-xl transition-all duration-300 flex flex-col overflow-hidden hover:scale-[1.02] border-0 bg-card/50">
@@ -424,6 +458,14 @@ export default function UserPetsPage({ params }: { params: Promise<{ username: s
                                   </div>
                                 )}
                               </div>
+                            </div>
+                            <div className="flex flex-wrap gap-2 mt-2">
+                              <Badge variant="outline" className="text-xs font-semibold">
+                                Visibility: {privacyLabelMap[visibilitySetting]}
+                              </Badge>
+                              <Badge variant="outline" className="text-xs font-semibold">
+                                Interactions: {privacyLabelMap[interactionSetting]}
+                              </Badge>
                             </div>
                             {pet.spayedNeutered && (
                               <Badge variant="secondary" className="mt-2 text-xs">

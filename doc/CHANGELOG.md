@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Post Embeds**
+  - Share dialog with link copying and iframe embed generation
+  - Dedicated `/embed/post/[id]` route for lightweight external embeds
 - **Shared Form Components**
   - `PetForm`: Unified component for creating and editing pets
     - Real-time validation with error messages
@@ -31,6 +34,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Species multi-select with visual selection
     - Cover image URL with preview
     - Markdown editor with preview mode
+- **Direct Messaging Enhancements**
+  - New `/messages` inbox with conversation list and responsive chat layout
+  - Media sharing for direct messages (images, videos, documents) with previews and download links
+  - Attachment safeguards with per-file size limits and multi-file support
+  - Message archive view with active/archived toggles, unread counts, and one-click archive management
+  - Global message search now surfaces archived threads with highlighted results and deep-link scrolling
+  - Local read receipt tracking to highlight unread conversations
 
 - **Feed Posts System**
   - Feed posts separated from blog posts
@@ -38,6 +48,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Automatic hashtag extraction from feed post content
   - Profile page tabs: Feed Posts and Blog Posts
   - Separate stats display for feed posts and blog posts
+- **Direct Message Search**
+  - Global message search panel with keyword highlighting
+  - Filters for conversation, sender, date range, and unread status
+  - Sort results by relevance, newest, or oldest and jump directly into the thread
 
 - **User Profile Enhancements**
   - User pets page (`/user/[username]/pets`)
@@ -62,6 +76,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `CreateButton`: Green gradient button for create/write actions
   - `DeleteButton`: Red gradient button for delete actions
   - `Tooltip`: Beautiful tooltip component with animations
+- **Group Discussions**
+  - Topic threads now display persistent context tags
+  - Topics index includes a context filter to organize conversations by theme
 
 - **Error Pages Improvements**
   - Custom 404 page with helpful suggestions and icons
@@ -71,6 +88,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Utilities**
   - Emoticon replacer utility for comments
+- **Message Privacy**
+  - Added end-to-end encryption controls for direct messages in privacy settings
 
 ### Changed
 - Blog create and edit pages now use shared `BlogForm` component

@@ -94,6 +94,19 @@ export function TopicThread({
                   )}
                 </div>
 
+                {topic.tags && topic.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {topic.tags.map((tag) => {
+                      const label = tag.startsWith("#") ? tag : `#${tag}`
+                      return (
+                        <Badge key={`${topic.id}-${tag}`} variant="outline" className="text-xs font-medium">
+                          {label}
+                        </Badge>
+                      )
+                    })}
+                  </div>
+                )}
+
                 {/* Title (only for top-level topics) */}
                 {level === 0 && (
                   <Link href={`/groups/${groupSlug}/topics/${topic.id}`}>
@@ -218,4 +231,3 @@ export function TopicThread({
     </div>
   )
 }
-

@@ -13,6 +13,7 @@ export interface User {
   joinedAt: string
   followers: string[]
   following: string[]
+  followingPets?: string[]
   privacy?: {
     profile: "public" | "private" | "followers-only"
     email: "public" | "private" | "followers-only"
@@ -24,6 +25,8 @@ export interface User {
     searchable: boolean
     allowFollowRequests: "public" | "followers-only"
     allowTagging: "public" | "followers-only" | "private"
+    secureMessages?: boolean
+    sections?: ProfileSectionPrivacy
   }
   blockedUsers?: string[] // User IDs that are blocked
   occupation?: string
@@ -62,6 +65,8 @@ export interface Pet {
   personality?: PersonalityTraits
   achievements?: Achievement[]
   friends?: string[] // Pet IDs
+  friendCategories?: FriendCategory[]
+  friendCategoryAssignments?: Record<string, string | null>
   favoriteThings?: FavoriteThings
   trainingProgress?: TrainingProgress[]
   vetInfo?: VetInfo
@@ -69,7 +74,111 @@ export interface Pet {
   adoptionDate?: string
   spayedNeutered?: boolean
   specialNeeds?: string
-  privacy?: "public" | "private" | "followers-only"
+  privacy?: PrivacyLevel | PetPrivacySettings
+  socialCircle?: PetSocialCircle
+}
+
+export type PetRelationshipType =
+  | "best-friend"
+  | "playmate"
+  | "mentor"
+  | "sibling"
+  | "neighbor"
+  | "adventure-buddy"
+  | "training-partner"
+  | "roommate"
+
+export type PetRelationshipStatus = "active" | "pending" | "requested" | "paused" | "retired"
+
+export interface PetRelationship {
+  id: string
+  petId: string
+  type: PetRelationshipType
+  status: PetRelationshipStatus
+  since?: string
+  compatibilityScore?: number
+  favoriteActivities?: string[]
+  story?: string
+  nextPlaydateId?: string
+  metDuring?: string
+  sharedAchievements?: string[]
+}
+
+export type PlaydateFocus = "social" | "training" | "wellness" | "games" | "relaxation"
+
+export interface PetVirtualPlaydate {
+  id: string
+  title: string
+  hostPetId: string
+  guestPetIds: string[]
+  scheduledAt: string
+  durationMinutes: number
+  platform: string
+  focus?: PlaydateFocus
+  activities?: string[]
+  status: "upcoming" | "completed" | "cancelled"
+  createdBy: string
+  highlights?: string[]
+  relationshipBoosts?: string[]
+  recordingUrl?: string
+  notes?: string
+}
+
+export interface PetPlaydateInvite {
+  id: string
+  playdateId: string
+  senderPetId: string
+  recipientPetId: string
+  status: "pending" | "accepted" | "declined" | "expired"
+  sentAt: string
+  message?: string
+}
+
+export interface SocialCircleHighlight {
+  id: string
+  date: string
+  title: string
+  description: string
+  icon?: string
+  relatedPetId?: string
+  relationshipType?: PetRelationshipType
+}
+
+export interface PetSocialCircleOverview {
+  totalFriends?: number
+  bestFriends?: number
+  playdateHours?: number
+  matchesThisMonth?: number
+}
+
+export interface PetSocialCircle {
+  overview?: PetSocialCircleOverview
+  relationships: PetRelationship[]
+  playdates: PetVirtualPlaydate[]
+  invites?: PetPlaydateInvite[]
+  highlights?: SocialCircleHighlight[]
+}
+
+export type FriendRequestStatus = "pending" | "accepted" | "declined" | "cancelled"
+
+export interface FriendRequest {
+  id: string
+  senderPetId: string
+  receiverPetId: string
+  status: FriendRequestStatus
+  createdAt: string
+  updatedAt?: string
+}
+
+export interface BlogPostMediaLink {
+  url: string
+  title?: string
+}
+
+export interface BlogPostMedia {
+  images: string[]
+  videos: string[]
+  links: BlogPostMediaLink[]
 }
 
 export interface BlogPost {
@@ -80,6 +189,7 @@ export interface BlogPost {
   content: string
   coverImage?: string
   tags: string[]
+  categories: string[]
   likes: string[] // Kept for backward compatibility
   reactions?: Record<ReactionType, string[]> // User IDs who reacted with each type
   createdAt: string
@@ -91,9 +201,86 @@ export interface BlogPost {
   promotedUntil?: string
   promotionStatus?: "pending" | "approved" | "rejected"
   promotionBudget?: number
+  media?: BlogPostMedia
 }
 
 export type ReactionType = "like" | "love" | "laugh" | "wow" | "sad" | "angry"
+
+export type PostAnalyticsPeriod = 7 | 30 | 90 | "lifetime"
+
+export interface PostEngagementBreakdown {
+  reactions: number
+  comments: number
+  shares: number
+  saves: number
+  linkClicks: number
+}
+
+export interface PostReactionBreakdown {
+  type: ReactionType
+  value: number
+}
+
+export interface PostDailyMetric {
+  date: string
+  views: number
+  impressions: number
+  engagements: number
+  reach: number
+}
+
+export interface PostAudienceSegment {
+  label: string
+  value: number
+}
+
+export interface PostTrafficSource {
+  source: string
+  value: number
+}
+
+export interface PostPerformanceTrend {
+  viewsChange: number
+  engagementsChange: number
+  reachChange: number
+}
+
+export interface PostAnalytics {
+  postId: string
+  period: PostAnalyticsPeriod
+  totalViews: number
+  totalImpressions: number
+  reach: number
+  uniqueViewers: number
+  totalEngagements: number
+  engagementRate: number
+  clickThroughRate: number
+  averageViewDuration: number
+  breakdown: PostEngagementBreakdown
+  reactionsByType: PostReactionBreakdown[]
+  dailyPerformance: PostDailyMetric[]
+  audienceSegments: PostAudienceSegment[]
+  trafficSources: PostTrafficSource[]
+  trend: PostPerformanceTrend
+}
+
+export type CommentStatus = "published" | "pending" | "hidden"
+
+export type CommentFlagReason = "spam" | "abuse" | "off-topic" | "other"
+
+export interface CommentFlag {
+  userId: string
+  reason: CommentFlagReason
+  message?: string
+  flaggedAt: string
+}
+
+export interface CommentModeration {
+  status: CommentStatus
+  updatedAt: string
+  updatedBy: string
+  note?: string
+}
 
 export interface Comment {
   id: string
@@ -106,6 +293,11 @@ export interface Comment {
   updatedAt?: string
   parentCommentId?: string // For replies
   reactions?: Record<ReactionType, string[]> // User IDs who reacted with each type
+  format?: "markdown" | "plaintext"
+  status?: CommentStatus
+  flags?: CommentFlag[]
+  moderation?: CommentModeration
+  editedBy?: string
 }
 
 export interface WikiArticle {
@@ -181,12 +373,25 @@ export interface PersonalityTraits {
   traits?: string[]
 }
 
+export type AchievementCategory =
+  | "milestone"
+  | "training"
+  | "competition"
+  | "service"
+  | "health"
+  | "community"
+  | "adventure"
+  | "social"
+  | "wellness"
+
 export interface Achievement {
   id: string
   title: string
   description: string
   icon: string
   earnedAt: string
+  type?: AchievementCategory
+  highlight?: boolean
 }
 
 export interface FavoriteThings {
@@ -194,6 +399,12 @@ export interface FavoriteThings {
   activities?: string[]
   places?: string[]
   foods?: string[]
+}
+
+export interface FriendCategory {
+  id: string
+  name: string
+  description?: string
 }
 
 export interface TrainingProgress {
@@ -222,34 +433,136 @@ export interface InsuranceInfo {
 
 export type PrivacyLevel = "public" | "private" | "followers-only"
 
+export interface PetPrivacySettings {
+  visibility: PrivacyLevel
+  interactions: PrivacyLevel
+}
+
+export type ProfileSection = "basics" | "statistics" | "friends" | "pets" | "activity"
+
+export interface ProfileSectionPrivacy {
+  basics: PrivacyLevel
+  statistics: PrivacyLevel
+  friends: PrivacyLevel
+  pets: PrivacyLevel
+  activity: PrivacyLevel
+}
+
+export type NotificationType =
+  | "follow"
+  | "like"
+  | "comment"
+  | "mention"
+  | "post"
+  | "friend_request"
+  | "friend_request_accepted"
+  | "friend_request_declined"
+  | "friend_request_cancelled"
+  | "message"
+
+export type NotificationPriority = "low" | "normal" | "high" | "urgent"
+
+export type NotificationCategory = "social" | "community" | "system" | "promotions" | "reminders"
+
+export type NotificationChannel = "in_app" | "email" | "push" | "digest"
+
+export interface NotificationAction {
+  id: string
+  label: string
+  action: "view" | "accept" | "decline" | "dismiss" | "custom"
+  targetUrl?: string
+  metadata?: Record<string, unknown>
+  requiresConfirmation?: boolean
+}
+
+export interface NotificationDeliveryStatus {
+  channel: NotificationChannel
+  status: "pending" | "scheduled" | "delivered" | "failed" | "skipped"
+  lastUpdatedAt: string
+  scheduledFor?: string
+  errorMessage?: string
+}
+
+export type NotificationHistoryEventType =
+  | "created"
+  | "delivered"
+  | "read"
+  | "deleted"
+  | "action"
+  | "batched"
+  | "digest_scheduled"
+
+export interface NotificationHistoryEntry {
+  id: string
+  notificationId: string
+  userId: string
+  type: NotificationHistoryEventType
+  timestamp: string
+  channel?: NotificationChannel
+  detail?: Record<string, unknown>
+}
+
 export interface Notification {
   id: string
   userId: string
-  type: "follow" | "like" | "comment" | "mention" | "post"
+  type: NotificationType
   actorId: string
   targetId: string
   targetType: "user" | "pet" | "post" | "wiki"
   message: string
   read: boolean
   createdAt: string
+  updatedAt?: string
+  priority?: NotificationPriority
+  category?: NotificationCategory
+  channels?: NotificationChannel[]
+  deliveries?: NotificationDeliveryStatus[]
+  batchKey?: string
+  batchCount?: number
+  digestScheduledFor?: string
+  actions?: NotificationAction[]
+  metadata?: Record<string, unknown>
+}
+
+export type NotificationFrequency = "real-time" | "hourly" | "daily" | "weekly"
+
+export interface NotificationChannelPreferences {
+  enabled: boolean
+  frequency: NotificationFrequency
+  categories: NotificationCategory[]
+  priorityThreshold: NotificationPriority
+}
+
+export interface NotificationTypePreference {
+  enabled: boolean
+  channels: NotificationChannel[]
+  priority?: NotificationPriority
+  muteUntil?: string
+}
+
+export interface NotificationDigestPreferences {
+  enabled: boolean
+  interval: "daily" | "weekly"
+  timeOfDay: string
+  categories: NotificationCategory[]
+  includeUnreadOnly: boolean
+}
+
+export interface NotificationQuietHours {
+  enabled: boolean
+  start: string
+  end: string
+  timezone: string
 }
 
 export interface NotificationSettings {
   userId: string
-  email: {
-    follows: boolean
-    likes: boolean
-    comments: boolean
-    mentions: boolean
-    posts: boolean
-  }
-  inApp: {
-    follows: boolean
-    likes: boolean
-    comments: boolean
-    mentions: boolean
-    posts: boolean
-  }
+  channelPreferences: Partial<Record<NotificationChannel, NotificationChannelPreferences>>
+  typePreferences: Partial<Record<NotificationType, NotificationTypePreference>>
+  digestSchedule: NotificationDigestPreferences
+  quietHours?: NotificationQuietHours
+  mutedCategories?: NotificationCategory[]
+  updatedAt: string
 }
 
 export interface Draft {
@@ -261,6 +574,23 @@ export interface Draft {
   metadata?: any
   lastSaved: string
   createdAt: string
+}
+
+export interface ScheduledPost {
+  id: string
+  userId: string
+  title: string
+  contentType: "blog" | "feed" | "story"
+  scheduledAt: string
+  status: "scheduled" | "published" | "missed" | "canceled"
+  targetAudience?: string
+  petId?: string
+  postId?: string
+  notes?: string
+  performanceScore?: number
+  recommendationReason?: string
+  createdAt: string
+  updatedAt: string
 }
 
 export interface Shelter {
@@ -316,4 +646,330 @@ export interface PromotedPost {
   createdAt: string
   reviewedBy?: string
   reviewNotes?: string
+}
+
+export type GroupType = "open" | "closed" | "secret"
+
+export type GroupContentVisibility = "everyone" | "members"
+
+export interface GroupVisibilitySettings {
+  discoverable: boolean
+  content: GroupContentVisibility
+}
+
+export interface GroupCategory {
+  id: string
+  name: string
+  slug: string
+  description?: string
+  color?: string
+  subcategories?: Array<{
+    id: string
+    name: string
+  }>
+}
+
+export interface Group {
+  id: string
+  name: string
+  slug: string
+  description: string
+  type: GroupType
+  categoryId: string
+  subcategoryId?: string
+  ownerId: string
+  coverImage?: string
+  avatar?: string
+  memberCount: number
+  topicCount: number
+  postCount: number
+  tags?: string[]
+  rules?: string[]
+  createdAt: string
+  updatedAt: string
+  isFeatured?: boolean
+  welcomeMessage?: string
+  visibility?: GroupVisibilitySettings
+}
+
+export type GroupMemberRole = "owner" | "admin" | "moderator" | "member"
+
+export interface GroupMember {
+  id: string
+  groupId: string
+  userId: string
+  role: GroupMemberRole
+  joinedAt: string
+  status?: "active" | "pending" | "banned"
+  permissions?: {
+    canPost?: boolean
+    canComment?: boolean
+    canCreateTopic?: boolean
+    canCreatePoll?: boolean
+    canCreateEvent?: boolean
+    canModerate?: boolean
+    canManageMembers?: boolean
+    canManageSettings?: boolean
+  }
+}
+
+export type GroupTopicStatus = "active" | "locked" | "archived"
+
+export interface GroupTopic {
+  id: string
+  groupId: string
+  authorId: string
+  title: string
+  content: string
+  parentTopicId?: string
+  isPinned?: boolean
+  isLocked?: boolean
+  status?: GroupTopicStatus
+  tags?: string[]
+  reactions?: Record<ReactionType, string[]>
+  lastActivityAt?: string
+  viewCount: number
+  commentCount: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface PollOption {
+  id: string
+  text: string
+  voteCount: number
+}
+
+export interface GroupPoll {
+  id: string
+  groupId: string
+  authorId: string
+  question: string
+  description?: string
+  options: PollOption[]
+  allowMultiple: boolean
+  voteCount: number
+  isClosed?: boolean
+  createdAt: string
+  updatedAt: string
+  expiresAt?: string
+}
+
+export interface PollVote {
+  id: string
+  pollId: string
+  userId: string
+  optionIds: string[]
+  votedAt: string
+}
+
+export type EventRSVPStatus = "going" | "maybe" | "not-going"
+
+export interface EventLocationShare {
+  latitude?: number
+  longitude?: number
+  accuracy?: number
+  label?: string
+  method?: "device" | "manual"
+  sharedAt: string
+}
+
+export interface EventRSVP {
+  id: string
+  eventId: string
+  userId: string
+  status: EventRSVPStatus
+  respondedAt: string
+  shareLocation?: boolean
+  locationShare?: EventLocationShare
+}
+
+export interface GroupEvent {
+  id: string
+  groupId: string
+  authorId: string
+  title: string
+  description: string
+  location?: string
+  startDate: string
+  endDate?: string
+  coverImage?: string
+  attendeeCount: number
+  maxAttendees?: number
+  tags?: string[]
+  isCancelled?: boolean
+  rsvpRequired?: boolean
+  meetingUrl?: string
+  address?: string
+  createdAt: string
+  updatedAt: string
+  locationSharingEnabled?: boolean
+  locationSharingDescription?: string
+}
+
+export interface GroupResource {
+  id: string
+  groupId: string
+  title: string
+  description?: string
+  url?: string
+  createdBy: string
+  createdAt: string
+  updatedAt: string
+  type?: "link" | "file" | "note"
+  tags?: string[]
+}
+
+export interface GroupActivity {
+  id: string
+  groupId: string
+  userId: string
+  type: "topic" | "comment" | "poll" | "event" | "resource" | "member"
+  targetId: string
+  metadata?: Record<string, any>
+  timestamp: string
+}
+
+export interface GroupWarning {
+  id: string
+  groupId: string
+  userId: string
+  issuedBy: string
+  level: 1 | 2 | 3
+  reason: string
+  notes?: string
+  createdAt: string
+}
+
+export interface GroupBan {
+  id: string
+  groupId: string
+  userId: string
+  bannedBy: string
+  reason?: string
+  expiresAt?: string
+  isActive: boolean
+  createdAt: string
+}
+
+export interface ModerationAction {
+  id: string
+  groupId: string
+  actionType:
+    | "warn"
+    | "ban"
+    | "unban"
+    | "approve_content"
+    | "reject_content"
+    | "delete_content"
+    | "remove_member"
+    | "other"
+  targetId?: string
+  targetType?: "user" | "topic" | "poll" | "event" | "resource" | "member" | "other"
+  performedBy: string
+  reason?: string
+  timestamp: string
+}
+
+export interface GroupMetrics {
+  totalMembers: number
+  newMembersThisWeek: number
+  newMembersThisMonth: number
+  activeMembers: number
+  inactiveMembers: number
+  totalTopics: number
+  topicsThisWeek: number
+  topicsThisMonth: number
+  totalComments: number
+  commentsThisWeek: number
+  commentsThisMonth: number
+  totalPolls: number
+  pollsThisWeek: number
+  pollsThisMonth: number
+  totalEvents: number
+  eventsThisWeek: number
+  eventsThisMonth: number
+  totalResources: number
+  resourcesThisWeek: number
+  resourcesThisMonth: number
+  pollParticipationRate: number
+  eventAttendanceRate: number
+  averagePollVotes: number
+  averageEventRSVPs: number
+  dailyActivity: Array<{
+    date: string
+    topics: number
+    comments: number
+    polls: number
+    events: number
+    resources: number
+    newMembers: number
+  }>
+  periodStart: string
+  periodEnd: string
+}
+
+export type MessageReadMap = Record<string, string | null>
+
+export type MessageAttachmentType = "image" | "video" | "document" | "link"
+
+export interface MessageAttachment {
+  id: string
+  type: MessageAttachmentType
+  name: string
+  size: number
+  mimeType: string
+  url: string
+  thumbnailUrl?: string
+}
+
+export type ConversationType = "direct" | "group" | "support" | "pet"
+
+export interface Conversation {
+  id: string
+  participantIds: string[]
+  createdAt: string
+  updatedAt: string
+  lastMessageId?: string
+  title?: string
+  tags?: string[]
+  snippet?: string
+  isArchived?: boolean
+  unreadCounts?: Record<string, number>
+  type?: ConversationType
+  petContext?: {
+    petId: string
+    name: string
+    avatar?: string
+  }
+  pinned?: boolean
+  muted?: boolean
+}
+
+export type MessageDeliveryStatus = "sent" | "delivered" | "read"
+
+export interface DirectMessage {
+  id: string
+  conversationId: string
+  senderId: string
+  content: string
+  createdAt: string
+  readAt: MessageReadMap
+  attachments?: MessageAttachment[]
+  status?: MessageDeliveryStatus
+  isSystem?: boolean
+}
+
+export interface ConversationTypingIndicator {
+  conversationId: string
+  userId: string
+  lastActiveAt: string
+}
+
+export interface MessageSearchResult {
+  conversationId: string
+  messageId: string
+  senderId: string
+  content: string
+  createdAt: string
 }

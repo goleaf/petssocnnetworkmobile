@@ -12,7 +12,8 @@ import { Heart, ArrowLeft, Edit2, Trash2, FileText, Lock } from "lucide-react"
 import Link from "next/link"
 import { formatDate } from "@/lib/utils/date"
 import { getPetUrlFromPet } from "@/lib/utils/pet-url"
-import { canViewUserPosts, canViewPost } from "@/lib/utils/privacy"
+import { canSendFollowRequest, canViewUserPosts, canViewPost } from "@/lib/utils/privacy"
+import { getPrivacyNotice } from "@/lib/utils/privacy-messages"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -63,6 +64,13 @@ export default function PostsPage({ params }: { params: Promise<{ username: stri
   const pets = getPets()
   const viewerId = currentUser?.id || null
   const canViewPosts = canViewUserPosts(user, viewerId)
+  const canFollow = canSendFollowRequest(user, viewerId)
+  const privacyMessage = getPrivacyNotice({
+    profileUser: user,
+    scope: "posts",
+    viewerId,
+    canRequestAccess: canFollow,
+  })
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
@@ -70,14 +78,16 @@ export default function PostsPage({ params }: { params: Promise<{ username: stri
 
       <div className="mb-6">
         <h1 className="text-3xl font-bold">{user.fullName}'s Posts</h1>
-        <p className="text-muted-foreground">{canViewPosts ? `${posts.length} ${posts.length === 1 ? "post" : "posts"}` : "Private"}</p>
+        <p className="text-muted-foreground">
+          {canViewPosts ? `${posts.length} ${posts.length === 1 ? "post" : "posts"}` : privacyMessage}
+        </p>
       </div>
 
       {!canViewPosts ? (
         <Card>
           <CardContent className="p-12 text-center space-y-4">
             <Lock className="h-12 w-12 mx-auto text-muted-foreground/50" />
-            <p className="text-muted-foreground">This user{"'"}s posts are private</p>
+            <p className="text-muted-foreground">{privacyMessage}</p>
           </CardContent>
         </Card>
       ) : posts.length > 0 ? (
@@ -166,4 +176,3 @@ export default function PostsPage({ params }: { params: Promise<{ username: stri
     </div>
   )
 }
-

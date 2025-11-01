@@ -65,6 +65,7 @@ export default function CreateGroupPage() {
         rules: formData.rules.length > 0 ? formData.rules : undefined,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
+        visibility: formData.visibility,
       }
 
       // Add group to storage
@@ -145,4 +146,3 @@ export default function CreateGroupPage() {
     </div>
   )
 }
-

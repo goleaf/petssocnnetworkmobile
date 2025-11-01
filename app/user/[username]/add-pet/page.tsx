@@ -29,6 +29,25 @@ export default function AddPetPage({ params }: { params: Promise<{ username: str
   const handleSubmit = async (formData: PetFormData) => {
     if (!user) return
 
+    const sanitizedAchievements = formData.achievements
+      .map((achievement) => {
+        const title = achievement.title.trim()
+        const description = achievement.description.trim()
+        const icon = achievement.icon?.trim() || "🏆"
+        const earnedAt = achievement.earnedAt || new Date().toISOString().split("T")[0]
+
+        return {
+          ...achievement,
+          title,
+          description,
+          icon,
+          earnedAt,
+          type: achievement.type || "milestone",
+          highlight: Boolean(achievement.highlight),
+        }
+      })
+      .filter((achievement) => achievement.title.length > 0)
+
     const newPet = {
       id: String(Date.now()),
       ownerId: user.id,
@@ -54,7 +73,12 @@ export default function AddPetPage({ params }: { params: Promise<{ username: str
       healthRecords: formData.healthRecords.length > 0 ? formData.healthRecords : undefined,
       vaccinations: formData.vaccinations.length > 0 ? formData.vaccinations : undefined,
       medications: formData.medications.length > 0 ? formData.medications : undefined,
+      achievements: sanitizedAchievements.length > 0 ? sanitizedAchievements : undefined,
       trainingProgress: formData.trainingProgress.length > 0 ? formData.trainingProgress : undefined,
+      privacy: {
+        visibility: formData.privacyVisibility,
+        interactions: formData.privacyInteractions,
+      },
       followers: [],
       slug: generatePetSlug(formData.name),
     }

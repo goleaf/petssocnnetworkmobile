@@ -26,6 +26,7 @@ describe('BlogPage', () => {
       tags: ['adventure', 'funny'],
       hashtags: ['#test'],
       coverImage: '/test1.jpg',
+      categories: ['Adventure'],
     },
     {
       id: '2',
@@ -38,6 +39,7 @@ describe('BlogPage', () => {
       tags: ['training', 'photo'],
       hashtags: ['#training'],
       coverImage: '/test2.jpg',
+      categories: ['Training'],
     },
   ]
 
@@ -47,8 +49,8 @@ describe('BlogPage', () => {
   ]
 
   const mockUsers = [
-    { id: 'user1', fullName: 'User 1' },
-    { id: 'user2', fullName: 'User 2' },
+    { id: 'user1', fullName: 'User 1', followers: [], following: [] },
+    { id: 'user2', fullName: 'User 2', followers: [], following: [] },
   ]
 
   beforeEach(() => {
@@ -119,7 +121,7 @@ describe('BlogPage', () => {
     render(<BlogPage />)
     
     await waitFor(() => {
-      expect(screen.getByText(/no blog posts found/i)).toBeInTheDocument()
+      expect(screen.getByText(/no posts in this category yet/i)).toBeInTheDocument()
     })
   })
 
@@ -186,6 +188,7 @@ describe('BlogPage', () => {
       tags: ['adventure'],
       hashtags: [],
       coverImage: undefined,
+      categories: ['Adventure'],
     }))
     
     ;(storage.getBlogPosts as jest.Mock).mockReturnValue(manyPosts)
@@ -214,7 +217,7 @@ describe('BlogPage', () => {
     expect(screen.queryByText(/my posts/i)).not.toBeInTheDocument()
   })
 
-  it('should show "My Posts" tab when user is authenticated', () => {
+  it('should show "My Posts" tab when user is authenticated', async () => {
     ;(auth.useAuth as jest.Mock).mockReturnValue({
       user: { id: 'user1', username: 'user1' },
       isAuthenticated: true,
@@ -222,7 +225,9 @@ describe('BlogPage', () => {
     
     render(<BlogPage />)
     
-    expect(screen.getByText(/my posts/i)).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.getByText(/my posts/i)).toBeInTheDocument()
+    })
   })
 
   it('should filter posts by current user in "My Posts" tab', async () => {
@@ -279,4 +284,3 @@ describe('BlogPage', () => {
     expect(createButton).toHaveAttribute('href', '/blog/create')
   })
 })
-

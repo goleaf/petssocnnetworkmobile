@@ -20,8 +20,8 @@ const privacyOptions = [
   },
   {
     value: "followers-only" as PrivacyLevel,
-    label: "Followers Only",
-    description: "Only your followers can see this",
+    label: "Friends Only",
+    description: "Only your friends can see this",
     icon: Users,
   },
   {

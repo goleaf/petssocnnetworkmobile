@@ -25,12 +25,7 @@ import { getUserByUsername, updateUser } from "@/lib/storage"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import type { User } from "@/lib/types"
 import { cn } from "@/lib/utils"
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
-import { library } from "@fortawesome/fontawesome-svg-core"
-import { getAnimalOptionsFA, ANIMAL_TYPES } from "@/lib/animal-types"
-
-// Register all FontAwesome icons from animal types
-library.add(...ANIMAL_TYPES.map((animal) => animal.faIcon))
+import { getAnimalOptions } from "@/lib/animal-types"
 import {
   Save,
   X,
@@ -201,8 +196,8 @@ export default function EditProfilePage({ params }: { params: Promise<{ username
   const fileInputRef = useRef<HTMLInputElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
-  // Animal options with FontAwesome icons and colors (from shared config)
-  const animalOptions = getAnimalOptionsFA()
+  // Animal options with Lucide icons and colors (from shared config)
+  const animalOptions = getAnimalOptions()
 
   // Minimum image dimensions for avatar
   const MIN_IMAGE_WIDTH = 200
@@ -1670,6 +1665,7 @@ export default function EditProfilePage({ params }: { params: Promise<{ username
                         {formData.favoriteAnimals.map((animal) => {
                           const animalConfig = animalOptions.find((opt) => opt.value === animal)
                           if (!animalConfig) return null
+                          const IconComponent = animalConfig.icon
                           return (
                             <Badge
                               key={animal}
@@ -1677,8 +1673,7 @@ export default function EditProfilePage({ params }: { params: Promise<{ username
                               className="px-3 py-2 flex items-center gap-2.5 text-sm font-medium shadow-sm"
                             >
                               <div className={cn("p-1.5 rounded-md", animalConfig.bgColor)}>
-                                <FontAwesomeIcon
-                                  icon={animalConfig.icon}
+                                <IconComponent
                                   className={cn("h-4 w-4", animalConfig.color)}
                                 />
                               </div>
@@ -1705,6 +1700,7 @@ export default function EditProfilePage({ params }: { params: Promise<{ username
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                       {animalOptions.map((animal) => {
                         const isSelected = formData.favoriteAnimals.includes(animal.value)
+                        const IconComponent = animal.icon
                         return (
                           <label
                             key={animal.value}
@@ -1735,8 +1731,7 @@ export default function EditProfilePage({ params }: { params: Promise<{ username
                               />
                             </div>
                             <div className={cn("p-4 rounded-xl transition-transform", animal.bgColor, isSelected && "scale-110")}>
-                              <FontAwesomeIcon
-                                icon={animal.icon}
+                              <IconComponent
                                 className={cn("h-8 w-8", animal.color)}
                               />
                             </div>

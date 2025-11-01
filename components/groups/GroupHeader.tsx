@@ -43,6 +43,7 @@ import {
   removeGroupMember,
   canUserManageSettings,
   getUserRoleInGroup,
+  getDefaultGroupVisibility,
 } from "@/lib/storage"
 import { useRouter } from "next/navigation"
 import { getAnimalConfigLucide } from "@/lib/animal-types"
@@ -90,6 +91,9 @@ export function GroupHeader({ group, onJoin, onLeave }: GroupHeaderProps) {
   const isMember = user ? isUserMemberOfGroup(group.id, user.id) : false
   const userRole = user ? getUserRoleInGroup(group.id, user.id) : null
   const canManage = user ? canUserManageSettings(group.id, user.id) : false
+  const visibility = group.visibility ?? getDefaultGroupVisibility(group.type)
+  const isContentMembersOnly = visibility.content === "members"
+  const isHiddenFromDiscovery = !visibility.discoverable && group.type !== "secret"
 
   // Generate placeholder images using free services
   const getCoverImage = () => {
@@ -232,8 +236,25 @@ export function GroupHeader({ group, onJoin, onLeave }: GroupHeaderProps) {
                         <span className="hidden sm:inline">{getTypeLabel()}</span>
                       </Badge>
                     )}
+                    {isContentMembersOnly && (
+                      <Badge variant="outline" className="gap-1 w-fit">
+                        <Lock className="h-3 w-3" />
+                        <span className="hidden sm:inline">Members-only content</span>
+                      </Badge>
+                    )}
+                    {isHiddenFromDiscovery && (
+                      <Badge variant="outline" className="gap-1 w-fit">
+                        <EyeOff className="h-3 w-3" />
+                        <span className="hidden sm:inline">Hidden from search</span>
+                      </Badge>
+                    )}
                   </div>
                   <p className="text-sm md:text-base text-muted-foreground">{group.description}</p>
+                  {!isMember && isContentMembersOnly && (
+                    <p className="text-xs md:text-sm text-muted-foreground mt-1">
+                      Join to unlock posts, topics, and resources in this group.
+                    </p>
+                  )}
                 </div>
 
                 {/* Actions */}
@@ -375,4 +396,3 @@ export function GroupHeader({ group, onJoin, onLeave }: GroupHeaderProps) {
     </div>
   )
 }
-

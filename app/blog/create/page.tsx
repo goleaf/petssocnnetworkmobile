@@ -14,26 +14,45 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
+import { MediaAttachmentsEditor } from "@/components/media-attachments-editor"
+import { TagInput } from "@/components/ui/tag-input"
 import { addBlogPost, getPetsByOwnerId } from "@/lib/storage"
-import type { BlogPost } from "@/lib/types"
-import { ArrowLeft, Save, Send, Trash2 } from "lucide-react"
+import type { BlogPost, BlogPostMedia, PrivacyLevel, Draft } from "@/lib/types"
+import { normalizeCategoryList } from "@/lib/utils/categories"
+import { Save } from "lucide-react"
 import Link from "next/link"
 import { MarkdownEditor } from "@/components/markdown-editor"
 import { PrivacySelector } from "@/components/privacy-selector"
 import { saveDraft, deleteDraft, getDraftsByUserId } from "@/lib/drafts"
-import type { PrivacyLevel, Draft } from "@/lib/types"
+
+type CreateBlogFormState = {
+  petId: string
+  title: string
+  content: string
+  tags: string
+  categories: string
+  privacy: PrivacyLevel
+  hashtags: string
+  media: BlogPostMedia
+}
 
 export default function CreateBlogPage() {
   const { user } = useAuth()
   const router = useRouter()
   const [myPets, setMyPets] = useState<any[]>([])
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<CreateBlogFormState>({
     petId: "",
     title: "",
     content: "",
     tags: "",
-    privacy: "public" as PrivacyLevel,
+    categories: "",
+    privacy: "public",
     hashtags: "",
+    media: {
+      images: [],
+      videos: [],
+      links: [],
+    },
   })
   const [draftId, setDraftId] = useState<string>("")
   const [lastSaved, setLastSaved] = useState<string>("")
@@ -70,8 +89,14 @@ export default function CreateBlogPage() {
         metadata: {
           petId: formData.petId,
           tags: formData.tags,
+          categories: formData.categories,
           privacy: formData.privacy,
           hashtags: formData.hashtags,
+          media: {
+            images: [...formData.media.images],
+            videos: [...formData.media.videos],
+            links: formData.media.links.map((link) => ({ ...link })),
+          },
         },
         lastSaved: new Date().toISOString(),
         createdAt: new Date().toISOString(),
@@ -95,6 +120,8 @@ export default function CreateBlogPage() {
       .filter((tag) => tag)
     const allHashtags = [...new Set([...contentHashtags, ...manualHashtags])]
 
+    const categories = normalizeCategoryList(formData.categories)
+
     const newPost: BlogPost = {
       id: String(Date.now()),
       petId: formData.petId,
@@ -105,11 +132,17 @@ export default function CreateBlogPage() {
         .split(",")
         .map((tag) => tag.trim())
         .filter((tag) => tag),
+      categories,
       likes: [],
       createdAt: new Date().toISOString().split("T")[0],
       updatedAt: new Date().toISOString().split("T")[0],
       privacy: formData.privacy,
       isDraft: false,
+      media: {
+        images: [...formData.media.images],
+        videos: [...formData.media.videos],
+        links: formData.media.links.map((link) => ({ ...link })),
+      },
       hashtags: allHashtags,
     }
 
@@ -121,13 +154,37 @@ export default function CreateBlogPage() {
   }
 
   const loadDraft = (draft: Draft) => {
+    const draftMedia = (draft.metadata?.media ?? {}) as Partial<BlogPostMedia>
+    const draftImages = Array.isArray(draftMedia.images)
+      ? draftMedia.images.filter((url): url is string => typeof url === "string" && url.trim().length > 0).map((url) => url.trim())
+      : []
+    const draftVideos = Array.isArray(draftMedia.videos)
+      ? draftMedia.videos.filter((url): url is string => typeof url === "string" && url.trim().length > 0).map((url) => url.trim())
+      : []
+    const draftLinks = Array.isArray(draftMedia.links)
+      ? draftMedia.links
+          .map((link) => {
+            if (!link || typeof link !== "object" || !("url" in link)) return null
+            const rawUrl = typeof (link as { url?: unknown }).url === "string" ? (link as { url: string }).url.trim() : ""
+            if (!rawUrl) return null
+            const rawTitle = typeof (link as { title?: unknown }).title === "string" ? (link as { title: string }).title.trim() : undefined
+            return rawTitle && rawTitle.length > 0 ? { url: rawUrl, title: rawTitle } : { url: rawUrl }
+          })
+          .filter((link): link is BlogPostMedia["links"][number] => link !== null)
+      : []
     setFormData({
       petId: draft.metadata?.petId || "",
       title: draft.title,
       content: draft.content,
       tags: draft.metadata?.tags || "",
+      categories: draft.metadata?.categories || "",
       privacy: draft.metadata?.privacy || "public",
       hashtags: draft.metadata?.hashtags || "",
+      media: {
+        images: draftImages,
+        videos: draftVideos,
+        links: draftLinks,
+      },
     })
     setDraftId(draft.id)
   }
@@ -272,6 +329,20 @@ export default function CreateBlogPage() {
             </div>
 
             <div className="space-y-2">
+              <Label htmlFor="categories" description="Create or select categories to organize your post">
+                Categories
+              </Label>
+              <TagInput
+                value={formData.categories}
+                onChange={(value) => setFormData({ ...formData, categories: value })}
+                placeholder="Adventure, Training, Funny"
+              />
+              <p className="text-xs text-muted-foreground">
+                Categories power the blog filters. Type a category and press Enter to add it.
+              </p>
+            </div>
+
+            <div className="space-y-2">
               <Label htmlFor="tags" description="Add tags separated by commas">
                 Tags
               </Label>
@@ -297,6 +368,25 @@ export default function CreateBlogPage() {
               />
             </div>
 
+            <div className="border-t pt-4">
+              <Label description="Optional photos, videos, and links to enrich your post.">
+                Rich Media Attachments
+              </Label>
+              <MediaAttachmentsEditor
+                className="mt-3"
+                media={formData.media}
+                onChange={(updatedMedia) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    media: {
+                      images: [...updatedMedia.images],
+                      videos: [...updatedMedia.videos],
+                      links: updatedMedia.links.map((link) => ({ ...link })),
+                    },
+                  }))
+                }
+              />
+            </div>
             <CreateButton type="submit" className="w-full" iconType="send">
               Publish Post
             </CreateButton>

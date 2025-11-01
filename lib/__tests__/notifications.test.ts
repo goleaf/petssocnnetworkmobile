@@ -10,6 +10,10 @@ import {
   createLikeNotification,
   createCommentNotification,
   createPostNotification,
+  getNotificationHistoryByUserId,
+  updateNotificationDeliveryStatus,
+  performNotificationAction,
+  generateFakeNotificationsForUser,
 } from '../notifications'
 import type { Notification } from '../types'
 
@@ -156,6 +160,31 @@ describe('notifications', () => {
       const notifications = getNotifications()
       expect(notifications.length).toBe(100)
     })
+
+    it('should default to in-app channel deliveries', () => {
+      addNotification(mockNotification)
+      const stored = getNotifications()[0]
+      expect(stored.channels).toContain('in_app')
+      expect(stored.deliveries?.[0]).toMatchObject({ channel: 'in_app', status: 'delivered' })
+    })
+
+    it('should track push delivery status updates', () => {
+      const pushNotification: Notification = {
+        ...mockNotification,
+        id: 'push-1',
+        channels: ['push'],
+        priority: 'high',
+      }
+
+      addNotification(pushNotification)
+
+      let stored = getNotifications()[0]
+      expect(stored.deliveries?.[0]).toMatchObject({ channel: 'push', status: 'pending' })
+
+      updateNotificationDeliveryStatus(stored.id, 'push', 'delivered')
+      stored = getNotifications()[0]
+      expect(stored.deliveries?.[0]).toMatchObject({ channel: 'push', status: 'delivered' })
+    })
   })
 
   describe('markAsRead', () => {
@@ -251,5 +280,71 @@ describe('notifications', () => {
       expect(notifications[0].message).toContain('published a new post')
     })
   })
-})
 
+  describe('batch processing', () => {
+    it('should merge notifications that share a batch key', () => {
+      const baseNotification: Notification = {
+        ...mockNotification,
+        id: 'batch-1',
+        type: 'like',
+        batchKey: 'like_post_1',
+        message: 'User A liked your post',
+        metadata: {
+          actorName: 'User A',
+          targetTitle: 'Morning Run',
+          targetTypeLabel: 'post',
+        },
+      }
+
+      const additionalNotification: Notification = {
+        ...baseNotification,
+        id: 'batch-2',
+        actorId: 'user3',
+        message: 'User B liked your post',
+        metadata: {
+          actorName: 'User B',
+          targetTitle: 'Morning Run',
+          targetTypeLabel: 'post',
+        },
+      }
+
+      addNotification(baseNotification)
+      addNotification(additionalNotification)
+
+      const stored = getNotifications()[0]
+      expect(stored.batchCount).toBe(2)
+      expect(stored.message.toLowerCase()).toContain('liked')
+      expect(Array.isArray(stored.metadata?.actorNames)).toBe(true)
+    })
+  })
+
+  describe('notification history', () => {
+    it('records creation and read events', () => {
+      addNotification(mockNotification)
+      markAsRead(mockNotification.id)
+
+      const history = getNotificationHistoryByUserId(mockNotification.userId)
+      expect(history.find((entry) => entry.type === 'created')).toBeTruthy()
+      expect(history.find((entry) => entry.type === 'read')).toBeTruthy()
+    })
+  })
+
+  describe('performNotificationAction', () => {
+    it('persists action metadata and logs history', () => {
+      addNotification(mockNotification)
+      const updated = performNotificationAction(mockNotification.id, mockNotification.userId, 'acknowledge')
+      expect(updated?.metadata?.lastActionTaken).toBe('acknowledge')
+
+      const history = getNotificationHistoryByUserId(mockNotification.userId)
+      expect(history.find((entry) => entry.type === 'action')).toBeTruthy()
+    })
+  })
+
+  describe('generateFakeNotificationsForUser', () => {
+    it('creates demo notifications for the specified user', () => {
+      generateFakeNotificationsForUser('demo-user')
+      const notifications = getNotificationsByUserId('demo-user')
+      expect(notifications.length).toBeGreaterThan(0)
+    })
+  })
+})

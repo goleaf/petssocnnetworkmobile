@@ -22,12 +22,17 @@ import {
   Menu,
   LogOut,
   User,
+  Users,
+  MessageCircle,
   PenSquare,
   Settings,
   Search,
   Home,
   Heart,
   TrendingUp,
+  Star,
+  GitBranch,
+  CalendarClock,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { NotificationsDropdown } from "@/components/notifications-dropdown"
@@ -46,12 +51,16 @@ export function Navigation() {
     ...(isAuthenticated
       ? [
           { href: "/", label: "Feed", icon: Home },
+          { href: "/friendship-network", label: "Network", icon: Users },
+          { href: "/messages", label: "Messages", icon: MessageCircle },
+          { href: "/favorites", label: "Favorites", icon: Star },
         ]
       : []),
     { href: "/blog", label: "Blogs", icon: FileText },
     { href: "/wiki", label: "Wiki", icon: BookOpen },
     { href: "/shelters", label: "Shelters", icon: Heart },
     { href: "/search", label: "Search", icon: Search },
+    { href: "/analytics/relationships", label: "Insights", icon: GitBranch },
   ]
 
   const handleLogout = () => {
@@ -101,6 +110,12 @@ export function Navigation() {
                     Promote
                   </Button>
                 </Link>
+                <Link href="/dashboard/schedule">
+                  <Button size="sm" variant="outline">
+                    <CalendarClock className="h-4 w-4 mr-2" />
+                    Schedule
+                  </Button>
+                </Link>
                 <NotificationsDropdown />
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -131,6 +146,12 @@ export function Navigation() {
                         Feed
                       </DropdownMenuItem>
                     </Link>
+                    <Link href="/messages">
+                      <DropdownMenuItem>
+                        <MessageCircle className="mr-2 h-4 w-4" />
+                        Messages
+                      </DropdownMenuItem>
+                    </Link>
                     <DropdownMenuSeparator />
                     <Link href="/shelters">
                       <DropdownMenuItem>
@@ -142,6 +163,12 @@ export function Navigation() {
                       <DropdownMenuItem>
                         <TrendingUp className="mr-2 h-4 w-4" />
                         Promote Posts
+                      </DropdownMenuItem>
+                    </Link>
+                    <Link href="/dashboard/schedule">
+                      <DropdownMenuItem>
+                        <CalendarClock className="mr-2 h-4 w-4" />
+                        Schedule Posts
                       </DropdownMenuItem>
                     </Link>
                     <DropdownMenuSeparator />
@@ -231,6 +258,12 @@ export function Navigation() {
                         <Button className="w-full justify-start">
                           <PenSquare className="h-4 w-4 mr-2" />
                           Write
+                        </Button>
+                      </Link>
+                      <Link href="/dashboard/schedule" onClick={() => setIsOpen(false)}>
+                        <Button variant="ghost" className="w-full justify-start">
+                          <CalendarClock className="h-4 w-4 mr-2" />
+                          Schedule Posts
                         </Button>
                       </Link>
                       <NotificationsDropdown />

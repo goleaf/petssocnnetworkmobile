@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useAuth } from "@/lib/auth"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -14,7 +14,9 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { addPet } from "@/lib/storage"
-import type { Pet } from "@/lib/types"
+import type { Pet, PrivacyLevel } from "@/lib/types"
+import { PrivacySelector } from "@/components/privacy-selector"
+import { calculateAge } from "@/lib/utils/date"
 import { ArrowLeft, Plus, PawPrint, Dog, Cat, Bird, Rabbit, Fish, CircleDot, User } from "lucide-react"
 import Link from "next/link"
 
@@ -28,27 +30,43 @@ export default function AddPetPage() {
     age: "",
     gender: "male" as Pet["gender"],
     bio: "",
+    privacyVisibility: "public" as PrivacyLevel,
+    privacyInteractions: "public" as PrivacyLevel,
     birthday: "",
     weight: "",
     color: "",
   })
 
+  useEffect(() => {
+    if (!formData.birthday) {
+      return
+    }
+    const computedAge = calculateAge(formData.birthday)
+    const nextAge = computedAge !== undefined ? computedAge.toString() : ""
+    setFormData((prev) => (prev.age === nextAge ? prev : { ...prev, age: nextAge }))
+  }, [formData.birthday])
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!user) return
 
+    const computedAge = formData.birthday ? calculateAge(formData.birthday) : undefined
     const newPet: Pet = {
       id: String(Date.now()),
       ownerId: user.id,
       name: formData.name,
       species: formData.species,
       breed: formData.breed || undefined,
-      age: formData.age ? Number.parseInt(formData.age) : undefined,
+      age: computedAge ?? (formData.age ? Number.parseInt(formData.age, 10) : undefined),
       gender: formData.gender,
       bio: formData.bio || undefined,
       birthday: formData.birthday || undefined,
       weight: formData.weight || undefined,
       color: formData.color || undefined,
+      privacy: {
+        visibility: formData.privacyVisibility,
+        interactions: formData.privacyInteractions,
+      },
       followers: [],
     }
 
@@ -225,8 +243,19 @@ export default function AddPetPage() {
                   type="number"
                   min="0"
                   value={formData.age}
-                  onChange={(e) => setFormData({ ...formData, age: e.target.value })}
+                  onChange={(e) => {
+                    if (!formData.birthday) {
+                      const value = e.target.value
+                      setFormData((prev) => ({ ...prev, age: value }))
+                    }
+                  }}
+                  readOnly={Boolean(formData.birthday)}
                 />
+                {formData.birthday && (
+                  <p className="text-xs text-muted-foreground">
+                    Age updates automatically from the selected birthday.
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -235,7 +264,14 @@ export default function AddPetPage() {
                   id="birthday"
                   type="date"
                   value={formData.birthday}
-                  onChange={(e) => setFormData({ ...formData, birthday: e.target.value })}
+                  onChange={(e) => {
+                    const value = e.target.value
+                    setFormData((prev) => ({
+                      ...prev,
+                      birthday: value,
+                      age: value ? prev.age : "",
+                    }))
+                  }}
                 />
               </div>
             </div>
@@ -260,6 +296,28 @@ export default function AddPetPage() {
                   placeholder="e.g., Golden, Black"
                 />
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <div className="text-sm font-medium">Profile Visibility</div>
+              <PrivacySelector
+                value={formData.privacyVisibility}
+                onChange={(value) => setFormData({ ...formData, privacyVisibility: value })}
+              />
+              <p className="text-xs text-muted-foreground">
+                Decide who can view this pet&apos;s profile and updates.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <div className="text-sm font-medium">Interaction Access</div>
+              <PrivacySelector
+                value={formData.privacyInteractions}
+                onChange={(value) => setFormData({ ...formData, privacyInteractions: value })}
+              />
+              <p className="text-xs text-muted-foreground">
+                Limit who can follow or engage with this pet.
+              </p>
             </div>
 
             <div className="space-y-2">

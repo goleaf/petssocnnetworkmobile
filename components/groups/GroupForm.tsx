@@ -10,9 +10,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { X, Lock, Eye, EyeOff, Loader2, AlertCircle, CheckCircle2, GraduationCap, Heart, HeartHandshake, UtensilsCrossed } from "lucide-react"
-import type { GroupType, GroupCategory } from "@/lib/types"
-import { getGroupCategories } from "@/lib/storage"
+import type { GroupType, GroupCategory, GroupVisibilitySettings, GroupContentVisibility } from "@/lib/types"
+import { getGroupCategories, getDefaultGroupVisibility } from "@/lib/storage"
 import { getAnimalConfigLucide } from "@/lib/animal-types"
+import { Switch } from "@/components/ui/switch"
 
 export interface GroupFormData {
   name: string
@@ -24,6 +25,7 @@ export interface GroupFormData {
   avatar?: string
   tags: string[]
   rules: string[]
+  visibility: GroupVisibilitySettings
 }
 
 interface GroupFormProps {
@@ -67,16 +69,33 @@ export function GroupForm({ onSubmit, onCancel, initialData, isLoading = false }
       setCategories(getGroupCategories())
     }
   }, [])
+
+  const initialType = initialData?.type || "open"
+
+  const resolveVisibility = (type: GroupType, visibility?: GroupVisibilitySettings): GroupVisibilitySettings => {
+    if (type === "secret") {
+      return { discoverable: false, content: "members" }
+    }
+    if (!visibility) {
+      return getDefaultGroupVisibility(type)
+    }
+    return {
+      discoverable: visibility.discoverable,
+      content: visibility.content,
+    }
+  }
+
   const [formData, setFormData] = useState<GroupFormData>({
     name: initialData?.name || "",
     description: initialData?.description || "",
-    type: initialData?.type || "open",
+    type: initialType,
     categoryId: initialData?.categoryId || "",
     subcategoryId: initialData?.subcategoryId,
     coverImage: initialData?.coverImage || "",
     avatar: initialData?.avatar || "",
     tags: initialData?.tags || [],
     rules: initialData?.rules || [],
+    visibility: resolveVisibility(initialType, initialData?.visibility),
   })
 
   const [newTag, setNewTag] = useState("")
@@ -128,10 +147,31 @@ export function GroupForm({ onSubmit, onCancel, initialData, isLoading = false }
       if (name === "categoryId" && value !== prev.categoryId) {
         updated.subcategoryId = undefined
       }
+      const nextType = updated.type
+      const shouldResetVisibility = name === "type"
+      updated.visibility = resolveVisibility(
+        nextType,
+        shouldResetVisibility ? undefined : updated.visibility,
+      )
       return updated
     })
     const error = validateField(name, value)
     setErrors((prev) => ({ ...prev, [name]: error }))
+    setMessage(null)
+  }
+
+  const handleVisibilityChange = <K extends keyof GroupVisibilitySettings>(
+    name: K,
+    value: GroupVisibilitySettings[K],
+  ) => {
+    setFormData((prev) => {
+      const current = resolveVisibility(prev.type, prev.visibility)
+      const updatedVisibility = resolveVisibility(prev.type, {
+        ...current,
+        [name]: value,
+      })
+      return { ...prev, visibility: updatedVisibility }
+    })
     setMessage(null)
   }
 
@@ -169,7 +209,14 @@ export function GroupForm({ onSubmit, onCancel, initialData, isLoading = false }
     // Validate all fields
     const newErrors: Record<string, string> = {}
     Object.keys(formData).forEach((key) => {
-      if (key !== "subcategoryId" && key !== "coverImage" && key !== "avatar" && key !== "tags" && key !== "rules") {
+      if (
+        key !== "subcategoryId" &&
+        key !== "coverImage" &&
+        key !== "avatar" &&
+        key !== "tags" &&
+        key !== "rules" &&
+        key !== "visibility"
+      ) {
         const error = validateField(key, formData[key as keyof typeof formData])
         if (error) {
           newErrors[key] = error
@@ -417,6 +464,78 @@ export function GroupForm({ onSubmit, onCancel, initialData, isLoading = false }
               URL to your group's avatar (recommended: 200x200px)
             </p>
           </div>
+      </CardContent>
+    </Card>
+
+      {/* Visibility */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Visibility &amp; Discovery</CardTitle>
+          <CardDescription>Control how people find this group and who can see its content</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+            <div className="space-y-1">
+              <Label>Discoverability</Label>
+              <p className="text-sm text-muted-foreground">
+                Show this group in search results and recommendations.
+              </p>
+              {formData.type === "secret" && (
+                <p className="text-xs text-muted-foreground">
+                  Secret groups are always hidden from discovery.
+                </p>
+              )}
+            </div>
+            <Switch
+              checked={formData.visibility.discoverable}
+              onCheckedChange={(checked) => handleVisibilityChange("discoverable", checked)}
+              disabled={isLoading || formData.type === "secret"}
+              aria-label="Toggle group discoverability"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Content Visibility</Label>
+            <Select
+              value={formData.visibility.content}
+              onValueChange={(value) =>
+                handleVisibilityChange("content", value as GroupContentVisibility)
+              }
+              disabled={isLoading || formData.type === "secret"}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select who can view content" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="everyone">
+                  <div className="flex flex-col">
+                    <span className="font-medium">Everyone</span>
+                    <span className="text-xs text-muted-foreground">
+                      Allow non-members to browse discussions before joining.
+                    </span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="members">
+                  <div className="flex flex-col">
+                    <span className="font-medium">Members only</span>
+                    <span className="text-xs text-muted-foreground">
+                      Require joining the group to view posts, topics, and resources.
+                    </span>
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+            {formData.type === "secret" && (
+              <p className="text-xs text-muted-foreground">
+                Content in secret groups is restricted to members.
+              </p>
+            )}
+            {formData.type !== "secret" && formData.visibility.content === "members" && (
+              <p className="text-xs text-muted-foreground">
+                Non-members will see a join prompt instead of full group content.
+              </p>
+            )}
+          </div>
         </CardContent>
       </Card>
 
@@ -527,4 +646,3 @@ export function GroupForm({ onSubmit, onCancel, initialData, isLoading = false }
     </form>
   )
 }
-

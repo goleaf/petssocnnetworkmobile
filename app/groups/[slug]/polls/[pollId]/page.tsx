@@ -12,6 +12,7 @@ import {
   getGroupBySlug,
   getGroupPollById,
   canUserViewGroup,
+  canUserViewGroupContent,
   deleteGroupPoll,
   canUserModerate,
 } from "@/lib/storage"
@@ -64,6 +65,16 @@ export default function GroupPollPage({
         router.push("/groups")
         return
       }
+    }
+
+    const canViewContent = isAuthenticated && user
+      ? canUserViewGroupContent(foundGroup.id, user.id)
+      : canUserViewGroupContent(foundGroup.id)
+
+    if (!canViewContent) {
+      setIsLoading(false)
+      router.push(`/groups/${foundGroup.slug}`)
+      return
     }
 
     setGroup(foundGroup)
@@ -175,4 +186,3 @@ export default function GroupPollPage({
     </div>
   )
 }
-

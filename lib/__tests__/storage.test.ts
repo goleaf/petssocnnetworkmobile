@@ -7,6 +7,10 @@ import {
   getUserById,
   updateUser,
   toggleFollow,
+  blockUser,
+  unblockUser,
+  areUsersBlocked,
+  togglePetFollow,
   getPets,
   getPetById,
   getPetsByOwnerId,
@@ -20,14 +24,26 @@ import {
   getComments,
   getCommentsByPostId,
   addComment,
+  flagComment,
+  clearCommentFlag,
+  moderateComment,
   getWikiArticles,
   getWikiArticleBySlug,
   getWikiArticlesByCategory,
   updateWikiArticle,
   getActivities,
   addActivity,
+  sendFriendRequest,
+  acceptFriendRequest,
+  declineFriendRequest,
+  cancelFriendRequest,
+  getFriendRequests,
+  removePetFriendship,
+  getGroupTopicsByGroupId,
+  getGroupTopicById,
+  addGroupTopic,
 } from '../storage'
-import type { User, Pet, BlogPost, Comment, WikiArticle, Activity } from '../types'
+import type { User, Pet, BlogPost, Comment, WikiArticle, Activity, GroupTopic } from '../types'
 
 // Mock localStorage with Jest-compatible methods
 const createLocalStorageMock = () => {
@@ -157,6 +173,28 @@ describe('storage', () => {
       expect(user1Unfollow?.following).not.toContain('2')
       expect(user2Unfollow?.followers).not.toContain('1')
     })
+
+    it('should report when users are blocked', () => {
+      const user2: User = {
+        id: '2',
+        email: 'user2@example.com',
+        username: 'user2',
+        fullName: 'User 2',
+        joinedAt: '2024-01-01',
+        followers: [],
+        following: [],
+      }
+      localStorage.setItem('pet_social_users', JSON.stringify([mockUser, user2]))
+
+      expect(areUsersBlocked('1', '2')).toBe(false)
+
+      blockUser('1', '2')
+      expect(areUsersBlocked('1', '2')).toBe(true)
+      expect(areUsersBlocked('2', '1')).toBe(true)
+
+      unblockUser('1', '2')
+      expect(areUsersBlocked('1', '2')).toBe(false)
+    })
   })
 
   describe('Pet operations', () => {
@@ -221,6 +259,182 @@ describe('storage', () => {
     })
   })
 
+  describe('Follow operations', () => {
+    it('should toggle pet follow relationship', () => {
+      const follower: User = {
+        id: '1',
+        email: 'follower@example.com',
+        username: 'follower',
+        fullName: 'Follower User',
+        joinedAt: '2024-01-01',
+        followers: [],
+        following: [],
+        followingPets: [],
+      }
+      const owner: User = {
+        id: 'owner1',
+        email: 'owner@example.com',
+        username: 'owner',
+        fullName: 'Owner User',
+        joinedAt: '2024-01-01',
+        followers: [],
+        following: [],
+        followingPets: [],
+      }
+      localStorage.setItem('pet_social_users', JSON.stringify([follower, owner]))
+
+      const pet: Pet = {
+        id: 'pet1',
+        ownerId: 'owner1',
+        name: 'Buddy',
+        species: 'dog',
+        followers: [],
+      }
+      localStorage.setItem('pet_social_pets', JSON.stringify([pet]))
+
+      togglePetFollow('1', 'pet1')
+      const updatedUser = getUserById('1')
+      const updatedPet = getPetById('pet1')
+      expect(updatedUser?.followingPets).toContain('pet1')
+      expect(updatedPet?.followers).toContain('1')
+
+      togglePetFollow('1', 'pet1')
+      const userAfterUnfollow = getUserById('1')
+      const petAfterUnfollow = getPetById('pet1')
+      expect(userAfterUnfollow?.followingPets).not.toContain('pet1')
+      expect(petAfterUnfollow?.followers).not.toContain('1')
+    })
+
+    it('should prevent following a pet when owner blocks the user', () => {
+      const follower: User = {
+        id: '1',
+        email: 'follower@example.com',
+        username: 'follower',
+        fullName: 'Follower User',
+        joinedAt: '2024-01-01',
+        followers: [],
+        following: [],
+        followingPets: [],
+      }
+      const owner: User = {
+        id: 'owner1',
+        email: 'owner@example.com',
+        username: 'owner',
+        fullName: 'Owner User',
+        joinedAt: '2024-01-01',
+        followers: [],
+        following: [],
+        followingPets: [],
+        blockedUsers: ['1'],
+      }
+      localStorage.setItem('pet_social_users', JSON.stringify([follower, owner]))
+
+      const pet: Pet = {
+        id: 'pet1',
+        ownerId: 'owner1',
+        name: 'Buddy',
+        species: 'dog',
+        followers: [],
+      }
+      localStorage.setItem('pet_social_pets', JSON.stringify([pet]))
+
+      togglePetFollow('1', 'pet1')
+      const updatedUser = getUserById('1')
+      const updatedPet = getPetById('pet1')
+      expect(updatedUser?.followingPets).not.toContain('pet1')
+      expect(updatedPet?.followers).not.toContain('1')
+    })
+  })
+
+  describe('Friend request operations', () => {
+    const petA: Pet = {
+      id: 'pet1',
+      ownerId: 'user1',
+      name: 'Rex',
+      species: 'dog',
+      followers: [],
+      friends: [],
+    }
+
+    const petB: Pet = {
+      id: 'pet2',
+      ownerId: 'user2',
+      name: 'Mittens',
+      species: 'cat',
+      followers: [],
+      friends: [],
+    }
+
+    beforeEach(() => {
+      localStorage.setItem('pet_social_pets', JSON.stringify([petA, petB]))
+      localStorage.setItem('pet_social_friend_requests', JSON.stringify([]))
+    })
+
+    it('should create a pending friend request', () => {
+      const result = sendFriendRequest('pet1', 'pet2')
+      expect(result.success).toBe(true)
+      const requests = getFriendRequests()
+      expect(requests).toHaveLength(1)
+      expect(requests[0].status).toBe('pending')
+      expect(requests[0].senderPetId).toBe('pet1')
+      expect(requests[0].receiverPetId).toBe('pet2')
+    })
+
+    it('should accept a friend request and add friendship', () => {
+      const { request } = sendFriendRequest('pet1', 'pet2')
+      expect(request).toBeDefined()
+      const acceptResult = acceptFriendRequest(request!.id, 'pet2')
+      expect(acceptResult.success).toBe(true)
+
+      const updatedPetA = getPetById('pet1')
+      const updatedPetB = getPetById('pet2')
+
+      expect(updatedPetA?.friends).toContain('pet2')
+      expect(updatedPetB?.friends).toContain('pet1')
+      const storedRequest = getFriendRequests().find((r) => r.id === request!.id)
+      expect(storedRequest?.status).toBe('accepted')
+    })
+
+    it('should decline a friend request without adding friendship', () => {
+      const { request } = sendFriendRequest('pet1', 'pet2')
+      expect(request).toBeDefined()
+      const declineResult = declineFriendRequest(request!.id, 'pet2')
+      expect(declineResult.success).toBe(true)
+
+      const updatedPetA = getPetById('pet1')
+      const updatedPetB = getPetById('pet2')
+
+      expect(updatedPetA?.friends).not.toContain('pet2')
+      expect(updatedPetB?.friends).not.toContain('pet1')
+      const storedRequest = getFriendRequests().find((r) => r.id === request!.id)
+      expect(storedRequest?.status).toBe('declined')
+    })
+
+    it('should cancel a sent friend request', () => {
+      const { request } = sendFriendRequest('pet1', 'pet2')
+      expect(request).toBeDefined()
+      const cancelResult = cancelFriendRequest(request!.id, 'pet1')
+      expect(cancelResult.success).toBe(true)
+      const storedRequest = getFriendRequests().find((r) => r.id === request!.id)
+      expect(storedRequest?.status).toBe('cancelled')
+    })
+
+    it('should remove an existing friendship between pets', () => {
+      const { request } = sendFriendRequest('pet1', 'pet2')
+      expect(request).toBeDefined()
+      expect(acceptFriendRequest(request!.id, 'pet2').success).toBe(true)
+
+      const removalResult = removePetFriendship('pet1', 'pet2')
+      expect(removalResult.success).toBe(true)
+
+      const updatedPetA = getPetById('pet1')
+      const updatedPetB = getPetById('pet2')
+
+      expect(updatedPetA?.friends).not.toContain('pet2')
+      expect(updatedPetB?.friends).not.toContain('pet1')
+    })
+  })
+
   describe('Blog post operations', () => {
     const mockPost: BlogPost = {
       id: '1',
@@ -229,6 +443,7 @@ describe('storage', () => {
       title: 'Test Post',
       content: 'Test content',
       tags: ['test'],
+      categories: ['Testing'],
       likes: [],
       createdAt: '2024-01-01',
       updatedAt: '2024-01-01',
@@ -269,6 +484,7 @@ describe('storage', () => {
         title: 'New Post',
         content: 'New content',
         tags: ['new'],
+        categories: ['General'],
         likes: [],
         createdAt: '2024-01-02',
         updatedAt: '2024-01-02',
@@ -297,12 +513,28 @@ describe('storage', () => {
 
     beforeEach(() => {
       localStorage.setItem('pet_social_comments', JSON.stringify([mockComment]))
+      const mockPost: BlogPost = {
+        id: 'post1',
+        petId: 'pet1',
+        authorId: 'user1',
+        title: 'Test Post',
+        content: 'Post content',
+        tags: [],
+        categories: ['General'],
+        likes: [],
+        createdAt: '2024-01-01',
+        updatedAt: '2024-01-01',
+      }
+      localStorage.setItem('pet_social_blog_posts', JSON.stringify([mockPost]))
     })
 
     it('should get all comments', () => {
       const comments = getComments()
       expect(comments).toHaveLength(1)
       expect(comments[0].content).toBe('Test comment')
+      expect(comments[0].format).toBe('markdown')
+      expect(comments[0].status).toBe('published')
+      expect(comments[0].flags).toEqual([])
     })
 
     it('should get comments by post id', () => {
@@ -327,6 +559,44 @@ describe('storage', () => {
       addComment(newComment)
       const comments = getComments()
       expect(comments).toHaveLength(2)
+      const added = comments.find((comment) => comment.id === '2')
+      expect(added?.format).toBe('markdown')
+      expect(added?.status).toBe('published')
+    })
+
+    it('should flag comment and auto-pend after reaching threshold', () => {
+      flagComment('1', 'user2', 'spam')
+      flagComment('1', 'user3', 'abuse')
+      let comment = getComments().find((c) => c.id === '1')
+      expect(comment?.flags).toHaveLength(2)
+      expect(comment?.status).toBe('published')
+
+      flagComment('1', 'user4', 'off-topic')
+      comment = getComments().find((c) => c.id === '1')
+      expect(comment?.flags).toHaveLength(3)
+      expect(comment?.status).toBe('pending')
+    })
+
+    it('should clear individual comment flags', () => {
+      flagComment('1', 'user2', 'spam')
+      flagComment('1', 'user3', 'abuse')
+      clearCommentFlag('1', 'user2')
+      const comment = getComments().find((c) => c.id === '1')
+      expect(comment?.flags?.some((flag) => flag.userId === 'user2')).toBe(false)
+      expect(comment?.flags).toHaveLength(1)
+    })
+
+    it('should allow moderators to update comment status and notes', () => {
+      flagComment('1', 'user2', 'spam')
+      const hidden = moderateComment('1', 'hidden', 'moderator-1', 'Inappropriate language')
+      expect(hidden?.status).toBe('hidden')
+      expect(hidden?.moderation?.note).toBe('Inappropriate language')
+      expect(hidden?.moderation?.updatedBy).toBe('moderator-1')
+      expect(hidden?.flags).toHaveLength(1)
+
+      const restored = moderateComment('1', 'published', 'moderator-1', undefined, { clearFlags: true })
+      expect(restored?.status).toBe('published')
+      expect(restored?.flags).toEqual([])
     })
   })
 
@@ -378,6 +648,44 @@ describe('storage', () => {
     })
   })
 
+  describe('Group topic operations', () => {
+    beforeEach(() => {
+      initializeStorage()
+    })
+
+    it('should expose tags and status for default topics', () => {
+      const topics = getGroupTopicsByGroupId('group-1')
+      const topic = topics.find((item) => item.id === 'topic-1')
+      expect(topic).toBeDefined()
+      expect(topic?.status).toBe('active')
+      expect(topic?.tags).toEqual(expect.arrayContaining(['outdoors', 'swimming']))
+      expect(topic?.lastActivityAt).toBeDefined()
+    })
+
+    it('should normalize tags and default status when adding a topic', () => {
+      const timestamp = new Date('2024-07-01T10:00:00.000Z').toISOString()
+      const newTopic: GroupTopic = {
+        id: 'topic-test',
+        groupId: 'group-1',
+        authorId: '1',
+        title: 'Summer training plans',
+        content: 'Share routines for hot weather.',
+        tags: [' Training ', 'training', 'Heat Safety', ''],
+        viewCount: 0,
+        commentCount: 0,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      }
+
+      addGroupTopic(newTopic)
+      const saved = getGroupTopicById('topic-test')
+      expect(saved).toBeDefined()
+      expect(saved?.status).toBe('active')
+      expect(saved?.tags).toEqual(['Training', 'Heat Safety'])
+      expect(saved?.lastActivityAt).toBe(timestamp)
+    })
+  })
+
   describe('Activity operations', () => {
     const mockActivity: Activity = {
       id: '1',
@@ -408,9 +716,153 @@ describe('storage', () => {
         createdAt: '2024-01-02',
       }
       addActivity(newActivity)
-      const activities = getActivities()
-      expect(activities).toHaveLength(2)
-      expect(activities[0].id).toBe('2') // Should be unshifted
+    const activities = getActivities()
+    expect(activities).toHaveLength(2)
+    expect(activities[0].id).toBe('2') // Should be unshifted
+  })
+  })
+
+  describe('Blocking interactions', () => {
+    it('removes likes, reactions, and comments when a user is blocked', () => {
+      const userA: User = {
+        id: 'a',
+        email: 'a@example.com',
+        username: 'userA',
+        fullName: 'User A',
+        joinedAt: '2024-01-01',
+        followers: [],
+        following: [],
+      }
+      const userB: User = {
+        id: 'b',
+        email: 'b@example.com',
+        username: 'userB',
+        fullName: 'User B',
+        joinedAt: '2024-01-01',
+        followers: [],
+        following: [],
+      }
+
+      localStorage.setItem('pet_social_users', JSON.stringify([userA, userB]))
+      localStorage.setItem('pet_social_pets', JSON.stringify([]))
+      localStorage.setItem('pet_social_wiki_articles', JSON.stringify([]))
+
+      const post = {
+        id: 'post-1',
+        petId: 'pet-1',
+        authorId: 'b',
+        title: 'Post Title',
+        content: 'Content',
+        tags: [],
+        likes: ['a'],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        reactions: {
+          like: ['a'],
+          love: [],
+          laugh: [],
+          wow: [],
+          sad: [],
+          angry: [],
+        },
+      }
+      localStorage.setItem('pet_social_blog_posts', JSON.stringify([post]))
+
+      const comment = {
+        id: 'comment-1',
+        postId: 'post-1',
+        userId: 'a',
+        content: 'Nice pet!',
+        createdAt: new Date().toISOString(),
+        reactions: {
+          like: ['b'],
+          love: [],
+          laugh: [],
+          wow: [],
+          sad: [],
+          angry: [],
+        },
+      }
+      localStorage.setItem('pet_social_comments', JSON.stringify([comment]))
+
+      blockUser('b', 'a')
+
+      const postsAfter = getBlogPosts()
+      expect(postsAfter[0].likes).not.toContain('a')
+      expect(postsAfter[0].reactions?.like).not.toContain('a')
+
+      const commentsAfter = getComments()
+      expect(commentsAfter).toHaveLength(0)
+    })
+
+    it('prevents blocked users from adding comments to a post', () => {
+      const userA: User = {
+        id: 'a',
+        email: 'a@example.com',
+        username: 'userA',
+        fullName: 'User A',
+        joinedAt: '2024-01-01',
+        followers: [],
+        following: [],
+      }
+      const userB: User = {
+        id: 'b',
+        email: 'b@example.com',
+        username: 'userB',
+        fullName: 'User B',
+        joinedAt: '2024-01-01',
+        followers: [],
+        following: [],
+      }
+
+      localStorage.setItem('pet_social_users', JSON.stringify([userA, userB]))
+      localStorage.setItem(
+        'pet_social_blog_posts',
+        JSON.stringify([
+          {
+            id: 'post-1',
+            petId: 'pet-1',
+            authorId: 'b',
+            title: 'Post Title',
+            content: 'Content',
+            tags: [],
+            likes: [],
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            reactions: {
+              like: [],
+              love: [],
+              laugh: [],
+              wow: [],
+              sad: [],
+              angry: [],
+            },
+          },
+        ]),
+      )
+      localStorage.setItem('pet_social_comments', JSON.stringify([]))
+      localStorage.setItem('pet_social_pets', JSON.stringify([]))
+      localStorage.setItem('pet_social_wiki_articles', JSON.stringify([]))
+
+      blockUser('b', 'a')
+
+      addComment({
+        id: 'comment-1',
+        postId: 'post-1',
+        userId: 'a',
+        content: 'Blocked comment',
+        createdAt: new Date().toISOString(),
+        reactions: {
+          like: [],
+          love: [],
+          laugh: [],
+          wow: [],
+          sad: [],
+          angry: [],
+        },
+      })
+
+      expect(getCommentsByPostId('post-1')).toHaveLength(0)
     })
   })
 
@@ -432,4 +884,3 @@ describe('storage', () => {
     })
   })
 })
-

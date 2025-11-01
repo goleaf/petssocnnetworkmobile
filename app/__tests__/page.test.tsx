@@ -3,6 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import HomePage from '../page'
 import * as storage from '@/lib/storage'
 import { useAuth } from '@/lib/auth'
+import { getFriendSuggestions } from '@/lib/friend-suggestions'
 
 // Mock next/navigation
 jest.mock('next/navigation', () => ({
@@ -26,6 +27,9 @@ jest.mock('@/lib/storage', () => ({
   getPetsByOwnerId: jest.fn(),
 }))
 
+jest.mock('@/lib/friend-suggestions', () => ({
+  getFriendSuggestions: jest.fn(),
+}))
 // Mock DashboardContent
 jest.mock('../dashboard-content', () => ({
   __esModule: true,
@@ -56,6 +60,7 @@ describe('HomePage', () => {
     ;(storage.getPets as jest.Mock).mockReturnValue([])
     ;(storage.getUsers as jest.Mock).mockReturnValue([])
     ;(storage.getPetsByOwnerId as jest.Mock).mockReturnValue([])
+    ;(getFriendSuggestions as jest.Mock).mockReturnValue([])
   })
 
   it('should render landing page when user is not authenticated', () => {
@@ -66,20 +71,10 @@ describe('HomePage', () => {
 
     render(<HomePage />)
     expect(screen.getByText(/connect, share, and learn about your pets/i)).toBeInTheDocument()
+    expect(screen.getByText(/message privacy/i)).toBeInTheDocument()
   })
 
-  it('should redirect authenticated users to feed', async () => {
-    const mockPush = jest.fn()
-    const mockRouter = {
-      push: mockPush,
-      replace: jest.fn(),
-      prefetch: jest.fn(),
-    }
-    
-    jest.mock('next/navigation', () => ({
-      useRouter: () => mockRouter,
-    }))
-    
+  it('should render feed when user is authenticated', async () => {
     ;(useAuth as jest.Mock).mockReturnValue({
       user: mockUser,
       isAuthenticated: true,
@@ -88,16 +83,127 @@ describe('HomePage', () => {
     ;(storage.getUsers as jest.Mock).mockReturnValue([mockUser])
     ;(storage.getPets as jest.Mock).mockReturnValue([])
     ;(storage.getBlogPosts as jest.Mock).mockReturnValue([])
+    ;(storage.getPetsByOwnerId as jest.Mock).mockReturnValue([])
 
     render(<HomePage />)
     
-    // Wait for redirect to be called
+    // Wait for authenticated feed to render
     await waitFor(() => {
-      // Since the page redirects authenticated users to /feed via useEffect,
-      // we can't test the dashboard rendering here
-      // Instead, we verify the component handles authenticated state
-      expect(screen.queryByText(/connect, share, and learn/i)).not.toBeInTheDocument()
-    }, { timeout: 3000 })
+      expect(screen.getByText(/welcome back, test user/i)).toBeInTheDocument()
+      expect(screen.getByText(/feed/i)).toBeInTheDocument()
+    }, { timeout: 2000 })
+  })
+
+  it('should display user stats when authenticated', async () => {
+    const userWithStats = {
+      ...mockUser,
+      following: ['2', '3'],
+      followers: ['4', '5', '6'],
+    }
+    
+    ;(useAuth as jest.Mock).mockReturnValue({
+      user: userWithStats,
+      isAuthenticated: true,
+    })
+    
+    ;(storage.getUsers as jest.Mock).mockReturnValue([userWithStats])
+    ;(storage.getPets as jest.Mock).mockReturnValue([
+      { id: '1', name: 'Fluffy', ownerId: userWithStats.id },
+    ])
+    ;(storage.getBlogPosts as jest.Mock).mockReturnValue([
+      { id: '1', title: 'Post 1', authorId: userWithStats.id, likes: [], tags: [] },
+    ])
+    ;(storage.getPetsByOwnerId as jest.Mock).mockReturnValue([
+      { id: '1', name: 'Fluffy', ownerId: userWithStats.id, followers: [] },
+    ])
+
+    render(<HomePage />)
+    
+    await waitFor(() => {
+      expect(screen.getByText('My Pets')).toBeInTheDocument()
+      // Use getAllByText since "Following" appears in multiple places
+      const followingElements = screen.getAllByText('Following')
+      expect(followingElements.length).toBeGreaterThan(0)
+      expect(screen.getByText('Followers')).toBeInTheDocument()
+      expect(screen.getByText('Total Posts')).toBeInTheDocument()
+    }, { timeout: 2000 })
+  })
+
+  it('should display trending posts section when authenticated', async () => {
+    ;(useAuth as jest.Mock).mockReturnValue({
+      user: mockUser,
+      isAuthenticated: true,
+    })
+    
+    ;(storage.getUsers as jest.Mock).mockReturnValue([mockUser])
+    ;(storage.getPets as jest.Mock).mockReturnValue([])
+    ;(storage.getBlogPosts as jest.Mock).mockReturnValue([])
+    ;(storage.getPetsByOwnerId as jest.Mock).mockReturnValue([])
+
+    render(<HomePage />)
+    
+    await waitFor(() => {
+      // Use getAllByText since "Trending Posts" appears in header and potentially in content
+      const trendingElements = screen.getAllByText(/trending posts/i)
+      expect(trendingElements.length).toBeGreaterThan(0)
+      // Also verify the description is present
+      expect(screen.getByText(/most popular posts from the community/i)).toBeInTheDocument()
+    }, { timeout: 2000 })
+  })
+
+  it('should display suggested users section when authenticated', async () => {
+    const otherUser = {
+      id: '2',
+      email: 'other@example.com',
+      username: 'otheruser',
+      fullName: 'Other User',
+      joinedAt: '2024-01-01',
+      followers: [],
+      following: [],
+    }
+    
+    ;(useAuth as jest.Mock).mockReturnValue({
+      user: mockUser,
+      isAuthenticated: true,
+    })
+    
+    ;(storage.getUsers as jest.Mock).mockReturnValue([mockUser, otherUser])
+    ;(storage.getPets as jest.Mock).mockReturnValue([])
+    ;(storage.getBlogPosts as jest.Mock).mockReturnValue([])
+    ;(storage.getPetsByOwnerId as jest.Mock).mockReturnValue([])
+    ;(getFriendSuggestions as jest.Mock).mockReturnValue([
+      {
+        user: otherUser,
+        score: 42,
+        reasons: ['Test reason'],
+      },
+    ])
+
+    render(<HomePage />)
+    
+    await waitFor(() => {
+      expect(screen.getByText(/suggested users/i)).toBeInTheDocument()
+    }, { timeout: 2000 })
+  })
+
+  it('should display quick links section when authenticated', async () => {
+    ;(useAuth as jest.Mock).mockReturnValue({
+      user: mockUser,
+      isAuthenticated: true,
+    })
+    
+    ;(storage.getUsers as jest.Mock).mockReturnValue([mockUser])
+    ;(storage.getPets as jest.Mock).mockReturnValue([])
+    ;(storage.getBlogPosts as jest.Mock).mockReturnValue([])
+    ;(storage.getPetsByOwnerId as jest.Mock).mockReturnValue([])
+
+    render(<HomePage />)
+    
+    await waitFor(() => {
+      expect(screen.getByText(/quick links/i)).toBeInTheDocument()
+      expect(screen.getByText(/browse all blogs/i)).toBeInTheDocument()
+      expect(screen.getByText(/pet care wiki/i)).toBeInTheDocument()
+    }, { timeout: 2000 })
   })
 
   it('should display login form on landing page', () => {
@@ -162,4 +268,3 @@ describe('HomePage', () => {
     expect(screen.getByText(/get started free/i)).toBeInTheDocument()
   })
 })
-

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, use } from "react"
+import { useState, useEffect, use, useCallback } from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { EditButton } from "@/components/ui/edit-button"
@@ -9,7 +9,8 @@ import { BackButton } from "@/components/ui/back-button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Progress } from "@/components/ui/progress"
-import { getPetByUsernameAndSlug, getUserById, getBlogPosts, updatePet, getUsers, getPets } from "@/lib/storage"
+import { getPetByUsernameAndSlug, getUserById, getBlogPosts, togglePetFollow, getUsers, getPets } from "@/lib/storage"
+import type { PrivacyLevel } from "@/lib/types"
 import { useAuth } from "@/lib/auth"
 import {
   Calendar,
@@ -33,13 +34,20 @@ import {
   Star,
   AlertCircle,
   FileText,
-  Sparkles,
+  PawPrint,
+  Dna,
+  Lock,
 } from "lucide-react"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import Link from "next/link"
 import { formatDate } from "@/lib/utils/date"
 
 import { PhotoViewer } from "@/components/photo-viewer"
+import { PetAchievementsSection } from "@/components/pet-achievements"
+import { FriendRequestButton, FriendRequestsSection } from "@/components/friend-requests-manager"
+import { canViewPet, canInteractWithPet } from "@/lib/utils/privacy"
+
+const formatSpecies = (species: string) => species.charAt(0).toUpperCase() + species.slice(1)
 
 export default function PetProfilePage({ params }: { params: Promise<{ username: string; slug: string }> }) {
   const { username, slug } = use(params)
@@ -53,8 +61,7 @@ export default function PetProfilePage({ params }: { params: Promise<{ username:
   const [photoViewerOpen, setPhotoViewerOpen] = useState(false)
   const [selectedPhotoIndex, setSelectedPhotoIndex] = useState(0)
 
-  useEffect(() => {
-    setIsLoading(true)
+  const loadPetData = useCallback(() => {
     const fetchedPet = getPetByUsernameAndSlug(username, slug)
     setPet(fetchedPet)
     if (fetchedPet) {
@@ -72,31 +79,28 @@ export default function PetProfilePage({ params }: { params: Promise<{ username:
       } else {
         setFriends([])
       }
+    } else {
+      setOwner(null)
+      setPosts([])
+      setFriends([])
     }
+  }, [username, slug])
+
+  useEffect(() => {
+    setIsLoading(true)
+    loadPetData()
     setIsLoading(false)
-  }, [currentUser, username, slug])
+  }, [loadPetData])
+
+  const refreshPetData = useCallback(() => {
+    loadPetData()
+  }, [loadPetData])
 
   useEffect(() => {
     if (currentUser && pet) {
       setIsFollowing(pet.followers && pet.followers.includes(currentUser.id))
     }
   }, [currentUser, pet])
-
-  const handleFollow = () => {
-    if (!currentUser || !pet) return
-
-    const updatedPet = { ...pet }
-
-    if (isFollowing) {
-      updatedPet.followers = updatedPet.followers.filter((id) => id !== currentUser.id)
-    } else {
-      updatedPet.followers.push(currentUser.id)
-    }
-
-    updatePet(updatedPet)
-    setPet(updatedPet)
-    setIsFollowing(!isFollowing)
-  }
 
   if (isLoading) {
     return <LoadingSpinner fullScreen />
@@ -110,7 +114,127 @@ export default function PetProfilePage({ params }: { params: Promise<{ username:
     )
   }
 
+  const viewerId = currentUser?.id ?? null
+  const ownerPrivacyFallback = (owner.privacy?.sections?.pets ?? owner.privacy?.pets ?? "public") as PrivacyLevel
+
+  const resolveSetting = (field: "visibility" | "interactions"): PrivacyLevel => {
+    const rawPrivacy = pet.privacy
+    if (
+      rawPrivacy &&
+      typeof rawPrivacy === "object" &&
+      field in rawPrivacy
+    ) {
+      return rawPrivacy[field] as PrivacyLevel
+    }
+
+    if (typeof rawPrivacy === "string") {
+      return rawPrivacy
+    }
+
+    return ownerPrivacyFallback
+  }
+
+  const visibilitySetting = resolveSetting("visibility")
+  const interactionSetting = resolveSetting("interactions")
+  const canView = canViewPet(pet, owner, viewerId)
+  const canInteract = canInteractWithPet(pet, owner, viewerId)
+
+  const viewerIsBlockedByOwner = viewerId ? owner.blockedUsers?.includes(viewerId) : false
+  const ownerIsBlockedByViewer = viewerId ? currentUser?.blockedUsers?.includes(owner.id) : false
+
+  if (!canView) {
+    let visibilityMessage: string
+    if (viewerIsBlockedByOwner) {
+      visibilityMessage = `${owner.fullName} has restricted access to this pet.`
+    } else if (ownerIsBlockedByViewer) {
+      visibilityMessage = "You have blocked this pet's owner, so their pets are hidden."
+    } else if (!viewerId) {
+      visibilityMessage = "Sign in to see if you can view this pet profile."
+    } else if (visibilitySetting === "followers-only") {
+      visibilityMessage = `Only people who follow ${owner.fullName} can view this pet.`
+    } else {
+      visibilityMessage = `${owner.fullName} keeps this pet profile private.`
+    }
+
+    return (
+      <div className="container mx-auto px-4 py-8 max-w-3xl">
+        <BackButton href={`/user/${owner.username}`} label={`Back to ${owner.fullName}'s Profile`} icon={FileText} />
+        <Card className="mt-6">
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-full bg-muted">
+                <Lock className="h-5 w-5 text-muted-foreground" />
+              </div>
+              <div>
+                <CardTitle className="text-xl">Pet Profile Hidden</CardTitle>
+                <CardDescription>{visibilityMessage}</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm text-muted-foreground">
+            {visibilitySetting === "followers-only" && !viewerIsBlockedByOwner && !ownerIsBlockedByViewer && (
+              <p>
+                Try following{" "}
+                <Link href={`/user/${owner.username}`} className="text-primary underline">
+                  {owner.fullName}
+                </Link>{" "}
+                to request access.
+              </p>
+            )}
+            {!viewerId && (
+              <p>
+                You&apos;ll need to{" "}
+                <Link href="/login" className="text-primary underline">
+                  log in
+                </Link>{" "}
+                to see private pets.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
   const isOwner = currentUser?.id === pet.ownerId
+  const privacyLabelMap: Record<PrivacyLevel, string> = {
+    public: "Public",
+    "followers-only": "Followers Only",
+    private: "Private",
+  }
+
+  const followDisabled = !currentUser || (!canInteract && !isFollowing)
+  let interactionRestriction: string | null = null
+
+  if (!currentUser) {
+    interactionRestriction = "Log in to follow or send a friend request."
+  } else if (viewerIsBlockedByOwner) {
+    interactionRestriction = "You cannot interact with this pet because the owner has blocked you."
+  } else if (ownerIsBlockedByViewer) {
+    interactionRestriction = "You have blocked this pet's owner."
+  } else if (!canInteract && !isFollowing) {
+    if (interactionSetting === "followers-only") {
+      interactionRestriction = `Only people who follow ${owner.fullName} can interact with this pet.`
+    } else if (interactionSetting === "private") {
+      interactionRestriction = "Only the owner can interact with this pet."
+    } else {
+      interactionRestriction = "You cannot interact with this pet."
+    }
+  }
+
+  const handleFollow = () => {
+    if (!currentUser || !pet) return
+    if (!canInteract && !isFollowing) return
+
+    togglePetFollow(currentUser.id, pet.id)
+    const refreshedPet = getPetByUsernameAndSlug(username, slug)
+    if (refreshedPet) {
+      setPet(refreshedPet)
+      setIsFollowing(refreshedPet.followers.includes(currentUser.id))
+    } else {
+      setIsFollowing((prev) => !prev)
+    }
+  }
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
@@ -134,15 +258,16 @@ export default function PetProfilePage({ params }: { params: Promise<{ username:
                       </Badge>
                     )}
                   </div>
-                  <p className="text-muted-foreground capitalize text-lg">
-                    {pet.breed || pet.species}
+                  <p className="text-muted-foreground text-lg">
+                    {formatSpecies(pet.species)}
+                    {pet.breed && ` • ${pet.breed}`}
                     {pet.gender && ` • ${pet.gender}`}
                   </p>
                   <Link href={`/user/${owner.username}`} className="text-sm text-primary hover:underline">
                     Owned by {owner.fullName}
                   </Link>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-col items-start gap-2">
                   {isOwner && (
                     <Link href={`/user/${owner.username}/pet/${slug}/edit`}>
                       <EditButton>
@@ -150,16 +275,76 @@ export default function PetProfilePage({ params }: { params: Promise<{ username:
                       </EditButton>
                     </Link>
                   )}
-                  {currentUser && !isOwner && (
-                    <Button onClick={handleFollow} variant={isFollowing ? "outline" : "default"}>
+                  <FriendRequestButton
+                    targetPet={pet}
+                    onChange={refreshPetData}
+                    disabledReason={!isOwner ? interactionRestriction : null}
+                  />
+                  {!isOwner && currentUser && (
+                    <Button
+                      onClick={handleFollow}
+                      variant={isFollowing ? "outline" : "default"}
+                      disabled={followDisabled}
+                      title={followDisabled && interactionRestriction ? interactionRestriction : undefined}
+                    >
                       <Heart className={`h-4 w-4 mr-2 ${isFollowing ? "fill-current" : ""}`} />
                       {isFollowing ? "Following" : "Follow"}
                     </Button>
                   )}
+                  {!isOwner && !currentUser && (
+                    <Link href="/login">
+                      <Button variant="default">
+                        <Heart className="h-4 w-4 mr-2" />
+                        Log in to Follow
+                      </Button>
+                    </Link>
+                  )}
+                  {!isOwner && interactionRestriction && (
+                    <p className="text-xs text-muted-foreground max-w-xs">
+                      {!currentUser ? (
+                        <>
+                          Log in to follow this pet.{" "}
+                          <Link href="/login" className="text-primary underline">
+                            Sign in
+                          </Link>
+                          .
+                        </>
+                      ) : (
+                        interactionRestriction
+                      )}
+                    </p>
+                  )}
                 </div>
               </div>
-              {pet.bio && <p className="text-foreground text-lg leading-relaxed">{pet.bio}</p>}
+              <div className="space-y-1">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Biography</p>
+                {pet.bio ? (
+                  <p className="text-foreground text-lg leading-relaxed">{pet.bio}</p>
+                ) : (
+                  <p className="text-sm text-muted-foreground italic">
+                    No biography added yet. Owners can add one from the edit page.
+                  </p>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Badge variant="outline" className="text-xs font-semibold">
+                  Visibility: {privacyLabelMap[visibilitySetting]}
+                </Badge>
+                <Badge variant="outline" className="text-xs font-semibold">
+                  Interactions: {privacyLabelMap[interactionSetting]}
+                </Badge>
+              </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                <div className="flex items-center gap-2">
+                  <PawPrint className="h-4 w-4 text-muted-foreground" />
+                  <span className="capitalize">{formatSpecies(pet.species)}</span>
+                </div>
+                {pet.breed && (
+                  <div className="flex items-center gap-2">
+                    <Dna className="h-4 w-4 text-muted-foreground" />
+                    <span>{pet.breed}</span>
+                  </div>
+                )}
                 {pet.age !== undefined && (
                   <div className="flex items-center gap-2">
                     <Calendar className="h-4 w-4 text-muted-foreground" />
@@ -171,19 +356,21 @@ export default function PetProfilePage({ params }: { params: Promise<{ username:
                 {pet.birthday && (
                   <div className="flex items-center gap-2">
                     <Cake className="h-4 w-4 text-muted-foreground" />
-                    <span>{formatDate(pet.birthday)}</span>
+                    <span className="text-sm">
+                      Birthday: {formatDate(pet.birthday)}
+                    </span>
                   </div>
                 )}
                 {pet.weight && (
                   <div className="flex items-center gap-2">
                     <Weight className="h-4 w-4 text-muted-foreground" />
-                    <span>{pet.weight}</span>
+                    <span className="text-sm">Weight: {pet.weight}</span>
                   </div>
                 )}
                 {pet.color && (
                   <div className="flex items-center gap-2">
                     <Palette className="h-4 w-4 text-muted-foreground" />
-                    <span>{pet.color}</span>
+                    <span className="text-sm">Color: {pet.color}</span>
                   </div>
                 )}
               </div>
@@ -712,43 +899,13 @@ export default function PetProfilePage({ params }: { params: Promise<{ username:
         </TabsContent>
 
         <TabsContent value="achievements">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Award className="h-5 w-5" />
-                Achievements & Badges
-              </CardTitle>
-              <CardDescription>
-                {pet.name}
-                {"'"}s accomplishments
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {pet.achievements && pet.achievements.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {pet.achievements.map((achievement) => (
-                    <div key={achievement.id} className="border rounded-lg p-4 text-center">
-                      <div className="text-4xl mb-2">{achievement.icon}</div>
-                      <p className="font-semibold">{achievement.title}</p>
-                      <p className="text-sm text-muted-foreground mt-1">{achievement.description}</p>
-                      <p className="text-xs text-muted-foreground mt-2">
-                        {formatDate(achievement.earnedAt)}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-12">
-                  <Sparkles className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                  <p className="text-muted-foreground">No achievements yet</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <PetAchievementsSection achievements={pet.achievements} petName={pet.name} />
         </TabsContent>
 
         <TabsContent value="friends">
-          <Card>
+          <div className="space-y-6">
+            <FriendRequestsSection pet={pet} onChange={refreshPetData} />
+            <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Users className="h-5 w-5" />
@@ -765,6 +922,12 @@ export default function PetProfilePage({ params }: { params: Promise<{ username:
                   {friends.map((friend) => {
                     const friendOwner = getUsers().find((u) => u.id === friend.ownerId)
                     const friendSlug = friend.slug || friend.name.toLowerCase().replace(/\s+/g, "-").replace(/[^\w-]/g, "")
+                    const assignmentId = pet.friendCategoryAssignments?.[friend.id]
+                    const assignedCategory =
+                      assignmentId && pet.friendCategories
+                        ? pet.friendCategories.find((category) => category.id === assignmentId)
+                        : undefined
+
                     return (
                       <Link
                         key={friend.id}
@@ -776,9 +939,18 @@ export default function PetProfilePage({ params }: { params: Promise<{ username:
                               <AvatarImage src={friend.avatar || "/placeholder.svg"} alt={friend.name} />
                               <AvatarFallback>{friend.name.charAt(0)}</AvatarFallback>
                             </Avatar>
-                            <div>
+                            <div className="space-y-2">
                               <p className="font-semibold">{friend.name}</p>
-                              <p className="text-sm text-muted-foreground capitalize">{friend.species}</p>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <Badge variant="outline" className="capitalize">
+                                  {friend.species}
+                                </Badge>
+                                {assignedCategory ? (
+                                  <Badge variant="secondary">{assignedCategory.name}</Badge>
+                                ) : pet.friendCategories && pet.friendCategories.length > 0 ? (
+                                  <Badge variant="outline">No category</Badge>
+                                ) : null}
+                              </div>
                             </div>
                           </CardContent>
                         </Card>
@@ -793,7 +965,8 @@ export default function PetProfilePage({ params }: { params: Promise<{ username:
                 </div>
               )}
             </CardContent>
-          </Card>
+            </Card>
+          </div>
         </TabsContent>
 
         <TabsContent value="training">
@@ -892,4 +1065,3 @@ export default function PetProfilePage({ params }: { params: Promise<{ username:
     </div>
   )
 }
-

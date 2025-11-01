@@ -63,6 +63,10 @@ export const useAuth = create<AuthState>()(
           return { success: false, error: "Invalid username or password" }
         }
 
+        if (!user.followingPets) {
+          user.followingPets = []
+        }
+
         // If user doesn't have a password set, set it from the provided password
         if (!user.password) {
           if (!password || password.trim() === "") {
@@ -128,6 +132,7 @@ export const useAuth = create<AuthState>()(
           joinedAt: new Date().toISOString().split("T")[0],
           followers: [],
           following: [],
+          followingPets: [],
         }
 
         users.push(newUser)
@@ -144,6 +149,9 @@ export const useAuth = create<AuthState>()(
         const users = getUsers()
         const user = users.find((u) => u.id === userId)
         if (user) {
+          if (!user.followingPets) {
+            user.followingPets = []
+          }
           setStorageUser(userId)
           set({ user, isAuthenticated: true })
         }

@@ -16,10 +16,10 @@ describe('PrivacySelector', () => {
     expect(screen.getByText('Public')).toBeInTheDocument()
   })
 
-  it('should render with followers-only value', () => {
+  it('should render with friends-only value', () => {
     render(<PrivacySelector value="followers-only" onChange={mockOnChange} />)
     
-    expect(screen.getByText('Followers Only')).toBeInTheDocument()
+    expect(screen.getByText('Friends Only')).toBeInTheDocument()
   })
 
   it('should render with private value', () => {
@@ -37,7 +37,7 @@ describe('PrivacySelector', () => {
     await waitFor(() => {
       // Privacy options might appear multiple times (button and dropdown)
       const publicTexts = screen.getAllByText('Public')
-      const followersTexts = screen.getAllByText('Followers Only')
+      const followersTexts = screen.getAllByText('Friends Only')
       const privateTexts = screen.getAllByText('Private')
       expect(publicTexts.length).toBeGreaterThan(0)
       expect(followersTexts.length).toBeGreaterThan(0)
@@ -72,7 +72,7 @@ describe('PrivacySelector', () => {
     
     await waitFor(() => {
       expect(screen.getByText(/anyone can see this/i)).toBeInTheDocument()
-      expect(screen.getByText(/only your followers can see this/i)).toBeInTheDocument()
+      expect(screen.getByText(/only your friends can see this/i)).toBeInTheDocument()
       expect(screen.getByText(/only you can see this/i)).toBeInTheDocument()
     }, { timeout: 3000 })
   })
@@ -98,4 +98,3 @@ describe('PrivacySelector', () => {
     expect(screen.getByText('Private')).toBeInTheDocument()
   })
 })
-

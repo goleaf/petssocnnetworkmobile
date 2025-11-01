@@ -1,4 +1,4 @@
-import { formatDistanceToNow } from "date-fns"
+import { differenceInYears, formatDistanceToNow, isValid, parseISO } from "date-fns"
 
 /**
  * Formats a date to YYYY-MM-DD format
@@ -41,4 +41,29 @@ export function formatDateTime(dateString: string): string {
   const minutes = String(date.getMinutes()).padStart(2, "0")
   const seconds = String(date.getSeconds()).padStart(2, "0")
   return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
+}
+
+/**
+ * Calculates the age in whole years based on a birthday string.
+ * Returns undefined when the input is missing or invalid.
+ */
+export function calculateAge(birthday: string | undefined, referenceDate: Date = new Date()): number | undefined {
+  if (!birthday) {
+    return undefined
+  }
+
+  let parsedBirthday: Date
+  try {
+    parsedBirthday = parseISO(birthday)
+  } catch {
+    parsedBirthday = new Date(birthday)
+  }
+  if (!isValid(parsedBirthday)) {
+    return undefined
+  }
+
+  const safeReferenceDate = isValid(referenceDate) ? referenceDate : new Date()
+  const rawAge = differenceInYears(safeReferenceDate, parsedBirthday)
+
+  return rawAge < 0 ? 0 : rawAge
 }

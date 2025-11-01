@@ -32,6 +32,10 @@ describe('GroupsPage', () => {
       rules: [],
       createdAt: '2024-01-15T10:00:00Z',
       updatedAt: '2024-03-20T14:30:00Z',
+      visibility: {
+        discoverable: true,
+        content: 'everyone',
+      },
     },
     {
       id: 'grp-3',
@@ -48,6 +52,10 @@ describe('GroupsPage', () => {
       rules: [],
       createdAt: '2024-02-10T12:00:00Z',
       updatedAt: '2024-03-19T15:45:00Z',
+      visibility: {
+        discoverable: false,
+        content: 'members',
+      },
     },
   ]
 
@@ -70,7 +78,7 @@ describe('GroupsPage', () => {
     ;(storage.getGroups as jest.Mock).mockReturnValue(mockGroups)
     ;(storage.searchGroups as jest.Mock).mockReturnValue([])
     ;(storage.getGroupsByCategory as jest.Mock).mockReturnValue([])
-    ;(storage.canUserViewGroup as jest.Mock).mockReturnValue(true)
+    ;(storage.canUserDiscoverGroup as jest.Mock).mockReturnValue(true)
     ;(auth.useAuth as jest.Mock).mockReturnValue({
       user: null,
       isAuthenticated: false,
@@ -180,7 +188,7 @@ describe('GroupsPage', () => {
 
   it('should filter out secret groups for non-authenticated users', async () => {
     ;(storage.getGroups as jest.Mock).mockReturnValue(mockGroups)
-    ;(storage.canUserViewGroup as jest.Mock).mockImplementation((groupId: string) => {
+    ;(storage.canUserDiscoverGroup as jest.Mock).mockImplementation((groupId: string) => {
       // Secret groups should not be visible to non-authenticated users
       if (groupId === 'grp-3') return false
       return true
@@ -247,6 +255,10 @@ describe('GroupsPage', () => {
         rules: [],
         createdAt: '2024-02-01T09:00:00Z',
         updatedAt: '2024-03-18T11:20:00Z',
+        visibility: {
+          discoverable: true,
+          content: 'members',
+        },
       },
     ])
     
@@ -262,12 +274,12 @@ describe('GroupsPage', () => {
     render(<GroupsPage />)
     
     await waitFor(() => {
-      const showingText = screen.getByText((content, element) => {
-        return element?.textContent?.includes('Showing') && 
-               element?.textContent?.includes('of') && 
+      const showingElements = screen.getAllByText((content, element) => {
+        return element?.textContent?.includes('Showing') &&
+               element?.textContent?.includes('of') &&
                element?.textContent?.includes('groups')
       })
-      expect(showingText).toBeInTheDocument()
+      expect(showingElements.length).toBeGreaterThan(0)
     }, { timeout: 3000 })
   })
 
@@ -310,7 +322,7 @@ describe('GroupsPage', () => {
 
   it('should filter secret groups for non-members', async () => {
     ;(storage.getGroups as jest.Mock).mockReturnValue(mockGroups)
-    ;(storage.canUserViewGroup as jest.Mock).mockImplementation((groupId: string) => {
+    ;(storage.canUserDiscoverGroup as jest.Mock).mockImplementation((groupId: string) => {
       // Only allow viewing first two groups
       return groupId !== 'grp-3'
     })
@@ -322,4 +334,3 @@ describe('GroupsPage', () => {
     }, { timeout: 3000 })
   })
 })
-

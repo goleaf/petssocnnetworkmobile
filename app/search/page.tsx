@@ -29,13 +29,20 @@ import {
   MessageSquare,
   Eye,
   Sparkles,
+  Users,
+  BookmarkPlus,
+  History,
+  Flame,
+  Compass,
+  CalendarDays,
 } from "lucide-react"
 import Link from "next/link"
-import { getUsers, getPets, getBlogPosts, getWikiArticles, getComments } from "@/lib/storage"
-import type { User as UserType, Pet, BlogPost, WikiArticle } from "@/lib/types"
+import { getUsers, getPets, getBlogPosts, getWikiArticles, getComments, getGroups, getGroupEvents } from "@/lib/storage"
+import type { User as UserType, Pet, BlogPost, WikiArticle, Group, GroupEvent } from "@/lib/types"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { getPetUrlFromPet } from "@/lib/utils/pet-url"
-import { formatCommentDate } from "@/lib/utils/date"
+import { formatCommentDate, formatDate } from "@/lib/utils/date"
+import { useAuth } from "@/lib/auth"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -53,6 +60,7 @@ import Image from "next/image"
 const STORAGE_KEYS = {
   RECENT_SEARCHES: "search_recent_searches",
   SEARCH_HISTORY: "search_history",
+  SAVED_SEARCHES: "search_saved_searches",
 }
 
 const RESULTS_PER_PAGE = 12
@@ -64,6 +72,9 @@ type FilterOption = {
   breed: string
   category: string[]
   gender: string[]
+  tags: string[]
+  types: string[]
+  nearby: boolean
   ageMin?: number
   ageMax?: number
   dateFrom?: string
@@ -71,10 +82,497 @@ type FilterOption = {
   verified: boolean
 }
 
+type SearchHistoryEntry = {
+  id: string
+  query: string
+  timestamp: string
+  filters: FilterOption
+  sortBy: SortOption
+  tab: string
+  resultCount: number
+}
+
+type SavedSearch = SearchHistoryEntry & {
+  label: string
+}
+
+type OperatorFiltersState = {
+  types: string[]
+  species: string[]
+  genders: string[]
+  tags: string[]
+  categories: string[]
+  location?: string
+  breed?: string
+  ageMin?: number
+  ageMax?: number
+  dateFrom?: string
+  dateTo?: string
+  verified?: boolean
+  nearMe: boolean
+  sort?: SortOption
+}
+
+function createDefaultFilters(): FilterOption {
+  return {
+    species: [],
+    location: "",
+    breed: "",
+    category: [],
+    gender: [],
+    tags: [],
+    types: [],
+    nearby: false,
+    verified: false,
+    ageMin: undefined,
+    ageMax: undefined,
+    dateFrom: undefined,
+    dateTo: undefined,
+  }
+}
+
+function createEmptyOperatorFilters(): OperatorFiltersState {
+  return {
+    types: [],
+    species: [],
+    genders: [],
+    tags: [],
+    categories: [],
+    location: undefined,
+    breed: undefined,
+    ageMin: undefined,
+    ageMax: undefined,
+    dateFrom: undefined,
+    dateTo: undefined,
+    verified: undefined,
+    nearMe: false,
+    sort: undefined,
+  }
+}
+
+function mergeUnique(values: string[], additions: string[]): string[] {
+  return Array.from(new Set([...values, ...additions.filter(Boolean)])).filter(Boolean)
+}
+
+function operatorFiltersEqual(a: OperatorFiltersState, b: OperatorFiltersState): boolean {
+  return (
+    arraysEqual(a.types, b.types) &&
+    arraysEqual(a.species, b.species) &&
+    arraysEqual(a.genders, b.genders) &&
+    arraysEqual(a.tags, b.tags) &&
+    arraysEqual(a.categories, b.categories) &&
+    a.location === b.location &&
+    a.breed === b.breed &&
+    a.ageMin === b.ageMin &&
+    a.ageMax === b.ageMax &&
+    a.dateFrom === b.dateFrom &&
+    a.dateTo === b.dateTo &&
+    a.verified === b.verified &&
+    a.nearMe === b.nearMe &&
+    a.sort === b.sort
+  )
+}
+
+function arraysEqual(a: string[], b: string[]): boolean {
+  if (a.length !== b.length) return false
+  return a.every((value) => b.includes(value))
+}
+
+function filtersEqual(a: FilterOption, b: FilterOption): boolean {
+  return (
+    arraysEqual(a.species, b.species) &&
+    a.location === b.location &&
+    a.breed === b.breed &&
+    arraysEqual(a.category, b.category) &&
+    arraysEqual(a.gender, b.gender) &&
+    arraysEqual(a.tags, b.tags) &&
+    arraysEqual(a.types, b.types) &&
+    a.nearby === b.nearby &&
+    a.ageMin === b.ageMin &&
+    a.ageMax === b.ageMax &&
+    a.dateFrom === b.dateFrom &&
+    a.dateTo === b.dateTo &&
+    a.verified === b.verified
+  )
+}
+
+function cloneFilters(filters: FilterOption): FilterOption {
+  return {
+    species: [...filters.species],
+    location: filters.location,
+    breed: filters.breed,
+    category: [...filters.category],
+    gender: [...filters.gender],
+    tags: [...filters.tags],
+    types: [...filters.types],
+    nearby: filters.nearby,
+    ageMin: filters.ageMin,
+    ageMax: filters.ageMax,
+    dateFrom: filters.dateFrom,
+    dateTo: filters.dateTo,
+    verified: filters.verified,
+  }
+}
+
+function normalizeTag(tag: string): string {
+  return tag.replace(/^#/, "").trim().toLowerCase()
+}
+
+function normalizeTypeToken(value: string): string | null {
+  const token = value.trim().toLowerCase()
+  switch (token) {
+    case "user":
+    case "users":
+    case "people":
+    case "profiles":
+    case "members":
+      return "users"
+    case "pet":
+    case "pets":
+    case "animals":
+      return "pets"
+    case "post":
+    case "posts":
+    case "blog":
+    case "blogs":
+    case "stories":
+    case "content":
+      return "blogs"
+    case "article":
+    case "articles":
+    case "wiki":
+    case "knowledge":
+    case "guides":
+      return "wiki"
+    case "tag":
+    case "tags":
+    case "hashtag":
+    case "hashtags":
+      return "hashtags"
+    case "group":
+    case "groups":
+    case "community":
+    case "communities":
+    case "club":
+    case "clubs":
+      return "groups"
+    case "event":
+    case "events":
+    case "meetup":
+    case "meetups":
+      return "events"
+    case "all":
+      return "all"
+    default:
+      return null
+  }
+}
+
+function parseAdvancedQuery(rawQuery: string): { baseQuery: string; operators: OperatorFiltersState } {
+  if (!rawQuery.trim()) {
+    return { baseQuery: "", operators: createEmptyOperatorFilters() }
+  }
+
+  const operators = createEmptyOperatorFilters()
+  let baseQuery = rawQuery
+  const matches: string[] = []
+  const regex = /(?:^|\s)(\w+):(?:"([^"]+)"|([^\s]+))/g
+  let match: RegExpExecArray | null
+
+  while ((match = regex.exec(rawQuery)) !== null) {
+    const fullMatch = match[0]
+    const key = match[1].toLowerCase()
+    const value = (match[2] ?? match[3] ?? "").replace(/^"|"$/g, "").trim()
+
+    matches.push(fullMatch)
+
+    if (!value) continue
+
+    switch (key) {
+      case "type":
+      case "types": {
+        value
+          .split(",")
+          .map((item) => normalizeTypeToken(item))
+          .filter(Boolean)
+          .forEach((item) => operators.types.push(item as string))
+        break
+      }
+      case "tag":
+      case "tags":
+      case "hashtag":
+      case "hashtags": {
+        value
+          .split(",")
+          .map((item) => normalizeTag(item))
+          .filter(Boolean)
+          .forEach((item) => operators.tags.push(item))
+        break
+      }
+      case "species": {
+        value
+          .split(",")
+          .map((item) => item.trim().toLowerCase())
+          .filter(Boolean)
+          .forEach((item) => operators.species.push(item))
+        break
+      }
+      case "gender":
+      case "genders": {
+        value
+          .split(",")
+          .map((item) => item.trim().toLowerCase())
+          .filter(Boolean)
+          .forEach((item) => operators.genders.push(item))
+        break
+      }
+      case "category":
+      case "categories": {
+        value
+          .split(",")
+          .map((item) => item.trim().toLowerCase())
+          .filter(Boolean)
+          .forEach((item) => operators.categories.push(item))
+        break
+      }
+      case "location":
+      case "loc":
+      case "city": {
+        operators.location = value
+        break
+      }
+      case "breed": {
+        operators.breed = value
+        break
+      }
+      case "near":
+      case "nearby": {
+        const normalized = value.toLowerCase()
+        operators.nearMe = normalized === "true" || normalized === "1" || normalized === "me"
+        break
+      }
+      case "verified": {
+        const normalized = value.toLowerCase()
+        operators.verified = normalized === "true" || normalized === "1" || normalized === "yes"
+        break
+      }
+      case "sort": {
+        const normalized = value.toLowerCase()
+        if (normalized === "popular" || normalized === "recent" || normalized === "relevance") {
+          operators.sort = normalized as SortOption
+        }
+        break
+      }
+      case "age": {
+        const normalized = value.replace(/\s+/g, "")
+        if (normalized.includes("-")) {
+          const [min, max] = normalized.split("-").map((v) => Number(v))
+          if (!Number.isNaN(min)) operators.ageMin = min
+          if (!Number.isNaN(max)) operators.ageMax = max
+        } else if (normalized.startsWith(">")) {
+          const min = Number(normalized.slice(1))
+          if (!Number.isNaN(min)) operators.ageMin = min
+        } else if (normalized.startsWith("<")) {
+          const max = Number(normalized.slice(1))
+          if (!Number.isNaN(max)) operators.ageMax = max
+        } else {
+          const exact = Number(normalized)
+          if (!Number.isNaN(exact)) {
+            operators.ageMin = exact
+            operators.ageMax = exact
+          }
+        }
+        break
+      }
+      case "from":
+      case "after": {
+        operators.dateFrom = value
+        break
+      }
+      case "to":
+      case "before": {
+        operators.dateTo = value
+        break
+      }
+      case "date": {
+        operators.dateFrom = value
+        operators.dateTo = value
+        break
+      }
+      default:
+        break
+    }
+  }
+
+  // Deduplicate operator arrays
+  operators.types = Array.from(new Set(operators.types))
+  operators.species = Array.from(new Set(operators.species))
+  operators.genders = Array.from(new Set(operators.genders))
+  operators.tags = Array.from(new Set(operators.tags))
+  operators.categories = Array.from(new Set(operators.categories))
+
+  matches.forEach((matchText) => {
+    baseQuery = baseQuery.replace(matchText, " ")
+  })
+
+  return { baseQuery: baseQuery.replace(/\s+/g, " ").trim(), operators }
+}
+
+function getPostTrendingScore(post: BlogPost): number {
+  const likes = post.reactions
+    ? Object.values(post.reactions).reduce((sum, arr) => sum + (arr?.length || 0), 0)
+    : post.likes?.length || 0
+  const daysSincePublished = Math.max(
+    0,
+    (Date.now() - new Date(post.createdAt).getTime()) / (1000 * 60 * 60 * 24),
+  )
+  const recencyBoost = Math.max(0, 30 - daysSincePublished) / 30
+  return likes * 2 + recencyBoost
+}
+
+function getTrendingPosts(posts: BlogPost[], limit: number, query: string): BlogPost[] {
+  const normalizedQuery = query.trim().toLowerCase()
+  return [...posts]
+    .filter((post) => {
+      if (!normalizedQuery) return true
+      return (
+        post.title.toLowerCase().includes(normalizedQuery) ||
+        post.content.toLowerCase().includes(normalizedQuery) ||
+        post.tags.some((tag) => tag.toLowerCase().includes(normalizedQuery)) ||
+        post.hashtags?.some((tag) => tag.toLowerCase().includes(normalizedQuery))
+      )
+    })
+    .sort((a, b) => getPostTrendingScore(b) - getPostTrendingScore(a))
+    .slice(0, limit)
+}
+
+function getTrendingTags(posts: BlogPost[], limit: number, query: string): string[] {
+  const normalizedQuery = query.trim().toLowerCase()
+  const tagCounts = new Map<string, number>()
+  posts.forEach((post) => {
+    post.hashtags?.forEach((tag) => {
+      const normalized = tag.toLowerCase()
+      if (normalizedQuery && !normalized.includes(normalizedQuery)) return
+      tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1)
+    })
+  })
+  return Array.from(tagCounts.entries())
+    .sort((a, b) => b[1] - a[1])
+    .map(([tag]) => tag)
+    .slice(0, limit)
+}
+
+function getTrendingGroups(groups: Group[], limit: number): Group[] {
+  return [...groups].sort((a, b) => b.memberCount - a.memberCount).slice(0, limit)
+}
+
+function buildFilterSummary(filters: FilterOption): string {
+  const parts: string[] = []
+  if (filters.species.length > 0) parts.push(`species:${filters.species.join(",")}`)
+  if (filters.location) parts.push(`location:${filters.location}`)
+  if (filters.breed) parts.push(`breed:${filters.breed}`)
+  if (filters.gender.length > 0) parts.push(`gender:${filters.gender.join(",")}`)
+  if (filters.category.length > 0) parts.push(`category:${filters.category.join(",")}`)
+  if (filters.tags.length > 0) parts.push(`tags:${filters.tags.map((tag) => `#${tag}`).join(",")}`)
+  if (filters.types.length > 0) parts.push(`type:${filters.types.join(",")}`)
+  if (filters.nearby) parts.push("near:me")
+  if (filters.verified) parts.push("verified:true")
+  if (filters.ageMin !== undefined || filters.ageMax !== undefined) {
+    parts.push(`age:${filters.ageMin ?? 0}-${filters.ageMax ?? "∞"}`)
+  }
+  if (filters.dateFrom || filters.dateTo) {
+    parts.push(`date:${filters.dateFrom || "..."}-${filters.dateTo || "..."}`)
+  }
+  return parts.join(" ") || "Search"
+}
+
+function generateSmartSuggestions({
+  query,
+  user,
+  filters,
+  trendingTags,
+  typeRestrictions,
+}: {
+  query: string
+  user?: UserType | null
+  filters: FilterOption
+  trendingTags: string[]
+  typeRestrictions: string[]
+}): string[] {
+  const suggestions = new Set<string>()
+  const baseQuery = query.trim()
+
+  if (baseQuery) {
+    suggestions.add(`${baseQuery} tips`)
+    suggestions.add(`${baseQuery} events`)
+  }
+
+  if (filters.location) {
+    suggestions.add(`type:events location:"${filters.location}"`)
+  }
+
+  if (filters.species.length > 0) {
+    suggestions.add(`type:pets species:${filters.species[0]}`)
+  }
+
+  if (user?.favoriteAnimals?.length) {
+    suggestions.add(`species:${user.favoriteAnimals[0].toLowerCase()} care guide`)
+  }
+
+  if (trendingTags.length > 0) {
+    suggestions.add(`#${normalizeTag(trendingTags[0])}`)
+  }
+
+  if (!typeRestrictions.includes("events")) {
+    suggestions.add("type:events near:true")
+  }
+
+  if (!baseQuery && suggestions.size === 0) {
+    suggestions.add("type:pets tag:adoption")
+    suggestions.add("type:users verified:true")
+  }
+
+  return Array.from(suggestions).filter(Boolean).slice(0, 4)
+}
+
+function combineFilters({
+  filters,
+  operators,
+  user,
+}: {
+  filters: FilterOption
+  operators: OperatorFiltersState
+  user?: UserType | null
+}): FilterOption {
+  const operatorLocation = operators.location || ""
+  const manualLocation = filters.location
+  const autoLocation =
+    !manualLocation && !operatorLocation && (filters.nearby || operators.nearMe) && user?.location ? user.location : ""
+
+  return {
+    ...createDefaultFilters(),
+    ...filters,
+    species: mergeUnique(filters.species, operators.species),
+    gender: mergeUnique(filters.gender, operators.genders),
+    category: mergeUnique(filters.category, operators.categories),
+    tags: mergeUnique(filters.tags, operators.tags),
+    types: mergeUnique(filters.types, operators.types),
+    location: (operatorLocation || manualLocation || autoLocation || "").trim(),
+    nearby: filters.nearby || operators.nearMe,
+    verified: operators.verified ?? filters.verified,
+    ageMin: operators.ageMin ?? filters.ageMin,
+    ageMax: operators.ageMax ?? filters.ageMax,
+    dateFrom: operators.dateFrom ?? filters.dateFrom,
+    dateTo: operators.dateTo ?? filters.dateTo,
+    breed: operators.breed ?? filters.breed,
+  }
+}
+
 export default function SearchPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const inputRef = useRef<HTMLInputElement>(null)
+  const { user } = useAuth()
   const [mounted, setMounted] = useState(false)
 
   const initialQuery = searchParams.get("q") || ""
@@ -97,14 +595,7 @@ export default function SearchPage() {
     "pet adoption",
   ])
 
-  const [filters, setFilters] = useState<FilterOption>({
-    species: [],
-    location: "",
-    breed: "",
-    category: [],
-    gender: [],
-    verified: false,
-  })
+  const [filters, setFilters] = useState<FilterOption>(createDefaultFilters())
 
   const [results, setResults] = useState({
     users: [] as UserType[],
@@ -113,17 +604,146 @@ export default function SearchPage() {
     wiki: [] as WikiArticle[],
     hashtags: [] as string[],
     shelters: [] as any[],
+    groups: [] as Group[],
+    events: [] as GroupEvent[],
   })
 
   const [isLoading, setIsLoading] = useState(false)
+  const [searchHistory, setSearchHistory] = useState<SearchHistoryEntry[]>([])
+  const [savedSearches, setSavedSearches] = useState<SavedSearch[]>([])
+  const [operatorFilters, setOperatorFilters] = useState<OperatorFiltersState>(createEmptyOperatorFilters())
+  const [trendingContent, setTrendingContent] = useState<{
+    posts: BlogPost[]
+    tags: string[]
+    groups: Group[]
+  }>({ posts: [], tags: [], groups: [] })
+  const [locationHighlights, setLocationHighlights] = useState<{
+    users: UserType[]
+    pets: Pet[]
+    events: GroupEvent[]
+  }>({ users: [], pets: [], events: [] })
+  const [aiSuggestions, setAiSuggestions] = useState<string[]>([])
 
-  // Load recent searches from localStorage
+  const updateLocationHighlights = ({
+    allUsers,
+    allPets,
+    allEvents,
+    usersById,
+    locationFilter,
+  }: {
+    allUsers: UserType[]
+    allPets: Pet[]
+    allEvents: GroupEvent[]
+    usersById: Map<string, UserType>
+    locationFilter: string
+  }) => {
+    const normalizedLocation =
+      locationFilter ||
+      (filters.nearby && user?.location ? user.location.toLowerCase() : "") ||
+      ""
+
+    if (!normalizedLocation) {
+      setLocationHighlights({ users: [], pets: [], events: [] })
+      return
+    }
+
+    const usersNearby = allUsers
+      .filter((item) => item.location?.toLowerCase().includes(normalizedLocation))
+      .slice(0, 3)
+
+    const petsNearby = allPets
+      .filter((pet) => {
+        const ownerLocation = usersById.get(pet.ownerId)?.location?.toLowerCase()
+        return ownerLocation ? ownerLocation.includes(normalizedLocation) : false
+      })
+      .slice(0, 3)
+
+    const eventsNearby = allEvents
+      .filter((event) => event.location?.toLowerCase().includes(normalizedLocation))
+      .slice(0, 3)
+
+    if (usersNearby.length === 0 && petsNearby.length === 0 && eventsNearby.length === 0) {
+      setLocationHighlights({ users: [], pets: [], events: [] })
+      return
+    }
+
+    setLocationHighlights({
+      users: usersNearby,
+      pets: petsNearby,
+      events: eventsNearby,
+    })
+  }
+
+  // Load recent searches, history, and saved searches from localStorage
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      setMounted(true)
-      const recent = localStorage.getItem(STORAGE_KEYS.RECENT_SEARCHES)
-      if (recent) {
-        setRecentSearches(JSON.parse(recent))
+    if (typeof window === "undefined") return
+    setMounted(true)
+
+    const recent = localStorage.getItem(STORAGE_KEYS.RECENT_SEARCHES)
+    if (recent) {
+      try {
+        const parsed = JSON.parse(recent)
+        if (Array.isArray(parsed)) {
+          setRecentSearches(parsed.slice(0, 10))
+        }
+      } catch (error) {
+        console.error("Failed to parse recent searches", error)
+      }
+    }
+
+    const historyRaw = localStorage.getItem(STORAGE_KEYS.SEARCH_HISTORY)
+    if (historyRaw) {
+      try {
+        const parsed = JSON.parse(historyRaw) as any[]
+        if (Array.isArray(parsed)) {
+          const normalized = parsed.map((entry, index) => {
+            if (!entry || typeof entry !== "object") {
+              return {
+                id: `history-${index}`,
+                query: String(entry ?? ""),
+                timestamp: new Date().toISOString(),
+                filters: createDefaultFilters(),
+                sortBy: "relevance" as SortOption,
+                tab: "all",
+                resultCount: 0,
+              }
+            }
+            return {
+              id: entry.id || `history-${index}`,
+              query: entry.query || "",
+              timestamp: entry.timestamp || new Date().toISOString(),
+              filters: { ...createDefaultFilters(), ...(entry.filters ?? {}) },
+              sortBy: (entry.sortBy as SortOption) || "relevance",
+              tab: entry.tab || "all",
+              resultCount: typeof entry.resultCount === "number" ? entry.resultCount : 0,
+            }
+          })
+          setSearchHistory(normalized.slice(0, 50))
+        }
+      } catch (error) {
+        console.error("Failed to parse search history", error)
+      }
+    }
+
+    const savedRaw = localStorage.getItem(STORAGE_KEYS.SAVED_SEARCHES)
+    if (savedRaw) {
+      try {
+        const parsed = JSON.parse(savedRaw) as any[]
+        if (Array.isArray(parsed)) {
+          const normalized = parsed.map((entry, index) => ({
+            id: entry.id || `saved-${index}`,
+            label: entry.label || entry.query || "Saved search",
+            query: entry.query || "",
+            timestamp: entry.timestamp || new Date().toISOString(),
+            filters: { ...createDefaultFilters(), ...(entry.filters ?? {}) },
+            sortBy: (entry.sortBy as SortOption) || "relevance",
+            tab: entry.tab || "all",
+            resultCount: typeof entry.resultCount === "number" ? entry.resultCount : 0,
+          }))
+          setSavedSearches(normalized.slice(0, 20))
+        }
+      } catch (error) {
+        console.error("Failed to parse saved searches", error)
       }
     }
   }, [])
@@ -134,6 +754,10 @@ export default function SearchPage() {
       inputRef.current.focus()
     }
   }, [mounted])
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [activeTab])
 
   // Generate search suggestions
   useEffect(() => {
@@ -194,166 +818,415 @@ export default function SearchPage() {
     setIsLoading(true)
 
     const timer = setTimeout(() => {
-      if (
-        !query.trim() &&
-        filters.species.length === 0 &&
-        !filters.location &&
-        !filters.breed &&
-        filters.category.length === 0 &&
-        filters.gender.length === 0 &&
-        !filters.verified
-      ) {
-        setResults({ users: [], pets: [], blogs: [], wiki: [], hashtags: [], shelters: [] })
+      const { baseQuery, operators: parsedOperators } = parseAdvancedQuery(query)
+      const normalizedQuery = baseQuery.trim().toLowerCase()
+
+      if (!operatorFiltersEqual(operatorFilters, parsedOperators)) {
+        setOperatorFilters(parsedOperators)
+      }
+
+      if (parsedOperators.sort && parsedOperators.sort !== sortBy) {
+        setSortBy(parsedOperators.sort)
+      }
+
+      const effectiveFilters = combineFilters({ filters, operators: parsedOperators, user })
+
+      const combinedTypes = effectiveFilters.types
+      if (combinedTypes.length === 1 && activeTab !== combinedTypes[0]) {
+        setActiveTab(combinedTypes[0])
+      }
+
+      const effectiveSort = parsedOperators.sort || sortBy
+
+      const typeRestrictions = effectiveFilters.types
+      const shouldIncludeType = (type: string) =>
+        typeRestrictions.length === 0 || typeRestrictions.includes(type) || typeRestrictions.includes("all")
+
+      const hasFilterConstraints =
+        effectiveFilters.species.length > 0 ||
+        effectiveFilters.location.length > 0 ||
+        effectiveFilters.breed.length > 0 ||
+        effectiveFilters.category.length > 0 ||
+        effectiveFilters.gender.length > 0 ||
+        effectiveFilters.tags.length > 0 ||
+        effectiveFilters.types.length > 0 ||
+        effectiveFilters.nearby ||
+        effectiveFilters.ageMin !== undefined ||
+        effectiveFilters.ageMax !== undefined ||
+        Boolean(effectiveFilters.dateFrom) ||
+        Boolean(effectiveFilters.dateTo) ||
+        effectiveFilters.verified
+
+      const allUsers = getUsers()
+      const allPets = getPets()
+      const allBlogPosts = getBlogPosts()
+      const allWikiArticles = getWikiArticles()
+      const allGroups = getGroups()
+      const allEvents = getGroupEvents()
+
+      const usersById = new Map(allUsers.map((item) => [item.id, item]))
+      const locationFilter = effectiveFilters.location.toLowerCase()
+
+      const trendingPosts = getTrendingPosts(allBlogPosts, 3, normalizedQuery)
+      const trendingTags = getTrendingTags(allBlogPosts, 8, normalizedQuery)
+      const trendingGroups = getTrendingGroups(allGroups, 3)
+      setTrendingContent({ posts: trendingPosts, tags: trendingTags, groups: trendingGroups })
+
+      if (!normalizedQuery && !hasFilterConstraints) {
+        setResults({
+          users: [],
+          pets: [],
+          blogs: [],
+          wiki: [],
+          hashtags: [],
+          shelters: [],
+          groups: [],
+          events: [],
+        })
+        updateLocationHighlights({
+          allUsers,
+          allPets,
+          allEvents,
+          usersById,
+          locationFilter,
+        })
+        setAiSuggestions(
+          generateSmartSuggestions({
+            query: normalizedQuery,
+            user,
+            filters: effectiveFilters,
+            trendingTags,
+            typeRestrictions,
+          }),
+        )
         setIsLoading(false)
+        const params = new URLSearchParams()
+        router.replace(`/search?${params.toString()}`, { scroll: false })
         return
       }
 
-      const searchQuery = query.toLowerCase()
+      let users: UserType[] = []
+      if (shouldIncludeType("users")) {
+        users = allUsers.filter((item) => {
+          const matchesQuery =
+            !normalizedQuery ||
+            item.username.toLowerCase().includes(normalizedQuery) ||
+            item.fullName.toLowerCase().includes(normalizedQuery) ||
+            item.bio?.toLowerCase().includes(normalizedQuery)
+          if (!matchesQuery) return false
 
-      // Search users with location filter
-      let users = getUsers().filter(
-        (user) =>
-          !query.trim() ||
-          user.username.toLowerCase().includes(searchQuery) ||
-          user.fullName.toLowerCase().includes(searchQuery) ||
-          user.bio?.toLowerCase().includes(searchQuery),
-      )
-
-      if (filters.location) {
-        users = users.filter((user) => user.location?.toLowerCase().includes(filters.location.toLowerCase()))
-      }
-
-      if (filters.verified) {
-        users = users.filter((user) => user.badge === "verified" || user.role === "admin")
-      }
-
-      // Search pets with species and breed filters
-      let pets = getPets().filter(
-        (pet) =>
-          !query.trim() ||
-          pet.name.toLowerCase().includes(searchQuery) ||
-          pet.species.toLowerCase().includes(searchQuery) ||
-          pet.breed?.toLowerCase().includes(searchQuery) ||
-          pet.bio?.toLowerCase().includes(searchQuery),
-      )
-
-      if (filters.species.length > 0) {
-        pets = pets.filter((pet) => filters.species.includes(pet.species))
-      }
-
-      if (filters.breed) {
-        pets = pets.filter((pet) => pet.breed?.toLowerCase().includes(filters.breed.toLowerCase()))
-      }
-
-      if (filters.gender.length > 0) {
-        pets = pets.filter((pet) => pet.gender && filters.gender.includes(pet.gender))
-      }
-
-      if (filters.ageMin !== undefined) {
-        pets = pets.filter((pet) => pet.age !== undefined && pet.age >= filters.ageMin!)
-      }
-
-      if (filters.ageMax !== undefined) {
-        pets = pets.filter((pet) => pet.age !== undefined && pet.age <= filters.ageMax!)
-      }
-
-      // Search blog posts
-      let blogs = getBlogPosts().filter(
-        (post) =>
-          !query.trim() ||
-          post.title.toLowerCase().includes(searchQuery) ||
-          post.content.toLowerCase().includes(searchQuery) ||
-          post.tags.some((tag) => tag.toLowerCase().includes(searchQuery)) ||
-          post.hashtags?.some((tag) => tag.toLowerCase().includes(searchQuery)),
-      )
-
-      if (filters.dateFrom) {
-        blogs = blogs.filter((post) => new Date(post.createdAt) >= new Date(filters.dateFrom!))
-      }
-
-      if (filters.dateTo) {
-        blogs = blogs.filter((post) => new Date(post.createdAt) <= new Date(filters.dateTo!))
-      }
-
-      // Search wiki articles with category filter
-      let wiki = getWikiArticles().filter(
-        (article) =>
-          !query.trim() ||
-          article.title.toLowerCase().includes(searchQuery) ||
-          article.content.toLowerCase().includes(searchQuery) ||
-          article.category.toLowerCase().includes(searchQuery),
-      )
-
-      if (filters.category.length > 0) {
-        wiki = wiki.filter((article) => filters.category.includes(article.category))
-      }
-
-      // Extract hashtags from blogs
-      const allHashtags = new Set<string>()
-      getBlogPosts().forEach((post) => {
-        post.hashtags?.forEach((tag) => {
-          if (!query.trim() || tag.toLowerCase().includes(searchQuery)) {
-            allHashtags.add(tag)
+          if (locationFilter && !item.location?.toLowerCase().includes(locationFilter)) {
+            return false
           }
+
+          if (effectiveFilters.verified && !(item.badge === "verified" || item.role === "admin")) {
+            return false
+          }
+
+          if (effectiveFilters.tags.length > 0) {
+            const normalizedTags = effectiveFilters.tags.map(normalizeTag)
+            const interests = (item.interests || []).map((interest) => interest.toLowerCase())
+            if (!normalizedTags.some((tag) => interests.includes(tag))) {
+              return false
+            }
+          }
+
+          return true
         })
-      })
+      }
 
-      // Mock shelters search (since shelters are not in storage yet)
-      const shelters: any[] = []
+      let pets: Pet[] = []
+      if (shouldIncludeType("pets")) {
+        pets = allPets.filter((pet) => {
+          const matchesQuery =
+            !normalizedQuery ||
+            pet.name.toLowerCase().includes(normalizedQuery) ||
+            pet.species.toLowerCase().includes(normalizedQuery) ||
+            pet.breed?.toLowerCase().includes(normalizedQuery) ||
+            pet.bio?.toLowerCase().includes(normalizedQuery)
+          if (!matchesQuery) return false
 
-      // Sort results
-      const sortedUsers = sortResults(users, sortBy, "users")
-      const sortedPets = sortResults(pets, sortBy, "pets")
-      const sortedBlogs = sortResults(blogs, sortBy, "blogs")
-      const sortedWiki = sortResults(wiki, sortBy, "wiki")
+          if (effectiveFilters.species.length > 0 && !effectiveFilters.species.includes(pet.species)) {
+            return false
+          }
 
-      setResults({
+          if (effectiveFilters.breed && !pet.breed?.toLowerCase().includes(effectiveFilters.breed.toLowerCase())) {
+            return false
+          }
+
+          if (effectiveFilters.gender.length > 0) {
+            if (!pet.gender || !effectiveFilters.gender.includes(pet.gender)) {
+              return false
+            }
+          }
+
+          if (effectiveFilters.ageMin !== undefined && (pet.age ?? -Infinity) < effectiveFilters.ageMin) {
+            return false
+          }
+
+          if (effectiveFilters.ageMax !== undefined && (pet.age ?? Infinity) > effectiveFilters.ageMax) {
+            return false
+          }
+
+          if (locationFilter) {
+            const ownerLocation = usersById.get(pet.ownerId)?.location?.toLowerCase()
+            if (!ownerLocation || !ownerLocation.includes(locationFilter)) {
+              return false
+            }
+          }
+
+          return true
+        })
+      }
+
+      let blogs: BlogPost[] = []
+      if (shouldIncludeType("blogs")) {
+        blogs = allBlogPosts.filter((post) => {
+          const normalizedContent = post.content.toLowerCase()
+          const matchesQuery =
+            !normalizedQuery ||
+            post.title.toLowerCase().includes(normalizedQuery) ||
+            normalizedContent.includes(normalizedQuery) ||
+            post.tags.some((tag) => tag.toLowerCase().includes(normalizedQuery)) ||
+            post.hashtags?.some((tag) => tag.toLowerCase().includes(normalizedQuery))
+          if (!matchesQuery) return false
+
+          if (effectiveFilters.tags.length > 0) {
+            const normalizedTags = effectiveFilters.tags.map(normalizeTag)
+            const postTags = [
+              ...post.tags.map((tag) => normalizeTag(tag)),
+              ...(post.hashtags || []).map((tag) => normalizeTag(tag)),
+            ]
+            if (!normalizedTags.some((tag) => postTags.includes(tag))) {
+              return false
+            }
+          }
+
+          if (effectiveFilters.dateFrom && new Date(post.createdAt) < new Date(effectiveFilters.dateFrom)) {
+            return false
+          }
+
+          if (effectiveFilters.dateTo && new Date(post.createdAt) > new Date(effectiveFilters.dateTo)) {
+            return false
+          }
+
+          return true
+        })
+      }
+
+      let wiki: WikiArticle[] = []
+      if (shouldIncludeType("wiki")) {
+        wiki = allWikiArticles.filter((article) => {
+          const matchesQuery =
+            !normalizedQuery ||
+            article.title.toLowerCase().includes(normalizedQuery) ||
+            article.content.toLowerCase().includes(normalizedQuery) ||
+            article.category.toLowerCase().includes(normalizedQuery)
+          if (!matchesQuery) return false
+
+          if (effectiveFilters.category.length > 0 && !effectiveFilters.category.includes(article.category.toLowerCase())) {
+            return false
+          }
+
+          if (effectiveFilters.species.length > 0 && article.species?.length) {
+            const speciesMatches = article.species.some((spec) => effectiveFilters.species.includes(spec.toLowerCase()))
+            if (!speciesMatches) return false
+          }
+
+          if (effectiveFilters.tags.length > 0) {
+            const normalizedTags = effectiveFilters.tags.map(normalizeTag)
+            const contentText = article.content.toLowerCase()
+            if (!normalizedTags.some((tag) => contentText.includes(tag))) {
+              return false
+            }
+          }
+
+          return true
+        })
+      }
+
+      let groups: Group[] = []
+      if (shouldIncludeType("groups")) {
+        groups = allGroups.filter((group) => {
+          const matchesQuery =
+            !normalizedQuery ||
+            group.name.toLowerCase().includes(normalizedQuery) ||
+            group.description.toLowerCase().includes(normalizedQuery) ||
+            group.tags?.some((tag) => tag.toLowerCase().includes(normalizedQuery))
+          if (!matchesQuery) return false
+
+          if (effectiveFilters.tags.length > 0) {
+            const normalizedTags = effectiveFilters.tags.map(normalizeTag)
+            const groupTags = (group.tags || []).map((tag) => normalizeTag(tag))
+            if (!normalizedTags.some((tag) => groupTags.includes(tag))) {
+              return false
+            }
+          }
+
+          return true
+        })
+      }
+
+      let events: GroupEvent[] = []
+      if (shouldIncludeType("events")) {
+        events = allEvents.filter((event) => {
+          if (event.isCancelled) return false
+          const group = allGroups.find((g) => g.id === event.groupId)
+          const matchesQuery =
+            !normalizedQuery ||
+            event.title.toLowerCase().includes(normalizedQuery) ||
+            event.description?.toLowerCase().includes(normalizedQuery) ||
+            event.tags?.some((tag) => tag.toLowerCase().includes(normalizedQuery)) ||
+            group?.name.toLowerCase().includes(normalizedQuery)
+          if (!matchesQuery) return false
+
+          if (locationFilter && !event.location?.toLowerCase().includes(locationFilter)) {
+            return false
+          }
+
+          if (effectiveFilters.tags.length > 0) {
+            const normalizedTags = effectiveFilters.tags.map(normalizeTag)
+            const eventTags = (event.tags || []).map((tag) => normalizeTag(tag))
+            if (!normalizedTags.some((tag) => eventTags.includes(tag))) {
+              return false
+            }
+          }
+
+          if (effectiveFilters.dateFrom && new Date(event.startDate) < new Date(effectiveFilters.dateFrom)) {
+            return false
+          }
+
+          if (effectiveFilters.dateTo && new Date(event.startDate) > new Date(effectiveFilters.dateTo)) {
+            return false
+          }
+
+          return true
+        })
+      }
+
+      let hashtags: string[] = []
+      if (shouldIncludeType("hashtags")) {
+        const tagSet = new Set<string>()
+        allBlogPosts.forEach((post) => {
+          post.hashtags?.forEach((tag) => {
+            const normalized = tag.toLowerCase()
+            if (!normalizedQuery || normalized.includes(normalizedQuery)) {
+              tagSet.add(tag)
+            }
+          })
+        })
+
+        if (effectiveFilters.tags.length > 0) {
+          const normalizedTags = effectiveFilters.tags.map(normalizeTag)
+          hashtags = Array.from(tagSet).filter((tag) => normalizedTags.includes(normalizeTag(tag)))
+        } else {
+          hashtags = Array.from(tagSet)
+        }
+      }
+
+      const sortedUsers = sortResults(users, effectiveSort, "users")
+      const sortedPets = sortResults(pets, effectiveSort, "pets")
+      const sortedBlogs = sortResults(blogs, effectiveSort, "blogs")
+      const sortedWiki = sortResults(wiki, effectiveSort, "wiki")
+      const sortedGroups = sortResults(groups, effectiveSort, "groups")
+      const sortedEvents = sortResults(events, effectiveSort, "events")
+
+      const resultPayload = {
         users: sortedUsers,
         pets: sortedPets,
         blogs: sortedBlogs,
         wiki: sortedWiki,
-        hashtags: Array.from(allHashtags),
-        shelters,
-      })
-
-      setIsLoading(false)
-
-      // Save to recent searches
-      if (query.trim() && typeof window !== "undefined") {
-        const recent = JSON.parse(localStorage.getItem(STORAGE_KEYS.RECENT_SEARCHES) || "[]") as string[]
-        const updated = [query, ...recent.filter((q) => q !== query)].slice(0, 10)
-        localStorage.setItem(STORAGE_KEYS.RECENT_SEARCHES, JSON.stringify(updated))
-        setRecentSearches(updated)
-
-        // Save to history
-        const history = JSON.parse(localStorage.getItem(STORAGE_KEYS.SEARCH_HISTORY) || "[]") as Array<{
-          query: string
-          timestamp: string
-        }>
-        history.unshift({ query, timestamp: new Date().toISOString() })
-        localStorage.setItem(
-          STORAGE_KEYS.SEARCH_HISTORY,
-          JSON.stringify(history.slice(0, 50)), // Keep last 50 searches
-        )
+        hashtags,
+        shelters: [] as any[],
+        groups: sortedGroups,
+        events: sortedEvents,
       }
 
-      // Update URL
+      setResults(resultPayload)
+      setIsLoading(false)
+
+      updateLocationHighlights({
+        allUsers,
+        allPets,
+        allEvents,
+        usersById,
+        locationFilter,
+      })
+
+      const totalResultsCount =
+        sortedUsers.length +
+        sortedPets.length +
+        sortedBlogs.length +
+        sortedWiki.length +
+        hashtags.length +
+        sortedGroups.length +
+        sortedEvents.length
+
+      setAiSuggestions(
+        generateSmartSuggestions({
+          query: normalizedQuery,
+          user,
+          filters: effectiveFilters,
+          trendingTags,
+          typeRestrictions,
+        }),
+      )
+
+      if ((normalizedQuery || hasFilterConstraints) && typeof window !== "undefined") {
+        const label = query.trim() || buildFilterSummary(effectiveFilters)
+        const historyTab = combinedTypes.length === 1 ? combinedTypes[0] : activeTab
+        const historyEntry: SearchHistoryEntry = {
+          id: `history-${Date.now()}`,
+          query: query.trim(),
+          timestamp: new Date().toISOString(),
+          filters: cloneFilters(effectiveFilters),
+          sortBy: effectiveSort,
+          tab: historyTab,
+          resultCount: totalResultsCount,
+        }
+
+        setRecentSearches((prev) => {
+          const updated = [label, ...prev.filter((item) => item !== label)].slice(0, 10)
+          localStorage.setItem(STORAGE_KEYS.RECENT_SEARCHES, JSON.stringify(updated))
+          return updated
+        })
+
+        setSearchHistory((prev) => {
+          const historyWithoutDuplicate = prev.filter(
+            (entry) => entry.query !== historyEntry.query || !filtersEqual(entry.filters, historyEntry.filters),
+          )
+          const updatedHistory = [historyEntry, ...historyWithoutDuplicate].slice(0, 50)
+          localStorage.setItem(STORAGE_KEYS.SEARCH_HISTORY, JSON.stringify(updatedHistory))
+          return updatedHistory
+        })
+      }
+
       const params = new URLSearchParams()
-      if (query) params.set("q", query)
+      if (query.trim()) params.set("q", query.trim())
       if (activeTab !== "all") params.set("tab", activeTab)
-      if (sortBy !== "relevance") params.set("sort", sortBy)
+      if (effectiveSort !== "relevance") params.set("sort", effectiveSort)
       router.replace(`/search?${params.toString()}`, { scroll: false })
-    }, 300) // Debounce search
+    }, 300)
 
     return () => clearTimeout(timer)
-  }, [query, filters, sortBy, activeTab, router])
+  }, [query, filters, sortBy, activeTab, router, user])
 
   // Sort results
   const sortResults = (items: any[], sort: SortOption, type: string) => {
     if (sort === "recent") {
-      return [...items].sort(
-        (a, b) => new Date(b.createdAt || b.joinedAt || "").getTime() - new Date(a.createdAt || a.joinedAt || "").getTime(),
-      )
+      return [...items].sort((a, b) => {
+        if (type === "events") {
+          return new Date(b.startDate || b.createdAt || 0).getTime() - new Date(a.startDate || a.createdAt || 0).getTime()
+        }
+        if (type === "groups") {
+          return new Date(b.updatedAt || b.createdAt || 0).getTime() - new Date(a.updatedAt || a.createdAt || 0).getTime()
+        }
+        if (type === "pets") {
+          return new Date(b.adoptionDate || b.birthday || 0).getTime() - new Date(a.adoptionDate || a.birthday || 0).getTime()
+        }
+        return new Date(b.createdAt || b.joinedAt || b.updatedAt || 0).getTime() -
+          new Date(a.createdAt || a.joinedAt || a.updatedAt || 0).getTime()
+      })
     } else if (sort === "popular") {
       if (type === "users") {
         return [...items].sort((a, b) => (b.followers?.length || 0) - (a.followers?.length || 0))
@@ -369,6 +1242,12 @@ export default function SearchPage() {
         })
       } else if (type === "wiki") {
         return [...items].sort((a, b) => (b.views || 0) - (a.views || 0))
+      } else if (type === "pets") {
+        return [...items].sort((a, b) => (b.followers?.length || 0) - (a.followers?.length || 0))
+      } else if (type === "groups") {
+        return [...items].sort((a, b) => (b.memberCount || 0) - (a.memberCount || 0))
+      } else if (type === "events") {
+        return [...items].sort((a, b) => (b.attendeeCount || 0) - (a.attendeeCount || 0))
       }
       return items
     }
@@ -388,6 +1267,64 @@ export default function SearchPage() {
 
   const handlePopularSearch = (popularQuery: string) => {
     handleSearch(popularQuery)
+  }
+
+  const handleSaveCurrentSearch = () => {
+    const effectiveFiltersSnapshot = combineFilters({ filters, operators: operatorFilters, user })
+    const summary = buildFilterSummary(effectiveFiltersSnapshot)
+    const normalizedQuery = query.trim()
+    if (!normalizedQuery && summary === "Search") {
+      return
+    }
+
+    const label = normalizedQuery || summary
+    const preferredTab = effectiveFiltersSnapshot.types.length === 1 ? effectiveFiltersSnapshot.types[0] : activeTab
+    const savedEntry: SavedSearch = {
+      id: `saved-${Date.now()}`,
+      label,
+      query: normalizedQuery,
+      timestamp: new Date().toISOString(),
+      filters: cloneFilters(effectiveFiltersSnapshot),
+      sortBy,
+      tab: preferredTab,
+      resultCount:
+        results.users.length +
+        results.pets.length +
+        results.blogs.length +
+        results.wiki.length +
+        results.hashtags.length +
+        results.groups.length +
+        results.events.length,
+    }
+
+    setSavedSearches((prev) => {
+      const withoutDuplicate = prev.filter(
+        (entry) => entry.query !== savedEntry.query || !filtersEqual(entry.filters, savedEntry.filters),
+      )
+      const updated = [savedEntry, ...withoutDuplicate].slice(0, 20)
+      if (typeof window !== "undefined") {
+        localStorage.setItem(STORAGE_KEYS.SAVED_SEARCHES, JSON.stringify(updated))
+      }
+      return updated
+    })
+  }
+
+  const handleApplySavedSearch = (saved: SavedSearch) => {
+    setQuery(saved.query)
+    setFilters(cloneFilters(saved.filters))
+    setSortBy(saved.sortBy)
+    setActiveTab(saved.tab)
+    setCurrentPage(1)
+  }
+
+  const handleRemoveSavedSearch = (id: string) => {
+    setSavedSearches((prev) => {
+      const updated = prev.filter((entry) => entry.id !== id)
+      if (typeof window !== "undefined") {
+        localStorage.setItem(STORAGE_KEYS.SAVED_SEARCHES, JSON.stringify(updated))
+      }
+      return updated
+    })
   }
 
   const toggleSpeciesFilter = (species: string) => {
@@ -419,28 +1356,26 @@ export default function SearchPage() {
   }
 
   const clearFilters = () => {
-    setFilters({
-      species: [],
-      location: "",
-      breed: "",
-      category: [],
-      gender: [],
-      verified: false,
-    })
+    setFilters(createDefaultFilters())
     setCurrentPage(1)
   }
 
+  const combinedFiltersForUi = combineFilters({ filters, operators: operatorFilters, user })
+
   const hasActiveFilters =
-    filters.species.length > 0 ||
-    filters.location ||
-    filters.breed ||
-    filters.category.length > 0 ||
-    filters.gender.length > 0 ||
-    filters.ageMin !== undefined ||
-    filters.ageMax !== undefined ||
-    filters.dateFrom ||
-    filters.dateTo ||
-    filters.verified
+    combinedFiltersForUi.species.length > 0 ||
+    combinedFiltersForUi.location.length > 0 ||
+    combinedFiltersForUi.breed.length > 0 ||
+    combinedFiltersForUi.category.length > 0 ||
+    combinedFiltersForUi.gender.length > 0 ||
+    combinedFiltersForUi.tags.length > 0 ||
+    combinedFiltersForUi.types.length > 0 ||
+    combinedFiltersForUi.nearby ||
+    combinedFiltersForUi.ageMin !== undefined ||
+    combinedFiltersForUi.ageMax !== undefined ||
+    Boolean(combinedFiltersForUi.dateFrom) ||
+    Boolean(combinedFiltersForUi.dateTo) ||
+    combinedFiltersForUi.verified
 
   const totalResults =
     results.users.length +
@@ -448,7 +1383,28 @@ export default function SearchPage() {
     results.blogs.length +
     results.wiki.length +
     results.hashtags.length +
-    results.shelters.length
+    results.shelters.length +
+    results.groups.length +
+    results.events.length
+  const canSaveSearch = query.trim().length > 0 || hasActiveFilters
+  const locationContextLabel = combinedFiltersForUi.location || user?.location || ""
+  const hasLocationHighlights =
+    locationHighlights.users.length > 0 ||
+    locationHighlights.pets.length > 0 ||
+    locationHighlights.events.length > 0
+  const hasSuggestions = aiSuggestions.length > 0
+  const filterCount =
+    combinedFiltersForUi.species.length +
+    combinedFiltersForUi.category.length +
+    combinedFiltersForUi.gender.length +
+    combinedFiltersForUi.tags.length +
+    combinedFiltersForUi.types.length +
+    (combinedFiltersForUi.location ? 1 : 0) +
+    (combinedFiltersForUi.breed ? 1 : 0) +
+    (combinedFiltersForUi.nearby ? 1 : 0) +
+    (combinedFiltersForUi.ageMin !== undefined || combinedFiltersForUi.ageMax !== undefined ? 1 : 0) +
+    (combinedFiltersForUi.dateFrom || combinedFiltersForUi.dateTo ? 1 : 0) +
+    (combinedFiltersForUi.verified ? 1 : 0)
 
   // Get paginated results
   const getPaginatedResults = (items: any[]) => {
@@ -470,6 +1426,8 @@ export default function SearchPage() {
   const paginatedPets = getPaginatedResults(results.pets)
   const paginatedBlogs = getPaginatedResults(results.blogs)
   const paginatedWiki = getPaginatedResults(results.wiki)
+  const paginatedGroups = getPaginatedResults(results.groups)
+  const paginatedEvents = getPaginatedResults(results.events)
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
@@ -597,16 +1555,7 @@ export default function SearchPage() {
                   Filters
                   {hasActiveFilters && (
                     <Badge variant="secondary" className="ml-1 h-5 w-5 rounded-full p-0 flex items-center justify-center">
-                      {filters.species.length +
-                        filters.category.length +
-                        filters.gender.length +
-                        (filters.location ? 1 : 0) +
-                        (filters.breed ? 1 : 0) +
-                        (filters.ageMin !== undefined ? 1 : 0) +
-                        (filters.ageMax !== undefined ? 1 : 0) +
-                        (filters.dateFrom ? 1 : 0) +
-                        (filters.dateTo ? 1 : 0) +
-                        (filters.verified ? 1 : 0)}
+                      {filterCount}
                     </Badge>
                   )}
                 </Button>
@@ -709,6 +1658,15 @@ export default function SearchPage() {
 
                 <DropdownMenuSeparator />
                 <DropdownMenuCheckboxItem
+                  checked={filters.nearby}
+                  onCheckedChange={(checked) => setFilters({ ...filters, nearby: checked })}
+                >
+                  <Compass className="h-4 w-4 mr-2 inline" />
+                  Near Me
+                </DropdownMenuCheckboxItem>
+
+                <DropdownMenuSeparator />
+                <DropdownMenuCheckboxItem
                   checked={filters.verified}
                   onCheckedChange={(checked) => setFilters({ ...filters, verified: checked })}
                 >
@@ -760,29 +1718,91 @@ export default function SearchPage() {
         {hasActiveFilters && (
           <div className="flex flex-wrap gap-2 mb-4">
             {filters.species.map((species) => (
-              <Badge key={species} variant="secondary" className="gap-1">
+              <Badge key={`species-${species}`} variant="secondary" className="gap-1">
                 {species}
                 <button onClick={() => toggleSpeciesFilter(species)} className="ml-1 hover:text-destructive">
                   ×
                 </button>
               </Badge>
             ))}
+            {combinedFiltersForUi.species
+              .filter((species) => !filters.species.includes(species))
+              .map((species) => (
+                <Badge key={`query-species-${species}`} variant="outline" className="gap-1">
+                  Query: {species}
+                </Badge>
+              ))}
+
             {filters.category.map((category) => (
-              <Badge key={category} variant="secondary" className="gap-1">
+              <Badge key={`category-${category}`} variant="secondary" className="gap-1">
                 {category}
                 <button onClick={() => toggleCategoryFilter(category)} className="ml-1 hover:text-destructive">
                   ×
                 </button>
               </Badge>
             ))}
+            {combinedFiltersForUi.category
+              .filter((category) => !filters.category.includes(category))
+              .map((category) => (
+                <Badge key={`query-category-${category}`} variant="outline" className="gap-1">
+                  Query: {category}
+                </Badge>
+              ))}
+
             {filters.gender.map((gender) => (
-              <Badge key={gender} variant="secondary" className="gap-1">
+              <Badge key={`gender-${gender}`} variant="secondary" className="gap-1">
                 {gender}
                 <button onClick={() => toggleGenderFilter(gender)} className="ml-1 hover:text-destructive">
                   ×
                 </button>
               </Badge>
             ))}
+            {combinedFiltersForUi.gender
+              .filter((gender) => !filters.gender.includes(gender))
+              .map((gender) => (
+                <Badge key={`query-gender-${gender}`} variant="outline" className="gap-1">
+                  Query: {gender}
+                </Badge>
+              ))}
+
+            {filters.tags.map((tag) => (
+              <Badge key={`tag-${tag}`} variant="secondary" className="gap-1">
+                #{tag}
+                <button
+                  onClick={() => setFilters({ ...filters, tags: filters.tags.filter((t) => t !== tag) })}
+                  className="ml-1 hover:text-destructive"
+                >
+                  ×
+                </button>
+              </Badge>
+            ))}
+            {combinedFiltersForUi.tags
+              .filter((tag) => !filters.tags.includes(tag))
+              .map((tag) => (
+                <Badge key={`query-tag-${tag}`} variant="outline" className="gap-1">
+                  Query: #{tag}
+                </Badge>
+              ))}
+
+            {filters.types.map((type) => (
+              <Badge key={`type-${type}`} variant="secondary" className="gap-1 capitalize">
+                {type}
+                <button
+                  onClick={() => setFilters({ ...filters, types: filters.types.filter((t) => t !== type) })}
+                  className="ml-1 hover:text-destructive"
+                >
+                  ×
+                </button>
+              </Badge>
+            ))}
+            {combinedFiltersForUi.types
+              .filter((type) => !filters.types.includes(type))
+              .map((type) => (
+                <Badge key={`query-type-${type}`} variant="outline" className="gap-1 capitalize">
+                  Query: {type}
+                </Badge>
+              ))}
+
             {filters.location && (
               <Badge variant="secondary" className="gap-1">
                 <MapPin className="h-3 w-3" />
@@ -792,6 +1812,14 @@ export default function SearchPage() {
                 </button>
               </Badge>
             )}
+            {!filters.location && combinedFiltersForUi.location && (
+              <Badge variant="outline" className="gap-1">
+                <MapPin className="h-3 w-3" />
+                {combinedFiltersForUi.location}
+                <span className="text-xs text-muted-foreground">Query</span>
+              </Badge>
+            )}
+
             {filters.breed && (
               <Badge variant="secondary" className="gap-1">
                 {filters.breed}
@@ -800,6 +1828,12 @@ export default function SearchPage() {
                 </button>
               </Badge>
             )}
+            {!filters.breed && operatorFilters.breed && (
+              <Badge variant="outline" className="gap-1">
+                Breed: {operatorFilters.breed}
+              </Badge>
+            )}
+
             {(filters.ageMin !== undefined || filters.ageMax !== undefined) && (
               <Badge variant="secondary" className="gap-1">
                 Age: {filters.ageMin || 0}-{filters.ageMax || "∞"}
@@ -811,6 +1845,13 @@ export default function SearchPage() {
                 </button>
               </Badge>
             )}
+            {filters.ageMin === undefined && filters.ageMax === undefined &&
+              (combinedFiltersForUi.ageMin !== undefined || combinedFiltersForUi.ageMax !== undefined) && (
+                <Badge variant="outline" className="gap-1">
+                  Age: {combinedFiltersForUi.ageMin ?? 0}-{combinedFiltersForUi.ageMax ?? "∞"}
+                </Badge>
+              )}
+
             {(filters.dateFrom || filters.dateTo) && (
               <Badge variant="secondary" className="gap-1">
                 <Calendar className="h-3 w-3" />
@@ -823,6 +1864,30 @@ export default function SearchPage() {
                 </button>
               </Badge>
             )}
+            {!filters.dateFrom && !filters.dateTo &&
+              (combinedFiltersForUi.dateFrom || combinedFiltersForUi.dateTo) && (
+                <Badge variant="outline" className="gap-1">
+                  <Calendar className="h-3 w-3" />
+                  {combinedFiltersForUi.dateFrom || "..."} - {combinedFiltersForUi.dateTo || "..."}
+                </Badge>
+              )}
+
+            {filters.nearby && (
+              <Badge variant="secondary" className="gap-1">
+                <Compass className="h-3 w-3" />
+                Near Me
+                <button onClick={() => setFilters({ ...filters, nearby: false })} className="ml-1 hover:text-destructive">
+                  ×
+                </button>
+              </Badge>
+            )}
+            {!filters.nearby && combinedFiltersForUi.nearby && (
+              <Badge variant="outline" className="gap-1">
+                <Compass className="h-3 w-3" />
+                Near Me
+              </Badge>
+            )}
+
             {filters.verified && (
               <Badge variant="secondary" className="gap-1">
                 <CheckCircle2 className="h-3 w-3" />
@@ -830,6 +1895,11 @@ export default function SearchPage() {
                 <button onClick={() => setFilters({ ...filters, verified: false })} className="ml-1 hover:text-destructive">
                   ×
                 </button>
+              </Badge>
+            )}
+            {!filters.verified && operatorFilters.verified && (
+              <Badge variant="outline" className="gap-1">
+                <CheckCircle2 className="h-3 w-3" /> Verified
               </Badge>
             )}
           </div>
@@ -843,8 +1913,10 @@ export default function SearchPage() {
         )}
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-6">
+      <div className="grid gap-6 lg:grid-cols-[2fr,1fr]">
+        <div>
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="grid w-full grid-cols-8">
           <TabsTrigger value="all">All ({totalResults})</TabsTrigger>
           <TabsTrigger value="users">
             <User className="h-4 w-4 mr-1" />
@@ -861,6 +1933,14 @@ export default function SearchPage() {
           <TabsTrigger value="wiki">
             <BookOpen className="h-4 w-4 mr-1" />
             Wiki ({results.wiki.length})
+          </TabsTrigger>
+          <TabsTrigger value="groups">
+            <Users className="h-4 w-4 mr-1" />
+            Groups ({results.groups.length})
+          </TabsTrigger>
+          <TabsTrigger value="events">
+            <CalendarDays className="h-4 w-4 mr-1" />
+            Events ({results.events.length})
           </TabsTrigger>
           <TabsTrigger value="hashtags">
             <Hash className="h-4 w-4 mr-1" />
@@ -958,6 +2038,42 @@ export default function SearchPage() {
                   <div className="space-y-4">
                     {results.wiki.slice(0, 4).map((article) => (
                       <WikiCard key={article.id} article={article} query={query} />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {results.groups.length > 0 && (
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-xl font-semibold">Groups ({results.groups.length})</h2>
+                    {results.groups.length > 4 && (
+                      <Link href="/search?tab=groups" className="text-sm text-primary hover:underline">
+                        View all →
+                      </Link>
+                    )}
+                  </div>
+                  <div className="space-y-4">
+                    {results.groups.slice(0, 4).map((group) => (
+                      <GroupCard key={group.id} group={group} query={query} />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {results.events.length > 0 && (
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-xl font-semibold">Events & Meetups ({results.events.length})</h2>
+                    {results.events.length > 4 && (
+                      <Link href="/search?tab=events" className="text-sm text-primary hover:underline">
+                        View all →
+                      </Link>
+                    )}
+                  </div>
+                  <div className="space-y-4">
+                    {results.events.slice(0, 4).map((event) => (
+                      <EventCard key={event.id} event={event} query={query} />
                     ))}
                   </div>
                 </div>
@@ -1113,6 +2229,70 @@ export default function SearchPage() {
           )}
         </TabsContent>
 
+        <TabsContent value="groups" className="mt-6">
+          {isLoading ? (
+            <div className="flex justify-center py-12">
+              <LoadingSpinner />
+            </div>
+          ) : results.groups.length === 0 ? (
+            <Card>
+              <CardContent className="p-12 text-center space-y-2">
+                <Users className="h-12 w-12 mx-auto text-muted-foreground" />
+                <p className="text-muted-foreground">No groups found</p>
+                <p className="text-sm text-muted-foreground/80">Try adjusting your interests or filters</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <>
+              <div className="space-y-4 mb-6">
+                {paginatedGroups.items.map((group) => (
+                  <GroupCard key={group.id} group={group} query={query} />
+                ))}
+              </div>
+              {paginatedGroups.totalPages > 1 && (
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={paginatedGroups.totalPages}
+                  onPageChange={setCurrentPage}
+                  totalItems={paginatedGroups.totalItems}
+                />
+              )}
+            </>
+          )}
+        </TabsContent>
+
+        <TabsContent value="events" className="mt-6">
+          {isLoading ? (
+            <div className="flex justify-center py-12">
+              <LoadingSpinner />
+            </div>
+          ) : results.events.length === 0 ? (
+            <Card>
+              <CardContent className="p-12 text-center space-y-2">
+                <CalendarDays className="h-12 w-12 mx-auto text-muted-foreground" />
+                <p className="text-muted-foreground">No events or meetups found</p>
+                <p className="text-sm text-muted-foreground/80">Try searching with a different location or date</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <>
+              <div className="space-y-4 mb-6">
+                {paginatedEvents.items.map((event) => (
+                  <EventCard key={event.id} event={event} query={query} />
+                ))}
+              </div>
+              {paginatedEvents.totalPages > 1 && (
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={paginatedEvents.totalPages}
+                  onPageChange={setCurrentPage}
+                  totalItems={paginatedEvents.totalItems}
+                />
+              )}
+            </>
+          )}
+        </TabsContent>
+
         <TabsContent value="hashtags" className="mt-6">
           {isLoading ? (
             <div className="flex justify-center py-12">
@@ -1140,7 +2320,219 @@ export default function SearchPage() {
             </div>
           )}
         </TabsContent>
-      </Tabs>
+          </Tabs>
+        </div>
+        <aside className="space-y-4">
+          {/* Saved Searches */}
+          <Card>
+            <CardContent className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 font-semibold">
+                  <BookmarkPlus className="h-4 w-4" />
+                  Saved searches
+                </div>
+                <Button variant="outline" size="sm" onClick={handleSaveCurrentSearch} disabled={!canSaveSearch}>
+                  Save current
+                </Button>
+              </div>
+              {savedSearches.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  Keep tabs on favorite queries to revisit them quickly.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {savedSearches.slice(0, 5).map((saved) => (
+                    <div key={saved.id} className="flex items-center justify-between gap-3">
+                      <button
+                        type="button"
+                        onClick={() => handleApplySavedSearch(saved)}
+                        className="text-left flex-1"
+                      >
+                        <div className="text-sm font-medium leading-tight truncate">{saved.label}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {saved.resultCount} result{saved.resultCount === 1 ? "" : "s"} · {formatCommentDate(saved.timestamp)}
+                        </div>
+                      </button>
+                      <Button variant="ghost" size="icon" onClick={() => handleRemoveSavedSearch(saved.id)}>
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Search History */}
+          <Card>
+            <CardContent className="space-y-3">
+              <div className="flex items-center gap-2 font-semibold">
+                <History className="h-4 w-4" />
+                Recent history
+              </div>
+              {searchHistory.length === 0 ? (
+                <p className="text-sm text-muted-foreground">We’ll keep the last 50 searches right here.</p>
+              ) : (
+                <div className="space-y-2">
+                  {searchHistory.slice(0, 5).map((entry) => (
+                    <button
+                      key={entry.id}
+                      type="button"
+                      onClick={() => {
+                        setQuery(entry.query)
+                        setFilters(cloneFilters(entry.filters))
+                        setSortBy(entry.sortBy)
+                        setActiveTab(entry.tab)
+                        setCurrentPage(1)
+                      }}
+                      className="w-full text-left text-sm hover:bg-muted rounded px-2 py-1"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="truncate">{entry.query || buildFilterSummary(entry.filters)}</span>
+                        <span className="text-xs text-muted-foreground">{formatCommentDate(entry.timestamp)}</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Location based discovery */}
+          {hasLocationHighlights && (
+            <Card>
+              <CardContent className="space-y-3">
+                <div className="flex items-center gap-2 font-semibold">
+                  <Compass className="h-4 w-4" />
+                  Nearby {locationContextLabel ? `in ${locationContextLabel}` : "matches"}
+                </div>
+                {locationHighlights.users.length > 0 && (
+                  <div className="space-y-1">
+                    <p className="text-xs uppercase text-muted-foreground tracking-wide">Users</p>
+                    {locationHighlights.users.slice(0, 3).map((localUser) => (
+                      <Link
+                        key={localUser.id}
+                        href={`/user/${localUser.username}`}
+                        className="flex items-center gap-2 text-sm text-primary hover:underline"
+                      >
+                        <Avatar className="h-6 w-6">
+                          <AvatarImage src={localUser.avatar} />
+                          <AvatarFallback>{localUser.username.charAt(0).toUpperCase()}</AvatarFallback>
+                        </Avatar>
+                        <span className="truncate">{localUser.fullName || localUser.username}</span>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+                {locationHighlights.pets.length > 0 && (
+                  <div className="space-y-1">
+                    <p className="text-xs uppercase text-muted-foreground tracking-wide">Pets</p>
+                    {locationHighlights.pets.slice(0, 3).map((pet) => (
+                      <Link
+                        key={pet.id}
+                        href={getPetUrlFromPet(pet)}
+                        className="flex items-center gap-2 text-sm text-primary hover:underline"
+                      >
+                        <Avatar className="h-6 w-6">
+                          <AvatarImage src={pet.avatar} />
+                          <AvatarFallback>{pet.name.charAt(0).toUpperCase()}</AvatarFallback>
+                        </Avatar>
+                        <span className="truncate">{pet.name}</span>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+                {locationHighlights.events.length > 0 && (
+                  <div className="space-y-1">
+                    <p className="text-xs uppercase text-muted-foreground tracking-wide">Events</p>
+                    {locationHighlights.events.slice(0, 3).map((event) => (
+                      <Link
+                        key={event.id}
+                        href={
+                          (() => {
+                            const g = getGroups().find((group) => group.id === event.groupId)
+                            return g ? `/groups/${g.slug}/events/${event.id}` : "/groups"
+                          })()
+                        }
+                        className="flex items-center gap-2 text-sm text-primary hover:underline"
+                      >
+                        <CalendarDays className="h-4 w-4" />
+                        <span className="truncate">{event.title}</span>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Trending Content */}
+          <Card>
+            <CardContent className="space-y-3">
+              <div className="flex items-center gap-2 font-semibold">
+                <Flame className="h-4 w-4" />
+                Trending now
+              </div>
+              {trendingContent.posts.length === 0 && trendingContent.tags.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Trending highlights will appear as activity grows.</p>
+              ) : (
+                <div className="space-y-3">
+                  {trendingContent.posts.slice(0, 2).map((post) => (
+                    <Link key={post.id} href={`/blog/${post.id}`} className="block text-sm hover:underline">
+                      <div className="font-medium truncate">{post.title}</div>
+                      <div className="text-xs text-muted-foreground">{formatCommentDate(post.createdAt)}</div>
+                    </Link>
+                  ))}
+                  {trendingContent.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {trendingContent.tags.slice(0, 6).map((tag) => (
+                        <Link key={tag} href={`/search?q=${encodeURIComponent(`#${tag}`)}&tab=blogs`}>
+                          <Badge variant="outline" className="text-xs px-2 py-1">
+                            #{tag}
+                          </Badge>
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                  {trendingContent.groups.length > 0 && (
+                    <div className="space-y-1">
+                      {trendingContent.groups.slice(0, 2).map((group) => (
+                        <Link key={group.id} href={`/groups/${group.slug}`} className="text-sm hover:underline">
+                          {group.name}
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* AI Suggestions */}
+          {hasSuggestions && (
+            <Card>
+              <CardContent className="space-y-3">
+                <div className="flex items-center gap-2 font-semibold">
+                  <Sparkles className="h-4 w-4" />
+                  Suggestions
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {aiSuggestions.map((suggestion, index) => (
+                    <Button
+                      key={`${suggestion}-${index}`}
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleSearch(suggestion)}
+                    >
+                      {suggestion}
+                    </Button>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </aside>
+      </div>
     </div>
   )
 }
@@ -1330,6 +2722,98 @@ function WikiCard({ article, query }: { article: WikiArticle; query: string }) {
   )
 }
 
+function GroupCard({ group, query }: { group: Group; query: string }) {
+  return (
+    <Link href={`/groups/${group.slug}`}>
+      <Card className="hover:bg-muted/50 transition-colors cursor-pointer">
+        <CardContent className="p-4">
+          <div className="flex items-start gap-3">
+            <Users className="h-10 w-10 text-muted-foreground flex-shrink-0" />
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-1">
+                <h3 className="font-semibold text-lg">{highlightText(group.name, query)}</h3>
+                {group.isFeatured && (
+                  <Badge variant="secondary" className="text-xs">
+                    Featured
+                  </Badge>
+                )}
+              </div>
+              <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
+                {highlightText(group.description, query)}
+              </p>
+              <div className="flex items-center gap-4 text-xs text-muted-foreground mb-2">
+                <span>{group.memberCount} members</span>
+                <span>• {group.postCount} posts</span>
+                <span>• {group.topicCount} topics</span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {group.tags?.slice(0, 4).map((tag) => (
+                  <Badge key={tag} variant="outline" className="text-xs">
+                    #{tag}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </Link>
+  )
+}
+
+function EventCard({ event, query }: { event: GroupEvent; query: string }) {
+  const group = getGroups().find((g) => g.id === event.groupId)
+  const startDate = formatDate(event.startDate)
+
+  return (
+    <Link href={group ? `/groups/${group.slug}/events/${event.id}` : "/groups"}>
+      <Card className="hover:bg-muted/50 transition-colors cursor-pointer">
+        <CardContent className="p-4 space-y-3">
+          <div className="flex items-start gap-3">
+            <CalendarDays className="h-10 w-10 text-muted-foreground flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <h3 className="font-semibold text-lg">{highlightText(event.title, query)}</h3>
+                {event.attendeeCount !== undefined && (
+                  <Badge variant="secondary" className="text-xs">
+                    {event.attendeeCount} attending
+                  </Badge>
+                )}
+              </div>
+              {group && (
+                <p className="text-sm text-muted-foreground mb-1">
+                  Hosted by {highlightText(group.name, query)}
+                </p>
+              )}
+              {event.location && (
+                <p className="text-sm text-muted-foreground flex items-center gap-1">
+                  <MapPin className="h-3 w-3" />
+                  {highlightText(event.location, query)}
+                </p>
+              )}
+              <p className="text-xs text-muted-foreground">Starts on {startDate}</p>
+              {event.tags && event.tags.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {event.tags.slice(0, 4).map((tag) => (
+                    <Badge key={tag} variant="outline" className="text-xs">
+                      #{tag}
+                    </Badge>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+          {event.description && (
+            <p className="text-sm text-muted-foreground line-clamp-2">
+              {highlightText(event.description, query)}
+            </p>
+          )}
+        </CardContent>
+      </Card>
+    </Link>
+  )
+}
+
 function Pagination({
   currentPage,
   totalPages,
@@ -1415,4 +2899,3 @@ function highlightText(text: string, searchTerm: string) {
     </span>
   )
 }
-

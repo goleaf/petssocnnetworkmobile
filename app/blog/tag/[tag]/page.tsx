@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, use } from "react"
+import { useState, useEffect, use, useCallback } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -8,36 +8,56 @@ import { BackButton } from "@/components/ui/back-button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { getBlogPosts, getPets, getUsers } from "@/lib/storage"
 import Link from "next/link"
-import { Tag, ArrowLeft, Heart } from "lucide-react"
-import type { BlogPost } from "@/lib/types"
+import { Tag, Heart } from "lucide-react"
+import type { BlogPost, Pet, User } from "@/lib/types"
 import { formatDate } from "@/lib/utils/date"
 import { getPetUrlFromPet } from "@/lib/utils/pet-url"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
+import { canViewPost } from "@/lib/utils/privacy"
+import { useAuth } from "@/lib/auth"
+import { useStorageListener } from "@/lib/hooks/use-storage-listener"
+
+const STORAGE_KEYS_TO_WATCH = ["pet_social_blog_posts", "pet_social_users", "pet_social_pets"]
 
 export default function TagPage({ params }: { params: Promise<{ tag: string }> }) {
   const { tag } = use(params)
+  const { user: currentUser } = useAuth()
   const [posts, setPosts] = useState<BlogPost[]>([])
+  const [allPets, setAllPets] = useState<Pet[]>([])
+  const [allUsers, setAllUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   const decodedTag = decodeURIComponent(tag)
 
-  useEffect(() => {
+  const loadTaggedPosts = useCallback(() => {
     setLoading(true)
-    // Simulate a small delay to show the spinner
-    setTimeout(() => {
-      const allPosts = getBlogPosts()
-      // Filter posts that have this tag (case-insensitive)
-      const filtered = allPosts.filter(
-        (post) =>
-          post.tags.some((t) => t.toLowerCase() === decodedTag.toLowerCase()) ||
-          post.hashtags?.some((h) => h.toLowerCase() === decodedTag.toLowerCase())
-      )
-      setPosts(filtered)
-      setLoading(false)
-    }, 100)
-  }, [decodedTag])
 
-  const pets = getPets()
-  const users = getUsers()
+    const postsData = getBlogPosts()
+    const petsData = getPets()
+    const usersData = getUsers()
+    const viewerId = currentUser?.id || null
+    const targetTag = decodedTag.toLowerCase()
+
+    const filtered = postsData.filter((post) => {
+      const author = usersData.find((candidate) => candidate.id === post.authorId)
+      if (!author) return false
+      const matchesTag =
+        post.tags.some((t) => t.toLowerCase() === targetTag) ||
+        post.hashtags?.some((h) => h.toLowerCase() === targetTag)
+      if (!matchesTag) return false
+      return canViewPost(post, author, viewerId)
+    })
+
+    setPosts(filtered)
+    setAllPets(petsData)
+    setAllUsers(usersData)
+    setLoading(false)
+  }, [decodedTag, currentUser?.id])
+
+  useEffect(() => {
+    loadTaggedPosts()
+  }, [loadTaggedPosts])
+
+  useStorageListener(STORAGE_KEYS_TO_WATCH, loadTaggedPosts)
 
   if (loading) {
     return (
@@ -68,15 +88,16 @@ export default function TagPage({ params }: { params: Promise<{ tag: string }> }
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {posts.map((post) => {
-            const pet = pets.find((p) => p.id === post.petId)
-            const author = users.find((u) => u.id === post.authorId)
+            const pet = allPets.find((p) => p.id === post.petId)
+            const author = allUsers.find((u) => u.id === post.authorId)
+            const previewImage = post.coverImage || post.media?.images?.[0]
             return (
               <Link key={post.id} href={`/blog/${post.id}`}>
                 <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full flex flex-col overflow-hidden p-0">
-                  {post.coverImage && (
+                  {previewImage && (
                     <div className="aspect-video w-full overflow-hidden">
                       <img
-                        src={post.coverImage || "/placeholder.svg"}
+                        src={previewImage}
                         alt={post.title}
                         className="w-full h-full object-cover"
                       />
@@ -125,4 +146,3 @@ export default function TagPage({ params }: { params: Promise<{ tag: string }> }
     </div>
   )
 }
-

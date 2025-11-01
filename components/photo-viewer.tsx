@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
@@ -23,6 +23,8 @@ import {
   togglePhotoReaction,
   getPhotoReactions,
   getUsers,
+  getPetById,
+  areUsersBlocked,
 } from "@/lib/storage"
 import type { Comment, ReactionType } from "@/lib/types"
 import { formatCommentDate } from "@/lib/utils/date"
@@ -56,6 +58,13 @@ export function PhotoViewer({ photos, petId, initialIndex = 0, isOpen, onClose, 
   const [replyContent, setReplyContent] = useState("")
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null)
   const [editContent, setEditContent] = useState("")
+  const pet = useMemo(() => getPetById(petId), [petId])
+  const interactionBlocked = Boolean(currentUser && pet && areUsersBlocked(currentUser.id, pet.ownerId))
+  const blockingMessage = interactionBlocked
+    ? currentUser?.blockedUsers?.includes(pet?.ownerId ?? "")
+      ? "You have blocked this pet's owner. Unblock them to interact with this photo."
+      : "This pet's owner has blocked you. Interactions are disabled."
+    : ""
 
   const reactionEmojis: Record<ReactionType, string> = {
     like: "👍",
@@ -117,7 +126,10 @@ export function PhotoViewer({ photos, petId, initialIndex = 0, isOpen, onClose, 
   const loadComments = () => {
     const photoKey = `${petId}:${currentIndex}`
     const loadedComments = getCommentsByPetPhotoId(photoKey)
-    setComments(loadedComments)
+    const filteredComments = currentUser
+      ? loadedComments.filter((comment) => !areUsersBlocked(currentUser.id, comment.userId))
+      : loadedComments
+    setComments(filteredComments)
   }
 
   const loadPhotoReactions = () => {
@@ -150,6 +162,10 @@ export function PhotoViewer({ photos, petId, initialIndex = 0, isOpen, onClose, 
 
   const handleAddComment = () => {
     if (!currentUser || !newComment.trim()) return
+    if (interactionBlocked) {
+      window.alert(blockingMessage)
+      return
+    }
 
     // Replace emoticons in comment
     const processedContent = replaceEmoticons(newComment.trim())
@@ -170,6 +186,10 @@ export function PhotoViewer({ photos, petId, initialIndex = 0, isOpen, onClose, 
 
   const handleReply = (parentCommentId: string) => {
     if (!currentUser || !replyContent.trim()) return
+    if (interactionBlocked) {
+      window.alert(blockingMessage)
+      return
+    }
 
     // Replace emoticons in reply
     const processedContent = replaceEmoticons(replyContent.trim())
@@ -213,12 +233,25 @@ export function PhotoViewer({ photos, petId, initialIndex = 0, isOpen, onClose, 
 
   const handlePhotoReaction = (reactionType: ReactionType) => {
     if (!currentUser) return
+    if (interactionBlocked) {
+      window.alert(blockingMessage)
+      return
+    }
     togglePhotoReaction(petId, currentIndex, currentUser.id, reactionType)
     loadPhotoReactions()
   }
 
   const handleCommentReaction = (commentId: string, reactionType: ReactionType) => {
     if (!currentUser) return
+    if (interactionBlocked) {
+      window.alert(blockingMessage)
+      return
+    }
+    const targetComment = comments.find((comment) => comment.id === commentId)
+    if (targetComment && areUsersBlocked(currentUser.id, targetComment.userId)) {
+      window.alert("You cannot react to this comment because of a blocking relationship.")
+      return
+    }
     toggleCommentReaction(commentId, currentUser.id, reactionType)
     loadComments()
   }
@@ -335,6 +368,7 @@ export function PhotoViewer({ photos, petId, initialIndex = 0, isOpen, onClose, 
                       className={`h-8 px-2 text-white hover:bg-white/20 ${
                         userPhotoReaction ? "bg-primary/30" : ""
                       }`}
+                      disabled={interactionBlocked}
                     >
                       <Smile className="h-4 w-4 mr-1.5" />
                       {totalPhotoReactions > 0 ? (
@@ -352,7 +386,12 @@ export function PhotoViewer({ photos, petId, initialIndex = 0, isOpen, onClose, 
                       return (
                         <DropdownMenuItem
                           key={type}
-                          onClick={() => handlePhotoReaction(reactionType)}
+                          disabled={interactionBlocked}
+                          onClick={() => {
+                            if (!interactionBlocked) {
+                              handlePhotoReaction(reactionType)
+                            }
+                          }}
                           className={`cursor-pointer ${isActive ? "bg-primary/10 font-medium" : ""}`}
                         >
                           <span className="mr-2 text-lg">{emoji}</span>
@@ -369,6 +408,7 @@ export function PhotoViewer({ photos, petId, initialIndex = 0, isOpen, onClose, 
                     size="sm"
                     className="h-8 px-2 text-white bg-primary/30 hover:bg-primary/40"
                     onClick={() => handlePhotoReaction(userPhotoReaction)}
+                    disabled={interactionBlocked}
                   >
                     <span className="text-base mr-1">{reactionEmojis[userPhotoReaction]}</span>
                     <span className="font-medium">{photoReactions[userPhotoReaction]?.length || 0}</span>
@@ -476,7 +516,7 @@ export function PhotoViewer({ photos, petId, initialIndex = 0, isOpen, onClose, 
                             )}
                             {!isEditing && (
                               <div className="flex items-center gap-2 mt-2">
-                                {currentUser && (
+                                {currentUser && !interactionBlocked && (
                                   <Button
                                     variant="ghost"
                                     size="sm"
@@ -490,11 +530,16 @@ export function PhotoViewer({ photos, petId, initialIndex = 0, isOpen, onClose, 
                                     Reply
                                   </Button>
                                 )}
-                                {currentUser && (
+                                {currentUser && !interactionBlocked && (
                                   <div className="flex items-center gap-1">
                                     <DropdownMenu>
                                       <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" size="sm" className="h-7 px-2 text-xs hover:bg-primary/10 hover:text-primary">
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          className="h-7 px-2 text-xs hover:bg-primary/10 hover:text-primary"
+                                          disabled={interactionBlocked}
+                                        >
                                           <Smile className="h-3.5 w-3.5 mr-1.5" />
                                           {totalReactions > 0 ? <span className="font-medium">{totalReactions}</span> : <span>React</span>}
                                         </Button>
@@ -507,7 +552,12 @@ export function PhotoViewer({ photos, petId, initialIndex = 0, isOpen, onClose, 
                                           return (
                                             <DropdownMenuItem
                                               key={type}
-                                              onClick={() => handleCommentReaction(comment.id, reactionType)}
+                                              disabled={interactionBlocked}
+                                              onClick={() => {
+                                                if (!interactionBlocked) {
+                                                  handleCommentReaction(comment.id, reactionType)
+                                                }
+                                              }}
                                               className={`cursor-pointer ${isActive ? "bg-primary/10 font-medium" : ""}`}
                                             >
                                               <span className="mr-2 text-lg">{emoji}</span>
@@ -524,6 +574,7 @@ export function PhotoViewer({ photos, petId, initialIndex = 0, isOpen, onClose, 
                                         size="sm"
                                         className="h-7 px-2 text-xs bg-primary/10 text-primary hover:bg-primary/20"
                                         onClick={() => handleCommentReaction(comment.id, userReaction)}
+                                        disabled={interactionBlocked}
                                       >
                                         <span className="text-sm mr-1">{reactionEmojis[userReaction]}</span>
                                         <span className="font-medium">{comment.reactions?.[userReaction]?.length || 0}</span>
@@ -554,7 +605,7 @@ export function PhotoViewer({ photos, petId, initialIndex = 0, isOpen, onClose, 
                             )}
 
                             {/* Reply Input */}
-                            {replyingTo === comment.id && currentUser && (
+                            {replyingTo === comment.id && currentUser && !interactionBlocked && (
                               <div className="mt-3 ml-4 pl-4 border-l-2 border-primary/30 space-y-2">
                                 <div className="flex gap-2">
                                   <Avatar className="h-8 w-8">
@@ -750,42 +801,49 @@ export function PhotoViewer({ photos, petId, initialIndex = 0, isOpen, onClose, 
               </div>
 
               {/* Add Comment */}
-              {currentUser && (
-                <div className="border-t pt-4">
-                  <div className="flex gap-2">
-                    <Avatar className="h-9 w-9">
-                      <AvatarImage src={currentUser.avatar || "/placeholder.svg"} alt={currentUser.fullName} />
-                      <AvatarFallback>{currentUser.fullName.charAt(0)}</AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 space-y-2">
-                      <Textarea
-                        placeholder="Add a comment..."
-                        value={newComment}
-                        onChange={(e) => {
-                          const value = e.target.value
-                          setNewComment(value)
-                          // Auto-replace emoticons when user types space or punctuation
-                          const lastChar = value[value.length - 1]
-                          if (lastChar === ' ' || lastChar === '\n' || /[.,!?;:]/.test(lastChar)) {
-                            const replaced = replaceEmoticons(value)
-                            if (replaced !== value) {
-                              setNewComment(replaced)
+              {currentUser ? (
+                interactionBlocked ? (
+                  <div className="border-t pt-4">
+                    <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-xs text-destructive">
+                      {blockingMessage}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="border-t pt-4">
+                    <div className="flex gap-2">
+                      <Avatar className="h-9 w-9">
+                        <AvatarImage src={currentUser.avatar || "/placeholder.svg"} alt={currentUser.fullName} />
+                        <AvatarFallback>{currentUser.fullName.charAt(0)}</AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 space-y-2">
+                        <Textarea
+                          placeholder="Add a comment..."
+                          value={newComment}
+                          onChange={(e) => {
+                            const value = e.target.value
+                            setNewComment(value)
+                            const lastChar = value[value.length - 1]
+                            if (lastChar === ' ' || lastChar === '\n' || /[.,!?;:]/.test(lastChar)) {
+                              const replaced = replaceEmoticons(value)
+                              if (replaced !== value) {
+                                setNewComment(replaced)
+                              }
                             }
-                          }
-                        }}
-                        rows={2}
-                        className="text-sm min-h-[60px] resize-none"
-                      />
-                      <div className="flex justify-end">
-                        <Button size="sm" onClick={handleAddComment} disabled={!newComment.trim()}>
-                          <Send className="h-3.5 w-3.5 mr-1.5" />
-                          Comment
-                        </Button>
+                          }}
+                          rows={2}
+                          className="text-sm min-h-[60px] resize-none"
+                        />
+                        <div className="flex justify-end">
+                          <Button size="sm" onClick={handleAddComment} disabled={!newComment.trim()}>
+                            <Send className="h-3.5 w-3.5 mr-1.5" />
+                            Comment
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              )}
+                )
+              ) : null}
             </CardContent>
           </Card>
         )}

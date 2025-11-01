@@ -32,7 +32,8 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import { getPetUrlFromPet } from "@/lib/utils/pet-url"
-import { canViewUserPets } from "@/lib/utils/privacy"
+import { canSendFollowRequest, canViewUserPets } from "@/lib/utils/privacy"
+import { getPrivacyNotice } from "@/lib/utils/privacy-messages"
 import { formatDate } from "@/lib/utils/date"
 import { cn } from "@/lib/utils"
 import {
@@ -221,6 +222,13 @@ export default function PetsPage({ params }: { params: Promise<{ username: strin
   const isOwnProfile = currentUser?.id === user.id
   const viewerId = currentUser?.id || null
   const canViewPets = canViewUserPets(user, viewerId)
+  const canFollow = canSendFollowRequest(user, viewerId)
+  const privacyMessage = getPrivacyNotice({
+    profileUser: user,
+    scope: "pets",
+    viewerId,
+    canRequestAccess: canFollow,
+  })
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
@@ -234,7 +242,7 @@ export default function PetsPage({ params }: { params: Promise<{ username: strin
             <p className="text-muted-foreground">
               {canViewPets
                 ? `${filteredAndSortedPets.length} ${filteredAndSortedPets.length === 1 ? "pet" : "pets"}`
-                : "Private"}
+                : privacyMessage}
             </p>
           </div>
           {isOwnProfile && (
@@ -383,7 +391,7 @@ export default function PetsPage({ params }: { params: Promise<{ username: strin
         <Card>
           <CardContent className="p-12 text-center space-y-4">
             <Lock className="h-12 w-12 mx-auto text-muted-foreground/50" />
-            <p className="text-muted-foreground">This user{"'"}s pets are private</p>
+            <p className="text-muted-foreground">{privacyMessage}</p>
           </CardContent>
         </Card>
       ) : groupedPets.length === 0 ? (
@@ -689,4 +697,3 @@ export default function PetsPage({ params }: { params: Promise<{ username: strin
     </div>
   )
 }
-

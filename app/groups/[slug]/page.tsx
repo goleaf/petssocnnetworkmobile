@@ -18,6 +18,7 @@ import {
   canUserViewGroup,
   isUserMemberOfGroup,
   canUserModerate,
+  canUserViewGroupContent,
 } from "@/lib/storage"
 import type { Group } from "@/lib/types"
 import { useAuth } from "@/lib/auth"
@@ -90,6 +91,7 @@ export default function GroupPage({ params }: { params: Promise<{ slug: string }
 
   const isMember = isAuthenticated && user ? isUserMemberOfGroup(group.id, user.id) : false
   const canModerate = isAuthenticated && user ? canUserModerate(group.id, user.id) : false
+  const canViewContent = canUserViewGroupContent(group.id, user?.id)
 
   const topics = getGroupTopicsByGroupId(group.id)
   const polls = getGroupPollsByGroupId(group.id)
@@ -178,7 +180,17 @@ export default function GroupPage({ params }: { params: Promise<{ slug: string }
 
             {/* Recent Activity */}
             <div className="space-y-4">
-              {activities.length === 0 ? (
+              {!canViewContent ? (
+                <Card>
+                  <CardContent className="p-8 text-center">
+                    <MessageSquare className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                    <h3 className="text-lg font-semibold mb-2">Members-only content</h3>
+                    <p className="text-muted-foreground">
+                      Join this group to see the latest activity and participate in discussions.
+                    </p>
+                  </CardContent>
+                </Card>
+              ) : activities.length === 0 ? (
                 <Card>
                   <CardContent className="p-8 text-center">
                     <MessageSquare className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
@@ -186,7 +198,7 @@ export default function GroupPage({ params }: { params: Promise<{ slug: string }
                     <p className="text-muted-foreground mb-4">
                       {isMember
                         ? "Be the first to start a discussion!"
-                        : "Join this group to see activity and participate in discussions."}
+                        : "Encourage members to join and kick off the first conversation."}
                     </p>
                     {isMember && (
                       <Link href={`/groups/${group.slug}/topics/create`}>
@@ -228,8 +240,17 @@ export default function GroupPage({ params }: { params: Promise<{ slug: string }
                 </Link>
               )}
             </div>
-
-            {topics.length === 0 ? (
+            {!canViewContent ? (
+              <Card>
+                <CardContent className="p-8 text-center">
+                  <MessageSquare className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                  <h3 className="text-lg font-semibold mb-2">Members-only content</h3>
+                  <p className="text-muted-foreground">
+                    Join this group to browse and participate in discussions.
+                  </p>
+                </CardContent>
+              </Card>
+            ) : topics.length === 0 ? (
               <Card>
                 <CardContent className="p-8 text-center">
                   <MessageSquare className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
@@ -237,7 +258,7 @@ export default function GroupPage({ params }: { params: Promise<{ slug: string }
                   <p className="text-muted-foreground mb-4">
                     {isMember
                       ? "Start the first discussion in this group!"
-                      : "Join this group to see and create topics."}
+                      : "Check back soon—members haven't posted any topics yet."}
                   </p>
                   {isMember && (
                     <Link href={`/groups/${group.slug}/topics/create`}>
@@ -306,8 +327,17 @@ export default function GroupPage({ params }: { params: Promise<{ slug: string }
                 </Link>
               )}
             </div>
-
-            {polls.length === 0 ? (
+            {!canViewContent ? (
+              <Card>
+                <CardContent className="p-8 text-center">
+                  <BarChart3 className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                  <h3 className="text-lg font-semibold mb-2">Members-only content</h3>
+                  <p className="text-muted-foreground">
+                    Join this group to view polls and share your vote.
+                  </p>
+                </CardContent>
+              </Card>
+            ) : polls.length === 0 ? (
               <Card>
                 <CardContent className="p-8 text-center">
                   <BarChart3 className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
@@ -315,7 +345,7 @@ export default function GroupPage({ params }: { params: Promise<{ slug: string }
                   <p className="text-muted-foreground mb-4">
                     {isMember
                       ? "Create a poll to gather opinions from group members!"
-                      : "Join this group to see and create polls."}
+                      : "Members haven't created any polls yet."}
                   </p>
                   {isMember && (
                     <Link href={`/groups/${group.slug}/polls/create`}>
@@ -363,7 +393,7 @@ export default function GroupPage({ params }: { params: Promise<{ slug: string }
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-2xl font-bold">Events</h2>
               <div className="flex items-center gap-2">
-                {events.length > 0 && (
+                {canViewContent && events.length > 0 && (
                   <BulkEventExportButton
                     events={events}
                     groupSlug={group.slug}
@@ -381,8 +411,17 @@ export default function GroupPage({ params }: { params: Promise<{ slug: string }
                 )}
               </div>
             </div>
-
-            {events.length === 0 ? (
+            {!canViewContent ? (
+              <Card>
+                <CardContent className="p-8 text-center">
+                  <Calendar className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                  <h3 className="text-lg font-semibold mb-2">Members-only content</h3>
+                  <p className="text-muted-foreground">
+                    Join this group to see upcoming events and RSVP.
+                  </p>
+                </CardContent>
+              </Card>
+            ) : events.length === 0 ? (
               <Card>
                 <CardContent className="p-8 text-center">
                   <Calendar className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
@@ -390,7 +429,7 @@ export default function GroupPage({ params }: { params: Promise<{ slug: string }
                   <p className="text-muted-foreground mb-4">
                     {isMember
                       ? "Create an event to bring group members together!"
-                      : "Join this group to see and create events."}
+                      : "Members haven't planned any events yet."}
                   </p>
                   {isMember && (
                     <Link href={`/groups/${group.slug}/events/create`}>
@@ -452,8 +491,17 @@ export default function GroupPage({ params }: { params: Promise<{ slug: string }
                 </Link>
               )}
             </div>
-
-            {resources.length === 0 ? (
+            {!canViewContent ? (
+              <Card>
+                <CardContent className="p-8 text-center">
+                  <FolderOpen className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                  <h3 className="text-lg font-semibold mb-2">Members-only content</h3>
+                  <p className="text-muted-foreground">
+                    Join this group to access shared documents, links, and files.
+                  </p>
+                </CardContent>
+              </Card>
+            ) : resources.length === 0 ? (
               <Card>
                 <CardContent className="p-8 text-center">
                   <FolderOpen className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
@@ -461,7 +509,7 @@ export default function GroupPage({ params }: { params: Promise<{ slug: string }
                   <p className="text-muted-foreground mb-4">
                     {isMember
                       ? "Share documents, links, and files with the group!"
-                      : "Join this group to see and share resources."}
+                      : "Members haven't added any resources yet."}
                   </p>
                   {isMember && (
                     <Link href={`/groups/${group.slug}/resources/create`}>
@@ -526,4 +574,3 @@ export default function GroupPage({ params }: { params: Promise<{ slug: string }
     </div>
   )
 }
-

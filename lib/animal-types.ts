@@ -1,23 +1,4 @@
-import type { IconDefinition } from "@fortawesome/fontawesome-svg-core"
 import type { LucideIcon } from "lucide-react"
-import {
-  faDog,
-  faCat,
-  faDove,
-  faFish,
-  faShieldDog,
-  faPaw,
-  faCircleDot as faCircleDotSolid,
-  faSpider,
-  faWorm,
-  faMouse,
-} from "@fortawesome/free-solid-svg-icons"
-
-// faRat doesn't exist in FontAwesome free-solid-svg-icons, using faMouse as substitute
-const faRat = faMouse
-// Using faMouse for gerbil as well (similar small rodent)
-const faGerbil = faMouse
-
 import {
   Dog,
   Cat,
@@ -34,10 +15,8 @@ import {
 export interface AnimalTypeConfig {
   value: string
   label: string
-  // FontAwesome icon (for FontAwesome usage)
-  faIcon: IconDefinition
-  // Lucide React icon component (for Lucide usage)
-  lucideIcon: LucideIcon
+  // Lucide React icon component
+  icon: LucideIcon
   color: string
   bgColor: string
 }
@@ -46,128 +25,112 @@ export const ANIMAL_TYPES: AnimalTypeConfig[] = [
   {
     value: "dog",
     label: "Dogs",
-    faIcon: faDog,
-    lucideIcon: Dog,
+    icon: Dog,
     color: "text-amber-500",
     bgColor: "bg-amber-100 dark:bg-amber-900/20",
   },
   {
     value: "cat",
     label: "Cats",
-    faIcon: faCat,
-    lucideIcon: Cat,
+    icon: Cat,
     color: "text-blue-500",
     bgColor: "bg-blue-100 dark:bg-blue-900/20",
   },
   {
     value: "bird",
     label: "Birds",
-    faIcon: faDove,
-    lucideIcon: Bird,
+    icon: Bird,
     color: "text-yellow-500",
     bgColor: "bg-yellow-100 dark:bg-yellow-900/20",
   },
   {
     value: "rabbit",
     label: "Rabbits",
-    faIcon: faPaw,
-    lucideIcon: Rabbit,
+    icon: Rabbit,
     color: "text-pink-500",
     bgColor: "bg-pink-100 dark:bg-pink-900/20",
   },
   {
     value: "hamster",
     label: "Hamsters",
-    faIcon: faPaw,
-    lucideIcon: CircleDot,
+    icon: CircleDot,
     color: "text-orange-500",
     bgColor: "bg-orange-100 dark:bg-orange-900/20",
   },
   {
     value: "fish",
     label: "Fish",
-    faIcon: faFish,
-    lucideIcon: Fish,
+    icon: Fish,
     color: "text-cyan-500",
     bgColor: "bg-cyan-100 dark:bg-cyan-900/20",
   },
   {
     value: "turtle",
     label: "Turtles",
-    faIcon: faCircleDotSolid,
-    lucideIcon: Turtle,
+    icon: Turtle,
     color: "text-green-500",
     bgColor: "bg-green-100 dark:bg-green-900/20",
   },
   {
     value: "snake",
     label: "Snakes",
-    faIcon: faWorm,
-    lucideIcon: CircleDot,
+    icon: CircleDot,
     color: "text-emerald-500",
     bgColor: "bg-emerald-100 dark:bg-emerald-900/20",
   },
   {
     value: "lizard",
     label: "Lizards",
-    faIcon: faSpider,
-    lucideIcon: Activity,
+    icon: Activity,
     color: "text-lime-500",
     bgColor: "bg-lime-100 dark:bg-lime-900/20",
   },
   {
     value: "guinea-pig",
     label: "Guinea Pigs",
-    faIcon: faPaw,
-    lucideIcon: Heart,
+    icon: Heart,
     color: "text-rose-500",
     bgColor: "bg-rose-100 dark:bg-rose-900/20",
   },
   {
     value: "ferret",
     label: "Ferrets",
-    faIcon: faShieldDog,
-    lucideIcon: CircleDot,
+    icon: CircleDot,
     color: "text-indigo-500",
     bgColor: "bg-indigo-100 dark:bg-indigo-900/20",
   },
   {
     value: "chinchilla",
     label: "Chinchillas",
-    faIcon: faPaw,
-    lucideIcon: Sparkles,
+    icon: Sparkles,
     color: "text-violet-500",
     bgColor: "bg-violet-100 dark:bg-violet-900/20",
   },
   {
     value: "hedgehog",
     label: "Hedgehogs",
-    faIcon: faSpider,
-    lucideIcon: CircleDot,
+    icon: CircleDot,
     color: "text-purple-500",
     bgColor: "bg-purple-100 dark:bg-purple-900/20",
   },
   {
     value: "gerbil",
     label: "Gerbils",
-    faIcon: faGerbil,
-    lucideIcon: CircleDot,
+    icon: CircleDot,
     color: "text-red-500",
     bgColor: "bg-red-100 dark:bg-red-900/20",
   },
   {
     value: "mouse",
     label: "Mice",
-    faIcon: faMouse,
-    lucideIcon: CircleDot,
+    icon: CircleDot,
     color: "text-gray-500",
     bgColor: "bg-gray-100 dark:bg-gray-900/20",
   },
   {
     value: "rat",
     label: "Rats",
-    faIcon: faRat,
-    lucideIcon: CircleDot,
+    icon: CircleDot,
     color: "text-slate-500",
     bgColor: "bg-slate-100 dark:bg-slate-900/20",
   },
@@ -186,12 +149,12 @@ export function getAnimalConfigMap(): Record<string, AnimalTypeConfig> {
   }, {} as Record<string, AnimalTypeConfig>)
 }
 
-// Export animal options in FontAwesome format (for backward compatibility)
-export function getAnimalOptionsFA() {
+// Export animal options (for compatibility)
+export function getAnimalOptions() {
   return ANIMAL_TYPES.map((animal) => ({
     value: animal.value,
     label: animal.label,
-    icon: animal.faIcon,
+    icon: animal.icon,
     color: animal.color,
     bgColor: animal.bgColor,
   }))
@@ -206,7 +169,7 @@ export function getAnimalConfigLucide(value: string): {
   const config = getAnimalConfig(value)
   if (!config) return undefined
   return {
-    icon: config.lucideIcon,
+    icon: config.icon,
     color: config.color,
     label: config.label,
   }

@@ -7,7 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Users, Lock, Eye, EyeOff, GraduationCap, Heart, HeartHandshake, UtensilsCrossed } from "lucide-react"
 import type { Group } from "@/lib/types"
-import { getGroupCategoryById } from "@/lib/storage"
+import { getGroupCategoryById, getDefaultGroupVisibility } from "@/lib/storage"
 import { getAnimalConfigLucide } from "@/lib/animal-types"
 
 interface GroupCardProps {
@@ -46,6 +46,9 @@ export function GroupCard({ group, viewMode = "grid", onTagClick }: GroupCardPro
   const category = getGroupCategoryById(group.categoryId)
   const iconConfig = category ? getCategoryIcon(category.id) : undefined
   const IconComponent = iconConfig?.icon
+  const visibility = group.visibility ?? getDefaultGroupVisibility(group.type)
+  const isContentMembersOnly = visibility.content === "members"
+  const isHiddenFromDiscovery = !visibility.discoverable && group.type !== "secret"
   
   // Generate placeholder images using free services
   const getCoverImage = () => {
@@ -128,6 +131,18 @@ export function GroupCard({ group, viewMode = "grid", onTagClick }: GroupCardPro
                       <Badge variant="secondary" className="flex-shrink-0 gap-1 text-xs px-2 py-0.5">
                         {getTypeIcon()}
                         {getTypeLabel()}
+                      </Badge>
+                    )}
+                    {isContentMembersOnly && (
+                      <Badge variant="outline" className="flex-shrink-0 gap-1 text-xs px-2 py-0.5">
+                        <Lock className="h-3 w-3" />
+                        Members-only content
+                      </Badge>
+                    )}
+                    {isHiddenFromDiscovery && (
+                      <Badge variant="outline" className="flex-shrink-0 gap-1 text-xs px-2 py-0.5">
+                        <EyeOff className="h-3 w-3" />
+                        Hidden from search
                       </Badge>
                     )}
                   </div>
@@ -242,6 +257,18 @@ export function GroupCard({ group, viewMode = "grid", onTagClick }: GroupCardPro
                     <span className="hidden sm:inline">{getTypeLabel()}</span>
                   </Badge>
                 )}
+                {isContentMembersOnly && (
+                  <Badge variant="outline" className="flex-shrink-0 gap-0.5 md:gap-1 text-xs px-1.5 md:px-2 py-0.5">
+                    <Lock className="h-3 w-3" />
+                    <span className="hidden sm:inline">Members-only content</span>
+                  </Badge>
+                )}
+                {isHiddenFromDiscovery && (
+                  <Badge variant="outline" className="flex-shrink-0 gap-0.5 md:gap-1 text-xs px-1.5 md:px-2 py-0.5">
+                    <EyeOff className="h-3 w-3" />
+                    <span className="hidden sm:inline">Hidden from search</span>
+                  </Badge>
+                )}
               </div>
 
               <p className="text-xs md:text-sm text-muted-foreground line-clamp-2">
@@ -294,4 +321,3 @@ export function GroupCard({ group, viewMode = "grid", onTagClick }: GroupCardPro
     </Link>
   )
 }
-

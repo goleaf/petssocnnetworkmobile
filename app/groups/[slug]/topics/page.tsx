@@ -1,7 +1,7 @@
 "use client"
 
 import { use } from "react"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -13,6 +13,7 @@ import {
   getGroupTopicsByGroupId,
   getGroupTopicsByParentId,
   canUserViewGroup,
+  canUserViewGroupContent,
   canUserCreateTopic,
   deleteGroupTopic,
   updateGroupTopic,
@@ -34,6 +35,7 @@ export default function GroupTopicsPage({
   const { user, isAuthenticated } = useAuth()
   const [group, setGroup] = useState<Group | null>(null)
   const [topics, setTopics] = useState<GroupTopic[]>([])
+  const [selectedContext, setSelectedContext] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
@@ -61,6 +63,16 @@ export default function GroupTopicsPage({
       }
     }
 
+    const canViewContent = isAuthenticated && user
+      ? canUserViewGroupContent(foundGroup.id, user.id)
+      : canUserViewGroupContent(foundGroup.id)
+
+    if (!canViewContent) {
+      setIsLoading(false)
+      router.push(`/groups/${foundGroup.slug}`)
+      return
+    }
+
     setGroup(foundGroup)
     const allTopics = getGroupTopicsByGroupId(foundGroup.id)
     // Filter only top-level topics (no parentTopicId)
@@ -76,6 +88,39 @@ export default function GroupTopicsPage({
     setTopics(sortedTopics)
     setIsLoading(false)
   }, [slug, user, isAuthenticated, router])
+
+  const contextOptions = useMemo(() => {
+    const tagMap = new Map<string, string>()
+    topics.forEach((topic) => {
+      topic.tags?.forEach((tag) => {
+        const normalized = tag.toLowerCase()
+        if (!tagMap.has(normalized)) {
+          tagMap.set(normalized, tag)
+        }
+      })
+    })
+    return Array.from(tagMap, ([value, label]) => ({ value, label }))
+  }, [topics])
+
+  const filteredTopics = useMemo(() => {
+    if (!selectedContext) return topics
+    return topics.filter((topic) =>
+      (topic.tags ?? []).some((tag) => tag.toLowerCase() === selectedContext),
+    )
+  }, [topics, selectedContext])
+
+  const activeContextLabel = useMemo(() => {
+    if (!selectedContext) return null
+    const match = contextOptions.find((option) => option.value === selectedContext)
+    return match?.label ?? selectedContext
+  }, [contextOptions, selectedContext])
+
+  useEffect(() => {
+    if (!selectedContext) return
+    if (!contextOptions.some((option) => option.value === selectedContext)) {
+      setSelectedContext(null)
+    }
+  }, [contextOptions, selectedContext])
 
   const handleDelete = (topicId: string) => {
     if (!confirm("Are you sure you want to delete this topic?")) return
@@ -124,6 +169,9 @@ export default function GroupTopicsPage({
     ? require("@/lib/storage").isUserMemberOfGroup(group.id, user.id)
     : false
   const canCreate = isMember && canUserCreateTopic(group.id, user.id)
+  const hasTopics = topics.length > 0
+  const displayTopics = filteredTopics
+  const showFilteredEmptyState = hasTopics && displayTopics.length === 0
 
   return (
     <div className="min-h-screen bg-background">
@@ -147,7 +195,45 @@ export default function GroupTopicsPage({
           )}
         </div>
 
-        {topics.length === 0 ? (
+        {contextOptions.length > 0 && (
+          <div className="mb-6 rounded-lg border border-dashed border-muted bg-muted/40 p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-semibold">Conversation contexts</p>
+                <p className="text-xs text-muted-foreground">
+                  Filter discussions by their focus or topic.
+                </p>
+              </div>
+              {selectedContext && (
+                <Button variant="ghost" size="sm" onClick={() => setSelectedContext(null)}>
+                  Clear filter
+                </Button>
+              )}
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {contextOptions.map((option) => {
+                const isActive = option.value === selectedContext
+                return (
+                  <Button
+                    key={option.value}
+                    variant={isActive ? "secondary" : "outline"}
+                    size="sm"
+                    className="rounded-full"
+                    onClick={() =>
+                      setSelectedContext((current) =>
+                        current === option.value ? null : option.value,
+                      )
+                    }
+                  >
+                    #{option.label}
+                  </Button>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        {!hasTopics ? (
           <Card>
             <CardContent className="p-12 text-center">
               <MessageSquare className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
@@ -167,9 +253,32 @@ export default function GroupTopicsPage({
               )}
             </CardContent>
           </Card>
+        ) : showFilteredEmptyState ? (
+          <Card>
+            <CardContent className="p-12 text-center">
+              <MessageSquare className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+              <h3 className="text-lg font-semibold mb-2">No threads in this context</h3>
+              <p className="text-muted-foreground mb-4">
+                {activeContextLabel
+                  ? `There aren't any discussions tagged #${activeContextLabel} yet.`
+                  : "This filter doesn't match any discussions right now."}
+              </p>
+              <div className="flex flex-wrap justify-center gap-2">
+                <Button variant="outline" onClick={() => setSelectedContext(null)}>
+                  Clear filter
+                </Button>
+                {canCreate && (
+                  <Button onClick={() => router.push(`/groups/${group.slug}/topics/create`)}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Start Topic
+                  </Button>
+                )}
+              </div>
+            </CardContent>
+          </Card>
         ) : (
           <div className="space-y-4">
-            {topics.map((topic) => {
+            {displayTopics.map((topic) => {
               const replies = getGroupTopicsByParentId(topic.id)
               const canModerate = isMember
                 ? require("@/lib/storage").canUserModerate(group.id, user.id)
@@ -198,4 +307,3 @@ export default function GroupTopicsPage({
     </div>
   )
 }
-

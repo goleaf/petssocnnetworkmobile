@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
@@ -11,10 +12,51 @@ import { BackButton } from "@/components/ui/back-button"
 import { useAuth } from "@/components/auth/auth-provider"
 import { PrivacySelector } from "@/components/privacy-selector"
 import { updateUser, getUsers, blockUser, unblockUser } from "@/lib/storage"
-import type { PrivacyLevel, NotificationSettings } from "@/lib/types"
-import { ArrowLeft, Ban, UserX, User, FileText, Users, CheckCircle2, XCircle, Mail, Bell } from "lucide-react"
+import { getNotificationSettings, saveNotificationSettings } from "@/lib/notifications"
+import type { PrivacyLevel, NotificationSettings, NotificationChannel } from "@/lib/types"
+import {
+  ArrowLeft,
+  Ban,
+  UserX,
+  User,
+  FileText,
+  Users,
+  CheckCircle2,
+  XCircle,
+  LayoutGrid,
+  ShieldCheck,
+  Mail,
+  Bell,
+  Smartphone,
+  type LucideIcon,
+} from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import Link from "next/link"
+
+const CHANNEL_SUMMARY_ORDER: NotificationChannel[] = ["in_app", "push", "email", "digest"]
+
+const CHANNEL_SUMMARY_META: Record<NotificationChannel, { label: string; icon: LucideIcon; description: string }> = {
+  in_app: {
+    label: "In-app",
+    icon: Bell,
+    description: "Delivered instantly while you're using the app",
+  },
+  push: {
+    label: "Push",
+    icon: Smartphone,
+    description: "Native notifications on your device",
+  },
+  email: {
+    label: "Email",
+    icon: Mail,
+    description: "Summaries and alerts delivered to your inbox",
+  },
+  digest: {
+    label: "Digest",
+    icon: LayoutGrid,
+    description: "Scheduled recap at your preferred cadence",
+  },
+}
 
 export default function SettingsPage() {
   const { user } = useAuth()
@@ -33,24 +75,16 @@ export default function SettingsPage() {
     searchable: true,
     allowFollowRequests: "public" as PrivacyLevel,
     allowTagging: "public" as PrivacyLevel,
-  })
-  const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>({
-    userId: "",
-    email: {
-      follows: true,
-      likes: true,
-      comments: true,
-      mentions: true,
-      posts: true,
-    },
-    inApp: {
-      follows: true,
-      likes: true,
-      comments: true,
-      mentions: true,
-      posts: true,
+    secureMessages: true,
+    sections: {
+      basics: "public" as PrivacyLevel,
+      statistics: "public" as PrivacyLevel,
+      friends: "public" as PrivacyLevel,
+      pets: "public" as PrivacyLevel,
+      activity: "public" as PrivacyLevel,
     },
   })
+  const [notificationSettings, setNotificationSettings] = useState<NotificationSettings | null>(null)
   const [blockedUsers, setBlockedUsers] = useState<any[]>([])
 
   // Handle success/error messages from URL params
@@ -89,16 +123,25 @@ export default function SettingsPage() {
           searchable: user.privacy.searchable !== false,
           allowFollowRequests: user.privacy.allowFollowRequests || "public",
           allowTagging: user.privacy.allowTagging || "public",
+          secureMessages: user.privacy.secureMessages !== false,
+          sections: {
+            basics: user.privacy.sections?.basics || user.privacy.profile || "public",
+            statistics: user.privacy.sections?.statistics || user.privacy.profile || "public",
+            friends:
+              user.privacy.sections?.friends ||
+              user.privacy.followers ||
+              user.privacy.following ||
+              user.privacy.profile ||
+              "public",
+            pets: user.privacy.sections?.pets || user.privacy.pets || "public",
+            activity: user.privacy.sections?.activity || user.privacy.posts || "public",
+          },
         })
       }
       
       // Load notification settings
-      const saved = localStorage.getItem(`notification_settings_${user.id}`)
-      if (saved) {
-        setNotificationSettings(JSON.parse(saved))
-      } else {
-        setNotificationSettings((prev) => ({ ...prev, userId: user.id }))
-      }
+      const storedNotificationSettings = getNotificationSettings(user.id)
+      setNotificationSettings(storedNotificationSettings)
       
       // Load blocked users
       if (user.blockedUsers && user.blockedUsers.length > 0) {
@@ -123,7 +166,9 @@ export default function SettingsPage() {
       updateUser(user.id, { privacy: privacySettings })
       
       // Save notification settings
-      localStorage.setItem(`notification_settings_${user.id}`, JSON.stringify(notificationSettings))
+      if (notificationSettings) {
+        saveNotificationSettings({ ...notificationSettings, userId: user.id })
+      }
       
       // Redirect with success message
       router.push("/settings?status=success")
@@ -141,20 +186,6 @@ export default function SettingsPage() {
     if (!user) return
     unblockUser(user.id, unblockUserId)
     setBlockedUsers(blockedUsers.filter((u) => u.id !== unblockUserId))
-  }
-
-  const updateEmailSetting = (key: keyof NotificationSettings["email"], value: boolean) => {
-    setNotificationSettings({
-      ...notificationSettings,
-      email: { ...notificationSettings.email, [key]: value },
-    })
-  }
-
-  const updateInAppSetting = (key: keyof NotificationSettings["inApp"], value: boolean) => {
-    setNotificationSettings({
-      ...notificationSettings,
-      inApp: { ...notificationSettings.inApp, [key]: value },
-    })
   }
 
   if (!user) {
@@ -285,6 +316,98 @@ export default function SettingsPage() {
               </CardContent>
             </Card>
 
+            {/* Profile Sections */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                  <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-lg bg-amber-500/10 flex items-center justify-center flex-shrink-0">
+                    <LayoutGrid className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-amber-500" />
+                  </div>
+                  Profile Sections
+                </CardTitle>
+                <CardDescription className="text-xs sm:text-sm">
+                  Choose who can see profile basics, statistics, friends, pets tab, and activity logs
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4 sm:space-y-6">
+                <div className="space-y-2">
+                  <Label>Profile Basics</Label>
+                  <p className="text-sm text-muted-foreground mb-2">
+                    Controls visibility of your avatar, name, username, and bio on your profile header
+                  </p>
+                  <PrivacySelector
+                    value={privacySettings.sections.basics}
+                    onChange={(value) =>
+                      setPrivacySettings({
+                        ...privacySettings,
+                        sections: { ...privacySettings.sections, basics: value },
+                      })
+                    }
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Statistics</Label>
+                  <p className="text-sm text-muted-foreground mb-2">
+                    Controls visibility of profile statistics like counts of pets, posts, followers, and following
+                  </p>
+                  <PrivacySelector
+                    value={privacySettings.sections.statistics}
+                    onChange={(value) =>
+                      setPrivacySettings({
+                        ...privacySettings,
+                        sections: { ...privacySettings.sections, statistics: value },
+                      })
+                    }
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Friends</Label>
+                  <p className="text-sm text-muted-foreground mb-2">
+                    Controls visibility of your followers and following lists from your profile
+                  </p>
+                  <PrivacySelector
+                    value={privacySettings.sections.friends}
+                    onChange={(value) =>
+                      setPrivacySettings({
+                        ...privacySettings,
+                        sections: { ...privacySettings.sections, friends: value },
+                      })
+                    }
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Pets Section</Label>
+                  <p className="text-sm text-muted-foreground mb-2">Controls visibility of the pets tab on your profile</p>
+                  <PrivacySelector
+                    value={privacySettings.sections.pets}
+                    onChange={(value) =>
+                      setPrivacySettings({
+                        ...privacySettings,
+                        sections: { ...privacySettings.sections, pets: value },
+                      })
+                    }
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Activity Logs</Label>
+                  <p className="text-sm text-muted-foreground mb-2">Controls visibility of your recent activity feed on your profile</p>
+                  <PrivacySelector
+                    value={privacySettings.sections.activity}
+                    onChange={(value) =>
+                      setPrivacySettings({
+                        ...privacySettings,
+                        sections: { ...privacySettings.sections, activity: value },
+                      })
+                    }
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
             {/* Interactions */}
             <Card>
               <CardHeader>
@@ -324,6 +447,43 @@ export default function SettingsPage() {
                     value={privacySettings.allowTagging}
                     onChange={(value) => setPrivacySettings({ ...privacySettings, allowTagging: value })}
                   />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Message Privacy */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                  <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-lg bg-orange-500/10 flex items-center justify-center flex-shrink-0">
+                    <ShieldCheck className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-orange-500" />
+                  </div>
+                  Message Privacy
+                </CardTitle>
+                <CardDescription className="text-xs sm:text-sm">
+                  Keep direct messages private with end-to-end encryption
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4 sm:space-y-6">
+                <div className="flex items-start justify-between gap-3 sm:gap-4">
+                  <div className="space-y-1">
+                    <Label className="text-sm">End-to-end encryption</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Only you and approved recipients can read your conversations.
+                    </p>
+                  </div>
+                  <Switch
+                    checked={privacySettings.secureMessages}
+                    onCheckedChange={(checked) => setPrivacySettings({ ...privacySettings, secureMessages: checked })}
+                  />
+                </div>
+                <div className="rounded-lg border border-dashed border-orange-500/30 bg-orange-500/10 p-3 sm:p-4 space-y-2">
+                  <p className="text-sm font-semibold text-foreground">Encryption coverage</p>
+                  <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1.5">
+                    <li>Messages are encrypted on-device before sending.</li>
+                    <li>Keys rotate automatically when devices change.</li>
+                    <li>Attachments and reactions stay in the secure channel.</li>
+                  </ul>
                 </div>
               </CardContent>
             </Card>
@@ -378,151 +538,65 @@ export default function SettingsPage() {
         <div className="space-y-4 sm:space-y-6">
           <div>
             <h2 className="text-xl sm:text-2xl font-semibold mb-2 sm:mb-4">Notification Settings</h2>
-            <p className="text-muted-foreground mb-4 text-sm sm:text-base">Choose how you want to be notified about activity</p>
+            <p className="text-muted-foreground mb-4 text-sm sm:text-base">
+              Quick overview of your notification delivery channels and priorities.
+            </p>
           </div>
 
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
                 <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-lg bg-blue-500/10 flex items-center justify-center flex-shrink-0">
-                  <Mail className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-blue-500" />
+                  <LayoutGrid className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-blue-500" />
                 </div>
-                Email Notifications
+                Channel overview
               </CardTitle>
-              <CardDescription className="text-xs sm:text-sm">Receive notifications via email</CardDescription>
+              <CardDescription className="text-xs sm:text-sm">
+                Adjust advanced preferences and notification types from the dedicated notifications page.
+              </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-3 sm:space-y-4">
-              <div className="flex items-center justify-between gap-2 sm:gap-4">
-                <div className="space-y-0.5 min-w-0 flex-1">
-                  <Label className="text-xs sm:text-sm">New Followers</Label>
-                  <p className="text-xs sm:text-sm text-muted-foreground">When someone follows you</p>
-                </div>
-                <Switch
-                  checked={notificationSettings.email.follows}
-                  onCheckedChange={(checked) => updateEmailSetting("follows", checked)}
-                  className="flex-shrink-0"
-                />
-              </div>
+            <CardContent className="space-y-4">
+              {notificationSettings ? (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {CHANNEL_SUMMARY_ORDER.map((channel) => {
+                    const meta = CHANNEL_SUMMARY_META[channel]
+                    const pref = notificationSettings.channelPreferences?.[channel]
+                    const enabled = pref?.enabled ?? false
+                    const frequency = pref?.frequency ?? "real-time"
+                    const priority = pref?.priorityThreshold ?? "normal"
+                    const categories = pref?.categories ?? []
 
-              <div className="flex items-center justify-between gap-2 sm:gap-4">
-                <div className="space-y-0.5 min-w-0 flex-1">
-                  <Label className="text-xs sm:text-sm">Likes</Label>
-                  <p className="text-xs sm:text-sm text-muted-foreground">When someone likes your content</p>
+                    return (
+                      <div key={channel} className="border rounded-lg p-3 space-y-2">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <meta.icon className="h-4 w-4" />
+                            <span className="font-medium text-sm">{meta.label}</span>
+                          </div>
+                          <Badge variant={enabled ? "secondary" : "outline"}>{enabled ? "Enabled" : "Muted"}</Badge>
+                        </div>
+                        <p className="text-xs text-muted-foreground">{meta.description}</p>
+                        <div className="flex flex-wrap gap-2 text-[11px] text-muted-foreground">
+                          <span className="rounded bg-muted px-2 py-1">Freq: {frequency.replace("-", " ")}</span>
+                          <span className="rounded bg-muted px-2 py-1">Priority ≥ {priority}</span>
+                          <span className="rounded bg-muted px-2 py-1">
+                            {categories.length > 0
+                              ? `Categories: ${categories.join(", ")}`
+                              : "All categories"}
+                          </span>
+                        </div>
+                      </div>
+                    )
+                  })}
                 </div>
-                <Switch
-                  checked={notificationSettings.email.likes}
-                  onCheckedChange={(checked) => updateEmailSetting("likes", checked)}
-                  className="flex-shrink-0"
-                />
-              </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">Loading notification preferences…</p>
+              )}
 
-              <div className="flex items-center justify-between gap-2 sm:gap-4">
-                <div className="space-y-0.5 min-w-0 flex-1">
-                  <Label className="text-xs sm:text-sm">Comments</Label>
-                  <p className="text-xs sm:text-sm text-muted-foreground">When someone comments on your posts</p>
-                </div>
-                <Switch
-                  checked={notificationSettings.email.comments}
-                  onCheckedChange={(checked) => updateEmailSetting("comments", checked)}
-                  className="flex-shrink-0"
-                />
-              </div>
-
-              <div className="flex items-center justify-between gap-2 sm:gap-4">
-                <div className="space-y-0.5 min-w-0 flex-1">
-                  <Label className="text-xs sm:text-sm">Mentions</Label>
-                  <p className="text-xs sm:text-sm text-muted-foreground">When someone mentions you</p>
-                </div>
-                <Switch
-                  checked={notificationSettings.email.mentions}
-                  onCheckedChange={(checked) => updateEmailSetting("mentions", checked)}
-                  className="flex-shrink-0"
-                />
-              </div>
-
-              <div className="flex items-center justify-between gap-2 sm:gap-4">
-                <div className="space-y-0.5 min-w-0 flex-1">
-                  <Label className="text-xs sm:text-sm">New Posts</Label>
-                  <p className="text-xs sm:text-sm text-muted-foreground">When people you follow create new posts</p>
-                </div>
-                <Switch
-                  checked={notificationSettings.email.posts}
-                  onCheckedChange={(checked) => updateEmailSetting("posts", checked)}
-                  className="flex-shrink-0"
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
-                <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-lg bg-purple-500/10 flex items-center justify-center flex-shrink-0">
-                  <Bell className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-purple-500" />
-                </div>
-                In-App Notifications
-              </CardTitle>
-              <CardDescription className="text-xs sm:text-sm">Receive notifications within the app</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3 sm:space-y-4">
-              <div className="flex items-center justify-between gap-2 sm:gap-4">
-                <div className="space-y-0.5 min-w-0 flex-1">
-                  <Label className="text-xs sm:text-sm">New Followers</Label>
-                  <p className="text-xs sm:text-sm text-muted-foreground">When someone follows you</p>
-                </div>
-                <Switch
-                  checked={notificationSettings.inApp.follows}
-                  onCheckedChange={(checked) => updateInAppSetting("follows", checked)}
-                  className="flex-shrink-0"
-                />
-              </div>
-
-              <div className="flex items-center justify-between gap-2 sm:gap-4">
-                <div className="space-y-0.5 min-w-0 flex-1">
-                  <Label className="text-xs sm:text-sm">Likes</Label>
-                  <p className="text-xs sm:text-sm text-muted-foreground">When someone likes your content</p>
-                </div>
-                <Switch
-                  checked={notificationSettings.inApp.likes}
-                  onCheckedChange={(checked) => updateInAppSetting("likes", checked)}
-                  className="flex-shrink-0"
-                />
-              </div>
-
-              <div className="flex items-center justify-between gap-2 sm:gap-4">
-                <div className="space-y-0.5 min-w-0 flex-1">
-                  <Label className="text-xs sm:text-sm">Comments</Label>
-                  <p className="text-xs sm:text-sm text-muted-foreground">When someone comments on your posts</p>
-                </div>
-                <Switch
-                  checked={notificationSettings.inApp.comments}
-                  onCheckedChange={(checked) => updateInAppSetting("comments", checked)}
-                  className="flex-shrink-0"
-                />
-              </div>
-
-              <div className="flex items-center justify-between gap-2 sm:gap-4">
-                <div className="space-y-0.5 min-w-0 flex-1">
-                  <Label className="text-xs sm:text-sm">Mentions</Label>
-                  <p className="text-xs sm:text-sm text-muted-foreground">When someone mentions you</p>
-                </div>
-                <Switch
-                  checked={notificationSettings.inApp.mentions}
-                  onCheckedChange={(checked) => updateInAppSetting("mentions", checked)}
-                  className="flex-shrink-0"
-                />
-              </div>
-
-              <div className="flex items-center justify-between gap-2 sm:gap-4">
-                <div className="space-y-0.5 min-w-0 flex-1">
-                  <Label className="text-xs sm:text-sm">New Posts</Label>
-                  <p className="text-xs sm:text-sm text-muted-foreground">When people you follow create new posts</p>
-                </div>
-                <Switch
-                  checked={notificationSettings.inApp.posts}
-                  onCheckedChange={(checked) => updateInAppSetting("posts", checked)}
-                  className="flex-shrink-0"
-                />
+              <div className="flex justify-end">
+                <Button asChild>
+                  <Link href="/settings/notifications">Manage detailed preferences</Link>
+                </Button>
               </div>
             </CardContent>
           </Card>
@@ -540,4 +614,3 @@ export default function SettingsPage() {
     </div>
   )
 }
-

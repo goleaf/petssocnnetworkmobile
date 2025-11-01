@@ -78,9 +78,11 @@ export function TopicCreator({
   }
 
   const handleAddTag = () => {
-    if (!newTag.trim() || formData.tags.includes(newTag.trim())) return
-    const updatedTags = [...formData.tags, newTag.trim()]
-    setFormData((prev) => ({ ...prev, tags: updatedTags }))
+    const normalized = newTag.trim()
+    if (!normalized) return
+    const exists = formData.tags.some((tag) => tag.toLowerCase() === normalized.toLowerCase())
+    if (exists) return
+    setFormData((prev) => ({ ...prev, tags: [...prev.tags, normalized] }))
     setNewTag("")
   }
 
@@ -112,6 +114,10 @@ export function TopicCreator({
     setIsSubmitting(true)
 
     try {
+      const normalizedTags = Array.from(
+        new Set(formData.tags.map((tag) => tag.trim()).filter((tag) => tag.length > 0)),
+      )
+
       onSubmit({
         groupId,
         parentTopicId,
@@ -124,7 +130,7 @@ export function TopicCreator({
         viewCount: initialData?.viewCount || 0,
         commentCount: initialData?.commentCount || 0,
         reactions: initialData?.reactions,
-        tags: formData.tags.length > 0 ? formData.tags : undefined,
+        tags: normalizedTags.length > 0 ? normalizedTags : undefined,
       })
     } finally {
       setIsSubmitting(false)
@@ -337,4 +343,3 @@ export function TopicCreator({
     </form>
   )
 }
-
