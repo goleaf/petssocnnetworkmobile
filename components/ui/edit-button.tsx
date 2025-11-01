@@ -4,6 +4,7 @@ import { Edit } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 interface EditButtonProps extends ButtonProps {
+  children?: React.ReactNode
   iconClassName?: string
 }
 

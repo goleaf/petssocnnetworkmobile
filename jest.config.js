@@ -25,7 +25,7 @@ const customJestConfig = {
     '**/*.{test,spec}.{js,jsx,ts,tsx}',
   ],
   transformIgnorePatterns: [
-    '/node_modules/(?!(date-fns)/)',
+    '/node_modules/',
     '^.+\\.module\\.(css|sass|scss)$',
   ],
 }

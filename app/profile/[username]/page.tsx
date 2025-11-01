@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { getUsers, getPets, getBlogPosts, updateUser } from "@/lib/storage"
 import { useAuth } from "@/lib/auth"
-import { MapPin, Calendar, Users, Heart, PawPrint, FileText, Lock, MessageCircle, BookOpen } from "lucide-react"
+import { MapPin, Calendar, Users, Heart, PawPrint, FileText, Lock } from "lucide-react"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import Link from "next/link"
 import { useState, useEffect } from "react"
@@ -24,7 +24,6 @@ import {
   canSendFollowRequest,
   canViewPost,
 } from "@/lib/utils/privacy"
-import { getFeedPostsByAuthorId, getUserById } from "@/lib/storage"
 
 export default function ProfilePage({ params }: { params: Promise<{ username: string }> }) {
   const { username } = use(params)
@@ -32,8 +31,6 @@ export default function ProfilePage({ params }: { params: Promise<{ username: st
   const [user, setUser] = useState<any>(null)
   const [pets, setPets] = useState<any[]>([])
   const [posts, setPosts] = useState<any[]>([])
-  const [feedPosts, setFeedPosts] = useState<any[]>([])
-  const [blogPostsCount, setBlogPostsCount] = useState(0)
   const [isFollowing, setIsFollowing] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
 
@@ -60,25 +57,12 @@ export default function ProfilePage({ params }: { params: Promise<{ username: st
       }
       
       if (canViewUserPosts(foundUser, viewerId)) {
-        // Get feed posts
-        const allFeedPosts = getFeedPostsByAuthorId(foundUser.id).filter((post) => {
-          if (!post.privacy || post.privacy === "public") return true
-          if (post.privacy === "private" && post.authorId !== viewerId) return false
-          if (post.privacy === "followers-only" && viewerId && !getUserById(viewerId || "")?.following.includes(post.authorId)) return false
-          return true
-        })
-        setFeedPosts(allFeedPosts)
-        
-        // Get blog posts
         const allPosts = getBlogPosts()
           .filter((p) => p.authorId === foundUser.id)
           .filter((p) => canViewPost(p, foundUser, viewerId))
-        setBlogPostsCount(allPosts.length)
         setPosts(allPosts.slice(0, 6))
       } else {
-        setFeedPosts([])
         setPosts([])
-        setBlogPostsCount(0)
       }
       
       if (currentUser) {
@@ -170,50 +154,160 @@ export default function ProfilePage({ params }: { params: Promise<{ username: st
                   </>
                 )}
               </div>
-              {user.bio && <p className="text-muted-foreground">{user.bio}</p>}
-
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
-                {[
-                  { label: "Pets", value: canViewPets ? pets.length : 0, icon: PawPrint, canView: canViewPets, href: `/profile/${user.username}/pets` },
-                  { label: "Feed Posts", value: canViewPosts ? feedPosts.length : 0, icon: MessageCircle, canView: canViewPosts, href: `/profile/${user.username}/posts` },
-                  { label: "Blog Posts", value: canViewPosts ? blogPostsCount : 0, icon: BookOpen, canView: canViewPosts, href: `/profile/${user.username}/posts` },
-                  { label: "Followers", value: canViewFollowersList ? user.followers.length : 0, icon: Users, canView: canViewFollowersList, href: `/user/${user.username}/followers` },
-                  { label: "Following", value: canViewFollowingList ? user.following.length : 0, icon: Heart, canView: canViewFollowingList, href: `/user/${user.username}/following` },
-                ].map((stat) => {
-                  if (stat.canView) {
-                    return (
-                      <Link key={stat.label} href={stat.href}>
-                        <Card className="hover:bg-accent/50 transition-all duration-300 ease-in-out cursor-pointer group h-full border-transparent hover:border-input hover:shadow-sm">
-                          <CardContent className="px-1 py-1 text-center">
-                            <div className="flex flex-col items-center justify-center gap-0">
-                              <div className="flex items-center justify-center gap-0.5">
-                                <stat.icon className="h-3.5 w-3.5 text-primary group-hover:text-foreground transition-all duration-300 ease-in-out" />
-                                <p className="text-sm font-bold text-foreground group-hover:text-foreground transition-all duration-300 ease-in-out">
-                                  {stat.value}
-                                </p>
-                              </div>
-                              <p className="text-[10px] font-medium text-muted-foreground group-hover:text-accent-foreground leading-none transition-all duration-300 ease-in-out mt-0.5">{stat.label}</p>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      </Link>
-                    )
-                  } else {
-                    return (
-                      <Card key={stat.label} className="opacity-50 cursor-not-allowed h-full">
-                        <CardContent className="px-1 py-1 text-center">
-                          <div className="flex flex-col items-center justify-center gap-0">
-                            <div className="flex items-center justify-center gap-0.5">
-                              <Lock className="h-3.5 w-3.5 text-muted-foreground" />
-                              <p className="text-sm font-bold text-muted-foreground">—</p>
-                            </div>
-                            <p className="text-[10px] font-medium text-muted-foreground leading-none mt-0.5">{stat.label}</p>
+              {user.bio && <p className="text-foreground">{user.bio}</p>}
+              <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+                {user.location && canViewProfileField("location", user, viewerId) && (
+                  <div className="flex items-center gap-1">
+                    <MapPin className="h-4 w-4" />
+                    {user.location}
+                  </div>
+                )}
+                <div className="flex items-center gap-1">
+                  <Calendar className="h-4 w-4" />
+                  Joined {formatDate(user.joinedAt)}
+                </div>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-4">
+                {canViewPets ? (
+                  <Link href={`/profile/${user.username}/pets`}>
+                    <Card className="hover:shadow-md transition-all duration-200 hover:border-primary/50 cursor-pointer group h-full">
+                      <CardContent className="p-2 text-center">
+                        <div className="flex flex-col items-center justify-center space-y-1">
+                          <div className="p-1 rounded-full bg-primary/10 group-hover:bg-primary/20 transition-colors">
+                            <PawPrint className="h-3 w-3 text-primary group-hover:scale-110 transition-transform" />
                           </div>
-                        </CardContent>
-                      </Card>
-                    )
-                  }
-                })}
+                          <div>
+                            <p className="text-base font-bold text-foreground group-hover:text-primary transition-colors">
+                              {pets.length}
+                            </p>
+                            <p className="text-[10px] font-medium text-muted-foreground">
+                              {pets.length === 1 ? "Pet" : "Pets"}
+                            </p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </Link>
+                ) : (
+                  <Card className="opacity-50 cursor-not-allowed h-full">
+                    <CardContent className="p-2 text-center">
+                      <div className="flex flex-col items-center justify-center space-y-1">
+                        <div className="p-1 rounded-full bg-muted">
+                          <Lock className="h-3 w-3 text-muted-foreground" />
+                        </div>
+                        <div>
+                          <p className="text-base font-bold text-muted-foreground">—</p>
+                          <p className="text-[10px] font-medium text-muted-foreground">Pets</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+                {canViewPosts ? (
+                  <Link href={`/profile/${user.username}/posts`}>
+                    <Card className="hover:shadow-md transition-all duration-200 hover:border-primary/50 cursor-pointer group h-full">
+                      <CardContent className="p-2 text-center">
+                        <div className="flex flex-col items-center justify-center space-y-1">
+                          <div className="p-1 rounded-full bg-primary/10 group-hover:bg-primary/20 transition-colors">
+                            <FileText className="h-3 w-3 text-primary group-hover:scale-110 transition-transform" />
+                          </div>
+                          <div>
+                            <p className="text-base font-bold text-foreground group-hover:text-primary transition-colors">
+                              {posts.length}
+                            </p>
+                            <p className="text-[10px] font-medium text-muted-foreground">Posts</p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </Link>
+                ) : (
+                  <Card className="opacity-50 cursor-not-allowed h-full">
+                    <CardContent className="p-2 text-center">
+                      <div className="flex flex-col items-center justify-center space-y-1">
+                        <div className="p-1 rounded-full bg-muted">
+                          <Lock className="h-3 w-3 text-muted-foreground" />
+                        </div>
+                        <div>
+                          <p className="text-base font-bold text-muted-foreground">—</p>
+                          <p className="text-[10px] font-medium text-muted-foreground">Posts</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+                {canViewFollowersList ? (
+                  <Link href={`/user/${user.username}/followers`}>
+                    <Card className="hover:shadow-md transition-all duration-200 hover:border-primary/50 cursor-pointer group h-full">
+                      <CardContent className="p-2 text-center">
+                        <div className="flex flex-col items-center justify-center space-y-1">
+                          <div className="p-1 rounded-full bg-primary/10 group-hover:bg-primary/20 transition-colors">
+                            <Users className="h-3 w-3 text-primary group-hover:scale-110 transition-transform" />
+                          </div>
+                          <div>
+                            <p className="text-base font-bold text-foreground group-hover:text-primary transition-colors">
+                              {user.followers.length}
+                            </p>
+                            <p className="text-[10px] font-medium text-muted-foreground">
+                              {user.followers.length === 1 ? "Follower" : "Followers"}
+                            </p>
+                            <p className="text-[9px] text-muted-foreground/70">{user.followers.length} {user.followers.length === 1 ? "person" : "people"}</p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </Link>
+                ) : (
+                  <Card className="opacity-50 cursor-not-allowed h-full">
+                    <CardContent className="p-2 text-center">
+                      <div className="flex flex-col items-center justify-center space-y-1">
+                        <div className="p-1 rounded-full bg-muted">
+                          <Lock className="h-3 w-3 text-muted-foreground" />
+                        </div>
+                          <div>
+                            <p className="text-base font-bold text-muted-foreground">—</p>
+                            <p className="text-[10px] font-medium text-muted-foreground">Followers</p>
+                            <p className="text-[9px] text-muted-foreground/70">— people</p>
+                          </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+                {canViewFollowingList ? (
+                  <Link href={`/user/${user.username}/following`}>
+                    <Card className="hover:shadow-md transition-all duration-200 hover:border-primary/50 cursor-pointer group h-full">
+                      <CardContent className="p-2 text-center">
+                        <div className="flex flex-col items-center justify-center space-y-1">
+                          <div className="p-1 rounded-full bg-primary/10 group-hover:bg-primary/20 transition-colors">
+                            <Heart className="h-3 w-3 text-primary group-hover:scale-110 transition-transform" />
+                          </div>
+                          <div>
+                            <p className="text-base font-bold text-foreground group-hover:text-primary transition-colors">
+                              {user.following.length}
+                            </p>
+                            <p className="text-[10px] font-medium text-muted-foreground">Following</p>
+                            <p className="text-[9px] text-muted-foreground/70">{user.following.length} {user.following.length === 1 ? "person" : "people"}</p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </Link>
+                ) : (
+                  <Card className="opacity-50 cursor-not-allowed h-full">
+                    <CardContent className="p-2 text-center">
+                      <div className="flex flex-col items-center justify-center space-y-1">
+                        <div className="p-1 rounded-full bg-muted">
+                          <Lock className="h-3 w-3 text-muted-foreground" />
+                        </div>
+                          <div>
+                            <p className="text-base font-bold text-muted-foreground">—</p>
+                            <p className="text-[10px] font-medium text-muted-foreground">Following</p>
+                            <p className="text-[9px] text-muted-foreground/70">— people</p>
+                          </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
               </div>
             </div>
           </div>

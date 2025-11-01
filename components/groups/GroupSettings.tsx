@@ -10,14 +10,41 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { FormActions } from "@/components/ui/form-actions"
-import { X, Lock, Eye, EyeOff, Save, Loader2, AlertCircle, CheckCircle2 } from "lucide-react"
+import { X, Lock, Eye, EyeOff, Save, Loader2, AlertCircle, CheckCircle2, GraduationCap, Heart, HeartHandshake, UtensilsCrossed } from "lucide-react"
 import type { Group, GroupType } from "@/lib/types"
 import { getGroupCategories, updateGroup, generateGroupSlug } from "@/lib/storage"
+import { getAnimalConfigLucide } from "@/lib/animal-types"
 
 interface GroupSettingsProps {
   group: Group
   onSave: (updatedGroup: Group) => void
   onCancel: () => void
+}
+
+// Map category IDs to animal types or custom icons
+const getCategoryIcon = (categoryId: string) => {
+  // Map specific categories to animal types
+  const categoryToAnimalMap: Record<string, string> = {
+    "cat-dogs": "dog",
+    "cat-cats": "cat",
+    "cat-birds": "bird",
+    "cat-small-pets": "rabbit",
+  }
+  
+  const animalType = categoryToAnimalMap[categoryId]
+  if (animalType) {
+    return getAnimalConfigLucide(animalType)
+  }
+  
+  // Map non-animal categories to icons
+  const customIconMap: Record<string, { icon: any; color: string }> = {
+    "cat-training": { icon: GraduationCap, color: "text-red-500" },
+    "cat-health": { icon: Heart, color: "text-pink-500" },
+    "cat-adoption": { icon: HeartHandshake, color: "text-orange-500" },
+    "cat-nutrition": { icon: UtensilsCrossed, color: "text-cyan-500" },
+  }
+  
+  return customIconMap[categoryId]
 }
 
 export function GroupSettings({ group, onSave, onCancel }: GroupSettingsProps) {
@@ -242,14 +269,21 @@ export function GroupSettings({ group, onSave, onCancel }: GroupSettingsProps) {
                   <SelectValue placeholder="Select a category" />
                 </SelectTrigger>
                 <SelectContent>
-                  {categories.map((category) => (
-                    <SelectItem key={category.id} value={category.id}>
-                      <div className="flex items-center gap-2">
-                        <span>{category.icon}</span>
-                        <span>{category.name}</span>
-                      </div>
-                    </SelectItem>
-                  ))}
+                  {categories.map((category) => {
+                    const iconConfig = getCategoryIcon(category.id)
+                    const IconComponent = iconConfig?.icon
+                    
+                    return (
+                      <SelectItem key={category.id} value={category.id}>
+                        <div className="flex items-center gap-2">
+                          {IconComponent && (
+                            <IconComponent className={`h-4 w-4 ${iconConfig.color || "text-muted-foreground"}`} />
+                          )}
+                          <span>{category.name}</span>
+                        </div>
+                      </SelectItem>
+                    )
+                  })}
                 </SelectContent>
               </Select>
               {errors.categoryId && (

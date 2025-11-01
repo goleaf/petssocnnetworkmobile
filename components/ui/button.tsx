@@ -57,92 +57,6 @@ function Button({
   const Comp = asChild ? Slot : 'button'
   const isDisabled = disabled || loading
 
-  // Helper function to detect if there's an icon/SVG in children
-  const hasLeftIcon = (children: React.ReactNode): boolean => {
-    if (!children || loading) return loading // Loading state always has Loader2 icon
-    
-    const childrenArray = React.Children.toArray(children)
-    return childrenArray.some((child) => {
-      if (React.isValidElement(child)) {
-        // Check if it's an SVG element
-        if (child.type === 'svg') return true
-        
-        // Check if it's a lucide-react icon component (they usually have className with 'lucide')
-        const childProps = child.props as any
-        const className = childProps?.className
-        if (className && typeof className === 'string') {
-          if (className.includes('lucide') || className.includes('icon')) return true
-        }
-        
-        // Check component name for common icon components
-        const componentType = (child.type as any)
-        if (typeof componentType === 'function') {
-          const name = componentType.name || componentType.displayName
-          if (name && (
-            name.includes('Icon') || 
-            name === 'Loader2' ||
-            name === 'Edit' ||
-            name === 'Edit2' ||
-            name === 'Send' ||
-            name === 'Heart' ||
-            name === 'Trash2' ||
-            name === 'Plus' ||
-            name === 'PenSquare'
-          )) return true
-        }
-      }
-      return false
-    })
-  }
-
-  // Helper function to wrap text content with padding if icon exists
-  const processChildren = (children: React.ReactNode, hasIcon: boolean): React.ReactNode => {
-    if (!hasIcon || !children) return children
-    
-    const childrenArray = React.Children.toArray(children)
-    if (childrenArray.length === 0) return children
-    
-    return React.Children.map(childrenArray, (child, index) => {
-      if (React.isValidElement(child)) {
-        const childType = child.type as any
-        
-        // Skip SVG and icon components - return as is
-        if (childType === 'svg') return child
-        
-        const childProps = child.props as any
-        const className = childProps?.className
-        
-        // Skip if it's an icon component
-        if (className && typeof className === 'string') {
-          if (className.includes('lucide') || className.includes('icon')) return child
-        }
-        
-        // Skip icon components by name
-        if (typeof childType === 'function') {
-          const name = childType.name || childType.displayName
-          if (name && (name.includes('Icon') || name === 'Loader2' || name === 'Edit' || name === 'Edit2')) {
-            return child
-          }
-        }
-        
-        // If it's a span with text, add padding class
-        if (childType === 'span' || childType === 'p' || childType === 'div') {
-          return React.cloneElement(child, {
-            key: index,
-            className: cn(childProps?.className, 'pr-2'),
-          })
-        }
-      }
-      
-      // For strings and numbers (text content), wrap with padding
-      if (typeof child === 'string' || typeof child === 'number') {
-        return <span key={index} className="pr-2">{child}</span>
-      }
-      
-      return child
-    })
-  }
-
   // When asChild is true, we must pass exactly one child to Slot
   if (asChild) {
     return (
@@ -157,8 +71,6 @@ function Button({
     )
   }
 
-  const hasIcon = hasLeftIcon(children) || loading
-
   return (
     <Comp
       data-slot="button"
@@ -169,10 +81,10 @@ function Button({
       {loading && (
         <>
           <Loader2 className="h-4 w-4 animate-spin shrink-0" />
-          {loadingText && <span className="pr-2">{loadingText}</span>}
+          {loadingText && <span>{loadingText}</span>}
         </>
       )}
-      {!loading && processChildren(children, hasIcon)}
+      {!loading && children}
     </Comp>
   )
 }

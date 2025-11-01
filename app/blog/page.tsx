@@ -7,7 +7,6 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { CategoryTabs, type TabItem } from "@/components/ui/category-tabs"
 import { Button } from "@/components/ui/button"
 import { CreateButton } from "@/components/ui/create-button"
 import { getBlogPosts, getPets, getUsers } from "@/lib/storage"
@@ -35,13 +34,13 @@ export default function BlogPage() {
   }, [])
 
   // Define categories based on common tags
-  const categories: TabItem[] = [
-    { value: "all", label: "All Posts", icon: FileText, color: "text-blue-500" },
-    { value: "adventure", label: "Adventure", icon: Plane, color: "text-sky-500" },
-    { value: "training", label: "Training", icon: GraduationCap, color: "text-amber-500" },
-    { value: "funny", label: "Funny", icon: Sparkles, color: "text-pink-500" },
-    { value: "photos", label: "Photos", icon: Camera, color: "text-purple-500" },
-    { value: "playtime", label: "Playtime", icon: Gamepad2, color: "text-green-500" },
+  const categories = [
+    { value: "all", label: "All Posts", icon: FileText },
+    { value: "adventure", label: "Adventure", icon: Plane },
+    { value: "training", label: "Training", icon: GraduationCap },
+    { value: "funny", label: "Funny", icon: Sparkles },
+    { value: "photos", label: "Photos", icon: Camera },
+    { value: "playtime", label: "Playtime", icon: Gamepad2 },
   ]
 
   // Category mapping - maps tags to categories
@@ -226,25 +225,22 @@ export default function BlogPage() {
         </Select>
       </div>
 
-      <CategoryTabs
-        value={selectedCategory}
-        onValueChange={handleCategoryChange}
-        items={categories}
-        className="w-full mb-6"
-        defaultGridCols={{ mobile: 4, tablet: 4, desktop: 7 }}
-        additionalTabs={
-          isAuthenticated
-            ? [
-                {
-                  value: "my-posts",
-                  label: "My Posts",
-                  icon: User,
-                  color: "text-indigo-500",
-                },
-              ]
-            : []
-        }
-      >
+      <Tabs value={selectedCategory} onValueChange={handleCategoryChange} className="w-full mb-6">
+        <TabsList className="grid w-full grid-cols-4 lg:grid-cols-7 mb-6">
+          {categories.map((category) => (
+            <TabsTrigger key={category.value} value={category.value} className="flex items-center gap-2">
+              <category.icon className="h-4 w-4" />
+              <span className="hidden sm:inline">{category.label}</span>
+            </TabsTrigger>
+          ))}
+          {isAuthenticated && (
+            <TabsTrigger value="my-posts" className="flex items-center gap-2">
+              <User className="h-4 w-4" />
+              <span className="hidden sm:inline">My Posts</span>
+            </TabsTrigger>
+          )}
+        </TabsList>
+
         {categories.map((category) => {
           const { posts: paginatedPosts, totalPages, currentPage: page, totalPosts } = getPaginatedPosts(category.value)
           
@@ -509,7 +505,7 @@ export default function BlogPage() {
             })()}
           </TabsContent>
         )}
-      </CategoryTabs>
+      </Tabs>
     </div>
   )
 }

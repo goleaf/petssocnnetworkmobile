@@ -286,7 +286,7 @@ export default function BlogPostPage({ params }: { params: Promise<{ id: string 
             </Button>
             {currentUser && currentUser.id === post.authorId && (
               <Link href={`/blog/${post.id}/edit`}>
-                <EditButton size="sm">
+                <EditButton asChild size="sm">
                   Edit
                 </EditButton>
               </Link>

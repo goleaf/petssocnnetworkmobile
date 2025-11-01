@@ -1,31 +1,43 @@
 "use client"
 
+import type React from "react"
+
 import { useState, useEffect } from "react"
 import { useAuth } from "@/lib/auth"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { BackButton } from "@/components/ui/back-button"
-import { CreateButton } from "@/components/ui/create-button"
-import { BlogForm, type BlogFormData } from "@/components/blog-form"
-import { addBlogPost } from "@/lib/storage"
-import type { BlogPost } from "@/lib/types"
-import { getPetsByOwnerId } from "@/lib/storage"
-import { saveDraft, deleteDraft, getDraftsByUserId } from "@/lib/drafts"
-import type { Draft } from "@/lib/types"
-import { FileText, Save, FolderOpen } from "lucide-react"
-import Link from "next/link"
-import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { Button } from "@/components/ui/button"
+import { CreateButton } from "@/components/ui/create-button"
+import { DeleteButton } from "@/components/ui/delete-button"
+import { BackButton } from "@/components/ui/back-button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
+import { addBlogPost, getPetsByOwnerId } from "@/lib/storage"
+import type { BlogPost } from "@/lib/types"
+import { ArrowLeft, Save, Send, Trash2 } from "lucide-react"
+import Link from "next/link"
+import { MarkdownEditor } from "@/components/markdown-editor"
+import { PrivacySelector } from "@/components/privacy-selector"
+import { saveDraft, deleteDraft, getDraftsByUserId } from "@/lib/drafts"
+import type { PrivacyLevel, Draft } from "@/lib/types"
 
 export default function CreateBlogPage() {
   const { user } = useAuth()
   const router = useRouter()
   const [myPets, setMyPets] = useState<any[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const [formData, setFormData] = useState({
+    petId: "",
+    title: "",
+    content: "",
+    tags: "",
+    privacy: "public" as PrivacyLevel,
+    hashtags: "",
+  })
   const [draftId, setDraftId] = useState<string>("")
   const [lastSaved, setLastSaved] = useState<string>("")
   const [existingDrafts, setExistingDrafts] = useState<Draft[]>([])
-  const [selectedDraft, setSelectedDraft] = useState<Draft | null>(null)
 
   useEffect(() => {
     if (!user) {
@@ -34,46 +46,53 @@ export default function CreateBlogPage() {
     }
     const pets = getPetsByOwnerId(user.id)
     setMyPets(pets)
+    if (pets.length > 0) {
+      setFormData((prev) => ({ ...prev, petId: pets[0].id }))
+    }
+
     const drafts = getDraftsByUserId(user.id, "blog")
     setExistingDrafts(drafts)
-    setIsLoading(false)
+
+    const newDraftId = `draft_${Date.now()}`
+    setDraftId(newDraftId)
   }, [user, router])
 
-  const handleSaveDraft = (formData: BlogFormData) => {
-    if (!user || !formData.title) return
+  useEffect(() => {
+    if (!user || !draftId || !formData.title) return
 
-    const draft: Draft = {
-      id: draftId || `draft_${Date.now()}`,
-      userId: user.id,
-      type: "blog",
-      title: formData.title,
-      content: formData.content,
-      metadata: {
-        petId: formData.petId,
-        tags: formData.tags.join(", "),
-        privacy: formData.privacy,
-        hashtags: formData.hashtags.join(", "),
-        coverImage: formData.coverImage,
-      },
-      lastSaved: new Date().toISOString(),
-      createdAt: new Date().toISOString(),
-    }
+    const timer = setTimeout(() => {
+      const draft: Draft = {
+        id: draftId,
+        userId: user.id,
+        type: "blog",
+        title: formData.title,
+        content: formData.content,
+        metadata: {
+          petId: formData.petId,
+          tags: formData.tags,
+          privacy: formData.privacy,
+          hashtags: formData.hashtags,
+        },
+        lastSaved: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+      }
+      saveDraft(draft)
+      setLastSaved(new Date().toLocaleTimeString())
+    }, 2000) // Autosave after 2 seconds of inactivity
 
-    if (!draftId) {
-      setDraftId(draft.id)
-    }
+    return () => clearTimeout(timer)
+  }, [formData, user, draftId])
 
-    saveDraft(draft)
-    setLastSaved(new Date().toLocaleTimeString())
-  }
-
-  const handleSubmit = async (formData: BlogFormData) => {
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
     if (!user) return
 
-    // Extract hashtags from content
     const hashtagMatches = formData.content.match(/#\w+/g) || []
     const contentHashtags = hashtagMatches.map((tag) => tag.substring(1))
-    const manualHashtags = formData.hashtags || []
+    const manualHashtags = formData.hashtags
+      .split(",")
+      .map((tag) => tag.trim())
+      .filter((tag) => tag)
     const allHashtags = [...new Set([...contentHashtags, ...manualHashtags])]
 
     const newPost: BlogPost = {
@@ -82,36 +101,35 @@ export default function CreateBlogPage() {
       authorId: user.id,
       title: formData.title,
       content: formData.content,
-      tags: formData.tags || [],
+      tags: formData.tags
+        .split(",")
+        .map((tag) => tag.trim())
+        .filter((tag) => tag),
       likes: [],
       createdAt: new Date().toISOString().split("T")[0],
       updatedAt: new Date().toISOString().split("T")[0],
       privacy: formData.privacy,
       isDraft: false,
       hashtags: allHashtags,
-      coverImage: formData.coverImage,
     }
 
     addBlogPost(newPost)
-    
-    // Delete draft if exists
     if (draftId) {
       deleteDraft(draftId)
     }
-
-    // Redirect to post page after a short delay to show success message
-    setTimeout(() => {
-      router.push(`/blog/${newPost.id}`)
-    }, 1000)
+    router.push(`/blog/${newPost.id}`)
   }
 
   const loadDraft = (draft: Draft) => {
-    setSelectedDraft(draft)
+    setFormData({
+      petId: draft.metadata?.petId || "",
+      title: draft.title,
+      content: draft.content,
+      tags: draft.metadata?.tags || "",
+      privacy: draft.metadata?.privacy || "public",
+      hashtags: draft.metadata?.hashtags || "",
+    })
     setDraftId(draft.id)
-  }
-
-  if (isLoading) {
-    return <LoadingSpinner fullScreen />
   }
 
   if (myPets.length === 0) {
@@ -129,30 +147,11 @@ export default function CreateBlogPage() {
     )
   }
 
-  // Prepare initial data if draft is selected
-  const initialData = selectedDraft ? {
-    petId: selectedDraft.metadata?.petId || "",
-    title: selectedDraft.title,
-    content: selectedDraft.content,
-    tags: selectedDraft.metadata?.tags?.split(",").map(t => t.trim()).filter(t => t) || [],
-    privacy: selectedDraft.metadata?.privacy || "public",
-    hashtags: selectedDraft.metadata?.hashtags?.split(",").map(t => t.trim()).filter(t => t) || [],
-    coverImage: selectedDraft.metadata?.coverImage,
-  } : undefined
-
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
-      <div className="flex items-center justify-between mb-6">
-        <BackButton href="/blog" label="Back to Blogs" />
-        <Link href="/drafts">
-          <Button variant="outline">
-            <FolderOpen className="h-4 w-4 mr-2" />
-            My Drafts
-          </Button>
-        </Link>
-      </div>
+      <BackButton href="/blog" label="Back to Blogs" />
 
-      {existingDrafts.length > 0 && !selectedDraft && (
+      {existingDrafts.length > 0 && (
         <Card className="mb-6">
           <CardHeader>
             <CardTitle className="text-lg">Continue from Draft</CardTitle>
@@ -172,6 +171,9 @@ export default function CreateBlogPage() {
                       <Save className="h-4 w-4 mr-2" />
                       Load
                     </Button>
+                    <DeleteButton size="sm" onClick={() => deleteDraft(draft.id)}>
+                      Delete
+                    </DeleteButton>
                   </div>
                 </div>
               ))}
@@ -180,30 +182,127 @@ export default function CreateBlogPage() {
         </Card>
       )}
 
-      <Card className="mb-6">
+      <Card>
         <CardHeader>
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-primary/10">
-              <FileText className="h-6 w-6 text-primary" />
-            </div>
+          <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="text-2xl">Create a Blog Post</CardTitle>
+              <CardTitle>Create a Blog Post</CardTitle>
               <CardDescription>Share your pet{"'"}s story with the community</CardDescription>
             </div>
+            {lastSaved && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Save className="h-4 w-4" />
+                <span>Saved at {lastSaved}</span>
+              </div>
+            )}
           </div>
         </CardHeader>
-      </Card>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="petId" required>
+                  Select Pet
+                </Label>
+                <Select value={formData.petId} onValueChange={(value) => setFormData({ ...formData, petId: value })}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select a pet">
+                      {(() => {
+                        const selectedPet = myPets.find((p) => p.id === formData.petId)
+                        return selectedPet ? (
+                          <div className="flex items-center gap-2">
+                            <Avatar className="h-5 w-5 flex-shrink-0">
+                              <AvatarImage src={selectedPet.avatar || "/placeholder.svg"} alt={selectedPet.name} />
+                              <AvatarFallback className="text-xs">{selectedPet.name.charAt(0)}</AvatarFallback>
+                            </Avatar>
+                            <span className="truncate">{selectedPet.name}</span>
+                          </div>
+                        ) : null
+                      })()}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {myPets.map((pet) => (
+                      <SelectItem key={pet.id} value={pet.id}>
+                        <div className="flex items-center gap-2">
+                          <Avatar className="h-6 w-6 flex-shrink-0">
+                            <AvatarImage src={pet.avatar || "/placeholder.svg"} alt={pet.name} />
+                            <AvatarFallback className="text-xs">{pet.name.charAt(0)}</AvatarFallback>
+                          </Avatar>
+                          <span>{pet.name}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-      <BlogForm
-        mode="create"
-        initialData={initialData as any}
-        pets={myPets}
-        onSubmit={handleSubmit}
-        onCancel={() => router.push("/blog")}
-        onSaveDraft={handleSaveDraft}
-        showDraftInfo={!!lastSaved}
-        lastSaved={lastSaved}
-      />
+              <div className="space-y-2">
+                <Label htmlFor="privacy">Privacy</Label>
+                <PrivacySelector
+                  value={formData.privacy}
+                  onChange={(value) => setFormData({ ...formData, privacy: value })}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="title" required>
+                Title
+              </Label>
+              <Input
+                id="title"
+                value={formData.title}
+                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                placeholder="Give your post a catchy title"
+                required
+                className="h-11"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="content" required description="Use markdown for formatting. Add hashtags with #tag">
+                Content
+              </Label>
+              <MarkdownEditor
+                value={formData.content}
+                onChange={(value) => setFormData({ ...formData, content: value })}
+                placeholder="Share your story... Use markdown for formatting. Add hashtags with #tag"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="tags" description="Add tags separated by commas">
+                Tags
+              </Label>
+              <Input
+                id="tags"
+                value={formData.tags}
+                onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
+                placeholder="adventure, training, funny (comma separated)"
+                className="h-11"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="hashtags" description="Hashtags in your content (#tag) will be automatically detected">
+                Hashtags
+              </Label>
+              <Input
+                id="hashtags"
+                value={formData.hashtags}
+                onChange={(e) => setFormData({ ...formData, hashtags: e.target.value })}
+                placeholder="dogs, puppylove, goldenretriever (comma separated)"
+                className="h-11"
+              />
+            </div>
+
+            <CreateButton type="submit" className="w-full" iconType="send">
+              Publish Post
+            </CreateButton>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   )
 }

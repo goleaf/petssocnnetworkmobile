@@ -5,9 +5,10 @@ import Image from "next/image"
 import { Card, CardContent } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
-import { Users, Lock, Eye, EyeOff } from "lucide-react"
+import { Users, Lock, Eye, EyeOff, GraduationCap, Heart, HeartHandshake, UtensilsCrossed } from "lucide-react"
 import type { Group } from "@/lib/types"
 import { getGroupCategoryById } from "@/lib/storage"
+import { getAnimalConfigLucide } from "@/lib/animal-types"
 
 interface GroupCardProps {
   group: Group
@@ -15,8 +16,36 @@ interface GroupCardProps {
   onTagClick?: (tag: string) => void
 }
 
+// Map category IDs to animal types or custom icons
+const getCategoryIcon = (categoryId: string) => {
+  // Map specific categories to animal types
+  const categoryToAnimalMap: Record<string, string> = {
+    "cat-dogs": "dog",
+    "cat-cats": "cat",
+    "cat-birds": "bird",
+    "cat-small-pets": "rabbit",
+  }
+  
+  const animalType = categoryToAnimalMap[categoryId]
+  if (animalType) {
+    return getAnimalConfigLucide(animalType)
+  }
+  
+  // Map non-animal categories to icons
+  const customIconMap: Record<string, { icon: any; color: string }> = {
+    "cat-training": { icon: GraduationCap, color: "text-red-500" },
+    "cat-health": { icon: Heart, color: "text-pink-500" },
+    "cat-adoption": { icon: HeartHandshake, color: "text-orange-500" },
+    "cat-nutrition": { icon: UtensilsCrossed, color: "text-cyan-500" },
+  }
+  
+  return customIconMap[categoryId]
+}
+
 export function GroupCard({ group, viewMode = "grid", onTagClick }: GroupCardProps) {
   const category = getGroupCategoryById(group.categoryId)
+  const iconConfig = category ? getCategoryIcon(category.id) : undefined
+  const IconComponent = iconConfig?.icon
   
   // Generate placeholder images using free services
   const getCoverImage = () => {
@@ -82,7 +111,7 @@ export function GroupCard({ group, viewMode = "grid", onTagClick }: GroupCardPro
                     {group.name}
                   </h3>
                   <div className="flex items-center gap-2 flex-wrap">
-                    {category && (
+                    {category && IconComponent && (
                       <Badge 
                         variant="outline" 
                         className="text-xs"
@@ -91,7 +120,7 @@ export function GroupCard({ group, viewMode = "grid", onTagClick }: GroupCardPro
                           color: category.color || "#3b82f6",
                         }}
                       >
-                        <span className="mr-1">{category.icon}</span>
+                        <IconComponent className={`h-3 w-3 mr-1 ${iconConfig.color || ""}`} />
                         {category.name}
                       </Badge>
                     )}
@@ -173,13 +202,13 @@ export function GroupCard({ group, viewMode = "grid", onTagClick }: GroupCardPro
           />
         </div>
         
-        <CardContent className="p-4">
-          <div className="flex items-start gap-3 mb-3">
+        <CardContent className="p-3 md:p-4">
+          <div className="flex items-start gap-2 md:gap-3 mb-2 md:mb-3">
             {/* Avatar */}
             <div className="flex-shrink-0">
-              <Avatar className="h-14 w-14 border-2 border-background shadow-sm">
+              <Avatar className="h-12 w-12 md:h-14 md:w-14 border-2 border-background shadow-sm">
                 <AvatarImage src={getAvatarImage()} alt={group.name} />
-                <AvatarFallback className="text-base font-semibold">
+                <AvatarFallback className="text-sm md:text-base font-semibold">
                   {group.name.charAt(0).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
@@ -188,13 +217,13 @@ export function GroupCard({ group, viewMode = "grid", onTagClick }: GroupCardPro
             {/* Content */}
             <div className="flex-1 min-w-0">
               {/* Name */}
-              <h3 className="font-semibold text-lg leading-tight line-clamp-1 mb-1">
+              <h3 className="font-semibold text-base md:text-lg leading-tight line-clamp-1 mb-1">
                 {group.name}
               </h3>
 
               {/* Category and Type Badges */}
-              <div className="flex items-center gap-2 flex-wrap mb-2">
-                {category && (
+              <div className="flex items-center gap-1.5 md:gap-2 flex-wrap mb-1.5 md:mb-2">
+                {category && IconComponent && (
                   <Badge 
                     variant="outline" 
                     className="text-xs"
@@ -203,32 +232,32 @@ export function GroupCard({ group, viewMode = "grid", onTagClick }: GroupCardPro
                       color: category.color || "#3b82f6",
                     }}
                   >
-                    <span className="mr-1">{category.icon}</span>
-                    {category.name}
+                    <IconComponent className={`h-3 w-3 mr-0.5 md:mr-1 ${iconConfig.color || ""}`} />
+                    <span className="hidden sm:inline">{category.name}</span>
                   </Badge>
                 )}
                 {group.type !== "open" && (
-                  <Badge variant="secondary" className="flex-shrink-0 gap-1 text-xs px-2 py-0.5">
+                  <Badge variant="secondary" className="flex-shrink-0 gap-0.5 md:gap-1 text-xs px-1.5 md:px-2 py-0.5">
                     {getTypeIcon()}
-                    {getTypeLabel()}
+                    <span className="hidden sm:inline">{getTypeLabel()}</span>
                   </Badge>
                 )}
               </div>
 
-              <p className="text-sm text-muted-foreground line-clamp-2">
+              <p className="text-xs md:text-sm text-muted-foreground line-clamp-2">
                 {group.description}
               </p>
             </div>
           </div>
 
           {/* Stats */}
-          <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
-            <div className="flex items-center gap-1.5">
-              <Users className="h-4 w-4" />
+          <div className="flex items-center gap-3 md:gap-4 text-xs md:text-sm text-muted-foreground mb-2 md:mb-3">
+            <div className="flex items-center gap-1 md:gap-1.5">
+              <Users className="h-3 w-3 md:h-4 md:w-4" />
               <span>{group.memberCount} members</span>
             </div>
             {group.topicCount > 0 && (
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1 md:gap-1.5">
                 <span>{group.topicCount} topics</span>
               </div>
             )}
@@ -236,7 +265,7 @@ export function GroupCard({ group, viewMode = "grid", onTagClick }: GroupCardPro
 
           {/* Tags */}
           {group.tags && group.tags.length > 0 && (
-            <div className="flex flex-wrap gap-1.5">
+            <div className="flex flex-wrap gap-1 md:gap-1.5">
               {group.tags.slice(0, 3).map((tag, index) => (
                 <Badge
                   key={index}

@@ -289,6 +289,38 @@ export default function DashboardContent({ user }: { user: User }) {
               </div>
             </CardContent>
           </Card>
+
+          {/* Quick Links */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <div className="h-8 w-8 rounded-lg bg-indigo-500/10 flex items-center justify-center">
+                  <BookOpen className="h-4 w-4 text-indigo-500" />
+                </div>
+                Quick Links
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <Link href="/blog">
+                <Button variant="ghost" className="w-full justify-start">
+                  <BookOpen className="h-4 w-4 mr-2" />
+                  Browse All Blogs
+                </Button>
+              </Link>
+              <Link href="/wiki">
+                <Button variant="ghost" className="w-full justify-start">
+                  <BookOpen className="h-4 w-4 mr-2" />
+                  Pet Care Wiki
+                </Button>
+              </Link>
+              <Link href={`/profile/${user.username}`}>
+                <Button variant="ghost" className="w-full justify-start">
+                  <Users className="h-4 w-4 mr-2" />
+                  My Profile
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>

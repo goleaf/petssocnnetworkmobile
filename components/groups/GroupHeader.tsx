@@ -21,6 +21,10 @@ import {
   BarChart3,
   Shield,
   MoreVertical,
+  GraduationCap,
+  Heart,
+  HeartHandshake,
+  UtensilsCrossed,
 } from "lucide-react"
 import {
   DropdownMenu,
@@ -41,11 +45,38 @@ import {
   getUserRoleInGroup,
 } from "@/lib/storage"
 import { useRouter } from "next/navigation"
+import { getAnimalConfigLucide } from "@/lib/animal-types"
 
 interface GroupHeaderProps {
   group: Group
   onJoin?: () => void
   onLeave?: () => void
+}
+
+// Map category IDs to animal types or custom icons
+const getCategoryIcon = (categoryId: string) => {
+  // Map specific categories to animal types
+  const categoryToAnimalMap: Record<string, string> = {
+    "cat-dogs": "dog",
+    "cat-cats": "cat",
+    "cat-birds": "bird",
+    "cat-small-pets": "rabbit",
+  }
+  
+  const animalType = categoryToAnimalMap[categoryId]
+  if (animalType) {
+    return getAnimalConfigLucide(animalType)
+  }
+  
+  // Map non-animal categories to icons
+  const customIconMap: Record<string, { icon: any; color: string }> = {
+    "cat-training": { icon: GraduationCap, color: "text-red-500" },
+    "cat-health": { icon: Heart, color: "text-pink-500" },
+    "cat-adoption": { icon: HeartHandshake, color: "text-orange-500" },
+    "cat-nutrition": { icon: UtensilsCrossed, color: "text-cyan-500" },
+  }
+  
+  return customIconMap[categoryId]
 }
 
 export function GroupHeader({ group, onJoin, onLeave }: GroupHeaderProps) {
@@ -54,6 +85,8 @@ export function GroupHeader({ group, onJoin, onLeave }: GroupHeaderProps) {
   const [isJoining, setIsJoining] = useState(false)
   
   const category = getGroupCategoryById(group.categoryId)
+  const iconConfig = category ? getCategoryIcon(category.id) : undefined
+  const IconComponent = iconConfig?.icon
   const isMember = user ? isUserMemberOfGroup(group.id, user.id) : false
   const userRole = user ? getUserRoleInGroup(group.id, user.id) : null
   const canManage = user ? canUserManageSettings(group.id, user.id) : false
@@ -150,7 +183,7 @@ export function GroupHeader({ group, onJoin, onLeave }: GroupHeaderProps) {
   return (
     <div className="relative">
       {/* Cover Image - Always show */}
-      <div className="relative h-64 w-full overflow-hidden bg-muted">
+      <div className="relative h-48 md:h-64 w-full overflow-hidden bg-muted">
         <Image
           src={getCoverImage()}
           alt={group.name}
@@ -162,18 +195,18 @@ export function GroupHeader({ group, onJoin, onLeave }: GroupHeaderProps) {
         <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent" />
       </div>
 
-      <div className="container mx-auto px-4 max-w-7xl relative -mt-16 pb-6">
-        <div className="bg-card rounded-lg border shadow-lg p-6">
-          <div className="flex flex-col md:flex-row gap-6">
+      <div className="container mx-auto px-4 max-w-7xl relative -mt-12 md:-mt-16 pb-4 md:pb-6">
+        <div className="bg-card rounded-lg border shadow-lg p-4 md:p-6">
+          <div className="flex flex-col md:flex-row gap-4 md:gap-6">
             {/* Avatar */}
-            <div className="flex-shrink-0">
-              <Avatar className="h-24 w-24 border-4 border-background shadow-lg">
+            <div className="flex-shrink-0 flex justify-center md:justify-start">
+              <Avatar className="h-20 w-20 md:h-24 md:w-24 border-4 border-background shadow-lg">
                 <AvatarImage src={getAvatarImage()} alt={group.name} />
-                <AvatarFallback className="text-3xl">
+                <AvatarFallback className="text-2xl md:text-3xl">
                   {group.name.charAt(0).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
-              {category && (
+              {category && IconComponent && (
                 <div
                   className="mt-2 inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium"
                   style={{
@@ -181,7 +214,7 @@ export function GroupHeader({ group, onJoin, onLeave }: GroupHeaderProps) {
                     color: category.color || "#3b82f6",
                   }}
                 >
-                  <span>{category.icon}</span>
+                  <IconComponent className={`h-3 w-3 ${iconConfig.color || ""}`} />
                   <span>{category.name}</span>
                 </div>
               )}
@@ -189,31 +222,31 @@ export function GroupHeader({ group, onJoin, onLeave }: GroupHeaderProps) {
 
             {/* Content */}
             <div className="flex-1 min-w-0">
-              <div className="flex items-start justify-between gap-4 mb-2">
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 md:gap-4 mb-2">
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-2">
-                    <h1 className="text-3xl font-bold">{group.name}</h1>
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
+                    <h1 className="text-2xl md:text-3xl font-bold">{group.name}</h1>
                     {group.type !== "open" && (
-                      <Badge variant="secondary" className="gap-1">
+                      <Badge variant="secondary" className="gap-1 w-fit">
                         {getTypeIcon()}
-                        {getTypeLabel()}
+                        <span className="hidden sm:inline">{getTypeLabel()}</span>
                       </Badge>
                     )}
                   </div>
-                  <p className="text-muted-foreground">{group.description}</p>
+                  <p className="text-sm md:text-base text-muted-foreground">{group.description}</p>
                 </div>
 
                 {/* Actions */}
-                <div className="flex items-center gap-2 flex-shrink-0">
+                <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
                   {isAuthenticated ? (
                     <>
                       {isMember ? (
                         <>
                           {canManage && (
                             <Link href={`/groups/${group.slug}/settings`}>
-                              <Button variant="outline" size="sm">
+                              <Button variant="outline" size="sm" className="w-full sm:w-auto">
                                 <Settings className="h-4 w-4 mr-2" />
-                                Settings
+                                <span className="hidden sm:inline">Settings</span>
                               </Button>
                             </Link>
                           )}
@@ -222,6 +255,7 @@ export function GroupHeader({ group, onJoin, onLeave }: GroupHeaderProps) {
                             size="sm"
                             onClick={handleLeave}
                             disabled={isJoining || userRole === "owner"}
+                            className="w-full sm:w-auto"
                           >
                             <UserMinus className="h-4 w-4 mr-2" />
                             {isJoining ? "Leaving..." : "Leave Group"}
@@ -232,6 +266,7 @@ export function GroupHeader({ group, onJoin, onLeave }: GroupHeaderProps) {
                           size="sm"
                           onClick={handleJoin}
                           disabled={isJoining}
+                          className="w-full sm:w-auto"
                         >
                           <UserPlus className="h-4 w-4 mr-2" />
                           {isJoining ? "Joining..." : "Join Group"}
@@ -301,31 +336,31 @@ export function GroupHeader({ group, onJoin, onLeave }: GroupHeaderProps) {
               </div>
 
               {/* Stats */}
-              <div className="flex flex-wrap items-center gap-6 mt-4 pt-4 border-t">
+              <div className="flex flex-wrap items-center gap-4 md:gap-6 mt-3 md:mt-4 pt-3 md:pt-4 border-t">
                 <div className="flex items-center gap-2">
                   <Users className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-semibold">{group.memberCount}</span>
-                  <span className="text-sm text-muted-foreground">members</span>
+                  <span className="font-semibold text-sm md:text-base">{group.memberCount}</span>
+                  <span className="text-xs md:text-sm text-muted-foreground">members</span>
                 </div>
                 {group.topicCount > 0 && (
                   <div className="flex items-center gap-2">
                     <MessageSquare className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-semibold">{group.topicCount}</span>
-                    <span className="text-sm text-muted-foreground">topics</span>
+                    <span className="font-semibold text-sm md:text-base">{group.topicCount}</span>
+                    <span className="text-xs md:text-sm text-muted-foreground">topics</span>
                   </div>
                 )}
                 {group.postCount > 0 && (
                   <div className="flex items-center gap-2">
                     <FileText className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-semibold">{group.postCount}</span>
-                    <span className="text-sm text-muted-foreground">posts</span>
+                    <span className="font-semibold text-sm md:text-base">{group.postCount}</span>
+                    <span className="text-xs md:text-sm text-muted-foreground">posts</span>
                   </div>
                 )}
               </div>
 
               {/* Tags */}
               {group.tags && group.tags.length > 0 && (
-                <div className="flex flex-wrap gap-2 mt-4">
+                <div className="flex flex-wrap gap-2 mt-3 md:mt-4">
                   {group.tags.map((tag, index) => (
                     <Badge key={index} variant="outline" className="text-xs">
                       #{tag}

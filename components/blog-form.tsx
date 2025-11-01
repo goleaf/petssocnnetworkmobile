@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { CardHeaderWithIcon } from "@/components/ui/card-header-with-icon"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -44,9 +45,9 @@ interface LabelWithTooltipProps {
   children: React.ReactNode
 }
 
-function LabelWithTooltip({ htmlFor, tooltip, required, children }: LabelWithTooltipProps) {
+function LabelWithTooltip({ htmlFor, tooltip, required, icon, children }: LabelWithTooltipProps & { icon?: any }) {
   const labelContent = (
-    <Label htmlFor={htmlFor} required={required} className="flex items-center gap-1.5">
+    <Label htmlFor={htmlFor} required={required} icon={icon} className="flex items-center gap-1.5">
       {children}
       {tooltip && (
         <Tooltip>
@@ -344,13 +345,11 @@ export function BlogForm({
         )}
 
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              Post Information
-            </CardTitle>
-            <CardDescription>Basic details about your blog post</CardDescription>
-          </CardHeader>
+          <CardHeaderWithIcon
+            title="Post Information"
+            description="Basic details about your blog post"
+            icon={FileText}
+          />
           <CardContent className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">

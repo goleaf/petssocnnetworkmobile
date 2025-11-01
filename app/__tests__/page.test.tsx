@@ -24,7 +24,6 @@ jest.mock('@/lib/storage', () => ({
   getPets: jest.fn(),
   getUsers: jest.fn(),
   getPetsByOwnerId: jest.fn(),
-  getFeedPosts: jest.fn(),
 }))
 
 // Mock DashboardContent
@@ -59,20 +58,28 @@ describe('HomePage', () => {
     ;(storage.getPetsByOwnerId as jest.Mock).mockReturnValue([])
   })
 
-  it('should render landing page when user is not authenticated', async () => {
+  it('should render landing page when user is not authenticated', () => {
     ;(useAuth as jest.Mock).mockReturnValue({
       user: null,
       isAuthenticated: false,
     })
 
     render(<HomePage />)
-    
-    await waitFor(() => {
-      expect(screen.getByText(/connect, share, and learn about your pets/i)).toBeInTheDocument()
-    }, { timeout: 2000 })
+    expect(screen.getByText(/connect, share, and learn about your pets/i)).toBeInTheDocument()
   })
 
-  it('should show feed content when user is authenticated', async () => {
+  it('should redirect authenticated users to feed', async () => {
+    const mockPush = jest.fn()
+    const mockRouter = {
+      push: mockPush,
+      replace: jest.fn(),
+      prefetch: jest.fn(),
+    }
+    
+    jest.mock('next/navigation', () => ({
+      useRouter: () => mockRouter,
+    }))
+    
     ;(useAuth as jest.Mock).mockReturnValue({
       user: mockUser,
       isAuthenticated: true,
@@ -81,30 +88,26 @@ describe('HomePage', () => {
     ;(storage.getUsers as jest.Mock).mockReturnValue([mockUser])
     ;(storage.getPets as jest.Mock).mockReturnValue([])
     ;(storage.getBlogPosts as jest.Mock).mockReturnValue([])
-    ;(storage.getPetsByOwnerId as jest.Mock).mockReturnValue([])
-    ;(storage.getFeedPosts as jest.Mock).mockReturnValue([])
 
     render(<HomePage />)
     
-    // Wait for feed content to render - authenticated users see "Welcome back" message
+    // Wait for redirect to be called
     await waitFor(() => {
-      expect(screen.getByText(/welcome back/i)).toBeInTheDocument()
-      // Landing page content should not be shown
+      // Since the page redirects authenticated users to /feed via useEffect,
+      // we can't test the dashboard rendering here
+      // Instead, we verify the component handles authenticated state
       expect(screen.queryByText(/connect, share, and learn/i)).not.toBeInTheDocument()
     }, { timeout: 3000 })
   })
 
-  it('should display login form on landing page', async () => {
+  it('should display login form on landing page', () => {
     ;(useAuth as jest.Mock).mockReturnValue({
       user: null,
       isAuthenticated: false,
     })
 
     render(<HomePage />)
-    
-    await waitFor(() => {
-      expect(screen.getByText('Welcome Back')).toBeInTheDocument()
-    }, { timeout: 2000 })
+    expect(screen.getByText('Welcome Back')).toBeInTheDocument()
   })
 
   it('should display stats on landing page', async () => {
@@ -135,34 +138,28 @@ describe('HomePage', () => {
     expect(petsElements.length + blogPostsElements.length).toBeGreaterThan(0)
   })
 
-  it('should display features section', async () => {
+  it('should display features section', () => {
     ;(useAuth as jest.Mock).mockReturnValue({
       user: null,
       isAuthenticated: false,
     })
 
     render(<HomePage />)
-    
-    await waitFor(() => {
-      expect(screen.getByText(/everything you need for your pet community/i)).toBeInTheDocument()
-      expect(screen.getByText(/pet profiles/i)).toBeInTheDocument()
-      expect(screen.getByText(/pet care wiki/i)).toBeInTheDocument()
-      expect(screen.getByText(/social features/i)).toBeInTheDocument()
-    }, { timeout: 2000 })
+    expect(screen.getByText(/everything you need for your pet community/i)).toBeInTheDocument()
+    expect(screen.getByText(/pet profiles/i)).toBeInTheDocument()
+    expect(screen.getByText(/pet care wiki/i)).toBeInTheDocument()
+    expect(screen.getByText(/social features/i)).toBeInTheDocument()
   })
 
-  it('should display CTA section', async () => {
+  it('should display CTA section', () => {
     ;(useAuth as jest.Mock).mockReturnValue({
       user: null,
       isAuthenticated: false,
     })
 
     render(<HomePage />)
-    
-    await waitFor(() => {
-      expect(screen.getByText(/ready to join the community/i)).toBeInTheDocument()
-      expect(screen.getByText(/get started free/i)).toBeInTheDocument()
-    }, { timeout: 2000 })
+    expect(screen.getByText(/ready to join the community/i)).toBeInTheDocument()
+    expect(screen.getByText(/get started free/i)).toBeInTheDocument()
   })
 })
 

@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { BackButton } from "@/components/ui/back-button"
 import { useAuth } from "@/components/auth/auth-provider"
 import { PrivacySelector } from "@/components/privacy-selector"
 import { updateUser, getUsers, blockUser, unblockUser } from "@/lib/storage"
@@ -122,10 +123,10 @@ export default function PrivacySettingsPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-7xl">
+    <div className="container mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6 md:py-8 max-w-7xl">
       <BackButton onClick={() => router.back()} label="Back" />
 
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         {/* Success/Error Message */}
         {message && (
           <Alert
@@ -142,23 +143,23 @@ export default function PrivacySettingsPage() {
           </Alert>
         )}
         <div>
-          <h1 className="text-3xl font-bold">Privacy Settings</h1>
-          <p className="text-muted-foreground mt-2">Control who can see your information and content</p>
+          <h1 className="text-2xl sm:text-3xl font-bold">Privacy Settings</h1>
+          <p className="text-muted-foreground mt-2 text-sm sm:text-base">Control who can see your information and content</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
           {/* Profile Privacy */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <div className="h-8 w-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
-                  <User className="h-4 w-4 text-blue-500" />
+              <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-lg bg-blue-500/10 flex items-center justify-center flex-shrink-0">
+                  <User className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-blue-500" />
                 </div>
                 Profile Privacy
               </CardTitle>
-              <CardDescription>Choose who can see different parts of your profile</CardDescription>
+              <CardDescription className="text-xs sm:text-sm">Choose who can see different parts of your profile</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
+            <CardContent className="space-y-4 sm:space-y-6">
               <div className="space-y-2">
                 <Label>Profile Visibility</Label>
                 <p className="text-sm text-muted-foreground mb-2">Who can see your profile information</p>
@@ -191,15 +192,15 @@ export default function PrivacySettingsPage() {
           {/* Content Privacy */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <div className="h-8 w-8 rounded-lg bg-purple-500/10 flex items-center justify-center">
-                  <FileText className="h-4 w-4 text-purple-500" />
+              <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-lg bg-purple-500/10 flex items-center justify-center flex-shrink-0">
+                  <FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-purple-500" />
                 </div>
                 Content Privacy
               </CardTitle>
-              <CardDescription>Control who can see your posts, pets, and lists</CardDescription>
+              <CardDescription className="text-xs sm:text-sm">Control who can see your posts, pets, and lists</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
+            <CardContent className="space-y-4 sm:space-y-6">
               <div className="space-y-2">
                 <Label>Posts</Label>
                 <p className="text-sm text-muted-foreground mb-2">Who can see your posts</p>
@@ -241,23 +242,24 @@ export default function PrivacySettingsPage() {
           {/* Interactions */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <div className="h-8 w-8 rounded-lg bg-green-500/10 flex items-center justify-center">
-                  <Users className="h-4 w-4 text-green-500" />
+              <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-lg bg-green-500/10 flex items-center justify-center flex-shrink-0">
+                  <Users className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-green-500" />
                 </div>
                 Interactions
               </CardTitle>
-              <CardDescription>Control how others can interact with you</CardDescription>
+              <CardDescription className="text-xs sm:text-sm">Control how others can interact with you</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <Label>Searchable</Label>
-                  <p className="text-sm text-muted-foreground">Allow others to find you by searching</p>
+            <CardContent className="space-y-4 sm:space-y-6">
+              <div className="flex items-center justify-between gap-2 sm:gap-4">
+                <div className="space-y-1 min-w-0 flex-1">
+                  <Label className="text-xs sm:text-sm">Searchable</Label>
+                  <p className="text-xs sm:text-sm text-muted-foreground">Allow others to find you by searching</p>
                 </div>
                 <Switch
                   checked={settings.searchable}
                   onCheckedChange={(checked) => setSettings({ ...settings, searchable: checked })}
+                  className="flex-shrink-0"
                 />
               </div>
 
@@ -285,51 +287,52 @@ export default function PrivacySettingsPage() {
         {/* Blocked Users */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-lg bg-red-500/10 flex items-center justify-center">
-                <Ban className="h-4 w-4 text-red-500" />
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+              <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-lg bg-red-500/10 flex items-center justify-center flex-shrink-0">
+                <Ban className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-red-500" />
               </div>
               Blocked Users
             </CardTitle>
-            <CardDescription>Manage users you have blocked</CardDescription>
+            <CardDescription className="text-xs sm:text-sm">Manage users you have blocked</CardDescription>
           </CardHeader>
           <CardContent>
             {blockedUsers.length > 0 ? (
-              <div className="space-y-3">
+              <div className="space-y-2 sm:space-y-3">
                 {blockedUsers.map((blockedUser) => (
-                  <div key={blockedUser.id} className="flex items-center justify-between p-3 rounded-lg border">
-                    <Link href={`/profile/${blockedUser.username}`} className="flex items-center gap-3 flex-1">
-                      <Avatar className="h-10 w-10">
+                  <div key={blockedUser.id} className="flex items-center justify-between p-2 sm:p-3 rounded-lg border gap-2 sm:gap-3">
+                    <Link href={`/profile/${blockedUser.username}`} className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                      <Avatar className="h-8 w-8 sm:h-10 sm:w-10 flex-shrink-0">
                         <AvatarImage src={blockedUser.avatar || "/placeholder.svg"} alt={blockedUser.fullName} />
-                        <AvatarFallback>{blockedUser.fullName.charAt(0)}</AvatarFallback>
+                        <AvatarFallback className="text-xs sm:text-sm">{blockedUser.fullName.charAt(0)}</AvatarFallback>
                       </Avatar>
-                      <div>
-                        <p className="font-semibold">{blockedUser.fullName}</p>
-                        <p className="text-sm text-muted-foreground">@{blockedUser.username}</p>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-semibold text-sm sm:text-base truncate">{blockedUser.fullName}</p>
+                        <p className="text-xs sm:text-sm text-muted-foreground truncate">@{blockedUser.username}</p>
                       </div>
                     </Link>
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => handleUnblock(blockedUser.id)}
+                      className="flex-shrink-0"
                     >
-                      <UserX className="h-4 w-4 mr-2" />
-                      Unblock
+                      <UserX className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
+                      <span className="hidden sm:inline">Unblock</span>
                     </Button>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground text-center py-8">No blocked users</p>
+              <p className="text-xs sm:text-sm text-muted-foreground text-center py-6 sm:py-8">No blocked users</p>
             )}
           </CardContent>
         </Card>
 
-        <div className="flex justify-end gap-4">
-          <Button variant="outline" onClick={() => router.back()} disabled={isLoading}>
+        <div className="flex flex-col sm:flex-row justify-end gap-3 sm:gap-4 pt-4 sm:pt-6">
+          <Button variant="outline" onClick={() => router.back()} disabled={isLoading} className="w-full sm:w-auto">
             Cancel
           </Button>
-          <Button onClick={handleSave} loading={isLoading} disabled={isLoading}>
+          <Button onClick={handleSave} loading={isLoading} disabled={isLoading} className="w-full sm:w-auto">
             Save Changes
           </Button>
         </div>

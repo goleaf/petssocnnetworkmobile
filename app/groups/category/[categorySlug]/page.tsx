@@ -17,7 +17,7 @@ import {
 } from "@/lib/storage"
 import type { Group, GroupCategory } from "@/lib/types"
 import { useAuth } from "@/lib/auth"
-import { Search, ArrowLeft } from "lucide-react"
+import { Search, ArrowLeft, GraduationCap, Heart, HeartHandshake, UtensilsCrossed } from "lucide-react"
 import { ViewModeSelector } from "@/components/ui/view-mode-selector"
 import {
   Select,
@@ -26,8 +26,35 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { getAnimalConfigLucide } from "@/lib/animal-types"
 
 type SortOption = "recent" | "popular" | "members"
+
+// Map category IDs to animal types or custom icons
+const getCategoryIcon = (categoryId: string) => {
+  // Map specific categories to animal types
+  const categoryToAnimalMap: Record<string, string> = {
+    "cat-dogs": "dog",
+    "cat-cats": "cat",
+    "cat-birds": "bird",
+    "cat-small-pets": "rabbit",
+  }
+  
+  const animalType = categoryToAnimalMap[categoryId]
+  if (animalType) {
+    return getAnimalConfigLucide(animalType)
+  }
+  
+  // Map non-animal categories to icons
+  const customIconMap: Record<string, { icon: any; color: string }> = {
+    "cat-training": { icon: GraduationCap, color: "text-red-500" },
+    "cat-health": { icon: Heart, color: "text-pink-500" },
+    "cat-adoption": { icon: HeartHandshake, color: "text-orange-500" },
+    "cat-nutrition": { icon: UtensilsCrossed, color: "text-cyan-500" },
+  }
+  
+  return customIconMap[categoryId]
+}
 
 export default function GroupCategoryPage({
   params,
@@ -129,6 +156,9 @@ export default function GroupCategoryPage({
     )
   }
 
+  const iconConfig = category ? getCategoryIcon(category.id) : undefined
+  const IconComponent = iconConfig?.icon
+
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8 max-w-7xl">
@@ -140,15 +170,17 @@ export default function GroupCategoryPage({
         <Card className="mb-6">
           <CardHeader>
             <div className="flex items-center gap-4">
-              <div
-                className="h-16 w-16 rounded-full flex items-center justify-center text-3xl"
-                style={{
-                  backgroundColor: category.color ? `${category.color}20` : "#3b82f620",
-                  color: category.color || "#3b82f6",
-                }}
-              >
-                {category.icon}
-              </div>
+              {IconComponent && (
+                <div
+                  className="h-16 w-16 rounded-full flex items-center justify-center"
+                  style={{
+                    backgroundColor: category.color ? `${category.color}20` : "#3b82f620",
+                    color: category.color || "#3b82f6",
+                  }}
+                >
+                  <IconComponent className={`h-8 w-8 ${iconConfig.color || ""}`} />
+                </div>
+              )}
               <div className="flex-1">
                 <CardTitle className="text-3xl mb-2">{category.name}</CardTitle>
                 <CardDescription>{category.description}</CardDescription>

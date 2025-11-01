@@ -2,6 +2,7 @@
 
 import React, { useState, useRef } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { CardHeaderWithIcon } from "@/components/ui/card-header-with-icon"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -35,6 +36,7 @@ import {
   CheckCircle,
 } from "lucide-react"
 import { MarkdownEditor } from "@/components/markdown-editor"
+import { ANIMAL_TYPES } from "@/lib/animal-types"
 
 // Label with Tooltip Component
 interface LabelWithTooltipProps {
@@ -44,9 +46,9 @@ interface LabelWithTooltipProps {
   children: React.ReactNode
 }
 
-function LabelWithTooltip({ htmlFor, tooltip, required, children }: LabelWithTooltipProps) {
+function LabelWithTooltip({ htmlFor, tooltip, required, icon, children }: LabelWithTooltipProps & { icon?: any }) {
   const labelContent = (
-    <Label htmlFor={htmlFor} required={required} className="flex items-center gap-1.5">
+    <Label htmlFor={htmlFor} required={required} icon={icon} className="flex items-center gap-1.5">
       {children}
       {tooltip && (
         <Tooltip>
@@ -206,16 +208,14 @@ const subcategoriesByCategory: Record<string, { value: string; label: string }[]
   ],
 }
 
-// Species options
-const speciesOptions = [
-  { value: "dog", label: "Dog", icon: "🐕" },
-  { value: "cat", label: "Cat", icon: "🐈" },
-  { value: "bird", label: "Bird", icon: "🐦" },
-  { value: "rabbit", label: "Rabbit", icon: "🐰" },
-  { value: "hamster", label: "Hamster", icon: "🐹" },
-  { value: "fish", label: "Fish", icon: "🐠" },
-  { value: "other", label: "Other", icon: "🐾" },
-]
+// Species options from global animal types
+const speciesOptions = ANIMAL_TYPES.map((animal) => ({
+  value: animal.value,
+  label: animal.label,
+  icon: animal.lucideIcon,
+  color: animal.color,
+  bgColor: animal.bgColor,
+}))
 
 // Category icons
 const categoryIcons: Record<string, any> = {
@@ -368,13 +368,11 @@ export function WikiForm({ mode, initialData, onSubmit, onCancel }: WikiFormProp
         )}
 
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              Article Information
-            </CardTitle>
-            <CardDescription>Basic details about your wiki article</CardDescription>
-          </CardHeader>
+          <CardHeaderWithIcon
+            title="Article Information"
+            description="Basic details about your wiki article"
+            icon={FileText}
+          />
           <CardContent className="space-y-6">
             <div className="space-y-2">
               <LabelWithTooltip 
@@ -512,6 +510,7 @@ export function WikiForm({ mode, initialData, onSubmit, onCancel }: WikiFormProp
               <div className="flex flex-wrap gap-2 p-3 border border-input rounded-md bg-background">
                 {speciesOptions.map((species) => {
                   const isSelected = formData.species?.includes(species.value) || false
+                  const IconComponent = species.icon
                   return (
                     <button
                       key={species.value}
@@ -525,7 +524,9 @@ export function WikiForm({ mode, initialData, onSubmit, onCancel }: WikiFormProp
                         }
                       `}
                     >
-                      <span className="text-lg">{species.icon}</span>
+                      {IconComponent && (
+                        <IconComponent className={`h-4 w-4 ${species.color}`} />
+                      )}
                       <span className="text-sm font-medium">{species.label}</span>
                       {isSelected && (
                         <CheckCircle className="h-4 w-4" />

@@ -4,7 +4,6 @@ import { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { CreateButton } from "@/components/ui/create-button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   DropdownMenu,
@@ -29,8 +28,6 @@ import {
   Home,
   Heart,
   TrendingUp,
-  Users,
-  ChevronDown,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { NotificationsDropdown } from "@/components/notifications-dropdown"
@@ -53,7 +50,6 @@ export function Navigation() {
       : []),
     { href: "/blog", label: "Blogs", icon: FileText },
     { href: "/wiki", label: "Wiki", icon: BookOpen },
-    { href: "/groups", label: "Groups", icon: Users },
     { href: "/shelters", label: "Shelters", icon: Heart },
     { href: "/search", label: "Search", icon: Search },
   ]
@@ -94,9 +90,10 @@ export function Navigation() {
             {isAuthenticated && user ? (
               <>
                 <Link href="/blog/create">
-                  <CreateButton size="sm" iconType="pen">
+                  <Button size="sm">
+                    <PenSquare className="h-4 w-4 mr-2" />
                     Write
-                  </CreateButton>
+                  </Button>
                 </Link>
                 <Link href="/promote">
                   <Button size="sm" variant="outline">
@@ -107,14 +104,11 @@ export function Navigation() {
                 <NotificationsDropdown />
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="relative h-10 w-10 rounded-full p-0 hover:bg-gray-100 dark:hover:bg-gray-800">
-                      <Avatar className="h-10 w-10 border-2 border-gray-400">
+                    <Button variant="ghost" className="relative h-10 w-10 rounded-full">
+                      <Avatar className="h-10 w-10">
                         <AvatarImage src={user.avatar || "/placeholder.svg"} alt={user.fullName} />
                         <AvatarFallback>{user.fullName.charAt(0)}</AvatarFallback>
                       </Avatar>
-                      <div className="absolute -bottom-1 -right-1 h-5 w-5 rounded-full bg-white flex items-center justify-center border border-gray-200 dark:border-gray-700 shadow-sm">
-                        <ChevronDown className="h-3 w-3 text-gray-600" />
-                      </div>
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
@@ -131,6 +125,12 @@ export function Navigation() {
                         Profile
                       </DropdownMenuItem>
                     </Link>
+                    <Link href="/">
+                      <DropdownMenuItem>
+                        <Home className="mr-2 h-4 w-4" />
+                        Feed
+                      </DropdownMenuItem>
+                    </Link>
                     <DropdownMenuSeparator />
                     <Link href="/shelters">
                       <DropdownMenuItem>
@@ -145,10 +145,22 @@ export function Navigation() {
                       </DropdownMenuItem>
                     </Link>
                     <DropdownMenuSeparator />
-                    <Link href="/settings">
+                    <Link href="/settings/privacy">
                       <DropdownMenuItem>
                         <Settings className="mr-2 h-4 w-4" />
-                        Settings
+                        Privacy Settings
+                      </DropdownMenuItem>
+                    </Link>
+                    <Link href="/settings/notifications">
+                      <DropdownMenuItem>
+                        <Settings className="mr-2 h-4 w-4" />
+                        Notification Settings
+                      </DropdownMenuItem>
+                    </Link>
+                    <Link href="/drafts">
+                      <DropdownMenuItem>
+                        <FileText className="mr-2 h-4 w-4" />
+                        My Drafts
                       </DropdownMenuItem>
                     </Link>
                     {(isAdmin() || isModerator()) && (
@@ -216,9 +228,10 @@ export function Navigation() {
                   {isAuthenticated && user ? (
                     <>
                       <Link href="/blog/create" onClick={() => setIsOpen(false)}>
-                        <CreateButton className="w-full justify-start" iconType="pen">
+                        <Button className="w-full justify-start">
+                          <PenSquare className="h-4 w-4 mr-2" />
                           Write
-                        </CreateButton>
+                        </Button>
                       </Link>
                       <NotificationsDropdown />
                       <Button variant="ghost" className="w-full justify-start" onClick={handleLogout}>

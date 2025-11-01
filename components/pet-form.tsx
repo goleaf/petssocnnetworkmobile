@@ -18,6 +18,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import type { Pet, PersonalityTraits, FavoriteThings, DietInfo, VetInfo, InsuranceInfo, HealthRecord, Vaccination, Medication, TrainingProgress } from "@/lib/types"
+import { ANIMAL_TYPES } from "@/lib/animal-types"
 import {
   Save,
   PawPrint,
@@ -65,9 +66,9 @@ interface LabelWithTooltipProps {
   children: React.ReactNode
 }
 
-function LabelWithTooltip({ htmlFor, tooltip, required, children }: LabelWithTooltipProps) {
+function LabelWithTooltip({ htmlFor, tooltip, required, icon, children }: LabelWithTooltipProps & { icon?: any }) {
   const labelContent = (
-    <Label htmlFor={htmlFor} required={required} className="flex items-center gap-1.5">
+    <Label htmlFor={htmlFor} required={required} icon={icon} className="flex items-center gap-1.5">
       {children}
       {tooltip && (
         <Tooltip>
@@ -501,16 +502,6 @@ export function PetForm({ mode, initialData, onSubmit, onCancel, petName }: PetF
     })
   }
 
-  const speciesIcons = {
-    dog: Dog,
-    cat: Cat,
-    bird: Bird,
-    rabbit: Rabbit,
-    hamster: PawPrint,
-    fish: Fish,
-    other: CircleDot,
-  }
-
   return (
     <TooltipProvider delayDuration={300}>
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -601,68 +592,34 @@ export function PetForm({ mode, initialData, onSubmit, onCancel, petName }: PetF
                       <SelectTrigger className="h-10 w-full">
                         <SelectValue>
                           {(() => {
-                            const Icon = speciesIcons[formData.species] || PawPrint
-                            const speciesLabels = {
-                              dog: "Dog",
-                              cat: "Cat",
-                              bird: "Bird",
-                              rabbit: "Rabbit",
-                              hamster: "Hamster",
-                              fish: "Fish",
-                              other: "Other",
-                            }
+                            const animalConfig = ANIMAL_TYPES.find(a => a.value === formData.species)
+                            const Icon = animalConfig?.lucideIcon || PawPrint
+                            const label = animalConfig ? animalConfig.label : "Other"
+                            const iconColor = animalConfig ? animalConfig.color : "text-muted-foreground"
                             return (
                               <div className="flex items-center gap-2">
-                                <Icon className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
-                                <span className="truncate">{speciesLabels[formData.species]}</span>
+                                <Icon className={`h-4 w-4 flex-shrink-0 ${iconColor}`} />
+                                <span className="truncate">{label}</span>
                               </div>
                             )
                           })()}
                         </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="dog">
-                          <div className="flex items-center gap-2">
-                            <Dog className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
-                            <span>Dog</span>
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="cat">
-                          <div className="flex items-center gap-2">
-                            <Cat className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
-                            <span>Cat</span>
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="bird">
-                          <div className="flex items-center gap-2">
-                            <Bird className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
-                            <span>Bird</span>
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="rabbit">
-                          <div className="flex items-center gap-2">
-                            <Rabbit className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
-                            <span>Rabbit</span>
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="hamster">
-                          <div className="flex items-center gap-2">
-                            <PawPrint className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
-                            <span>Hamster</span>
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="fish">
-                          <div className="flex items-center gap-2">
-                            <Fish className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
-                            <span>Fish</span>
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="other">
-                          <div className="flex items-center gap-2">
-                            <CircleDot className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
-                            <span>Other</span>
-                          </div>
-                        </SelectItem>
+                        {(["dog", "cat", "bird", "rabbit", "hamster", "fish", "other"] as Pet["species"][]).map((species) => {
+                          const animalConfig = ANIMAL_TYPES.find(a => a.value === species)
+                          const Icon = animalConfig?.lucideIcon || PawPrint
+                          const label = animalConfig ? animalConfig.label : "Other"
+                          const iconColor = animalConfig ? animalConfig.color : "text-muted-foreground"
+                          return (
+                            <SelectItem key={species} value={species}>
+                              <div className="flex items-center gap-2">
+                                <Icon className={`h-4 w-4 flex-shrink-0 ${iconColor}`} />
+                                <span>{label}</span>
+                              </div>
+                            </SelectItem>
+                          )
+                        })}
                       </SelectContent>
                     </Select>
                   </div>

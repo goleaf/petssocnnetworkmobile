@@ -7,7 +7,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import {
   Search,
-  Filter,
   Users,
   TrendingUp,
   Clock,
@@ -17,6 +16,13 @@ import {
   X,
   ChevronLeft,
   ChevronRight,
+  GraduationCap,
+  Heart,
+  HeartHandshake,
+  UtensilsCrossed,
+  Lock,
+  Globe,
+  CheckCircle,
 } from "lucide-react"
 import Link from "next/link"
 import {
@@ -37,19 +43,38 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuCheckboxItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
+import { getAnimalConfigLucide } from "@/lib/animal-types"
 
 const GROUPS_PER_PAGE = 6
 
 type SortOption = "recent" | "popular" | "members"
+
+// Map category IDs to animal types or custom icons
+const getCategoryIcon = (categoryId: string) => {
+  // Map specific categories to animal types
+  const categoryToAnimalMap: Record<string, string> = {
+    "cat-dogs": "dog",
+    "cat-cats": "cat",
+    "cat-birds": "bird",
+    "cat-small-pets": "rabbit", // Using rabbit as representative for small pets
+  }
+  
+  const animalType = categoryToAnimalMap[categoryId]
+  if (animalType) {
+    return getAnimalConfigLucide(animalType)
+  }
+  
+  // Map non-animal categories to icons
+  const customIconMap: Record<string, { icon: any; color: string }> = {
+    "cat-training": { icon: GraduationCap, color: "text-red-500" },
+    "cat-health": { icon: Heart, color: "text-pink-500" },
+    "cat-adoption": { icon: HeartHandshake, color: "text-orange-500" },
+    "cat-nutrition": { icon: UtensilsCrossed, color: "text-cyan-500" },
+  }
+  
+  return customIconMap[categoryId]
+}
 
 export default function GroupsPage() {
   const router = useRouter()
@@ -186,18 +211,18 @@ export default function GroupsPage() {
   const paginatedGroups = groups.slice(startIndex, endIndex)
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-7xl">
-      <div className="mb-8">
-        <div className="flex items-center justify-between mb-6">
+    <div className="container mx-auto px-4 py-6 md:py-8 max-w-7xl">
+      <div className="mb-6 md:mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-3xl font-bold mb-2">Discover Groups</h1>
-            <p className="text-muted-foreground">
+            <h1 className="text-2xl sm:text-3xl font-bold mb-2">Discover Groups</h1>
+            <p className="text-sm sm:text-base text-muted-foreground">
               Find communities of pet owners sharing your interests
             </p>
           </div>
           {isAuthenticated && (
             <Link href="/groups/create">
-              <Button>
+              <Button className="w-full sm:w-auto">
                 <Plus className="h-4 w-4 mr-2" />
                 Create Group
               </Button>
@@ -233,133 +258,154 @@ export default function GroupsPage() {
         </form>
 
         {/* Filters and Controls */}
-        <div className="flex flex-wrap items-center gap-4 mb-6">
-          {/* Category Filter */}
-          <Tabs
-            value={selectedCategory}
-            onValueChange={setSelectedCategory}
-            className="w-full md:w-auto"
-          >
-            <TabsList className="flex-wrap h-auto p-1">
-              <TabsTrigger value="all">All</TabsTrigger>
-              {categories.map((category) => (
-                <TabsTrigger
-                  key={category.id}
-                  value={category.id}
-                  className="flex items-center gap-2"
-                >
-                  <span>{category.icon}</span>
-                  <span className="hidden sm:inline">{category.name}</span>
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
-
-          {/* Type Filter */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm">
-                <Filter className="h-4 w-4 mr-2" />
-                Type: {selectedType === "all" ? "All" : selectedType}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <DropdownMenuLabel>Group Type</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuCheckboxItem
-                checked={selectedType === "all"}
-                onCheckedChange={() => setSelectedType("all")}
-              >
-                All Types
-              </DropdownMenuCheckboxItem>
-              <DropdownMenuCheckboxItem
-                checked={selectedType === "open"}
-                onCheckedChange={() => setSelectedType("open")}
-              >
-                Open
-              </DropdownMenuCheckboxItem>
-              <DropdownMenuCheckboxItem
-                checked={selectedType === "closed"}
-                onCheckedChange={() => setSelectedType("closed")}
-              >
-                Closed
-              </DropdownMenuCheckboxItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          {/* Sort */}
-          <Select value={sortBy} onValueChange={(value) => setSortBy(value as SortOption)}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue>
-                <div className="flex items-center gap-2">
-                  {sortBy === "recent" && <Clock className="h-4 w-4" />}
-                  {sortBy === "popular" && <TrendingUp className="h-4 w-4" />}
-                  {sortBy === "members" && <Users className="h-4 w-4" />}
-                  <span>
-                    {sortBy === "recent"
-                      ? "Most Recent"
-                      : sortBy === "popular"
-                      ? "Most Popular"
-                      : "Most Members"}
-                  </span>
-                </div>
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="recent">
-                <div className="flex items-center gap-2">
-                  <Clock className="h-4 w-4" />
-                  Most Recent
-                </div>
-              </SelectItem>
-              <SelectItem value="popular">
-                <div className="flex items-center gap-2">
-                  <TrendingUp className="h-4 w-4" />
-                  Most Popular
-                </div>
-              </SelectItem>
-              <SelectItem value="members">
-                <div className="flex items-center gap-2">
-                  <Users className="h-4 w-4" />
-                  Most Members
-                </div>
-              </SelectItem>
-            </SelectContent>
-          </Select>
-
-          {/* View Mode */}
-          <div className="flex items-center gap-2 border rounded-md p-1">
-            <Button
-              variant={viewMode === "grid" ? "default" : "ghost"}
-              size="sm"
-              onClick={() => setViewMode("grid")}
+        <div className="space-y-4 mb-6">
+          {/* Mobile: Stack all filters, Desktop: Horizontal layout */}
+          <div className="flex flex-wrap items-center gap-2 md:gap-4">
+            {/* Category Filter - Full width on mobile */}
+            <Tabs
+              value={selectedCategory}
+              onValueChange={setSelectedCategory}
+              className="w-full"
             >
-              <Grid className="h-4 w-4" />
-            </Button>
-            <Button
-              variant={viewMode === "list" ? "default" : "ghost"}
-              size="sm"
-              onClick={() => setViewMode("list")}
-            >
-              <List className="h-4 w-4" />
-            </Button>
+              <TabsList className="flex-wrap h-auto p-1 w-full md:w-auto justify-start">
+                <TabsTrigger value="all" className="text-xs md:text-sm">All</TabsTrigger>
+                {categories.map((category) => {
+                  const iconConfig = getCategoryIcon(category.id)
+                  const IconComponent = iconConfig?.icon
+                  
+                  return (
+                    <TabsTrigger
+                      key={category.id}
+                      value={category.id}
+                      className="flex items-center gap-1 md:gap-2 text-xs md:text-sm"
+                    >
+                      {IconComponent && (
+                        <IconComponent className={`h-3 w-3 md:h-4 md:w-4 ${iconConfig.color || "text-muted-foreground"}`} />
+                      )}
+                      <span className="hidden sm:inline">{category.name}</span>
+                    </TabsTrigger>
+                  )
+                })}
+              </TabsList>
+            </Tabs>
           </div>
 
-          {/* Clear Filters */}
-          {hasActiveFilters && (
-            <Button variant="ghost" size="sm" onClick={clearFilters}>
-              <X className="h-4 w-4 mr-2" />
-              Clear Filters
-            </Button>
-          )}
+          {/* Secondary filters - Grid on mobile, flex on desktop */}
+          <div className="grid grid-cols-2 md:flex md:flex-wrap md:items-center gap-2 md:gap-4">
+            {/* Type Filter */}
+            <Select value={selectedType} onValueChange={(value) => setSelectedType(value as "all" | "open" | "closed")}>
+              <SelectTrigger className="w-full md:w-[150px]">
+                <SelectValue>
+                  <div className="flex items-center gap-2">
+                    {selectedType === "all" && <CheckCircle className="h-4 w-4" />}
+                    {selectedType === "open" && <Globe className="h-4 w-4" />}
+                    {selectedType === "closed" && <Lock className="h-4 w-4" />}
+                    <span className="hidden sm:inline">
+                      {selectedType === "all" ? "All Types" : selectedType === "open" ? "Open" : "Closed"}
+                    </span>
+                    <span className="sm:hidden">
+                      {selectedType === "all" ? "All" : selectedType === "open" ? "Open" : "Closed"}
+                    </span>
+                  </div>
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4" />
+                    All Types
+                  </div>
+                </SelectItem>
+                <SelectItem value="open">
+                  <div className="flex items-center gap-2">
+                    <Globe className="h-4 w-4" />
+                    Open
+                  </div>
+                </SelectItem>
+                <SelectItem value="closed">
+                  <div className="flex items-center gap-2">
+                    <Lock className="h-4 w-4" />
+                    Closed
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* Sort */}
+            <Select value={sortBy} onValueChange={(value) => setSortBy(value as SortOption)}>
+              <SelectTrigger className="w-full md:w-[180px]">
+                <SelectValue>
+                  <div className="flex items-center gap-2">
+                    {sortBy === "recent" && <Clock className="h-4 w-4" />}
+                    {sortBy === "popular" && <TrendingUp className="h-4 w-4" />}
+                    {sortBy === "members" && <Users className="h-4 w-4" />}
+                    <span className="text-xs md:text-sm">
+                      {sortBy === "recent"
+                        ? "Recent"
+                        : sortBy === "popular"
+                        ? "Popular"
+                        : "Members"}
+                    </span>
+                  </div>
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="recent">
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-4 w-4" />
+                    Most Recent
+                  </div>
+                </SelectItem>
+                <SelectItem value="popular">
+                  <div className="flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4" />
+                    Most Popular
+                  </div>
+                </SelectItem>
+                <SelectItem value="members">
+                  <div className="flex items-center gap-2">
+                    <Users className="h-4 w-4" />
+                    Most Members
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* View Mode */}
+            <div className="flex items-center gap-2 border rounded-md p-1 md:col-span-1">
+              <Button
+                variant={viewMode === "grid" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setViewMode("grid")}
+              >
+                <Grid className="h-4 w-4" />
+              </Button>
+              <Button
+                variant={viewMode === "list" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setViewMode("list")}
+              >
+                <List className="h-4 w-4" />
+              </Button>
+            </div>
+
+            {/* Clear Filters */}
+            {hasActiveFilters && (
+              <Button variant="ghost" size="sm" onClick={clearFilters} className="w-full md:w-auto">
+                <X className="h-4 w-4 mr-2" />
+                <span className="hidden sm:inline">Clear Filters</span>
+                <span className="sm:hidden">Clear</span>
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Active Filters Display */}
         {hasActiveFilters && (
-          <div className="flex flex-wrap items-center gap-2 mb-6">
-            <span className="text-sm text-muted-foreground">Active filters:</span>
+          <div className="flex flex-wrap items-center gap-2 mb-4 md:mb-6">
+            <span className="text-xs md:text-sm text-muted-foreground">Active filters:</span>
             {query && (
-              <Badge variant="secondary">
+              <Badge variant="secondary" className="text-xs">
                 Search: {query}
                 <X
                   className="h-3 w-3 ml-2 cursor-pointer"
@@ -371,7 +417,7 @@ export default function GroupsPage() {
               </Badge>
             )}
             {selectedCategory !== "all" && (
-              <Badge variant="secondary">
+              <Badge variant="secondary" className="text-xs">
                 {categories.find((c) => c.id === selectedCategory)?.name}
                 <X
                   className="h-3 w-3 ml-2 cursor-pointer"
@@ -383,7 +429,7 @@ export default function GroupsPage() {
               </Badge>
             )}
             {selectedType !== "all" && (
-              <Badge variant="secondary">
+              <Badge variant="secondary" className="text-xs">
                 {selectedType}
                 <X
                   className="h-3 w-3 ml-2 cursor-pointer"
@@ -437,22 +483,23 @@ export default function GroupsPage() {
 
       {/* Results Count */}
       {!isLoading && groups.length > 0 && (
-        <div className="mt-8 text-center text-sm text-muted-foreground">
+        <div className="mt-6 md:mt-8 text-center text-xs md:text-sm text-muted-foreground">
           Showing {startIndex + 1}-{Math.min(endIndex, groups.length)} of {groups.length} {groups.length === 1 ? "group" : "groups"}
         </div>
       )}
 
       {/* Pagination */}
       {!isLoading && groups.length > GROUPS_PER_PAGE && (
-        <div className="flex items-center justify-center gap-2 mt-8">
+        <div className="flex items-center justify-center gap-1 md:gap-2 mt-6 md:mt-8">
           <Button
             variant="outline"
             size="sm"
             onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
             disabled={currentPage === 1}
+            className="text-xs md:text-sm"
           >
-            <ChevronLeft className="h-4 w-4 mr-1" />
-            Previous
+            <ChevronLeft className="h-3 w-3 md:h-4 md:w-4 mr-1" />
+            <span className="hidden sm:inline">Previous</span>
           </Button>
           <div className="flex items-center gap-1">
             {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
@@ -472,7 +519,7 @@ export default function GroupsPage() {
                   variant={pageNum === currentPage ? "default" : "outline"}
                   size="sm"
                   onClick={() => setCurrentPage(pageNum)}
-                  className="w-10"
+                  className="w-8 h-8 md:w-10 md:h-10 text-xs md:text-sm"
                 >
                   {pageNum}
                 </Button>
@@ -484,9 +531,10 @@ export default function GroupsPage() {
             size="sm"
             onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
             disabled={currentPage === totalPages}
+            className="text-xs md:text-sm"
           >
-            Next
-            <ChevronRight className="h-4 w-4 ml-1" />
+            <span className="hidden sm:inline">Next</span>
+            <ChevronRight className="h-3 w-3 md:h-4 md:w-4 sm:ml-1" />
           </Button>
         </div>
       )}

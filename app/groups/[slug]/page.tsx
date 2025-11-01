@@ -103,72 +103,72 @@ export default function GroupPage({ params }: { params: Promise<{ slug: string }
       <GroupHeader group={group} />
 
       {/* Main Content */}
-      <div className="container mx-auto px-4 max-w-7xl py-8">
+      <div className="container mx-auto px-4 max-w-7xl py-6 md:py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 lg:grid-cols-8 mb-6">
-            <TabsTrigger value="feed" className="flex items-center gap-2">
-              <FileText className="h-4 w-4 text-blue-500" />
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 md:grid-cols-4 lg:grid-cols-8 mb-4 md:mb-6 h-auto">
+            <TabsTrigger value="feed" className="flex items-center gap-1 md:gap-2 text-xs md:text-sm">
+              <FileText className="h-3 w-3 md:h-4 md:w-4 text-blue-500" />
               <span className="hidden sm:inline">Feed</span>
             </TabsTrigger>
-            <TabsTrigger value="topics" className="flex items-center gap-2">
-              <MessageSquare className="h-4 w-4 text-green-500" />
+            <TabsTrigger value="topics" className="flex items-center gap-1 md:gap-2 text-xs md:text-sm">
+              <MessageSquare className="h-3 w-3 md:h-4 md:w-4 text-green-500" />
               <span className="hidden sm:inline">Topics</span>
               {topics.length > 0 && (
-                <span className="ml-1 text-xs bg-muted px-1.5 py-0.5 rounded-full">
+                <span className="ml-0.5 md:ml-1 text-xs bg-muted px-1 md:px-1.5 py-0.5 rounded-full">
                   {topics.length}
                 </span>
               )}
             </TabsTrigger>
-            <TabsTrigger value="polls" className="flex items-center gap-2">
-              <BarChart3 className="h-4 w-4 text-amber-500" />
+            <TabsTrigger value="polls" className="flex items-center gap-1 md:gap-2 text-xs md:text-sm">
+              <BarChart3 className="h-3 w-3 md:h-4 md:w-4 text-amber-500" />
               <span className="hidden sm:inline">Polls</span>
               {polls.length > 0 && (
-                <span className="ml-1 text-xs bg-muted px-1.5 py-0.5 rounded-full">
+                <span className="ml-0.5 md:ml-1 text-xs bg-muted px-1 md:px-1.5 py-0.5 rounded-full">
                   {polls.length}
                 </span>
               )}
             </TabsTrigger>
-            <TabsTrigger value="events" className="flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-red-500" />
+            <TabsTrigger value="events" className="flex items-center gap-1 md:gap-2 text-xs md:text-sm">
+              <Calendar className="h-3 w-3 md:h-4 md:w-4 text-red-500" />
               <span className="hidden sm:inline">Events</span>
               {events.length > 0 && (
-                <span className="ml-1 text-xs bg-muted px-1.5 py-0.5 rounded-full">
+                <span className="ml-0.5 md:ml-1 text-xs bg-muted px-1 md:px-1.5 py-0.5 rounded-full">
                   {events.length}
                 </span>
               )}
             </TabsTrigger>
-            <TabsTrigger value="resources" className="flex items-center gap-2">
-              <FolderOpen className="h-4 w-4 text-purple-500" />
+            <TabsTrigger value="resources" className="flex items-center gap-1 md:gap-2 text-xs md:text-sm">
+              <FolderOpen className="h-3 w-3 md:h-4 md:w-4 text-purple-500" />
               <span className="hidden sm:inline">Resources</span>
               {resources.length > 0 && (
-                <span className="ml-1 text-xs bg-muted px-1.5 py-0.5 rounded-full">
+                <span className="ml-0.5 md:ml-1 text-xs bg-muted px-1 md:px-1.5 py-0.5 rounded-full">
                   {resources.length}
                 </span>
               )}
             </TabsTrigger>
-            <TabsTrigger value="members" className="flex items-center gap-2">
-              <Users className="h-4 w-4 text-indigo-500" />
+            <TabsTrigger value="members" className="flex items-center gap-1 md:gap-2 text-xs md:text-sm">
+              <Users className="h-3 w-3 md:h-4 md:w-4 text-indigo-500" />
               <span className="hidden sm:inline">Members</span>
             </TabsTrigger>
             {canModerate && (
-              <TabsTrigger value="analytics" className="flex items-center gap-2">
-                <BarChart3 className="h-4 w-4 text-teal-500" />
+              <TabsTrigger value="analytics" className="flex items-center gap-1 md:gap-2 text-xs md:text-sm">
+                <BarChart3 className="h-3 w-3 md:h-4 md:w-4 text-teal-500" />
                 <span className="hidden sm:inline">Analytics</span>
               </TabsTrigger>
             )}
-            <TabsTrigger value="settings" className="flex items-center gap-2">
-              <Settings className="h-4 w-4 text-gray-500" />
+            <TabsTrigger value="settings" className="flex items-center gap-1 md:gap-2 text-xs md:text-sm">
+              <Settings className="h-3 w-3 md:h-4 md:w-4 text-gray-500" />
               <span className="hidden sm:inline">Settings</span>
             </TabsTrigger>
           </TabsList>
 
           {/* Feed Tab */}
-          <TabsContent value="feed" className="space-y-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-2xl font-bold">Group Feed</h2>
+          <TabsContent value="feed" className="space-y-4 md:space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+              <h2 className="text-xl md:text-2xl font-bold">Group Feed</h2>
               {isMember && (
                 <Link href={`/groups/${group.slug}/topics/create`}>
-                  <Button size="sm">
+                  <Button size="sm" className="w-full sm:w-auto">
                     <Plus className="h-4 w-4 mr-2" />
                     New Topic
                   </Button>

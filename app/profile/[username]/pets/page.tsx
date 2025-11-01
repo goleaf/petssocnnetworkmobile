@@ -27,11 +27,6 @@ import {
   Edit2,
   Trash2,
   MoreHorizontal,
-  Dog,
-  Cat,
-  Bird,
-  Rabbit,
-  Fish,
   ChevronDown,
   ChevronUp,
 } from "lucide-react"
@@ -46,18 +41,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { ANIMAL_TYPES } from "@/lib/animal-types"
 
 type SortOption = "name" | "recent" | "oldest" | "species" | "followers"
 type SpeciesFilter = "all" | "dog" | "cat" | "bird" | "rabbit" | "hamster" | "fish" | "other"
 type ViewMode = "grid" | "list"
 
-const speciesIcons: Record<string, any> = {
-  dog: Dog,
-  cat: Cat,
-  bird: Bird,
-  rabbit: Rabbit,
-  fish: Fish,
-}
+const speciesIcons: Record<string, any> = ANIMAL_TYPES.reduce((acc, animal) => {
+  acc[animal.value] = animal.lucideIcon
+  return acc
+}, {} as Record<string, any>)
 
 export default function PetsPage({ params }: { params: Promise<{ username: string }> }) {
   const { username } = use(params)
@@ -357,23 +350,15 @@ export default function PetsPage({ params }: { params: Promise<{ username: strin
                         <SelectItem value="all">All Species</SelectItem>
                         {availableSpecies.map((species) => {
                           const Icon = speciesIcons[species] || PawPrint
-                          // Map species to colors
-                          const speciesColors: Record<string, string> = {
-                            dog: "text-amber-500",
-                            cat: "text-blue-500",
-                            bird: "text-yellow-500",
-                            rabbit: "text-pink-500",
-                            hamster: "text-orange-500",
-                            fish: "text-cyan-500",
-                            other: "text-gray-500",
-                          }
-                          const iconColor = speciesColors[species] || "text-gray-500"
+                          const animalConfig = ANIMAL_TYPES.find(a => a.value === species)
+                          const label = animalConfig ? animalConfig.label : species.charAt(0).toUpperCase() + species.slice(1)
+                          const iconColor = animalConfig ? animalConfig.color : "text-gray-500"
                           
                           return (
                             <SelectItem key={species} value={species}>
                               <div className="flex items-center gap-2">
                                 <Icon className={cn("h-4 w-4", iconColor)} />
-                                {species.charAt(0).toUpperCase() + species.slice(1)}
+                                {label}
                               </div>
                             </SelectItem>
                           )
@@ -436,10 +421,19 @@ export default function PetsPage({ params }: { params: Promise<{ username: strin
                   onClick={() => toggleSpeciesExpansion(species)}
                   className="flex items-center gap-3 pb-2 border-b w-full text-left hover:bg-accent/50 p-2 rounded-md transition-colors"
                 >
-                  <SpeciesIcon className="h-5 w-5 text-muted-foreground" />
-                  <h2 className="text-xl font-semibold capitalize">
-                    {species.charAt(0).toUpperCase() + species.slice(1)}s
-                  </h2>
+                  {(() => {
+                    const animalConfig = ANIMAL_TYPES.find(a => a.value === species)
+                    const label = animalConfig ? animalConfig.label : `${species.charAt(0).toUpperCase() + species.slice(1)}s`
+                    const iconColor = animalConfig ? animalConfig.color : "text-muted-foreground"
+                    return (
+                      <>
+                        <SpeciesIcon className={`h-5 w-5 ${iconColor}`} />
+                        <h2 className="text-xl font-semibold">
+                          {label}
+                        </h2>
+                      </>
+                    )
+                  })()}
                   <Badge variant="secondary" className="ml-auto">
                     {speciesPets.length} {speciesPets.length === 1 ? "pet" : "pets"}
                   </Badge>

@@ -1,19 +1,4 @@
-import type {
-  User,
-  Pet,
-  BlogPost,
-  Comment,
-  WikiArticle,
-  Group,
-  GroupMember,
-  GroupTopic,
-  GroupPoll,
-  PollVote,
-  GroupEvent,
-  EventRSVP,
-  GroupResource,
-  GroupCategory
-} from "./types"
+import type { User, Pet, BlogPost, Comment, WikiArticle } from "./types"
 
 export const mockUsers: User[] = [
   {
@@ -22,7 +7,6 @@ export const mockUsers: User[] = [
     username: "sarahpaws",
     password: "password123",
     fullName: "Sarah Johnson",
-    role: "admin",
     avatar: "/woman-and-loyal-companion.png",
     bio: "Dog mom to two golden retrievers. Love hiking and outdoor adventures!",
     location: "San Francisco, CA",
@@ -36,7 +20,6 @@ export const mockUsers: User[] = [
     username: "mikecatlover",
     password: "password123",
     fullName: "Mike Chen",
-    role: "moderator",
     avatar: "/man-and-cat.png",
     bio: "Cat enthusiast and photographer. Sharing my cats daily adventures.",
     location: "New York, NY",
@@ -2238,175 +2221,6 @@ export const mockBlogPosts: BlogPost[] = [
     createdAt: "2024-12-16",
     updatedAt: "2024-12-16",
   },
-  {
-    id: "100",
-    petId: "1",
-    authorId: "1",
-    title: "Max's Favorite Hiking Trail",
-    content:
-      "Took Max on our favorite mountain trail today! He's such an adventure dog - nothing gets him more excited than exploring new paths. We hiked for 4 miles and he still had energy to play fetch at the top. The view was incredible and Max was in his element. Luna stayed home this time (she's still learning to keep up with big brother), but next time we'll bring both pups!",
-    coverImage: "/golden-retriever-running.png",
-    tags: ["hiking", "adventure", "outdoor", "exercise"],
-    likes: ["2", "3", "5", "6"],
-    createdAt: "2024-12-15",
-    updatedAt: "2024-12-15",
-  },
-  {
-    id: "101",
-    petId: "2",
-    authorId: "1",
-    title: "Luna's First Swimming Lesson",
-    content:
-      "Luna had her first swimming lesson today! She was hesitant at first, but Max was there to show her how it's done. After watching her big brother splash around, she finally got brave enough to wade in the shallow end. By the end, she was paddling around like a pro! Max was so proud and kept checking on her. These two are the best siblings.",
-    coverImage: "/golden-retriever-swimming.jpg",
-    tags: ["swimming", "training", "water", "siblings"],
-    likes: ["2", "3", "4", "5"],
-    createdAt: "2024-12-14",
-    updatedAt: "2024-12-14",
-  },
-  {
-    id: "102",
-    petId: "1",
-    authorId: "1",
-    title: "Max's Training Milestone: Heel Command Mastered!",
-    content:
-      "After weeks of practice, Max has finally mastered the heel command! We've been working on loose-leash walking, and today he walked perfectly by my side for the entire 30-minute walk. No pulling, no distractions - just perfect focus. I'm so proud of this smart boy! The training treats definitely helped, but his eagerness to please is what makes the difference. Luna is taking notes and trying to copy him - it's adorable!",
-    coverImage: "/golden-retriever-puppy.png",
-    tags: ["training", "obedience", "walking", "milestone"],
-    likes: ["2", "3", "5", "7", "8"],
-    createdAt: "2024-12-13",
-    updatedAt: "2024-12-13",
-  },
-  {
-    id: "103",
-    petId: "2",
-    authorId: "1",
-    title: "Luna's Playdate with Her Best Friend",
-    content:
-      "Luna had an amazing playdate with her best friend Bella today! They ran around the dog park for hours, chasing each other and playing tug-of-war. Luna has so much energy and loves making new doggy friends. Max came along too and played the role of the watchful big brother. It's so heartwarming to see how social and happy these two are. Socialization is so important for puppies!",
-    coverImage: "/golden-retriever-playing.png",
-    tags: ["playdate", "socialization", "friends", "fun"],
-    likes: ["2", "4", "5", "6"],
-    createdAt: "2024-12-12",
-    updatedAt: "2024-12-12",
-  },
-  {
-    id: "104",
-    petId: "1",
-    authorId: "1",
-    title: "Max's Afternoon Nap Time",
-    content:
-      "Caught Max in the most adorable sleeping position after our morning hike. He found the sunniest spot in the living room and passed out with his favorite toy. Even with all that energy, he knows when to rest! These peaceful moments are some of my favorites. There's nothing quite like watching your dog sleep soundly after a day full of adventures.",
-    coverImage: "/golden-retriever-sleeping.png",
-    tags: ["naptime", "cute", "relaxation", "photography"],
-    likes: ["2", "3", "5", "6", "7", "9"],
-    createdAt: "2024-12-11",
-    updatedAt: "2024-12-11",
-  },
-  {
-    id: "105",
-    petId: "2",
-    authorId: "1",
-    title: "Luna Learning to Fetch",
-    content:
-      "Luna is getting better at fetch every day! She's still working on the 'drop it' part, but she's running after the ball with so much enthusiasm. Max tried to help by showing her how it's done, but Luna wanted to do it her way. It's hilarious watching her carry the ball back in her mouth but not quite understanding that she needs to give it back. Practice makes perfect!",
-    coverImage: "/golden-retriever-toy.png",
-    tags: ["fetch", "training", "puppy", "learning", "playtime"],
-    likes: ["2", "3", "4", "5"],
-    createdAt: "2024-12-10",
-    updatedAt: "2024-12-10",
-  },
-  {
-    id: "106",
-    petId: "1",
-    authorId: "1",
-    title: "Weekend Camping Trip with the Pups",
-    content:
-      "Just got back from an amazing weekend camping trip with Max and Luna! We found the perfect dog-friendly campground near the lake. Max loved swimming in the lake every morning, and Luna explored every inch of our campsite. We spent evenings around the campfire (they were fascinated by the flames) and nights cuddled in the tent. They both slept like rocks after all the outdoor activities. Best camping trip ever!",
-    coverImage: "/golden-retriever-beach.png",
-    tags: ["camping", "adventure", "outdoor", "weekend", "travel"],
-    likes: ["2", "3", "5", "6", "7", "8", "10"],
-    createdAt: "2024-12-09",
-    updatedAt: "2024-12-09",
-  },
-  {
-    id: "107",
-    petId: "2",
-    authorId: "1",
-    title: "Luna's Grooming Day",
-    content:
-      "Luna had her first professional grooming session today! She was a bit nervous at first, but the groomer was so patient and gentle. Now she's looking absolutely gorgeous with her fluffy golden coat all cleaned and brushed. Max is a bit jealous that he didn't get the same treatment - but his turn is next week! Regular grooming is so important for keeping their coats healthy and shiny.",
-    coverImage: "/golden-retriever-puppy-playing.jpg",
-    tags: ["grooming", "care", "health", "beauty"],
-    likes: ["2", "3", "4", "5", "6"],
-    createdAt: "2024-12-08",
-    updatedAt: "2024-12-08",
-  },
-  {
-    id: "108",
-    petId: "1",
-    authorId: "1",
-    title: "Max's Vet Checkup - All Clear!",
-    content:
-      "Took Max for his annual vet checkup today and got great news - he's in perfect health! The vet said his weight is ideal, his joints are healthy, and his energy levels are perfect for his age. We also got his vaccinations updated. Max was such a good boy during the entire visit, even when getting his shots. Healthy pets are happy pets!",
-    coverImage: "/golden-retriever.png",
-    tags: ["vet", "health", "wellness", "checkup", "care"],
-    likes: ["2", "3", "5", "7", "8"],
-    createdAt: "2024-12-07",
-    updatedAt: "2024-12-07",
-  },
-  {
-    id: "109",
-    petId: "2",
-    authorId: "1",
-    title: "Sibling Bonding Time",
-    content:
-      "Caught Max and Luna having the sweetest sibling moment today. Luna was trying to learn a new trick, and Max was sitting right there watching her, almost like he was coaching her. When she finally got it right, he got so excited and started wagging his tail like crazy! These two have the most amazing bond. Max is always looking out for his little sister, and Luna absolutely adores him.",
-    coverImage: "/golden-retriever-playing.png",
-    tags: ["siblings", "bonding", "family", "love", "cute"],
-    likes: ["2", "3", "4", "5", "6", "7", "8", "9", "10"],
-    createdAt: "2024-12-06",
-    updatedAt: "2024-12-06",
-  },
-  {
-    id: "110",
-    petId: "1",
-    authorId: "1",
-    title: "Max's Favorite Treat Recipe",
-    content:
-      "I've been making homemade training treats for Max and Luna, and they absolutely love them! The recipe is super simple: mashed sweet potato, oats, and a bit of peanut butter. I bake them into small bite-sized pieces perfect for training. Max goes crazy for these - they're his absolute favorite reward. Plus, I know exactly what's in them, which gives me peace of mind. Both pups get so excited when they see me pull out the treat container!",
-    coverImage: "/golden-retriever-toy.png",
-    tags: ["homemade", "treats", "training", "recipes", "food"],
-    likes: ["2", "3", "5", "6", "8"],
-    createdAt: "2024-12-05",
-    updatedAt: "2024-12-05",
-  },
-  {
-    id: "111",
-    petId: "2",
-    authorId: "1",
-    title: "Luna's Progress in Obedience Class",
-    content:
-      "Just finished another week of obedience class with Luna, and I'm so proud of her progress! She's mastered sit, stay, and come commands. The instructor mentioned how quickly she's learning and how eager she is to please. Max came along as our practice partner, and it's so cute watching him demonstrate the commands for her. Luna is definitely following in her big brother's paw steps! Next week we're starting on recall training.",
-    coverImage: "/dog-agility-course.png",
-    tags: ["training", "obedience", "progress", "puppy", "learning"],
-    likes: ["2", "3", "4", "5", "6", "7"],
-    createdAt: "2024-12-04",
-    updatedAt: "2024-12-04",
-  },
-  {
-    id: "112",
-    petId: "1",
-    authorId: "1",
-    title: "Morning Walk Ritual",
-    content:
-      "Our morning walks have become my favorite part of the day. Max and Luna wake me up at 6:30 AM sharp every morning, tails wagging, ready for adventure. We walk through our neighborhood park, and Max always stops at the same spots - the big oak tree, the bench by the pond, and his favorite fire hydrant. Luna tries to keep up but often stops to smell the flowers (literally). These peaceful morning moments set the tone for the whole day.",
-    coverImage: "/golden-retriever-running.png",
-    tags: ["walking", "routine", "morning", "peaceful", "outdoor"],
-    likes: ["2", "3", "5", "6", "8", "9"],
-    createdAt: "2024-12-03",
-    updatedAt: "2024-12-03",
-  },
   // Generate 95 more blog posts to reach 100 total
   ...Array.from({ length: 95 }, (_, i) => {
     const postId = 6 + i
@@ -2416,7 +2230,7 @@ export const mockBlogPosts: BlogPost[] = [
     const authorId = allAuthors[i % allAuthors.length]
     const date = new Date(2024, 11, 15 - i)
     const dateStr = date.toISOString().split("T")[0]
-
+    
     const postTemplates = [
       { title: "Morning Walk Adventures", content: "Started our day with an amazing walk through the park. The fresh air and exercise really energized us both!", tags: ["adventure", "walk", "outdoor"], category: "adventure" },
       { title: "Teaching New Commands", content: "Spent the afternoon working on new tricks. Progress is slow but steady, and patience is key!", tags: ["training", "tricks", "learning"], category: "training" },
@@ -2429,10 +2243,10 @@ export const mockBlogPosts: BlogPost[] = [
       { title: "Toy Collection Update", content: "Added some new interactive toys to the collection. They're already favorites!", tags: ["toys", "play", "fun"], category: "playtime" },
       { title: "Adorable Sleeping Pose", content: "Caught them in the most adorable sleeping position. Too cute not to share!", tags: ["funny", "cute", "adorable"], category: "funny" },
     ]
-
+    
     const template = postTemplates[i % postTemplates.length]
     const likes = Array.from({ length: Math.floor(Math.random() * 5) }, (_, j) => String((j % 4) + 1))
-
+    
     return {
       id: String(postId),
       petId,
@@ -2445,86 +2259,88 @@ export const mockBlogPosts: BlogPost[] = [
       updatedAt: dateStr,
     }
   }),
-
-  // Add 20 additional blog posts with random categories
-  ...Array.from({ length: 20 }, (_, i) => {
-    const postId = 101 + i
-    const allPets = ["1", "2", "3", "4", "5", "6"]
-    const allAuthors = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]
-    const petId = allPets[i % allPets.length]
-    const authorId = allAuthors[i % allAuthors.length]
-    const date = new Date(2024, 11, 10 - i)
-    const dateStr = date.toISOString().split("T")[0]
-
-    // Categories and their associated tags
-    const categories = [
-      {
-        category: "adventure",
-        templates: [
-          { title: "Mountain Hiking Expedition", content: "Today we conquered a new mountain trail! The views were breathtaking and my pet was a natural hiker. We both got a great workout and enjoyed nature's beauty together.", tags: ["adventure", "hiking", "outdoor", "mountain"] },
-          { title: "Camping Under the Stars", content: "First camping trip was a huge success! Set up the tent, built a campfire, and watched the stars. My pet loved exploring the campsite and snuggling in the tent at night.", tags: ["adventure", "camping", "outdoor", "travel"] },
-          { title: "Forest Trail Discovery", content: "Found an amazing hidden trail in the local forest. The path was peaceful and my pet enjoyed all the new smells and sights. Great way to spend a weekend morning!", tags: ["adventure", "trail", "outdoor", "nature"] },
-          { title: "Riverside Adventure", content: "Spent the day exploring along the river. My pet loved splashing in the shallow water and chasing after sticks. Perfect weather for an outdoor adventure!", tags: ["adventure", "river", "outdoor", "swimming"] },
-        ],
-      },
-      {
-        category: "training",
-        templates: [
-          { title: "Advanced Trick Training", content: "Working on more complex tricks now. The dedication is paying off and seeing the progress makes all the effort worthwhile. Training builds such a strong bond!", tags: ["training", "tricks", "advanced", "learning"] },
-          { title: "Obedience Class Progress", content: "Just finished another obedience class session. The instructor praised our progress and my pet is becoming so well-behaved. Consistency is key!", tags: ["training", "obedience", "lesson", "progress"] },
-          { title: "Agility Training Session", content: "Agility training is getting more challenging but we're both loving it! The course practice is improving coordination and strengthening our teamwork.", tags: ["training", "agility", "exercise", "practice"] },
-          { title: "New Command Mastered", content: "Successfully taught a new command today! The celebration with treats was well-deserved. Every small achievement feels like a major milestone.", tags: ["training", "commands", "teach", "success"] },
-        ],
-      },
-      {
-        category: "funny",
-        templates: [
-          { title: "Bath Time Fails", content: "Attempted bath time and it turned into a comedy show! The reaction was priceless and I couldn't help but laugh. Some things never get easier but they're always entertaining!", tags: ["funny", "bath", "cute", "silly"] },
-          { title: "Kitchen Helper Mishaps", content: "My pet decided to 'help' in the kitchen today. Let's just say the kitchen looks different now but in the funniest way possible. These moments make life interesting!", tags: ["funny", "kitchen", "hilarious", "cute"] },
-          { title: "Zoomies at Midnight", content: "The midnight zoomies are real! Just when I thought everyone was settled, chaos erupted. These spontaneous energy bursts are so funny to watch.", tags: ["funny", "zoomies", "silly", "energy"] },
-          { title: "Sneaky Treat Stealing", content: "Caught my pet in the act of being extra sneaky for treats. The guilty look afterwards was absolutely adorable. Can't help but reward such cleverness!", tags: ["funny", "sneaky", "treats", "adorable"] },
-        ],
-      },
-      {
-        category: "photos",
-        templates: [
-          { title: "Golden Hour Photography", content: "Captured some stunning photos during golden hour today. The lighting was perfect and my pet looked absolutely majestic in every shot. Nature's lighting beats anything artificial!", tags: ["photo", "photography", "golden-hour", "beautiful"] },
-          { title: "Action Shot Collection", content: "Managed to capture some incredible action shots during playtime. Freezing those moments in time shows just how graceful and athletic pets can be. Photography at its best!", tags: ["photo", "action", "picture", "play"] },
-          { title: "Portrait Session Success", content: "Professional portrait session turned out amazing! Every photo shows my pet's personality shining through. These memories will last forever.", tags: ["photo", "portrait", "photography", "cute"] },
-          { title: "Nature Photo Series", content: "Created a beautiful series of photos with nature as the backdrop. The combination of natural beauty and pet charm creates magical moments captured forever.", tags: ["photo", "nature", "picture", "outdoor"] },
-        ],
-      },
-      {
-        category: "playtime",
-        templates: [
-          { title: "New Toy Collection", content: "Added some exciting new toys to our collection! The interactive ones are already favorites and provide hours of entertainment. Playtime just got way more fun!", tags: ["playtime", "toys", "fun", "games"] },
-          { title: "Dog Park Playdate", content: "Amazing playdate at the dog park today! Socializing with other pets and owners while watching everyone have fun together. These social experiences are so valuable!", tags: ["playtime", "park", "social", "fun"] },
-          { title: "Indoor Play Session", content: "Rainy day didn't stop us from having fun! Set up an indoor play area and we had a blast with puzzles and games. Creativity makes every day special.", tags: ["playtime", "indoor", "games", "activity"] },
-          { title: "Fetch Championship", content: "Played the longest game of fetch ever! We both got tired but couldn't stop. The determination and enthusiasm never ceases to amaze me. Best workout ever!", tags: ["playtime", "fetch", "exercise", "fun"] },
-        ],
-      },
-    ]
-
-    // Select random category
-    const randomCategory = categories[Math.floor(Math.random() * categories.length)]
-    const template = randomCategory.templates[Math.floor(Math.random() * randomCategory.templates.length)]
-    const likes = Array.from({ length: Math.floor(Math.random() * 8) }, (_, j) => String((j % 10) + 1))
-    const hashtags = template.tags.slice(0, 2)
-
-    return {
-      id: String(postId),
-      petId,
-      authorId,
-      title: template.title,
-      content: template.content,
-      tags: template.tags,
-      hashtags,
-      likes,
-      createdAt: dateStr,
-      updatedAt: dateStr,
-      privacy: "public" as const,
+  
+  // Generate articles with subcategories - 20 articles per subcategory
+  // Define subcategories for each main category
+  (() => {
+    const subcategories = {
+      care: ["daily-care", "grooming", "exercise", "housing"],
+      health: ["general-health", "preventive-care", "common-illnesses", "emergency-care"],
+      training: ["basic-training", "advanced-training", "puppy-training", "behavior-modification"],
+      nutrition: ["feeding-basics", "special-diets", "treats-supplements", "weight-management"],
+      behavior: ["understanding-behavior", "problem-behaviors", "socialization", "communication"],
+      breeds: ["dog-breeds", "cat-breeds", "breed-selection", "mixed-breeds"],
     }
-  }),
+
+    // Generate 20 articles for each subcategory
+    const additionalArticles: WikiArticle[] = []
+    let articleId = 6
+
+    Object.entries(subcategories).forEach(([category, subcats]) => {
+      subcats.forEach((subcategory) => {
+        for (let i = 0; i < 20; i++) {
+          const authors = ["1", "2", "3", "4"]
+          const authorId = authors[articleId % authors.length]
+          const date = new Date(2024, 10, 25 - articleId)
+          const dateStr = date.toISOString().split("T")[0]
+          
+          const subcategoryTitles: Record<string, string[]> = {
+            "daily-care": ["Morning Routine Guide", "Evening Routine Tips", "Weekly Care Schedule", "Monthly Care Checklist"],
+            "grooming": ["Brushing Techniques", "Bathing Basics", "Nail Trimming Guide", "Dental Care Essentials"],
+            "exercise": ["Exercise Requirements", "Play Activities", "Outdoor Safety", "Indoor Exercise Ideas"],
+            "housing": ["Cage Setup", "Bedding Options", "Environmental Enrichment", "Safety Considerations"],
+            "general-health": ["Health Monitoring", "Vital Signs Guide", "Wellness Checks", "Health Records"],
+            "preventive-care": ["Vaccination Schedule", "Parasite Prevention", "Dental Health", "Regular Checkups"],
+            "common-illnesses": ["Recognizing Symptoms", "Treatment Options", "Recovery Care", "When to Call Vet"],
+            "emergency-care": ["Emergency Preparedness", "First Aid Basics", "Poisoning Response", "Trauma Care"],
+            "basic-training": ["Sit Command", "Stay Command", "Come Command", "Leave It Training"],
+            "advanced-training": ["Trick Training", "Agility Training", "Therapy Training", "Service Dog Training"],
+            "puppy-training": ["Puppy Socialization", "House Training", "Crate Training", "Early Commands"],
+            "behavior-modification": ["Positive Reinforcement", "Desensitization", "Counter-Conditioning", "Behavior Plans"],
+            "feeding-basics": ["Feeding Schedule", "Portion Control", "Food Selection", "Meal Planning"],
+            "special-diets": ["Prescription Diets", "Homemade Food", "Raw Diets", "Grain-Free Options"],
+            "treats-supplements": ["Treat Selection", "Training Treats", "Nutritional Supplements", "Vitamins and Minerals"],
+            "weight-management": ["Weight Monitoring", "Obesity Prevention", "Weight Loss Plans", "Healthy Weight Maintenance"],
+            "understanding-behavior": ["Body Language", "Communication Signals", "Behavior Patterns", "Natural Instincts"],
+            "problem-behaviors": ["Excessive Barking", "Destructive Chewing", "Separation Anxiety", "Aggression Issues"],
+            "socialization": ["Early Socialization", "Socializing Adults", "Fear Reduction", "Confidence Building"],
+            "communication": ["Understanding Signals", "Training Communication", "Building Trust", "Bonding Activities"],
+            "dog-breeds": ["Large Dog Breeds", "Small Dog Breeds", "Working Breeds", "Companion Breeds"],
+            "cat-breeds": ["Active Cat Breeds", "Calm Cat Breeds", "Long-Haired Cats", "Short-Haired Cats"],
+            "breed-selection": ["Choosing a Breed", "Breed Research", "Breed Characteristics", "Breed Compatibility"],
+            "mixed-breeds": ["Mixed Breed Benefits", "Understanding Mixes", "Health Advantages", "Temperament Predictions"],
+          }
+
+          const titles = subcategoryTitles[subcategory] || ["Article"]
+          const title = titles[i % titles.length]
+          const articleNumber = i + 1
+
+          const content = `# ${title}\n\n## Introduction\n\nThis comprehensive guide covers essential information about ${subcategory.replace(/-/g, " ")} for your pet.\n\n## Key Concepts\n\nUnderstanding the fundamentals is crucial for proper pet care. This guide provides detailed information and practical tips.\n\n## Best Practices\n\nFollow these recommendations for optimal results:\n- Regular monitoring and assessment\n- Consistent routines\n- Professional guidance when needed\n- Proper documentation\n\n## Common Questions\n\nMany pet owners ask about:\n- When to implement these strategies\n- How often to perform tasks\n- What signs to watch for\n- When to seek professional help\n\n## Conclusion\n\nProper ${subcategory.replace(/-/g, " ")} is essential for your pet's wellbeing. With consistent effort and attention to detail, you can provide excellent care.`
+          
+          const likes = Array.from({ length: Math.floor(Math.random() * 5) }, (_, j) => String((j % 4) + 1))
+          
+          additionalArticles.push({
+            id: String(articleId),
+            title: `${title} - Part ${articleNumber}`,
+            slug: `${category}-${subcategory}-${articleId}`,
+            category: category as "care" | "health" | "training" | "nutrition" | "behavior" | "breeds",
+            subcategory,
+            species: articleId % 2 === 0 ? ["dog", "cat"] : undefined,
+            content,
+            authorId,
+            views: Math.floor(Math.random() * 2000) + 100,
+            likes,
+            createdAt: dateStr,
+            updatedAt: dateStr,
+          })
+          
+          articleId++
+        }
+      })
+    })
+
+    return additionalArticles
+  })(),
 ]
 
 export const mockComments: Comment[] = [
@@ -2866,7 +2682,7 @@ Consider professional training if you're struggling with aggression, severe anxi
           const authorId = authors[articleId % authors.length]
           const date = new Date(2024, 10, 25 - articleId)
           const dateStr = date.toISOString().split("T")[0]
-
+          
           const subcategoryTitles: Record<string, string[]> = {
             "daily-care": ["Morning Routine Guide", "Evening Routine Tips", "Weekly Care Schedule", "Monthly Care Checklist"],
             "grooming": ["Brushing Techniques", "Bathing Basics", "Nail Trimming Guide", "Dental Care Essentials"],
@@ -2899,9 +2715,9 @@ Consider professional training if you're struggling with aggression, severe anxi
           const articleNumber = i + 1
 
           const content = `# ${title}\n\n## Introduction\n\nThis comprehensive guide covers essential information about ${subcategory.replace(/-/g, " ")} for your pet.\n\n## Key Concepts\n\nUnderstanding the fundamentals is crucial for proper pet care. This guide provides detailed information and practical tips.\n\n## Best Practices\n\nFollow these recommendations for optimal results:\n- Regular monitoring and assessment\n- Consistent routines\n- Professional guidance when needed\n- Proper documentation\n\n## Common Questions\n\nMany pet owners ask about:\n- When to implement these strategies\n- How often to perform tasks\n- What signs to watch for\n- When to seek professional help\n\n## Conclusion\n\nProper ${subcategory.replace(/-/g, " ")} is essential for your pet's wellbeing. With consistent effort and attention to detail, you can provide excellent care.`
-
+          
           const likes = Array.from({ length: Math.floor(Math.random() * 5) }, (_, j) => String((j % 4) + 1))
-
+          
           additionalArticles.push({
             id: String(articleId),
             title: `${title} - Part ${articleNumber}`,
@@ -2916,7 +2732,7 @@ Consider professional training if you're struggling with aggression, severe anxi
             createdAt: dateStr,
             updatedAt: dateStr,
           })
-
+          
           articleId++
         }
       })
@@ -2924,558 +2740,4 @@ Consider professional training if you're struggling with aggression, severe anxi
 
     return additionalArticles
   })(),
-]
-
-// Group Categories
-export const mockGroupCategories: GroupCategory[] = [
-  {
-    id: "cat-dogs",
-    name: "Dogs",
-    slug: "dogs",
-    description: "Groups for dog owners and enthusiasts",
-    icon: "🐕",
-    color: "#3b82f6",
-    groupCount: 8,
-    createdAt: "2024-01-01T00:00:00Z",
-  },
-  {
-    id: "cat-cats",
-    name: "Cats",
-    slug: "cats",
-    description: "Groups for cat owners and enthusiasts",
-    icon: "🐱",
-    color: "#8b5cf6",
-    groupCount: 6,
-    createdAt: "2024-01-01T00:00:00Z",
-  },
-  {
-    id: "cat-birds",
-    name: "Birds",
-    slug: "birds",
-    description: "Groups for bird owners and avian enthusiasts",
-    icon: "🐦",
-    color: "#10b981",
-    groupCount: 4,
-    createdAt: "2024-01-01T00:00:00Z",
-  },
-  {
-    id: "cat-small-pets",
-    name: "Small Pets",
-    slug: "small-pets",
-    description: "Groups for rabbits, hamsters, and other small pets",
-    icon: "🐰",
-    color: "#f59e0b",
-    groupCount: 5,
-    createdAt: "2024-01-01T00:00:00Z",
-  },
-  {
-    id: "cat-training",
-    name: "Training",
-    slug: "training",
-    description: "Groups focused on pet training and behavior",
-    icon: "🎓",
-    color: "#ef4444",
-    groupCount: 7,
-    createdAt: "2024-01-01T00:00:00Z",
-  },
-  {
-    id: "cat-health",
-    name: "Health",
-    slug: "health",
-    description: "Groups focused on pet health and wellness",
-    icon: "🏥",
-    color: "#ec4899",
-    groupCount: 6,
-    createdAt: "2024-01-01T00:00:00Z",
-  },
-  {
-    id: "cat-adoption",
-    name: "Adoption",
-    slug: "adoption",
-    description: "Groups for pet adoption and rescue",
-    icon: "❤️",
-    color: "#f97316",
-    groupCount: 5,
-    createdAt: "2024-01-01T00:00:00Z",
-  },
-  {
-    id: "cat-nutrition",
-    name: "Nutrition",
-    slug: "nutrition",
-    description: "Groups focused on pet nutrition and diet",
-    icon: "🍽️",
-    color: "#06b6d4",
-    groupCount: 4,
-    createdAt: "2024-01-01T00:00:00Z",
-  },
-]
-
-// Groups
-export const mockGroups: Group[] = [
-  {
-    id: "grp-1",
-    name: "Golden Retriever Owners",
-    slug: "golden-retriever-owners",
-    description: "A community for golden retriever owners to share experiences, tips, and photos of their beloved companions.",
-    type: "open",
-    categoryId: "cat-dogs",
-    ownerId: "1",
-    coverImage: "/dog-cover.jpg",
-    avatar: "/golden-retriever-icon.png",
-    memberCount: 245,
-    topicCount: 89,
-    postCount: 1240,
-    tags: ["golden-retriever", "dogs", "training", "health"],
-    rules: [
-      "Be respectful to all members",
-      "No spam or self-promotion",
-      "Keep posts relevant to golden retrievers",
-    ],
-    createdAt: "2024-01-15T10:00:00Z",
-    updatedAt: "2024-03-20T14:30:00Z",
-  },
-  {
-    id: "grp-2",
-    name: "Persian Cat Lovers",
-    slug: "persian-cat-lovers",
-    description: "Dedicated to Persian cats - share grooming tips, health advice, and adorable photos!",
-    type: "open",
-    categoryId: "cat-cats",
-    ownerId: "2",
-    coverImage: "/cat-cover.jpg",
-    avatar: "/persian-cat-icon.png",
-    memberCount: 189,
-    topicCount: 67,
-    postCount: 890,
-    tags: ["persian", "cats", "grooming", "health"],
-    rules: [
-      "Respect all members and their cats",
-      "No inappropriate content",
-      "Share helpful tips and experiences",
-    ],
-    createdAt: "2024-02-01T09:00:00Z",
-    updatedAt: "2024-03-18T11:20:00Z",
-  },
-  {
-    id: "grp-3",
-    name: "Parrot Enthusiasts",
-    slug: "parrot-enthusiasts",
-    description: "For parrot owners to discuss care, training, and share their colorful companions!",
-    type: "open",
-    categoryId: "cat-birds",
-    ownerId: "3",
-    coverImage: "/bird-cover.jpg",
-    avatar: "/parrot-icon.png",
-    memberCount: 156,
-    topicCount: 54,
-    postCount: 623,
-    tags: ["parrots", "birds", "training", "care"],
-    createdAt: "2024-02-10T12:00:00Z",
-    updatedAt: "2024-03-19T15:45:00Z",
-  },
-  {
-    id: "grp-4",
-    name: "Rabbit Care Community",
-    slug: "rabbit-care-community",
-    description: "A supportive community for rabbit owners to share knowledge about proper bunny care.",
-    type: "closed",
-    categoryId: "cat-small-pets",
-    ownerId: "4",
-    coverImage: "/rabbit-cover.jpg",
-    avatar: "/rabbit-icon.png",
-    memberCount: 98,
-    topicCount: 42,
-    postCount: 345,
-    tags: ["rabbits", "small-pets", "care", "health"],
-    rules: [
-      "Be kind and helpful",
-      "Follow proper rabbit care guidelines",
-      "No breeding discussions",
-    ],
-    createdAt: "2024-02-20T08:30:00Z",
-    updatedAt: "2024-03-17T10:15:00Z",
-  },
-  {
-    id: "grp-5",
-    name: "Dog Training Experts",
-    slug: "dog-training-experts",
-    description: "Share training techniques, ask questions, and learn from experienced trainers.",
-    type: "open",
-    categoryId: "cat-training",
-    ownerId: "1",
-    coverImage: "/training-cover.jpg",
-    avatar: "/training-icon.png",
-    memberCount: 312,
-    topicCount: 156,
-    postCount: 2100,
-    tags: ["training", "dogs", "behavior", "obedience"],
-    createdAt: "2024-01-25T11:00:00Z",
-    updatedAt: "2024-03-21T09:30:00Z",
-  },
-  {
-    id: "grp-6",
-    name: "Cat Health & Wellness",
-    slug: "cat-health-wellness",
-    description: "Discuss cat health issues, preventive care, and share veterinary advice.",
-    type: "open",
-    categoryId: "cat-health",
-    ownerId: "2",
-    coverImage: "/health-cover.jpg",
-    avatar: "/health-icon.png",
-    memberCount: 267,
-    topicCount: 123,
-    postCount: 1456,
-    tags: ["health", "cats", "veterinary", "wellness"],
-    createdAt: "2024-02-05T14:00:00Z",
-    updatedAt: "2024-03-20T16:00:00Z",
-  },
-  {
-    id: "grp-7",
-    name: "Rescue & Adoption Network",
-    slug: "rescue-adoption-network",
-    description: "Connect rescuers, foster families, and adopters. Help pets find their forever homes.",
-    type: "open",
-    categoryId: "cat-adoption",
-    ownerId: "5",
-    coverImage: "/adoption-cover.jpg",
-    avatar: "/adoption-icon.png",
-    memberCount: 423,
-    topicCount: 201,
-    postCount: 3120,
-    tags: ["rescue", "adoption", "foster", "shelter"],
-    createdAt: "2024-01-10T09:00:00Z",
-    updatedAt: "2024-03-22T11:20:00Z",
-  },
-  {
-    id: "grp-8",
-    name: "Raw Feeding Enthusiasts",
-    slug: "raw-feeding-enthusiasts",
-    description: "Discuss raw diets, meal planning, and nutritional balance for pets.",
-    type: "closed",
-    categoryId: "cat-nutrition",
-    ownerId: "6",
-    coverImage: "/nutrition-cover.jpg",
-    avatar: "/nutrition-icon.png",
-    memberCount: 134,
-    topicCount: 67,
-    postCount: 456,
-    tags: ["nutrition", "raw-feeding", "diet", "health"],
-    createdAt: "2024-02-15T10:30:00Z",
-    updatedAt: "2024-03-16T13:45:00Z",
-  },
-  {
-    id: "grp-9",
-    name: "Secret Puppy Playdates",
-    slug: "secret-puppy-playdates",
-    description: "Private group for organizing local puppy playdates and meetups.",
-    type: "secret",
-    categoryId: "cat-dogs",
-    ownerId: "7",
-    coverImage: "/playdate-cover.jpg",
-    avatar: "/playdate-icon.png",
-    memberCount: 45,
-    topicCount: 23,
-    postCount: 178,
-    tags: ["puppies", "playdates", "social"],
-    createdAt: "2024-03-01T08:00:00Z",
-    updatedAt: "2024-03-19T12:00:00Z",
-  },
-  {
-    id: "grp-10",
-    name: "Senior Pet Care",
-    slug: "senior-pet-care",
-    description: "Support group for owners of senior pets. Share experiences and care tips.",
-    type: "open",
-    categoryId: "cat-health",
-    ownerId: "8",
-    coverImage: "/senior-cover.jpg",
-    avatar: "/senior-icon.png",
-    memberCount: 198,
-    topicCount: 89,
-    postCount: 567,
-    tags: ["senior-pets", "health", "care", "support"],
-    createdAt: "2024-02-28T15:00:00Z",
-    updatedAt: "2024-03-18T10:30:00Z",
-  },
-]
-
-// Group Members
-export const mockGroupMembers: GroupMember[] = (() => {
-  const members: GroupMember[] = []
-  const roles: Array<"owner" | "admin" | "moderator" | "member"> = ["owner", "admin", "moderator", "member"]
-  const userIds = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]
-
-  mockGroups.forEach((group, groupIndex) => {
-    // Owner
-    members.push({
-      id: `mem-${group.id}-${group.ownerId}`,
-      groupId: group.id,
-      userId: group.ownerId,
-      role: "owner",
-      joinedAt: group.createdAt,
-      permissions: {
-        canPost: true,
-        canComment: true,
-        canCreateTopic: true,
-        canCreatePoll: true,
-        canCreateEvent: true,
-        canModerate: true,
-        canManageMembers: true,
-        canManageSettings: true,
-      },
-    })
-
-    // Add 10-30 members per group
-    const memberCount = Math.floor(Math.random() * 21) + 10
-    for (let i = 0; i < memberCount && i < userIds.length; i++) {
-      const userId = userIds[i]
-      if (userId === group.ownerId) continue
-
-      const role = i === 0 ? "admin" : i === 1 ? "moderator" : "member"
-      const joinDate = new Date(group.createdAt)
-      joinDate.setDate(joinDate.getDate() + Math.floor(Math.random() * 30))
-
-      members.push({
-        id: `mem-${group.id}-${userId}-${i}`,
-        groupId: group.id,
-        userId,
-        role,
-        joinedAt: joinDate.toISOString(),
-        permissions: {
-          canPost: true,
-          canComment: true,
-          canCreateTopic: true,
-          canCreatePoll: role !== "member",
-          canCreateEvent: role !== "member",
-          canModerate: role === "admin" || role === "moderator",
-          canManageMembers: role === "admin",
-          canManageSettings: role === "admin",
-        },
-      })
-    }
-  })
-
-  return members
-})()
-
-// Group Topics
-export const mockGroupTopics: GroupTopic[] = (() => {
-  const topics: GroupTopic[] = []
-  const topicTitles = [
-    "Welcome to the Group!",
-    "Daily Discussion Thread",
-    "Training Tips and Tricks",
-    "Health Concerns",
-    "Favorite Toys",
-    "Grooming Questions",
-    "Nutrition Advice",
-    "Behavioral Issues",
-    "Adoption Stories",
-    "Show Your Pet!",
-  ]
-
-  let topicId = 1
-  mockGroups.forEach((group) => {
-    // Create 5-15 topics per group
-    const topicCount = Math.floor(Math.random() * 11) + 5
-    for (let i = 0; i < topicCount; i++) {
-      const createdAt = new Date(group.createdAt)
-      createdAt.setDate(createdAt.getDate() + i)
-
-      const isPinned = i === 0
-      const isLocked = i === topicCount - 1 && Math.random() > 0.7
-
-      topics.push({
-        id: `topic-${topicId++}`,
-        groupId: group.id,
-        authorId: group.ownerId,
-        title: `${topicTitles[i % topicTitles.length]} #${i + 1}`,
-        content: `This is topic content for ${group.name}. Members can discuss and share their experiences here.\n\nFeel free to ask questions, share tips, or show off your pets!`,
-        isPinned,
-        isLocked,
-        status: isLocked ? "locked" : "active",
-        viewCount: Math.floor(Math.random() * 500) + 50,
-        commentCount: Math.floor(Math.random() * 100) + 5,
-        reactions: {
-          like: ["1", "2", "3"].slice(0, Math.floor(Math.random() * 3) + 1),
-          love: ["4", "5"].slice(0, Math.floor(Math.random() * 2)),
-          laugh: [],
-          wow: [],
-          sad: [],
-          angry: [],
-        },
-        tags: [group.tags?.[0] || "general"],
-        createdAt: createdAt.toISOString(),
-        updatedAt: createdAt.toISOString(),
-      })
-    }
-  })
-
-  return topics
-})()
-
-// Group Polls
-export const mockGroupPolls: GroupPoll[] = [
-  {
-    id: "poll-1",
-    groupId: "grp-1",
-    authorId: "1",
-    question: "What's your golden retriever's favorite activity?",
-    options: [
-      { id: "opt-1", text: "Fetch", voteCount: 45 },
-      { id: "opt-2", text: "Swimming", voteCount: 32 },
-      { id: "opt-3", text: "Hiking", voteCount: 28 },
-      { id: "opt-4", text: "Training", voteCount: 15 },
-    ],
-    allowMultiple: false,
-    isClosed: false,
-    voteCount: 120,
-    createdAt: "2024-03-15T10:00:00Z",
-    updatedAt: "2024-03-15T10:00:00Z",
-  },
-  {
-    id: "poll-2",
-    groupId: "grp-2",
-    authorId: "2",
-    question: "Which grooming products do you use?",
-    options: [
-      { id: "opt-5", text: "Slicker brush", voteCount: 67 },
-      { id: "opt-6", text: "Undercoat rake", voteCount: 45 },
-      { id: "opt-7", text: "Grooming comb", voteCount: 38 },
-      { id: "opt-8", text: "De-matting tool", voteCount: 22 },
-    ],
-    allowMultiple: true,
-    isClosed: false,
-    voteCount: 172,
-    createdAt: "2024-03-10T14:00:00Z",
-    updatedAt: "2024-03-10T14:00:00Z",
-  },
-  {
-    id: "poll-3",
-    groupId: "grp-5",
-    authorId: "1",
-    question: "What training method do you prefer?",
-    options: [
-      { id: "opt-9", text: "Positive reinforcement", voteCount: 189 },
-      { id: "opt-10", text: "Clicker training", voteCount: 98 },
-      { id: "opt-11", text: "Balanced training", voteCount: 45 },
-      { id: "opt-12", text: "Traditional methods", voteCount: 12 },
-    ],
-    allowMultiple: false,
-    expiresAt: "2024-04-01T00:00:00Z",
-    isClosed: false,
-    voteCount: 344,
-    createdAt: "2024-03-18T09:00:00Z",
-    updatedAt: "2024-03-18T09:00:00Z",
-  },
-]
-
-// Poll Votes
-export const mockPollVotes: PollVote[] = [
-  { id: "vote-1", userId: "1", pollId: "poll-1", optionIds: ["opt-1"], votedAt: "2024-03-15T10:30:00Z" },
-  { id: "vote-2", userId: "2", pollId: "poll-1", optionIds: ["opt-2"], votedAt: "2024-03-15T11:00:00Z" },
-  { id: "vote-3", userId: "3", pollId: "poll-2", optionIds: ["opt-5", "opt-6"], votedAt: "2024-03-10T15:00:00Z" },
-]
-
-// Group Events
-export const mockGroupEvents: GroupEvent[] = [
-  {
-    id: "event-1",
-    groupId: "grp-1",
-    authorId: "1",
-    title: "Golden Retriever Meetup",
-    description: "Join us for a fun meetup at the dog park! Bring your golden retrievers for some playtime and socialization.",
-    startDate: "2024-04-15T10:00:00Z",
-    endDate: "2024-04-15T14:00:00Z",
-    location: "Central Park Dog Run",
-    locationUrl: "https://maps.example.com/central-park",
-    rsvpRequired: true,
-    maxAttendees: 50,
-    attendeeCount: 32,
-    coverImage: "/event-cover-1.jpg",
-    isCancelled: false,
-    createdAt: "2024-03-20T09:00:00Z",
-    updatedAt: "2024-03-20T09:00:00Z",
-  },
-  {
-    id: "event-2",
-    groupId: "grp-5",
-    authorId: "1",
-    title: "Training Workshop",
-    description: "Professional dog trainer will demonstrate basic obedience techniques. All skill levels welcome!",
-    startDate: "2024-04-20T13:00:00Z",
-    endDate: "2024-04-20T16:00:00Z",
-    location: "Community Center - Room 101",
-    rsvpRequired: true,
-    maxAttendees: 30,
-    attendeeCount: 28,
-    isCancelled: false,
-    createdAt: "2024-03-18T10:00:00Z",
-    updatedAt: "2024-03-18T10:00:00Z",
-  },
-  {
-    id: "event-3",
-    groupId: "grp-7",
-    authorId: "5",
-    title: "Adoption Event",
-    description: "Come meet adoptable pets! Multiple rescue organizations will be present with dogs, cats, and small animals.",
-    startDate: "2024-04-10T10:00:00Z",
-    endDate: "2024-04-10T18:00:00Z",
-    location: "City Square",
-    rsvpRequired: false,
-    attendeeCount: 45,
-    isCancelled: false,
-    createdAt: "2024-03-15T08:00:00Z",
-    updatedAt: "2024-03-15T08:00:00Z",
-  },
-]
-
-// Event RSVPs
-export const mockEventRSVPs: EventRSVP[] = [
-  { id: "rsvp-1", userId: "1", eventId: "event-1", status: "going", respondedAt: "2024-03-20T10:00:00Z" },
-  { id: "rsvp-2", userId: "2", eventId: "event-1", status: "going", respondedAt: "2024-03-20T11:00:00Z" },
-  { id: "rsvp-3", userId: "3", eventId: "event-1", status: "maybe", respondedAt: "2024-03-20T12:00:00Z" },
-  { id: "rsvp-4", userId: "4", eventId: "event-2", status: "going", respondedAt: "2024-03-18T11:00:00Z" },
-]
-
-// Group Resources
-export const mockGroupResources: GroupResource[] = [
-  {
-    id: "res-1",
-    groupId: "grp-1",
-    title: "Golden Retriever Care Guide",
-    type: "document",
-    url: "https://example.com/golden-retriever-guide.pdf",
-    description: "Comprehensive guide to golden retriever care, health, and training.",
-    uploadedBy: "1",
-    category: "Care Guides",
-    tags: ["care", "guide", "health"],
-    downloadCount: 156,
-    createdAt: "2024-03-01T10:00:00Z",
-  },
-  {
-    id: "res-2",
-    groupId: "grp-5",
-    title: "Training Techniques Resource",
-    type: "link",
-    url: "https://example.com/training-techniques",
-    description: "Helpful website with training techniques and tips.",
-    uploadedBy: "1",
-    category: "Training",
-    tags: ["training", "techniques"],
-    createdAt: "2024-03-05T14:00:00Z",
-  },
-  {
-    id: "res-3",
-    groupId: "grp-6",
-    title: "Cat Health Checklist",
-    type: "document",
-    url: "https://example.com/cat-health-checklist.pdf",
-    description: "Printable checklist for monitoring your cat's health.",
-    uploadedBy: "2",
-    category: "Health",
-    tags: ["health", "checklist"],
-    downloadCount: 89,
-    createdAt: "2024-03-10T09:00:00Z",
-  },
 ]

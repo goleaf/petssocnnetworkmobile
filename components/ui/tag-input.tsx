@@ -64,7 +64,7 @@ export function TagInput({ value, onChange, placeholder, className }: TagInputPr
   return (
     <div
       className={cn(
-        "flex flex-wrap gap-2 p-2 min-h-[44px] border border-input rounded-md bg-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2",
+        "flex flex-wrap gap-2 px-3 py-2 min-h-[36px] border border-input rounded-md bg-white dark:bg-input/30 shadow-xs focus-within:border-ring focus-within:ring-ring/50 focus-within:ring-[1.5px] transition-[color,box-shadow] outline-none aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
         className
       )}
       onClick={() => inputRef.current?.focus()}
@@ -97,7 +97,7 @@ export function TagInput({ value, onChange, placeholder, className }: TagInputPr
         onKeyDown={handleKeyDown}
         onBlur={handleBlur}
         placeholder={tags.length === 0 ? placeholder : ""}
-        className="flex-1 min-w-[120px] border-0 outline-none bg-transparent text-sm placeholder:text-muted-foreground"
+        className="flex-1 min-w-[120px] border-0 outline-none bg-transparent text-base md:text-sm placeholder:text-muted-foreground"
       />
     </div>
   )

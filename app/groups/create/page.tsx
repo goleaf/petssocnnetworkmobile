@@ -115,19 +115,19 @@ export default function CreateGroupPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-8 max-w-4xl">
-        <div className="mb-6">
+      <div className="container mx-auto px-4 py-6 md:py-8 max-w-4xl">
+        <div className="mb-4 md:mb-6">
           <BackButton href="/groups">Back to Groups</BackButton>
         </div>
 
-        <Card className="mb-6">
+        <Card className="mb-4 md:mb-6">
           <CardHeader>
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-primary/10">
-                <Users className="h-6 w-6 text-primary" />
+                <Users className="h-5 w-5 md:h-6 md:w-6 text-primary" />
               </div>
               <div>
-                <CardTitle className="text-2xl">Create New Group</CardTitle>
+                <CardTitle className="text-xl md:text-2xl">Create New Group</CardTitle>
                 <CardDescription>
                   Start a new community for pet owners to share and connect
                 </CardDescription>

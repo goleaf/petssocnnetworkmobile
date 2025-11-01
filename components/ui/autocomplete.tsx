@@ -149,14 +149,18 @@ export function Autocomplete({
       {/* Trigger Button */}
       <button
         type="button"
-        onClick={() => !disabled && setIsOpen(!isOpen)}
+        onClick={() => {
+          if (!disabled) {
+            setIsOpen(!isOpen)
+          }
+        }}
         disabled={disabled}
         className={cn(
           "flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm transition-[color,box-shadow] outline-none",
           "focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]",
           "disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50",
           error && "border-destructive",
-          isOpen && "ring-2 ring-ring ring-offset-2",
+          isOpen && !disabled && "ring-2 ring-ring ring-offset-2",
           !value && "text-muted-foreground",
           "dark:bg-input/30"
         )}
@@ -187,9 +191,9 @@ export function Autocomplete({
       {/* Dropdown */}
       {isOpen && !disabled && (
         <Card className="absolute z-50 mt-0.5 w-full min-w-[200px] max-h-[min(280px,calc(100vh-200px))] overflow-hidden border shadow-xl bg-popover animate-in fade-in-0 zoom-in-95 slide-in-from-top-1 duration-200">
-          <div className="p-2 border-b bg-muted/30">
+          <div className="p-1.5 border-b bg-muted/30">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none z-10" />
               <Input
                 ref={inputRef}
                 type="text"
@@ -197,7 +201,7 @@ export function Autocomplete({
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={handleKeyDown}
-                className="pl-10 h-9 bg-background"
+                className="pl-9 h-9 bg-background"
                 onClick={(e) => e.stopPropagation()}
               />
             </div>

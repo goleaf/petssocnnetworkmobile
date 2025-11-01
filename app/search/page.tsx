@@ -34,7 +34,6 @@ import Link from "next/link"
 import { getUsers, getPets, getBlogPosts, getWikiArticles, getComments } from "@/lib/storage"
 import type { User as UserType, Pet, BlogPost, WikiArticle } from "@/lib/types"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
-import { RoleBadge } from "@/components/role-badge"
 import { getPetUrlFromPet } from "@/lib/utils/pet-url"
 import { formatCommentDate } from "@/lib/utils/date"
 import {
@@ -848,23 +847,23 @@ export default function SearchPage() {
         <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="all">All ({totalResults})</TabsTrigger>
           <TabsTrigger value="users">
-            <User className="h-4 w-4 mr-1 text-blue-500" />
+            <User className="h-4 w-4 mr-1" />
             Users ({results.users.length})
           </TabsTrigger>
           <TabsTrigger value="pets">
-            <PawPrint className="h-4 w-4 mr-1 text-orange-500" />
+            <PawPrint className="h-4 w-4 mr-1" />
             Pets ({results.pets.length})
           </TabsTrigger>
           <TabsTrigger value="blogs">
-            <FileText className="h-4 w-4 mr-1 text-green-500" />
+            <FileText className="h-4 w-4 mr-1" />
             Blogs ({results.blogs.length})
           </TabsTrigger>
           <TabsTrigger value="wiki">
-            <BookOpen className="h-4 w-4 mr-1 text-purple-500" />
+            <BookOpen className="h-4 w-4 mr-1" />
             Wiki ({results.wiki.length})
           </TabsTrigger>
           <TabsTrigger value="hashtags">
-            <Hash className="h-4 w-4 mr-1 text-pink-500" />
+            <Hash className="h-4 w-4 mr-1" />
             Tags ({results.hashtags.length})
           </TabsTrigger>
         </TabsList>
@@ -1163,10 +1162,9 @@ function UserCard({ user, query }: { user: UserType; query: string }) {
               <AvatarFallback>{user.fullName.charAt(0)}</AvatarFallback>
             </Avatar>
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1 flex-wrap">
+              <div className="flex items-center gap-2 mb-1">
                 <p className="font-semibold truncate">{highlightText(user.fullName, query)}</p>
                 {user.badge === "verified" && <CheckCircle2 className="h-4 w-4 text-blue-500 flex-shrink-0" />}
-                <RoleBadge role={user.role} size="sm" />
               </div>
               <p className="text-sm text-muted-foreground truncate">@{user.username}</p>
               {user.location && (
