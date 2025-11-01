@@ -2782,8 +2782,23 @@ function WikiCard({ article, query }: { article: WikiArticle; query: string }) {
 }
 
 function GroupCard({ group, query }: { group: Group; query: string }) {
+  const { user: currentUser } = useAuth()
+
+  const handleClick = () => {
+    try {
+      trackResultClick({
+        query: query || undefined,
+        clickedResultType: "group",
+        clickedResultId: group.id,
+        isAuthenticated: Boolean(currentUser),
+      })
+    } catch (error) {
+      console.debug("Analytics tracking error:", error)
+    }
+  }
+
   return (
-    <Link href={`/groups/${group.slug}`}>
+    <Link href={`/groups/${group.slug}`} onClick={handleClick}>
       <Card className="hover:bg-muted/50 transition-colors cursor-pointer">
         <CardContent className="p-4">
           <div className="flex items-start gap-3">

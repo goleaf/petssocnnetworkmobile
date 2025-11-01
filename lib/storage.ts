@@ -9,6 +9,7 @@ import type {
   CommentStatus,
   EditRequest,
   EditRequestAuditLog,
+  EditorialDiscussion,
   EventLocationShare,
   EventRSVP,
   ExpertProfile,
@@ -2057,6 +2058,7 @@ export function updateBlogPost(post: BlogPost) {
   const posts = getBlogPosts()
   const index = posts.findIndex((p) => p.id === post.id)
   if (index !== -1) {
+    const oldPost = posts[index]
     const updatedPost = normalizeBlogPost({ ...posts[index], ...post })
     
     // If disclosure is missing, mark post for moderation review
@@ -2066,6 +2068,19 @@ export function updateBlogPost(post: BlogPost) {
     
     posts[index] = updatedPost
     localStorage.setItem(STORAGE_KEYS.BLOG_POSTS, JSON.stringify(posts))
+    
+    // Notify watchers of the update
+    const user = getUserById(post.authorId)
+    const authorName = user?.fullName || "Unknown Author"
+    notifyWatchers(
+      post.id,
+      "post",
+      "update",
+      post.authorId,
+      authorName,
+      post.title,
+      { contentChanged: oldPost.content !== post.content }
+    )
   }
 }
 

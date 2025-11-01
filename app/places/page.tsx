@@ -5,20 +5,33 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { MapPin, Search, Plus, CheckCircle, Clock, X, Fence, Droplets, Dog } from "lucide-react"
+import { Checkbox } from "@/components/ui/checkbox"
+import { MapPin, Search, Plus, CheckCircle, Clock, X, Fence, Droplets, Dog, Grid, Map as MapIcon } from "lucide-react"
 import Link from "next/link"
 import { getApprovedPlaces } from "@/lib/storage"
 import type { Place } from "@/lib/types"
+import { PlaceMap } from "@/components/places/PlaceMap"
 
 export default function PlacesPage() {
   const [searchQuery, setSearchQuery] = useState("")
+  const [viewMode, setViewMode] = useState<"grid" | "map">("grid")
+  const [filters, setFilters] = useState({
+    fenced: false,
+    smallDogArea: false,
+    waterStation: false,
+  })
   const places = getApprovedPlaces()
 
   const filteredPlaces = places.filter((place) => {
     const matchesSearch =
       place.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       place.address.toLowerCase().includes(searchQuery.toLowerCase())
-    return matchesSearch
+    
+    const matchesFenced = !filters.fenced || place.fenced
+    const matchesSmallDogArea = !filters.smallDogArea || place.smallDogArea
+    const matchesWaterStation = !filters.waterStation || place.waterStation
+    
+    return matchesSearch && matchesFenced && matchesSmallDogArea && matchesWaterStation
   })
 
   const getModerationStatusBadge = (status: Place["moderationStatus"]) => {

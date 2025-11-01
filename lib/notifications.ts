@@ -72,6 +72,7 @@ const DEFAULT_TYPE_PREFERENCES: Partial<Record<NotificationType, NotificationTyp
   friend_request_declined: { enabled: true, channels: ["in_app"] },
   friend_request_cancelled: { enabled: true, channels: ["in_app"] },
   message: { enabled: true, channels: ["in_app", "push"] },
+  watch_update: { enabled: true, channels: ["in_app", "push", "email"] },
 }
 
 const DEFAULT_DIGEST_PREFERENCES: NotificationDigestPreferences = {

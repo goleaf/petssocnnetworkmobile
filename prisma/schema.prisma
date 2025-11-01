@@ -24,6 +24,7 @@ model Article {
   revisions   Revision[]
   tags        ArticleTag[]
   props       ArticleProp[]
+  sources     Source[]
   searchIndex ArticleSearchIndex?
 
   @@unique([slug, type])
@@ -75,6 +76,16 @@ model ArticleProp {
   @@index([articleId])
   @@index([value(ops: JsonbPathOps)], type: Gin)
   @@map("article_props")
+}
+
+// FTS search index for articles
+// Note: tsvector type should be handled via raw SQL in migrations
+model ArticleSearchIndex {
+  articleId String @id
+  article   Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  content   String // tsvector in actual database, but mapped as String in Prisma
+
+  @@map("article_search_index")
 }
 
 // Blog Post model for FTS search

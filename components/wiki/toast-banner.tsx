@@ -1,25 +1,67 @@
+"use client"
+
+import { useState } from "react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
-import { AlertTriangle, CheckCircle2, Calendar } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { AlertTriangle, CheckCircle2, Calendar, RefreshCw, User } from "lucide-react"
 import type { WikiArticle } from "@/lib/types"
+import { isStaleContent } from "@/lib/storage"
+import { getUserById } from "@/lib/storage"
+import { requestReReview } from "@/lib/storage"
+import { toast } from "sonner"
 
 interface ToastBannerProps {
   article: WikiArticle
   isLatest?: boolean
   lastReviewedDate?: string
+  expertReviewerId?: string
+  currentUserId?: string
 }
 
 export function ToastBanner({
   article,
   isLatest = false,
   lastReviewedDate,
+  expertReviewerId,
+  currentUserId,
 }: ToastBannerProps) {
-  const daysSinceUpdate = lastReviewedDate
-    ? Math.floor(
-        (Date.now() - new Date(lastReviewedDate).getTime()) / (1000 * 60 * 60 * 24),
-      )
-    : null
-  const isStale = daysSinceUpdate !== null && daysSinceUpdate > 365
+  const [isRequesting, setIsRequesting] = useState(false)
+  
+  // Use healthData.lastReviewedDate if available, otherwise fall back to prop
+  const reviewDate = article.healthData?.lastReviewedDate || lastReviewedDate
+  const reviewerId = article.healthData?.expertReviewer || expertReviewerId
+  
+  // Check if review is stale (>12 months)
+  const isStale = reviewDate ? isStaleContent(reviewDate) : false
+  
+  // Get reviewer information
+  const reviewer = reviewerId ? getUserById(reviewerId) : null
+  
+  const handleRequestReReview = async () => {
+    if (!currentUserId) {
+      toast.error("Please log in to request a re-review")
+      return
+    }
+    
+    setIsRequesting(true)
+    try {
+      const result = requestReReview({
+        articleId: article.id,
+        requestedBy: currentUserId,
+      })
+      
+      if (result.success) {
+        toast.success("Re-review request submitted successfully")
+      } else {
+        toast.error(result.error || "Failed to submit re-review request")
+      }
+    } catch (error) {
+      toast.error("An error occurred while submitting the request")
+    } finally {
+      setIsRequesting(false)
+    }
+  }
 
   return (
     <div className="space-y-3 mb-6">
@@ -46,21 +88,47 @@ export function ToastBanner({
         </Alert>
       )}
 
-      {lastReviewedDate && (
+      {reviewDate && (
         <Alert variant={isStale ? "destructive" : "default"}>
           <Calendar className="h-4 w-4" />
           <AlertTitle>Health Review Status</AlertTitle>
-          <AlertDescription>
-            Last reviewed on{" "}
-            {new Date(lastReviewedDate).toLocaleDateString("en-US", {
-              year: "numeric",
-              month: "long",
-              day: "numeric",
-            })}
+          <AlertDescription className="space-y-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <span>Last reviewed on</span>
+              <Badge variant={isStale ? "destructive" : "secondary"} className="gap-1">
+                <Calendar className="h-3 w-3" />
+                {new Date(reviewDate).toLocaleDateString("en-US", {
+                  year: "numeric",
+                  month: "short",
+                  day: "numeric",
+                })}
+              </Badge>
+              {reviewer && (
+                <Badge variant={isStale ? "destructive" : "secondary"} className="gap-1">
+                  <User className="h-3 w-3" />
+                  {reviewer.fullName || reviewer.username || "Unknown Reviewer"}
+                </Badge>
+              )}
+            </div>
+            
             {isStale && (
-              <span className="block mt-1 text-xs">
-                ⚠️ This article has not been reviewed in over a year. Information may be outdated.
-              </span>
+              <div className="space-y-2">
+                <p className="text-sm font-medium">
+                  ⚠️ This article has not been reviewed in over 12 months. Information may be outdated.
+                </p>
+                {currentUserId && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleRequestReReview}
+                    disabled={isRequesting}
+                    className="w-full sm:w-auto"
+                  >
+                    <RefreshCw className={`h-3 w-3 ${isRequesting ? "animate-spin" : ""}`} />
+                    {isRequesting ? "Requesting..." : "Request Re-Review"}
+                  </Button>
+                )}
+              </div>
             )}
           </AlertDescription>
         </Alert>

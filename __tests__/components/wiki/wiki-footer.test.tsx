@@ -210,8 +210,8 @@ describe("WikiFooter", () => {
 
     render(<WikiFooter article={article} maxRelated={5} />)
 
-    // Should show category badges
-    expect(screen.getByText("nutrition")).toBeInTheDocument()
+    // Should show category badges for related articles
+    expect(screen.getByText("training")).toBeInTheDocument()
   })
 
   it("should handle articles with no matching articles gracefully", () => {

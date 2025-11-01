@@ -67,13 +67,7 @@ describe("Health Wiki Articles", () => {
       }
       users.push(newUser)
       // Use the same storage key as the storage module
-      const STORAGE_KEYS = {
-        USERS: "users",
-        WIKI_ARTICLES: "wiki_articles",
-        WIKI_REVISIONS: "wiki_revisions",
-        EXPERT_PROFILES: "expert_profiles",
-      }
-      localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users))
+      localStorage.setItem("pet_social_users", JSON.stringify(users))
     }
   }
 

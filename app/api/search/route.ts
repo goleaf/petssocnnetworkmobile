@@ -7,6 +7,9 @@ const searchSchema = z.object({
   q: z.string().min(1).max(200),
   limit: z.coerce.number().int().min(1).max(100).default(20),
   offset: z.coerce.number().int().min(0).default(0),
+  species: z.string().optional(),
+  tags: z.string().optional(),
+  type: z.string().optional(),
 })
 
 // Expand query with synonyms
