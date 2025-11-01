@@ -67,51 +67,51 @@ export function RegisterForm({ onSuccess, onSwitchToLogin }: RegisterFormProps) 
   }
 
   return (
-    <Card className="w-full max-w-md">
-      <CardHeader>
-        <CardTitle>Create Account</CardTitle>
-        <CardDescription>Join the pet social network community</CardDescription>
+    <Card className="w-full max-w-md mx-auto">
+      <CardHeader className="p-4 sm:p-6">
+        <CardTitle className="text-xl sm:text-2xl">Create Account</CardTitle>
+        <CardDescription className="text-sm sm:text-base">Join the pet social network community</CardDescription>
       </CardHeader>
       <form onSubmit={handleSubmit}>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 p-4 sm:p-6">
           <div className="space-y-2">
-            <Label htmlFor="fullName">Full Name</Label>
+            <Label htmlFor="fullName" className="text-sm sm:text-base">Full Name</Label>
             <Input
               id="fullName"
               type="text"
               placeholder="John Doe"
               value={formData.fullName}
               onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-              className="h-10 w-full"
+              className="h-10 sm:h-11 w-full text-sm sm:text-base"
               required
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="username">Username</Label>
+            <Label htmlFor="username" className="text-sm sm:text-base">Username</Label>
             <Input
               id="username"
               type="text"
               placeholder="johndoe"
               value={formData.username}
               onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-              className="h-10 w-full"
+              className="h-10 sm:h-11 w-full text-sm sm:text-base"
               required
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email" className="text-sm sm:text-base">Email</Label>
             <Input
               id="email"
               type="email"
               placeholder="you@example.com"
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              className="h-10 w-full"
+              className="h-10 sm:h-11 w-full text-sm sm:text-base"
               required
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
+            <Label htmlFor="password" className="text-sm sm:text-base">Password</Label>
             <div className="relative">
               <Input
                 id="password"
@@ -119,7 +119,7 @@ export function RegisterForm({ onSuccess, onSwitchToLogin }: RegisterFormProps) 
                 placeholder="At least 6 characters"
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                className="h-10 w-full pr-10"
+                className="h-10 sm:h-11 w-full pr-10 text-sm sm:text-base"
                 required
               />
               <button
@@ -129,15 +129,15 @@ export function RegisterForm({ onSuccess, onSwitchToLogin }: RegisterFormProps) 
                 aria-label={showPassword ? "Hide password" : "Show password"}
               >
                 {showPassword ? (
-                  <EyeOff className="h-4 w-4" />
+                  <EyeOff className="h-4 w-4 sm:h-5 sm:w-5" />
                 ) : (
-                  <Eye className="h-4 w-4" />
+                  <Eye className="h-4 w-4 sm:h-5 sm:w-5" />
                 )}
               </button>
             </div>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="confirmPassword">Confirm Password</Label>
+            <Label htmlFor="confirmPassword" className="text-sm sm:text-base">Confirm Password</Label>
             <div className="relative">
               <Input
                 id="confirmPassword"
@@ -145,7 +145,7 @@ export function RegisterForm({ onSuccess, onSwitchToLogin }: RegisterFormProps) 
                 placeholder="Confirm your password"
                 value={formData.confirmPassword}
                 onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                className="h-10 w-full pr-10"
+                className="h-10 sm:h-11 w-full pr-10 text-sm sm:text-base"
                 required
               />
               <button
@@ -155,25 +155,25 @@ export function RegisterForm({ onSuccess, onSwitchToLogin }: RegisterFormProps) 
                 aria-label={showConfirmPassword ? "Hide password" : "Show password"}
               >
                 {showConfirmPassword ? (
-                  <EyeOff className="h-4 w-4" />
+                  <EyeOff className="h-4 w-4 sm:h-5 sm:w-5" />
                 ) : (
-                  <Eye className="h-4 w-4" />
+                  <Eye className="h-4 w-4 sm:h-5 sm:w-5" />
                 )}
               </button>
             </div>
           </div>
-          {error && <p className="text-sm text-destructive mt-2">{error}</p>}
+          {error && <p className="text-xs sm:text-sm text-destructive mt-2">{error}</p>}
         </CardContent>
-        <CardFooter className="flex flex-col gap-4 pt-6">
+        <CardFooter className="flex flex-col gap-3 sm:gap-4 pt-4 sm:pt-6 p-4 sm:p-6">
           <Button type="submit" className="w-full" size="lg" disabled={isLoading}>
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {!isLoading && <UserPlus className="h-4 w-4 mr-2" />}
-            Create Account
+            <span className="text-sm sm:text-base">Create Account</span>
           </Button>
           {onSwitchToLogin && (
             <Button type="button" variant="ghost" className="w-full" onClick={onSwitchToLogin}>
               <User className="h-4 w-4 mr-2" />
-              Already have an account? Sign in
+              <span className="text-xs sm:text-sm">Already have an account? Sign in</span>
             </Button>
           )}
         </CardFooter>

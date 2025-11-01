@@ -64,27 +64,27 @@ export function LoginForm({ onSuccess, onSwitchToRegister }: LoginFormProps) {
   }
 
   return (
-    <Card className="w-full max-w-md">
-      <CardHeader>
-        <CardTitle>Welcome Back</CardTitle>
-        <CardDescription>Sign in to your pet social network account</CardDescription>
+    <Card className="w-full max-w-md mx-auto">
+      <CardHeader className="p-4 sm:p-6">
+        <CardTitle className="text-xl sm:text-2xl">Welcome Back</CardTitle>
+        <CardDescription className="text-sm sm:text-base">Sign in to your pet social network account</CardDescription>
       </CardHeader>
       <form onSubmit={handleSubmit}>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 p-4 sm:p-6">
           <div className="space-y-2">
-            <Label htmlFor="username">Username</Label>
+            <Label htmlFor="username" className="text-sm sm:text-base">Username</Label>
             <Input
               id="username"
               type="text"
               placeholder="Enter your username"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              className="h-10 w-full"
+              className="h-10 sm:h-11 w-full text-sm sm:text-base"
               required
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
+            <Label htmlFor="password" className="text-sm sm:text-base">Password</Label>
             <div className="relative">
               <Input
                 id="password"
@@ -92,7 +92,7 @@ export function LoginForm({ onSuccess, onSwitchToRegister }: LoginFormProps) {
                 placeholder="Enter your password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="h-10 w-full pr-10"
+                className="h-10 sm:h-11 w-full pr-10 text-sm sm:text-base"
                 required
               />
               <button
@@ -102,25 +102,25 @@ export function LoginForm({ onSuccess, onSwitchToRegister }: LoginFormProps) {
                 aria-label={showPassword ? "Hide password" : "Show password"}
               >
                 {showPassword ? (
-                  <EyeOff className="h-4 w-4" />
+                  <EyeOff className="h-4 w-4 sm:h-5 sm:w-5" />
                 ) : (
-                  <Eye className="h-4 w-4" />
+                  <Eye className="h-4 w-4 sm:h-5 sm:w-5" />
                 )}
               </button>
             </div>
           </div>
-          {error && <p className="text-sm text-destructive mt-2">{error}</p>}
+          {error && <p className="text-xs sm:text-sm text-destructive mt-2">{error}</p>}
         </CardContent>
-        <CardFooter className="flex flex-col gap-4 pt-6">
+        <CardFooter className="flex flex-col gap-3 sm:gap-4 pt-4 sm:pt-6 p-4 sm:p-6">
           <Button type="submit" className="w-full" size="lg" disabled={isLoading}>
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {!isLoading && <User className="h-4 w-4 mr-2" />}
-            Sign In
+            <span className="text-sm sm:text-base">Sign In</span>
           </Button>
           {onSwitchToRegister && (
             <Button type="button" variant="ghost" className="w-full" onClick={onSwitchToRegister}>
               <UserPlus className="h-4 w-4 mr-2" />
-              {"Don't have an account? Register"}
+              <span className="text-xs sm:text-sm">{"Don't have an account? Register"}</span>
             </Button>
           )}
         </CardFooter>

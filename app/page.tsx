@@ -553,28 +553,28 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted">
       {/* Hero Section */}
-      <div className="container mx-auto px-4 py-16">
-        <div className="grid lg:grid-cols-2 gap-12 items-center">
+      <div className="container mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-8 sm:py-12 md:py-16 lg:py-20">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 sm:gap-10 md:gap-12 lg:gap-16 items-center">
           {/* Left Side - Hero Content */}
-          <div className="space-y-6">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium">
-              <PawPrint className="h-4 w-4" />
-              <span>The Social Network for Pet Lovers</span>
+          <div className="space-y-4 sm:space-y-5 md:space-y-6 order-2 lg:order-1">
+            <div className="inline-flex items-center gap-2 px-2.5 sm:px-3 py-1 rounded-full bg-primary/10 text-primary text-xs sm:text-sm font-medium">
+              <PawPrint className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              <span className="whitespace-nowrap">The Social Network for Pet Lovers</span>
             </div>
-            <h1 className="text-5xl md:text-6xl font-bold leading-tight text-balance">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold leading-tight sm:leading-tight md:leading-tight text-balance">
               Connect, Share, and Learn About Your Pets
             </h1>
-            <p className="text-xl text-muted-foreground text-pretty">
+            <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-muted-foreground text-pretty">
               Join a vibrant community of pet owners. Share your pet{"'"}s adventures, discover care tips, and connect
               with fellow animal lovers.
             </p>
-            <div className="flex flex-wrap gap-4">
+            <div className="flex flex-wrap gap-3 sm:gap-4 md:gap-4 pt-2">
               {stats.map((stat) => (
-                <div key={stat.label} className="flex items-center gap-2">
-                  <stat.icon className="h-5 w-5 text-primary" />
-                  <div>
-                    <p className="font-bold text-lg">{stat.value}+</p>
-                    <p className="text-sm text-muted-foreground">{stat.label}</p>
+                <div key={stat.label} className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+                  <stat.icon className="h-4 w-4 sm:h-5 sm:w-5 text-primary flex-shrink-0" />
+                  <div className="min-w-0">
+                    <p className="font-bold text-base sm:text-lg md:text-xl">{stat.value}+</p>
+                    <p className="text-xs sm:text-sm text-muted-foreground truncate">{stat.label}</p>
                   </div>
                 </div>
               ))}
@@ -582,7 +582,7 @@ export default function HomePage() {
           </div>
 
           {/* Right Side - Auth Forms */}
-          <div className="flex flex-col gap-6">
+          <div className="flex flex-col gap-4 sm:gap-5 md:gap-6 order-1 lg:order-2">
             {showRegister ? (
               <RegisterForm
                 onSuccess={() => {}}
@@ -594,10 +594,10 @@ export default function HomePage() {
             
             {/* Demo Credentials Section */}
             <Card className="border-dashed">
-              <CardContent className="p-4">
-                <p className="text-sm font-semibold mb-2 text-muted-foreground">Demo Credentials</p>
-                <div className="space-y-2 text-xs text-muted-foreground">
-                  <p><strong className="text-foreground">Username:</strong> sarahpaws, mikecatlover, emmabirds, alexrabbits</p>
+              <CardContent className="p-3 sm:p-4">
+                <p className="text-xs sm:text-sm font-semibold mb-2 text-muted-foreground">Demo Credentials</p>
+                <div className="space-y-1.5 sm:space-y-2 text-xs sm:text-xs text-muted-foreground">
+                  <p className="break-words"><strong className="text-foreground">Username:</strong> sarahpaws, mikecatlover, emmabirds, alexrabbits</p>
                   <p><strong className="text-foreground">Password:</strong> password123</p>
                 </div>
               </CardContent>
@@ -607,43 +607,43 @@ export default function HomePage() {
       </div>
 
       {/* Features Section */}
-      <div className="container mx-auto px-4 py-16">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold mb-4">Everything You Need for Your Pet Community</h2>
-          <p className="text-muted-foreground text-lg">Discover features designed for pet lovers</p>
+      <div className="container mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-12 sm:py-16 md:py-20">
+        <div className="text-center mb-8 sm:mb-10 md:mb-12 px-2">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-3 sm:mb-4">Everything You Need for Your Pet Community</h2>
+          <p className="text-muted-foreground text-sm sm:text-base md:text-lg lg:text-xl">Discover features designed for pet lovers</p>
         </div>
-        <div className="grid md:grid-cols-3 gap-8">
-          <Card>
-            <CardContent className="p-6 space-y-3">
-              <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                <PawPrint className="h-6 w-6 text-primary" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 md:gap-8 max-w-7xl mx-auto">
+          <Card className="h-full">
+            <CardContent className="p-4 sm:p-5 md:p-6 space-y-3">
+              <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <PawPrint className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
               </div>
-              <h3 className="text-xl font-semibold">Pet Profiles</h3>
-              <p className="text-muted-foreground">
+              <h3 className="text-lg sm:text-xl md:text-2xl font-semibold">Pet Profiles</h3>
+              <p className="text-muted-foreground text-sm sm:text-base">
                 Create detailed profiles for each of your pets. Share their photos, stories, and milestones with the
                 community.
               </p>
             </CardContent>
           </Card>
-          <Card>
-            <CardContent className="p-6 space-y-3">
-              <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                <BookOpen className="h-6 w-6 text-primary" />
+          <Card className="h-full">
+            <CardContent className="p-4 sm:p-5 md:p-6 space-y-3">
+              <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <BookOpen className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
               </div>
-              <h3 className="text-xl font-semibold">Pet Care Wiki</h3>
-              <p className="text-muted-foreground">
+              <h3 className="text-lg sm:text-xl md:text-2xl font-semibold">Pet Care Wiki</h3>
+              <p className="text-muted-foreground text-sm sm:text-base">
                 Access comprehensive guides on pet care, health, training, and nutrition. Learn from experts and
                 experienced pet owners.
               </p>
             </CardContent>
           </Card>
-          <Card>
-            <CardContent className="p-6 space-y-3">
-              <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                <Heart className="h-6 w-6 text-primary" />
+          <Card className="h-full sm:col-span-2 lg:col-span-1">
+            <CardContent className="p-4 sm:p-5 md:p-6 space-y-3">
+              <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <Heart className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
               </div>
-              <h3 className="text-xl font-semibold">Social Features</h3>
-              <p className="text-muted-foreground">
+              <h3 className="text-lg sm:text-xl md:text-2xl font-semibold">Social Features</h3>
+              <p className="text-muted-foreground text-sm sm:text-base">
                 Follow other pet owners, like and comment on posts, and build connections with people who share your
                 love for animals.
               </p>
@@ -654,29 +654,29 @@ export default function HomePage() {
 
       {/* Featured Posts Section */}
       {featuredPosts.length > 0 && (
-        <div className="container mx-auto px-4 py-16">
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <h2 className="text-3xl font-bold mb-2 flex items-center gap-2">
-                <TrendingUp className="h-8 w-8" />
-                Trending Stories
+        <div className="container mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-12 sm:py-16 md:py-20">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 sm:gap-6 mb-6 sm:mb-8">
+            <div className="min-w-0">
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-2 flex items-center gap-2 flex-wrap">
+                <TrendingUp className="h-6 w-6 sm:h-7 sm:w-7 md:h-8 md:w-8 flex-shrink-0" />
+                <span>Trending Stories</span>
               </h2>
-              <p className="text-muted-foreground">Popular posts from our community</p>
+              <p className="text-muted-foreground text-sm sm:text-base">Popular posts from our community</p>
             </div>
-            <Link href="/blog">
-              <Button variant="outline">
+            <Link href="/blog" className="flex-shrink-0">
+              <Button variant="outline" size="sm" className="w-full sm:w-auto">
                 <ArrowRight className="h-4 w-4 mr-2" />
                 View All
               </Button>
             </Link>
           </div>
-          <div className="grid md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 md:gap-6">
             {featuredPosts.map((post) => {
               const pet = getPets().find((p) => p.id === post.petId)
               return (
-                <Card key={post.id} className="overflow-hidden hover:shadow-lg transition-shadow p-0">
+                <Card key={post.id} className="overflow-hidden hover:shadow-lg transition-shadow p-0 h-full flex flex-col">
                   {post.coverImage && (
-                    <div className="aspect-video w-full overflow-hidden">
+                    <div className="aspect-video w-full overflow-hidden flex-shrink-0">
                       <img
                         src={post.coverImage || "/placeholder.svg"}
                         alt={post.title}
@@ -684,16 +684,16 @@ export default function HomePage() {
                       />
                     </div>
                   )}
-                  <CardContent className="p-4">
-                    <h3 className="font-semibold text-lg line-clamp-2 mb-2">{post.title}</h3>
-                    <p className="text-sm text-muted-foreground mb-1">By {pet?.name}</p>
-                    <p className="text-sm text-muted-foreground line-clamp-2 mb-3">{post.content}</p>
-                    <div className="flex items-center gap-3 text-sm">
+                  <CardContent className="p-4 sm:p-5 flex flex-col flex-1">
+                    <h3 className="font-semibold text-base sm:text-lg md:text-xl line-clamp-2 mb-2">{post.title}</h3>
+                    <p className="text-xs sm:text-sm text-muted-foreground mb-1">By {pet?.name}</p>
+                    <p className="text-xs sm:text-sm text-muted-foreground line-clamp-2 sm:line-clamp-3 mb-3 flex-1">{post.content}</p>
+                    <div className="flex items-center gap-2 sm:gap-3 text-xs sm:text-sm flex-wrap">
                       <div className="flex items-center gap-1 text-muted-foreground">
-                        <Heart className="h-4 w-4" />
+                        <Heart className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                         {post.likes.length}
                       </div>
-                      <div className="flex gap-1">
+                      <div className="flex gap-1 flex-wrap">
                         {post.tags.slice(0, 2).map((tag: string) => (
                           <Badge key={tag} variant="secondary" className="text-xs">
                             {tag}
@@ -710,14 +710,14 @@ export default function HomePage() {
       )}
 
       {/* CTA Section */}
-      <div className="container mx-auto px-4 py-16">
+      <div className="container mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-12 sm:py-16 md:py-20">
         <Card className="bg-primary text-primary-foreground">
-          <CardContent className="p-12 text-center space-y-4">
-            <h2 className="text-3xl font-bold">Ready to Join the Community?</h2>
-            <p className="text-lg opacity-90">
+          <CardContent className="p-6 sm:p-8 md:p-10 lg:p-12 text-center space-y-3 sm:space-y-4 md:space-y-5">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold">Ready to Join the Community?</h2>
+            <p className="text-sm sm:text-base md:text-lg lg:text-xl opacity-90 max-w-2xl mx-auto">
               Create your account today and start sharing your pet{"'"}s amazing journey
             </p>
-            <Button size="lg" variant="secondary" onClick={() => setShowRegister(true)}>
+            <Button size="lg" variant="secondary" onClick={() => setShowRegister(true)} className="w-full sm:w-auto">
               <Rocket className="h-4 w-4 mr-2" />
               Get Started Free
             </Button>
