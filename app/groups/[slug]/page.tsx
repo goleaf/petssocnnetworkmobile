@@ -2,12 +2,15 @@
 
 import { use } from "react"
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { GroupHeader } from "@/components/groups/GroupHeader"
+import { PinnedRules } from "@/components/groups/PinnedRules"
+import { ModeratorsList } from "@/components/groups/ModeratorsList"
+import { LostFoundTemplateForm } from "@/components/groups/LostFoundTemplateForm"
 import {
   getGroupBySlug,
   getGroupTopicsByGroupId,
@@ -20,6 +23,7 @@ import {
   canUserModerate,
   canUserViewGroupContent,
 } from "@/lib/storage"
+import { getLostFoundTemplate } from "@/lib/lost-found-templates"
 import type { Group } from "@/lib/types"
 import { useAuth } from "@/lib/auth"
 import {
@@ -37,13 +41,35 @@ import Link from "next/link"
 import { BulkEventExportButton } from "@/components/groups/EventExportButton"
 import { AnalyticsDashboard } from "@/components/groups/AnalyticsDashboard"
 
+const GROUP_TAB_VALUES = new Set([
+  "feed",
+  "topics",
+  "polls",
+  "events",
+  "resources",
+  "members",
+  "analytics",
+  "settings",
+])
+
 export default function GroupPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params)
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { user, isAuthenticated } = useAuth()
   const [group, setGroup] = useState<Group | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState("feed")
+  const requestedTab = searchParams?.get("tab") ?? undefined
+  const initialTab = requestedTab && GROUP_TAB_VALUES.has(requestedTab) ? requestedTab : "feed"
+  const [activeTab, setActiveTab] = useState(initialTab)
+  const [showLostFoundForm, setShowLostFoundForm] = useState(false)
+
+  useEffect(() => {
+    if (!requestedTab) return
+    if (!GROUP_TAB_VALUES.has(requestedTab)) return
+    if (requestedTab === activeTab) return
+    setActiveTab(requestedTab)
+  }, [requestedTab, activeTab])
 
   useEffect(() => {
     if (typeof window === "undefined") return
@@ -166,64 +192,169 @@ export default function GroupPage({ params }: { params: Promise<{ slug: string }
 
           {/* Feed Tab */}
           <TabsContent value="feed" className="space-y-4 md:space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-              <h2 className="text-xl md:text-2xl font-bold">Group Feed</h2>
-              {isMember && (
-                <Link href={`/groups/${group.slug}/topics/create`}>
-                  <Button size="sm" className="w-full sm:w-auto">
-                    <Plus className="h-4 w-4 mr-2" />
-                    New Topic
-                  </Button>
-                </Link>
-              )}
-            </div>
-
-            {/* Recent Activity */}
-            <div className="space-y-4">
-              {!canViewContent ? (
-                <Card>
-                  <CardContent className="p-8 text-center">
-                    <MessageSquare className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                    <h3 className="text-lg font-semibold mb-2">Members-only content</h3>
-                    <p className="text-muted-foreground">
-                      Join this group to see the latest activity and participate in discussions.
-                    </p>
-                  </CardContent>
-                </Card>
-              ) : activities.length === 0 ? (
-                <Card>
-                  <CardContent className="p-8 text-center">
-                    <MessageSquare className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                    <h3 className="text-lg font-semibold mb-2">No activity yet</h3>
-                    <p className="text-muted-foreground mb-4">
-                      {isMember
-                        ? "Be the first to start a discussion!"
-                        : "Encourage members to join and kick off the first conversation."}
-                    </p>
-                    {isMember && (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Main Feed Column */}
+              <div className="lg:col-span-2 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+                  <h2 className="text-xl md:text-2xl font-bold">Group Feed</h2>
+                  {isMember && (
+                    <div className="flex gap-2">
+                      {group.city && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setShowLostFoundForm(!showLostFoundForm)}
+                          className="w-full sm:w-auto"
+                        >
+                          Lost & Found
+                        </Button>
+                      )}
                       <Link href={`/groups/${group.slug}/topics/create`}>
-                        <Button>
+                        <Button size="sm" className="w-full sm:w-auto">
                           <Plus className="h-4 w-4 mr-2" />
-                          Create First Topic
+                          New Topic
                         </Button>
                       </Link>
-                    )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Lost & Found Form */}
+                {showLostFoundForm && group.city && (
+                  <LostFoundTemplateForm
+                    template={getLostFoundTemplate(group.city)}
+                    groupId={group.id}
+                    onSuccess={() => {
+                      setShowLostFoundForm(false)
+                      // Refresh page or update feed
+                      window.location.reload()
+                    }}
+                    onCancel={() => setShowLostFoundForm(false)}
+                  />
+                )}
+
+                {/* Pinned Rules */}
+                {(group.pinnedRules && group.pinnedRules.length > 0) || (group.rules && group.rules.length > 0) ? (
+                  <PinnedRules group={group} />
+                ) : null}
+
+                {/* Feed Content */}
+                {!canViewContent ? (
+                  <Card>
+                    <CardContent className="p-8 text-center">
+                      <MessageSquare className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                      <h3 className="text-lg font-semibold mb-2">Members-only content</h3>
+                      <p className="text-muted-foreground">
+                        Join this group to see the latest activity and participate in discussions.
+                      </p>
+                    </CardContent>
+                  </Card>
+                ) : topics.length === 0 ? (
+                  <Card>
+                    <CardContent className="p-8 text-center">
+                      <MessageSquare className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                      <h3 className="text-lg font-semibold mb-2">No posts yet</h3>
+                      <p className="text-muted-foreground mb-4">
+                        {isMember
+                          ? "Be the first to start a discussion!"
+                          : "Encourage members to join and kick off the first conversation."}
+                      </p>
+                      {isMember && (
+                        <Link href={`/groups/${group.slug}/topics/create`}>
+                          <Button>
+                            <Plus className="h-4 w-4 mr-2" />
+                            Create First Post
+                          </Button>
+                        </Link>
+                      )}
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="space-y-4">
+                    {topics
+                      .sort((a, b) => {
+                        // Show pinned topics first
+                        if (a.isPinned && !b.isPinned) return -1
+                        if (!a.isPinned && b.isPinned) return 1
+                        // Then sort by last activity or creation date
+                        const aDate = a.lastActivityAt || a.createdAt
+                        const bDate = b.lastActivityAt || b.createdAt
+                        return new Date(bDate).getTime() - new Date(aDate).getTime()
+                      })
+                      .slice(0, 20)
+                      .map((topic) => (
+                        <Card key={topic.id} className="hover:shadow-md transition-shadow">
+                          <CardContent className="p-6">
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-2">
+                                  {topic.isPinned && (
+                                    <span className="text-xs bg-primary text-primary-foreground px-2 py-1 rounded">
+                                      Pinned
+                                    </span>
+                                  )}
+                                  {topic.isLocked && (
+                                    <span className="text-xs bg-muted px-2 py-1 rounded flex items-center gap-1">
+                                      <Shield className="h-3 w-3" />
+                                      Locked
+                                    </span>
+                                  )}
+                                </div>
+                                <Link href={`/groups/${group.slug}/topics/${topic.id}`}>
+                                  <h3 className="text-lg font-semibold hover:underline mb-2">
+                                    {topic.title}
+                                  </h3>
+                                </Link>
+                                <p className="text-sm text-muted-foreground line-clamp-3 mb-3">
+                                  {topic.content}
+                                </p>
+                                <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                                  <span>{topic.viewCount} views</span>
+                                  <span>{topic.commentCount} comments</span>
+                                  <span>
+                                    {new Date(topic.createdAt).toLocaleDateString()}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Sidebar */}
+              <div className="lg:col-span-1 space-y-4">
+                {/* Moderators List */}
+                <ModeratorsList group={group} />
+
+                {/* Group Info Card */}
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="space-y-3 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Members</span>
+                        <span className="font-semibold">{group.memberCount}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Posts</span>
+                        <span className="font-semibold">{group.postCount}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Topics</span>
+                        <span className="font-semibold">{group.topicCount}</span>
+                      </div>
+                      {group.membershipType && (
+                        <div className="flex justify-between items-center pt-2 border-t">
+                          <span className="text-muted-foreground">Membership</span>
+                          <span className="font-semibold capitalize">{group.membershipType}</span>
+                        </div>
+                      )}
+                    </div>
                   </CardContent>
                 </Card>
-              ) : (
-                <div className="space-y-4">
-                  {activities.slice(0, 20).map((activity) => (
-                    <Card key={activity.id}>
-                      <CardContent className="p-4">
-                        <p className="text-sm text-muted-foreground">
-                          Activity: {activity.type} at{" "}
-                          {new Date(activity.timestamp).toLocaleString()}
-                        </p>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              )}
+              </div>
             </div>
           </TabsContent>
 

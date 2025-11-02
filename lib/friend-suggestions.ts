@@ -1,4 +1,4 @@
-import { getBlogPosts, getPets, getUsers } from "./storage"
+import { getBlogPosts, getPets, getUsers, getComments, getGroups, getGroupMembersByGroupId } from "./storage"
 import type { BlogPost, Pet, User } from "./types"
 
 export interface FriendSuggestion {
@@ -104,6 +104,21 @@ export function getFriendSuggestions(currentUser: User, options: SuggestionOptio
   const allUsers = getUsers()
   const allPets = getPets()
   const allPosts = getBlogPosts()
+  const allComments = getComments()
+  const allGroups = getGroups()
+  
+  // Get all group members by iterating through all groups
+  const allGroupMembers: Array<{ userId: string; groupId: string; status?: string }> = []
+  allGroups.forEach((group) => {
+    const members = getGroupMembersByGroupId(group.id)
+    members.forEach((member) => {
+      allGroupMembers.push({
+        userId: member.userId,
+        groupId: member.groupId,
+        status: member.status,
+      })
+    })
+  })
 
   const currentUserBlocked = new Set(currentUser.blockedUsers ?? [])
   const currentUserFollowing = new Set(currentUser.following ?? [])
@@ -124,6 +139,22 @@ export function getFriendSuggestions(currentUser: User, options: SuggestionOptio
   const currentUserPostIds = new Set(currentUserPosts.map((post) => post.id))
   const postsLikedByCurrentUser = new Set(
     allPosts.filter((post) => post.likes?.includes(currentUser.id)).map((post) => post.id),
+  )
+
+  // Get current user's comments to find co-commenters
+  const currentUserComments = allComments.filter((comment) => comment.userId === currentUser.id)
+  const currentUserCommentedPostIds = new Set(
+    currentUserComments.map((comment) => comment.postId).filter((id): id is string => Boolean(id)),
+  )
+  const currentUserCommentedWikiIds = new Set(
+    currentUserComments.map((comment) => comment.wikiArticleId).filter((id): id is string => Boolean(id)),
+  )
+
+  // Get current user's groups for group overlap
+  const currentUserGroupIds = new Set(
+    allGroupMembers
+      .filter((member) => member.userId === currentUser.id && member.status === "active")
+      .map((member) => member.groupId),
   )
 
   const userHashtags = new Set(
@@ -251,6 +282,52 @@ export function getFriendSuggestions(currentUser: User, options: SuggestionOptio
     if (candidateFollowing.has(currentUser.id)) {
       score += 5
       reasons.push("Already following you")
+    }
+
+    // Co-commenters: Users who have commented on the same posts/wiki articles
+    const candidateComments = allComments.filter((comment) => comment.userId === candidate.id)
+    const candidateCommentedPostIds = new Set(
+      candidateComments.map((comment) => comment.postId).filter((id): id is string => Boolean(id)),
+    )
+    const candidateCommentedWikiIds = new Set(
+      candidateComments.map((comment) => comment.wikiArticleId).filter((id): id is string => Boolean(id)),
+    )
+
+    const sharedCommentedPosts = intersection(currentUserCommentedPostIds, candidateCommentedPostIds)
+    const sharedCommentedWikis = intersection(currentUserCommentedWikiIds, candidateCommentedWikiIds)
+    const totalCoComments = sharedCommentedPosts.length + sharedCommentedWikis.length
+
+    if (totalCoComments > 0) {
+      score += 12 + totalCoComments * 2
+      const commentCount = totalCoComments
+      reasons.push(
+        `${commentCount} ${commentCount === 1 ? "shared discussion" : "shared discussions"} on posts or articles`,
+      )
+    }
+
+    // Group overlap: Users in the same groups
+    const candidateGroupIds = new Set(
+      allGroupMembers
+        .filter((member) => member.userId === candidate.id && member.status === "active")
+        .map((member) => member.groupId),
+    )
+
+    const sharedGroups = intersection(currentUserGroupIds, candidateGroupIds)
+    if (sharedGroups.length > 0) {
+      score += 14 + sharedGroups.length * 3
+      const groupNames = sharedGroups
+        .map((groupId) => {
+          const group = allGroups.find((g) => g.id === groupId)
+          return group?.name
+        })
+        .filter((name): name is string => Boolean(name))
+        .slice(0, 2)
+      const groupCount = sharedGroups.length
+      if (groupNames.length > 0) {
+        reasons.push(`Member of ${formatList(groupNames)}${groupCount > groupNames.length ? ` and ${groupCount - groupNames.length} more` : ""}`)
+      } else {
+        reasons.push(`Member of ${groupCount} ${groupCount === 1 ? "shared group" : "shared groups"}`)
+      }
     }
 
     // Encourage discovering new users with well-loved pets

@@ -382,6 +382,16 @@ export default function MessagesPage() {
     }
   }, [user])
 
+  const resetSearchFilters = useCallback(() => {
+    setSearchQuery("")
+    setSearchConversationFilter("all")
+    setSearchSenderFilter("all")
+    setSearchDateFrom("")
+    setSearchDateTo("")
+    setSearchOnlyUnread(false)
+    setSearchSort("relevance")
+  }, [])
+
   useEffect(() => {
     if (!user || !isAuthenticated) {
       setConversations([])
@@ -549,6 +559,17 @@ export default function MessagesPage() {
     [conversationListFilter, conversationSummaries],
   )
 
+  const hasSearchFilters = useMemo(() => {
+    return (
+      searchQuery.trim().length > 0 ||
+      searchConversationFilter !== "all" ||
+      searchSenderFilter !== "all" ||
+      searchDateFrom !== "" ||
+      searchDateTo !== "" ||
+      searchOnlyUnread
+    )
+  }, [searchConversationFilter, searchDateFrom, searchDateTo, searchOnlyUnread, searchQuery, searchSenderFilter])
+
   useEffect(() => {
     if (hasSearchFilters) return
     if (!user) return
@@ -664,17 +685,6 @@ export default function MessagesPage() {
     return Array.from(senderMap.values())
   }, [allMessages, usersById, user])
 
-  const hasSearchFilters = useMemo(() => {
-    return (
-      searchQuery.trim().length > 0 ||
-      searchConversationFilter !== "all" ||
-      searchSenderFilter !== "all" ||
-      searchDateFrom !== "" ||
-      searchDateTo !== "" ||
-      searchOnlyUnread
-    )
-  }, [searchConversationFilter, searchDateFrom, searchDateTo, searchOnlyUnread, searchQuery, searchSenderFilter])
-
   const searchUnreadCount = useMemo(
     () => searchResults.filter((result) => result.isUnread).length,
     [searchResults],
@@ -731,16 +741,6 @@ export default function MessagesPage() {
     },
     [user, setConversationListFilter],
   )
-
-  const resetSearchFilters = useCallback(() => {
-    setSearchQuery("")
-    setSearchConversationFilter("all")
-    setSearchSenderFilter("all")
-    setSearchDateFrom("")
-    setSearchDateTo("")
-    setSearchOnlyUnread(false)
-    setSearchSort("relevance")
-  }, [])
 
   const handleAttachmentSelect = async (event: ChangeEvent<HTMLInputElement>, forcedType?: MessageAttachmentType) => {
     const { files } = event.target
@@ -1303,7 +1303,7 @@ export default function MessagesPage() {
                           addSuffix: true,
                         })
                         const isHighlighted = highlightedMessageId === message.id
-                        let readReceiptDisplay: JSX.Element | null = null
+                        let readReceiptDisplay: ReactNode | null = null
 
                         if (isOwn && activeConversation) {
                           const otherParticipantIds = activeConversation.participantIds.filter(

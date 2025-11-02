@@ -200,7 +200,7 @@ export function trackResultClick(params: {
 }
 
 // Retrieve all stored events
-function getAllEvents(): SearchAnalyticsEvent[] {
+export function getAllEvents(): SearchAnalyticsEvent[] {
   if (typeof window === "undefined") return []
   
   try {
@@ -384,7 +384,7 @@ export function getSearchAnalyticsAggregation(params: {
   
   // Daily breakdown
   const dailyBreakdown: SearchAnalyticsAggregation["dailyBreakdown"] = []
-  const days = Math.ceil((endDate.getTime() - startDate.getTime()) / (24 * 60 * 60 * 1000))
+  const days = Math.max(1, Math.ceil((endDate.getTime() - startDate.getTime()) / (24 * 60 * 60 * 1000)))
   
   for (let i = 0; i < days; i++) {
     const date = new Date(startDate)

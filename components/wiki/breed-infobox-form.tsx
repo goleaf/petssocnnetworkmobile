@@ -18,6 +18,8 @@ import { Info, X, HelpCircle, Sparkles } from "lucide-react"
 import { breedInfoboxSchema, type BreedInfoboxInput } from "@/lib/schemas/breed-infobox"
 import { ZodError, ZodIssue } from "zod"
 
+const UNSPECIFIED_SELECT_VALUE = "__unspecified"
+
 interface BreedInfoboxFormProps {
   initialData?: BreedInfoboxInput
   onChange?: (data: BreedInfoboxInput) => void
@@ -267,14 +269,19 @@ export function BreedInfoboxForm({ initialData, onChange, errors }: BreedInfobox
                 Size Class
               </LabelWithTooltip>
               <Select
-                value={formData.sizeClass || ""}
-                onValueChange={(value: any) => handleFieldChange("sizeClass", value || undefined)}
+                value={formData.sizeClass ?? UNSPECIFIED_SELECT_VALUE}
+                onValueChange={(value: any) =>
+                  handleFieldChange(
+                    "sizeClass",
+                    value === UNSPECIFIED_SELECT_VALUE ? undefined : value,
+                  )
+                }
               >
                 <SelectTrigger className="h-10 w-full">
                   <SelectValue placeholder="Select size" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">None</SelectItem>
+                  <SelectItem value={UNSPECIFIED_SELECT_VALUE}>Not specified</SelectItem>
                   <SelectItem value="toy">Toy</SelectItem>
                   <SelectItem value="small">Small</SelectItem>
                   <SelectItem value="medium">Medium</SelectItem>
@@ -366,14 +373,23 @@ export function BreedInfoboxForm({ initialData, onChange, errors }: BreedInfobox
                 Activity Needs (1-5)
               </LabelWithTooltip>
               <Select
-                value={formData.activityNeeds?.toString() || ""}
-                onValueChange={(value: any) => handleFieldChange("activityNeeds", value ? Number(value) : undefined)}
+                value={
+                  formData.activityNeeds != null
+                    ? formData.activityNeeds.toString()
+                    : UNSPECIFIED_SELECT_VALUE
+                }
+                onValueChange={(value: any) =>
+                  handleFieldChange(
+                    "activityNeeds",
+                    value === UNSPECIFIED_SELECT_VALUE ? undefined : Number(value),
+                  )
+                }
               >
                 <SelectTrigger className="h-10 w-full">
                   <SelectValue placeholder="Select level" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">None</SelectItem>
+                  <SelectItem value={UNSPECIFIED_SELECT_VALUE}>Not specified</SelectItem>
                   <SelectItem value="1">1 - Very Low</SelectItem>
                   <SelectItem value="2">2 - Low</SelectItem>
                   <SelectItem value="3">3 - Moderate</SelectItem>
@@ -388,14 +404,23 @@ export function BreedInfoboxForm({ initialData, onChange, errors }: BreedInfobox
                 Trainability (1-5)
               </LabelWithTooltip>
               <Select
-                value={formData.trainability?.toString() || ""}
-                onValueChange={(value: any) => handleFieldChange("trainability", value ? Number(value) : undefined)}
+                value={
+                  formData.trainability != null
+                    ? formData.trainability.toString()
+                    : UNSPECIFIED_SELECT_VALUE
+                }
+                onValueChange={(value: any) =>
+                  handleFieldChange(
+                    "trainability",
+                    value === UNSPECIFIED_SELECT_VALUE ? undefined : Number(value),
+                  )
+                }
               >
                 <SelectTrigger className="h-10 w-full">
                   <SelectValue placeholder="Select level" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">None</SelectItem>
+                  <SelectItem value={UNSPECIFIED_SELECT_VALUE}>Not specified</SelectItem>
                   <SelectItem value="1">1 - Very Difficult</SelectItem>
                   <SelectItem value="2">2 - Difficult</SelectItem>
                   <SelectItem value="3">3 - Moderate</SelectItem>
@@ -413,14 +438,19 @@ export function BreedInfoboxForm({ initialData, onChange, errors }: BreedInfobox
                 Shedding
               </LabelWithTooltip>
               <Select
-                value={formData.shedding || ""}
-                onValueChange={(value: any) => handleFieldChange("shedding", value || undefined)}
+                value={formData.shedding ?? UNSPECIFIED_SELECT_VALUE}
+                onValueChange={(value: any) =>
+                  handleFieldChange(
+                    "shedding",
+                    value === UNSPECIFIED_SELECT_VALUE ? undefined : value,
+                  )
+                }
               >
                 <SelectTrigger className="h-10 w-full">
                   <SelectValue placeholder="Select level" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">None</SelectItem>
+                  <SelectItem value={UNSPECIFIED_SELECT_VALUE}>Not specified</SelectItem>
                   <SelectItem value="none">None</SelectItem>
                   <SelectItem value="low">Low</SelectItem>
                   <SelectItem value="moderate">Moderate</SelectItem>
@@ -434,14 +464,19 @@ export function BreedInfoboxForm({ initialData, onChange, errors }: BreedInfobox
                 Grooming Frequency
               </LabelWithTooltip>
               <Select
-                value={formData.groomingFrequency || ""}
-                onValueChange={(value: any) => handleFieldChange("groomingFrequency", value || undefined)}
+                value={formData.groomingFrequency ?? UNSPECIFIED_SELECT_VALUE}
+                onValueChange={(value: any) =>
+                  handleFieldChange(
+                    "groomingFrequency",
+                    value === UNSPECIFIED_SELECT_VALUE ? undefined : value,
+                  )
+                }
               >
                 <SelectTrigger className="h-10 w-full">
                   <SelectValue placeholder="Select frequency" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">None</SelectItem>
+                  <SelectItem value={UNSPECIFIED_SELECT_VALUE}>Not specified</SelectItem>
                   <SelectItem value="daily">Daily</SelectItem>
                   <SelectItem value="weekly">Weekly</SelectItem>
                   <SelectItem value="bi-weekly">Bi-weekly</SelectItem>
@@ -481,14 +516,16 @@ export function BreedInfoboxForm({ initialData, onChange, errors }: BreedInfobox
               Care Level
             </LabelWithTooltip>
             <Select
-              value={formData.careLevel || ""}
-              onValueChange={(value: any) => handleFieldChange("careLevel", value || undefined)}
+              value={formData.careLevel ?? UNSPECIFIED_SELECT_VALUE}
+              onValueChange={(value: any) =>
+                handleFieldChange("careLevel", value === UNSPECIFIED_SELECT_VALUE ? undefined : value)
+              }
             >
               <SelectTrigger className="h-10 w-full">
                 <SelectValue placeholder="Select level" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">None</SelectItem>
+                <SelectItem value={UNSPECIFIED_SELECT_VALUE}>Not specified</SelectItem>
                 <SelectItem value="beginner">Beginner</SelectItem>
                 <SelectItem value="intermediate">Intermediate</SelectItem>
                 <SelectItem value="advanced">Advanced</SelectItem>

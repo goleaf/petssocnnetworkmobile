@@ -45,6 +45,7 @@ import {
   getUserRoleInGroup,
   getDefaultGroupVisibility,
 } from "@/lib/storage"
+import { joinGroup } from "@/lib/groups"
 import { useRouter } from "next/navigation"
 import { getAnimalConfigLucide } from "@/lib/animal-types"
 
@@ -116,29 +117,26 @@ export function GroupHeader({ group, onJoin, onLeave }: GroupHeaderProps) {
     
     setIsJoining(true)
     try {
-      const now = new Date().toISOString()
-      addGroupMember({
-        id: `mem-${group.id}-${user.id}`,
+      const result = joinGroup({
         groupId: group.id,
         userId: user.id,
-        role: "member",
-        joinedAt: now,
-        permissions: {
-          canPost: true,
-          canComment: true,
-          canCreateTopic: true,
-          canCreatePoll: false,
-          canCreateEvent: false,
-          canModerate: false,
-          canManageMembers: false,
-          canManageSettings: false,
-        },
       })
       
-      if (onJoin) {
-        onJoin()
+      if (result.success) {
+        if (onJoin) {
+          onJoin()
+        } else {
+          router.refresh()
+        }
+        
+        // Show success/status message
+        if (result.status === "pending") {
+          // Could show a toast notification here
+          console.log("Join request submitted. Waiting for approval.")
+        }
       } else {
-        router.refresh()
+        // Show error message
+        console.error(result.message || "Failed to join group")
       }
     } finally {
       setIsJoining(false)
@@ -252,8 +250,23 @@ export function GroupHeader({ group, onJoin, onLeave }: GroupHeaderProps) {
                   <p className="text-sm md:text-base text-muted-foreground">{group.description}</p>
                   {!isMember && isContentMembersOnly && (
                     <p className="text-xs md:text-sm text-muted-foreground mt-1">
-                      Join to unlock posts, topics, and resources in this group.
+                      {group.membershipType === "request"
+                        ? "Request to join this group to unlock posts, topics, and resources."
+                        : group.membershipType === "invite"
+                        ? "This group is invitation-only. Contact a moderator for an invite."
+                        : "Join to unlock posts, topics, and resources in this group."}
                     </p>
+                  )}
+                  {group.membershipType && (
+                    <div className="mt-2">
+                      <Badge variant="outline" className="text-xs">
+                        {group.membershipType === "open"
+                          ? "Open - Anyone can join"
+                          : group.membershipType === "request"
+                          ? "Request - Approval required"
+                          : "Invite only"}
+                      </Badge>
+                    </div>
                   )}
                 </div>
 
@@ -290,7 +303,11 @@ export function GroupHeader({ group, onJoin, onLeave }: GroupHeaderProps) {
                           className="w-full sm:w-auto"
                         >
                           <UserPlus className="h-4 w-4 mr-2" />
-                          {isJoining ? "Joining..." : "Join Group"}
+                          {isJoining
+                            ? "Joining..."
+                            : group.membershipType === "request"
+                            ? "Request to Join"
+                            : "Join Group"}
                         </Button>
                       )}
                       <DropdownMenu>

@@ -9,14 +9,17 @@ import { BackButton } from "@/components/ui/back-button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   getBlogPostById,
+  getBlogPosts,
   getPetById,
   getUserById,
   getCommentsByPostId,
   areUsersBlocked,
   updateBlogPost,
 } from "@/lib/storage"
+import { cacheArticle, getCachedArticle, trackOfflineRead } from "@/lib/offline-cache"
+import { useOfflineSync } from "@/lib/hooks/use-offline-sync"
 import { useAuth } from "@/lib/auth"
-import { Heart, MessageCircle, Share2, BarChart3, Link2, ExternalLink, ShieldAlert, Tag } from "lucide-react"
+import { Heart, MessageCircle, Share2, BarChart3, Link2, ExternalLink, ShieldAlert, Tag, BookOpen } from "lucide-react"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import Link from "next/link"
 import { formatDate } from "@/lib/utils/date"
@@ -31,10 +34,21 @@ import { formatCategoryLabel, slugifyCategory } from "@/lib/utils/categories"
 import { PostContent } from "@/components/post/post-content"
 import { WatchButton } from "@/components/watch-button"
 import { isWatching } from "@/lib/storage"
+import { PostReportMenu } from "@/components/post-report-menu"
+import { BadgeDisplay } from "@/components/badge-display"
+import { PinButton } from "@/components/ui/pin-button"
+import { AuthorBadge } from "@/components/blog/author-badge"
+import { SeriesCard } from "@/components/blog/series-card"
+import { PromoteToWikiButton } from "@/components/blog/promote-to-wiki"
+import { extractPromoteableSections } from "@/lib/utils/blog"
+import { getAllSeries } from "@/lib/storage-series"
+import type { Series } from "@/components/blog/series-card"
+import { findRelatedWikiArticles } from "@/lib/utils/related-wiki"
 
 export default function BlogPostPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const { user: currentUser } = useAuth()
+  const { isOnline } = useOfflineSync()
   const [post, setPost] = useState(() => getBlogPostById(id))
   const [pet, setPet] = useState(() => (post ? getPetById(post.petId) : null))
   const [author, setAuthor] = useState(() => (post ? getUserById(post.authorId) : null))
@@ -44,22 +58,51 @@ export default function BlogPostPage({ params }: { params: Promise<{ id: string 
   const [isLoading, setIsLoading] = useState(true)
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false)
   const [accessDenied, setAccessDenied] = useState(false)
+  const [relatedWikiArticles, setRelatedWikiArticles] = useState<any[]>([])
 
   useEffect(() => {
-    // Load data only on client side
-    const loadedPost = getBlogPostById(id)
-    if (loadedPost) {
-      setPost(loadedPost)
-      setPet(getPetById(loadedPost.petId))
-      setAuthor(getUserById(loadedPost.authorId))
-      setCommentCount(getCommentsByPostId(loadedPost.id).length)
+    async function loadPost() {
+      // Try to load from cache first if offline
+      let loadedPost = null
+      
+      if (!isOnline) {
+        const cached = await getCachedArticle(id, "blog")
+        if (cached && "petId" in cached) {
+          loadedPost = cached
+        }
+      }
+      
+      // If not cached, load from storage
+      if (!loadedPost) {
+        loadedPost = getBlogPostById(id)
+        
+        // Cache the post for offline access
+        if (loadedPost && isOnline) {
+          await cacheArticle(loadedPost, "blog")
+        }
+      }
+      
+      if (loadedPost) {
+        setPost(loadedPost)
+        setPet(getPetById(loadedPost.petId))
+        setAuthor(getUserById(loadedPost.authorId))
+        setCommentCount(getCommentsByPostId(loadedPost.id).length)
+        
+        // Track offline read
+        await trackOfflineRead(loadedPost.id, "blog")
+      }
+      setIsLoading(false)
     }
-    setIsLoading(false)
-  }, [id])
+    
+    loadPost()
+  }, [id, isOnline])
   useEffect(() => {
     if (post && currentUser) {
       setHasLiked(post.likes.includes(currentUser.id))
       setIsWatchingPost(isWatching(currentUser.id, post.id, "post"))
+      // Find related wiki articles
+      const related = findRelatedWikiArticles(post.content, post.tags || [], post.categories || [])
+      setRelatedWikiArticles(related)
     }
   }, [post, currentUser])
 
@@ -171,19 +214,21 @@ export default function BlogPostPage({ params }: { params: Promise<{ id: string 
               </Avatar>
             </Link>
             <div className="flex-1">
-              <Link href={getPetUrlFromPet(pet, author.username)} className="font-semibold hover:underline">
-                {pet.name}
-              </Link>
-              <p className="text-sm text-muted-foreground">
-                by{" "}
-                <Link href={`/user/${author.username}`} className="hover:underline">
-                  {author.fullName}
-                </Link>{" "}
-                • {formatDate(post.createdAt)}
-                {post.updatedAt && post.updatedAt !== post.createdAt && (
-                  <span className="text-xs italic ml-2">(edited)</span>
-                )}
-              </p>
+              <div className="flex items-center gap-2 flex-wrap">
+                <Link href={getPetUrlFromPet(pet, author.username)} className="font-semibold hover:underline">
+                  {pet.name}
+                </Link>
+                <BadgeDisplay user={author} size="sm" variant="icon" />
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <AuthorBadge author={author} showContact={true} size="sm" />
+                <span className="text-sm text-muted-foreground">
+                  • {formatDate(post.createdAt)}
+                  {post.updatedAt && post.updatedAt !== post.createdAt && (
+                    <span className="text-xs italic ml-2">(edited)</span>
+                  )}
+                </span>
+              </div>
             </div>
           </div>
           <h1 className="text-4xl font-bold leading-tight">{post.title}</h1>
@@ -246,8 +291,22 @@ export default function BlogPostPage({ params }: { params: Promise<{ id: string 
               {totalCommentsCount} {totalCommentsCount === 1 ? "Comment" : "Comments"}
             </Button>
             {currentUser && currentUser.id !== post.authorId && (
-              <WatchButton targetId={post.id} targetType="post" initialWatching={isWatchingPost} />
+              <>
+                <WatchButton targetId={post.id} targetType="post" initialWatching={isWatchingPost} />
+                <PostReportMenu postId={post.id} postTitle={post.title} />
+              </>
             )}
+            <PinButton
+              type="post"
+              itemId={post.id}
+              metadata={{
+                title: post.title,
+                description: post.content.substring(0, 200),
+                image: post.coverImage || post.media?.images?.[0],
+              }}
+              variant="outline"
+              size="sm"
+            />
             {currentUser && currentUser.id === post.authorId && (
               <>
                 <Link href={`/blog/${post.id}/edit`}>
@@ -261,13 +320,39 @@ export default function BlogPostPage({ params }: { params: Promise<{ id: string 
                     Analytics
                   </Link>
                 </Button>
+                {/* Promote section buttons - show for each promoteable section */}
+                {(() => {
+                  const sections = extractPromoteableSections(post.content || "")
+                  return sections.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {sections.slice(0, 3).map((section) => (
+                        <PromoteToWikiButton
+                          key={section.blockId}
+                          postId={post.id}
+                          blockId={section.blockId}
+                          sectionContent={section.content}
+                          onSuccess={() => {
+                            // Refresh page or show success message
+                            window.location.reload()
+                          }}
+                        />
+                      ))}
+                    </div>
+                  ) : null
+                })()}
               </>
             )}
+            <Button asChild variant="outline" size="sm" className="gap-2">
+              <Link href={`/blog/${post.id}/talk`}>
+                <MessageCircle className="h-4 w-4" />
+                Talk
+              </Link>
+            </Button>
           </div>
         </CardHeader>
         <CardContent className="px-6 pb-6 space-y-6">
           <div className="prose prose-lg max-w-none">
-            <PostContent content={post.content} post={post} className="text-foreground leading-relaxed whitespace-pre-wrap" />
+            <PostContent content={post.content} post={post} className="text-foreground leading-relaxed" />
           </div>
 
           {(galleryMedia.images.length > 0 || galleryMedia.videos.length > 0) && (
@@ -306,6 +391,86 @@ export default function BlogPostPage({ params }: { params: Promise<{ id: string 
           )}
         </CardContent>
       </Card>
+
+      {/* Series Card - Show if post is part of a series */}
+      {post.seriesId && (() => {
+        const allSeries = getAllSeries()
+        const series = allSeries.find((s) => s.id === post.seriesId)
+        if (!series) return null
+        
+        // Get all posts in the series
+        const posts = getBlogPosts()
+        const seriesPosts = series.posts
+          .map((postId) => {
+            const p = posts.find((post) => post.id === postId)
+            return p
+              ? {
+                  postId: p.id,
+                  title: p.title,
+                  slug: p.slug || p.id,
+                  order: p.seriesOrder || 0,
+                  publishedAt: p.createdAt,
+                  isPublished: !p.isDraft,
+                }
+              : null
+          })
+          .filter((p): p is NonNullable<typeof p> => p !== null)
+        
+        const seriesData: Series = {
+          id: series.id,
+          title: series.title,
+          description: series.description,
+          posts: seriesPosts,
+          authorId: series.authorId,
+          createdAt: series.createdAt,
+          updatedAt: series.updatedAt,
+        }
+        
+        return (
+          <div className="mt-6">
+            <SeriesCard series={seriesData} currentPostId={post.id} />
+          </div>
+        )
+      })()}
+
+      {/* Related Wiki Articles */}
+      {relatedWikiArticles.length > 0 && (
+        <Card className="mt-6">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <BookOpen className="h-5 w-5 text-primary" />
+              <h2 className="text-xl font-semibold">Related Wiki Articles</h2>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {relatedWikiArticles.map((article) => (
+                <Link
+                  key={article.id}
+                  href={`/wiki/${article.type}/${article.slug}`}
+                  className="flex items-start gap-3 rounded-lg border p-4 transition-colors hover:bg-accent"
+                >
+                  <div className="mt-0.5 rounded-full bg-primary/10 p-2">
+                    <BookOpen className="h-4 w-4 text-primary" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h3 className="font-semibold mb-1">{article.title}</h3>
+                    {article.summary && (
+                      <p className="text-sm text-muted-foreground line-clamp-2">{article.summary}</p>
+                    )}
+                    {article.category && (
+                      <Badge variant="outline" className="mt-2 text-xs">
+                        {article.category}
+                      </Badge>
+                    )}
+                  </div>
+                  <ExternalLink className="mt-1 h-4 w-4 text-muted-foreground flex-shrink-0" />
+                </Link>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Comments Section */}
       <Card className="mt-6 border-2">

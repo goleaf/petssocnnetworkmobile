@@ -1,6 +1,11 @@
 // Learn more: https://github.com/testing-library/jest-dom
 import '@testing-library/jest-dom'
 
+// Polyfill TextEncoder/TextDecoder for Node.js environments
+import { TextEncoder, TextDecoder } from 'util'
+global.TextEncoder = TextEncoder
+global.TextDecoder = TextDecoder
+
 // Mock next/navigation
 jest.mock('next/navigation', () => ({
   useRouter() {
@@ -64,19 +69,21 @@ if (typeof window !== 'undefined') {
   })
 }
 
-// Clear localStorage before each test
-beforeEach(() => {
-  if (typeof localStorage.getItem === 'function' && typeof localStorage.getItem.mockClear === 'function') {
-    localStorage.getItem.mockClear()
-  }
-  if (typeof localStorage.setItem === 'function' && typeof localStorage.setItem.mockClear === 'function') {
-    localStorage.setItem.mockClear()
-  }
-  if (typeof localStorage.removeItem === 'function' && typeof localStorage.removeItem.mockClear === 'function') {
-    localStorage.removeItem.mockClear()
-  }
-  if (typeof localStorage.clear === 'function') {
-    localStorage.clear()
-  }
-})
+// Clear localStorage before each test (only in jsdom environment)
+if (typeof window !== 'undefined') {
+  beforeEach(() => {
+    if (typeof localStorage.getItem === 'function' && typeof localStorage.getItem.mockClear === 'function') {
+      localStorage.getItem.mockClear()
+    }
+    if (typeof localStorage.setItem === 'function' && typeof localStorage.setItem.mockClear === 'function') {
+      localStorage.setItem.mockClear()
+    }
+    if (typeof localStorage.removeItem === 'function' && typeof localStorage.removeItem.mockClear === 'function') {
+      localStorage.removeItem.mockClear()
+    }
+    if (typeof localStorage.clear === 'function') {
+      localStorage.clear()
+    }
+  })
+}
 

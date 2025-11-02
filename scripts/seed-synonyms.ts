@@ -13,6 +13,8 @@ const synonyms = [
   { term: "siamese", synonyms: ["siamese cat"] },
   { term: "bengal", synonyms: ["bengal cat", "bengal tiger cat"] },
   { term: "maine coon", synonyms: ["maine coon cat", "coon cat"] },
+  { term: "dsh", synonyms: ["domestic shorthair", "domestic short hair", "american shorthair"] },
+  { term: "domestic shorthair", synonyms: ["dsh", "domestic short hair", "american shorthair"] },
   { term: "training", synonyms: ["train", "teaching", "obedience"] },
   { term: "health", synonyms: ["wellness", "medical", "care"] },
   { term: "nutrition", synonyms: ["food", "diet", "feeding"] },

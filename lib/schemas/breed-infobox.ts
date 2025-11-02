@@ -26,6 +26,9 @@ export const breedInfoboxSchema = z.object({
   maleAvgWeightKg: z.number().positive("Male average weight must be positive").max(100, "Male average weight must be less than 100kg").optional(),
   femaleAvgWeightKg: z.number().positive("Female average weight must be positive").max(100, "Female average weight must be less than 100kg").optional(),
   
+  maleAvgHeightCm: z.number().positive("Male average height must be positive").max(200, "Male average height must be less than 200cm").optional(),
+  femaleAvgHeightCm: z.number().positive("Female average height must be positive").max(200, "Female average height must be less than 200cm").optional(),
+  
   lifeExpectancyYears: z.number().positive("Life expectancy must be positive").max(50, "Life expectancy must be less than 50 years").optional(),
   
   coatType: z.string().min(2, "Coat type must be at least 2 characters").max(50, "Coat type must be less than 50 characters").optional(),
@@ -41,6 +44,9 @@ export const breedInfoboxSchema = z.object({
     invalid_type_error: "Shedding level must be one of: none, low, moderate, high",
   }).optional(),
   
+  // Drool scale (1-5)
+  droolScale: z.number().int().min(1).max(5).optional(),
+  
   // Grooming frequency
   groomingFrequency: z.enum(["daily", "weekly", "bi-weekly", "monthly"], {
     invalid_type_error: "Grooming frequency must be one of: daily, weekly, bi-weekly, monthly",
@@ -50,6 +56,15 @@ export const breedInfoboxSchema = z.object({
   temperamentTags: z.array(z.string().min(1).max(50)).default([]).optional(),
   
   commonHealthRisks: z.array(z.string().min(2).max(100)).default([]).optional(),
+  
+  // Recognition bodies (AKC, FCI, etc.)
+  recognitionBodies: z.array(z.enum(["AKC", "FCI", "CKC", "KC", "ANKC", "NZKC", "SACC", "other"])).default([]).optional(),
+  
+  // Working roles
+  workingRoles: z.array(z.string().min(2).max(100)).default([]).optional(),
+  
+  // Recommended enrichment activities
+  recommendedEnrichment: z.array(z.string().min(2).max(200)).default([]).optional(),
   
   careLevel: z.enum(["beginner", "intermediate", "advanced", "expert"], {
     invalid_type_error: "Care level must be one of: beginner, intermediate, advanced, expert",
@@ -72,6 +87,22 @@ export const breedInfoboxSchema = z.object({
   {
     message: "Male and female weights are too similar. Consider using a single average weight instead.",
     path: ["femaleAvgWeightKg"],
+  }
+).refine(
+  (data) => {
+    // If gender-specific heights are provided, they should be different enough
+    if (data.maleAvgHeightCm && data.femaleAvgHeightCm) {
+      const diff = Math.abs(data.maleAvgHeightCm - data.femaleAvgHeightCm)
+      // If both are very similar (within 2cm), suggest using a single height field
+      if (diff < 2) {
+        return false
+      }
+    }
+    return true
+  },
+  {
+    message: "Male and female heights are too similar. Consider using a single average height instead.",
+    path: ["femaleAvgHeightCm"],
   }
 ).transform((data) => {
   // Compute additional tags based on data

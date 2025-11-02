@@ -1,14 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { AlertTriangle, CheckCircle2, Calendar, RefreshCw, User } from "lucide-react"
 import type { WikiArticle } from "@/lib/types"
-import { isStaleContent } from "@/lib/storage"
-import { getUserById } from "@/lib/storage"
-import { requestReReview } from "@/lib/storage"
+import { isStaleContent, getUserById, getCurrentUser, requestReReview } from "@/lib/storage"
 import { toast } from "sonner"
 
 interface ToastBannerProps {
@@ -16,7 +14,6 @@ interface ToastBannerProps {
   isLatest?: boolean
   lastReviewedDate?: string
   expertReviewerId?: string
-  currentUserId?: string
 }
 
 export function ToastBanner({
@@ -24,9 +21,14 @@ export function ToastBanner({
   isLatest = false,
   lastReviewedDate,
   expertReviewerId,
-  currentUserId,
 }: ToastBannerProps) {
   const [isRequesting, setIsRequesting] = useState(false)
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+  
+  useEffect(() => {
+    const user = getCurrentUser()
+    setCurrentUserId(user?.id || null)
+  }, [])
   
   // Use healthData.lastReviewedDate if available, otherwise fall back to prop
   const reviewDate = article.healthData?.lastReviewedDate || lastReviewedDate

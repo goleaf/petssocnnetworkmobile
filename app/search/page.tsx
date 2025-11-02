@@ -40,7 +40,7 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import { getUsers, getPets, getBlogPosts, getWikiArticles, getComments, getGroups, getGroupEvents } from "@/lib/storage"
-import type { User as UserType, Pet, BlogPost, WikiArticle, Group, GroupEvent, SearchContentType } from "@/lib/types"
+import type { User as UserType, Pet, BlogPost, WikiArticle, Group, GroupEvent } from "@/lib/types"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { getPetUrlFromPet } from "@/lib/utils/pet-url"
 import { formatCommentDate, formatDate } from "@/lib/utils/date"
@@ -59,6 +59,12 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import Image from "next/image"
+import { AdvancedSearchBuilder, type AdvancedSearchConfig } from "@/components/search/AdvancedSearchBuilder"
+import { SearchOperatorsHelper } from "@/components/search/SearchOperatorsHelper"
+import { RelatedSearches } from "@/components/search/RelatedSearches"
+import { SearchAnalyticsView } from "@/components/search/SearchAnalyticsView"
+import { SearchResultHighlight } from "@/components/search/SearchResultHighlight"
+import { SearchResultPreview } from "@/components/search/SearchResultPreview"
 
 const STORAGE_KEYS = {
   RECENT_SEARCHES: "search_recent_searches",
@@ -626,6 +632,58 @@ export default function SearchPage() {
     events: GroupEvent[]
   }>({ users: [], pets: [], events: [] })
   const [aiSuggestions, setAiSuggestions] = useState<string[]>([])
+  const [advancedSearchConfig, setAdvancedSearchConfig] = useState<AdvancedSearchConfig>({
+    query: "",
+    rules: [],
+    booleanOperator: "AND",
+    sortBy: "relevance",
+  })
+  const [searchPresets, setSearchPresets] = useState<
+    Array<{ id: string; name: string; config: AdvancedSearchConfig }>
+  >([])
+  const [previewResult, setPreviewResult] = useState<{
+    type: string
+    data: UserType | Pet | BlogPost | WikiArticle | Group | GroupEvent
+  } | null>(null)
+  const [showPreview, setShowPreview] = useState(false)
+  const [relatedQueries, setRelatedQueries] = useState<string[]>([])
+  const [searchTime, setSearchTime] = useState<number | undefined>()
+
+  // Load saved presets
+  useEffect(() => {
+    const stored = localStorage.getItem("search_advanced_presets")
+    if (stored) {
+      try {
+        setSearchPresets(JSON.parse(stored))
+      } catch (error) {
+        console.error("Failed to load search presets:", error)
+      }
+    }
+  }, [])
+
+  const saveSearchPreset = (name: string) => {
+    const newPreset = {
+      id: `preset-${Date.now()}`,
+      name,
+      config: advancedSearchConfig,
+    }
+    const updated = [newPreset, ...searchPresets].slice(0, 10)
+    setSearchPresets(updated)
+    localStorage.setItem("search_advanced_presets", JSON.stringify(updated))
+  }
+
+  const deleteSearchPreset = (id: string) => {
+    const updated = searchPresets.filter((p) => p.id !== id)
+    setSearchPresets(updated)
+    localStorage.setItem("search_advanced_presets", JSON.stringify(updated))
+  }
+
+  const loadSearchPreset = (config: AdvancedSearchConfig) => {
+    setAdvancedSearchConfig(config)
+    setQuery(config.query)
+    // Apply config filters to regular filters if needed
+    // This is a simplified integration - you may want to enhance this
+  }
 
   const updateLocationHighlights = ({
     allUsers,
@@ -1209,7 +1267,7 @@ export default function SearchPage() {
             query: normalizedQuery || undefined,
             filters: effectiveFilters,
             resultCount: totalResultsCount,
-            contentType: activeTab === "all" ? undefined : (activeTab as SearchContentType),
+            contentType: activeTab === "all" ? undefined : activeTab,
             isAuthenticated: Boolean(user),
           })
         } catch (error) {
@@ -1305,13 +1363,11 @@ export default function SearchPage() {
       sortBy,
       tab: preferredTab,
       resultCount:
-        results.users.length +
         results.pets.length +
-        results.blogs.length +
+        results.posts.length +
         results.wiki.length +
-        results.hashtags.length +
-        results.groups.length +
-        results.events.length,
+        results.places.length +
+        results.groups.length,
     }
 
     setSavedSearches((prev) => {
@@ -1395,14 +1451,11 @@ export default function SearchPage() {
     combinedFiltersForUi.verified
 
   const totalResults =
-    results.users.length +
     results.pets.length +
-    results.blogs.length +
+    results.posts.length +
     results.wiki.length +
-    results.hashtags.length +
-    results.shelters.length +
-    results.groups.length +
-    results.events.length
+    results.places.length +
+    results.groups.length
   const canSaveSearch = query.trim().length > 0 || hasActiveFilters
   const locationContextLabel = combinedFiltersForUi.location || user?.location || ""
   const hasLocationHighlights =
@@ -1439,12 +1492,11 @@ export default function SearchPage() {
     return <LoadingSpinner fullScreen />
   }
 
-  const paginatedUsers = getPaginatedResults(results.users)
   const paginatedPets = getPaginatedResults(results.pets)
-  const paginatedBlogs = getPaginatedResults(results.blogs)
+  const paginatedPosts = getPaginatedResults(results.posts)
   const paginatedWiki = getPaginatedResults(results.wiki)
+  const paginatedPlaces = getPaginatedResults(results.places)
   const paginatedGroups = getPaginatedResults(results.groups)
-  const paginatedEvents = getPaginatedResults(results.events)
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
@@ -1519,6 +1571,7 @@ export default function SearchPage() {
           </div>
 
           <div className="flex gap-2">
+            <SearchOperatorsHelper />
             <Select value={sortBy} onValueChange={(value) => setSortBy(value as SortOption)}>
               <SelectTrigger className="w-[140px]">
                 <SelectValue>
@@ -1707,6 +1760,23 @@ export default function SearchPage() {
           </div>
         </div>
 
+        {/* Advanced Search Builder */}
+        <div className="mb-6">
+          <AdvancedSearchBuilder
+            config={advancedSearchConfig}
+            onChange={(config) => {
+              setAdvancedSearchConfig(config)
+              if (config.query && config.query !== query) {
+                setQuery(config.query)
+              }
+            }}
+            onSave={saveSearchPreset}
+            savedPresets={searchPresets}
+            onLoadPreset={loadSearchPreset}
+            onDeletePreset={deleteSearchPreset}
+          />
+        </div>
+
         {/* Popular Searches */}
         {!query && popularSearches.length > 0 && (
           <div className="mb-6">
@@ -1728,6 +1798,17 @@ export default function SearchPage() {
                 </Button>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* Related Searches */}
+        {query && relatedQueries.length > 0 && (
+          <div className="mb-6">
+            <RelatedSearches
+              queries={relatedQueries}
+              currentQuery={query}
+              onSelect={handleSearch}
+            />
           </div>
         )}
 
@@ -1933,35 +2014,27 @@ export default function SearchPage() {
       <div className="grid gap-6 lg:grid-cols-[2fr,1fr]">
         <div>
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-8">
+            <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="all">All ({totalResults})</TabsTrigger>
-          <TabsTrigger value="users">
-            <User className="h-4 w-4 mr-1" />
-            Users ({results.users.length})
-          </TabsTrigger>
           <TabsTrigger value="pets">
             <PawPrint className="h-4 w-4 mr-1" />
             Pets ({results.pets.length})
           </TabsTrigger>
-          <TabsTrigger value="blogs">
+          <TabsTrigger value="posts">
             <FileText className="h-4 w-4 mr-1" />
-            Blogs ({results.blogs.length})
+            Posts ({results.posts.length})
           </TabsTrigger>
           <TabsTrigger value="wiki">
             <BookOpen className="h-4 w-4 mr-1" />
             Wiki ({results.wiki.length})
           </TabsTrigger>
+          <TabsTrigger value="places">
+            <MapPin className="h-4 w-4 mr-1" />
+            Places ({results.places.length})
+          </TabsTrigger>
           <TabsTrigger value="groups">
             <Users className="h-4 w-4 mr-1" />
             Groups ({results.groups.length})
-          </TabsTrigger>
-          <TabsTrigger value="events">
-            <CalendarDays className="h-4 w-4 mr-1" />
-            Events ({results.events.length})
-          </TabsTrigger>
-          <TabsTrigger value="hashtags">
-            <Hash className="h-4 w-4 mr-1" />
-            Tags ({results.hashtags.length})
           </TabsTrigger>
         </TabsList>
 
@@ -2000,7 +2073,15 @@ export default function SearchPage() {
                   </div>
                   <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                     {results.users.slice(0, 6).map((user) => (
-                      <UserCard key={user.id} user={user} query={query} />
+                      <UserCard 
+                        key={user.id} 
+                        user={user} 
+                        query={query}
+                        onPreview={(result) => {
+                          setPreviewResult(result)
+                          setShowPreview(true)
+                        }}
+                      />
                     ))}
                   </div>
                 </div>
@@ -2036,7 +2117,15 @@ export default function SearchPage() {
                   </div>
                   <div className="space-y-4">
                     {results.blogs.slice(0, 4).map((post) => (
-                      <BlogCard key={post.id} post={post} query={query} />
+                      <BlogCard 
+                        key={post.id} 
+                        post={post} 
+                        query={query}
+                        onPreview={(result) => {
+                          setPreviewResult(result)
+                          setShowPreview(true)
+                        }}
+                      />
                     ))}
                   </div>
                 </div>
@@ -2548,54 +2637,115 @@ export default function SearchPage() {
               </CardContent>
             </Card>
           )}
+
+          {/* Search Analytics */}
+          {(query || searchHistory.length > 0) && (
+            <SearchAnalyticsView
+              query={query}
+              resultCount={totalResults}
+              searchTime={searchTime}
+              filters={combinedFiltersForUi}
+            />
+          )}
         </aside>
       </div>
+
+      {/* Search Result Preview Modal */}
+      {previewResult && (
+        <SearchResultPreview
+          result={previewResult}
+          query={query}
+          isOpen={showPreview}
+          onClose={() => {
+            setShowPreview(false)
+            setPreviewResult(null)
+          }}
+        />
+      )}
     </div>
   )
 }
 
-function UserCard({ user, query }: { user: UserType; query: string }) {
+function UserCard({ 
+  user, 
+  query, 
+  onPreview 
+}: { 
+  user: UserType
+  query: string
+  onPreview?: (result: { type: string; data: UserType }) => void
+}) {
+  const { user: currentUser } = useAuth()
   const users = getUsers()
   const userReactions = getBlogPosts()
     .flatMap((post) => Object.values(post.reactions || {}))
     .flat()
     .filter((id) => id === user.id).length
 
+  const handleClick = () => {
+    try {
+      trackResultClick({
+        query: query || undefined,
+        clickedResultType: "user",
+        clickedResultId: user.id,
+        isAuthenticated: Boolean(currentUser),
+      })
+    } catch (error) {
+      console.debug("Analytics tracking error:", error)
+    }
+  }
+
   return (
-    <Link href={`/user/${user.username}`}>
-      <Card className="hover:bg-muted/50 transition-colors cursor-pointer h-full">
-        <CardContent className="p-4">
-          <div className="flex items-start gap-3">
-            <Avatar className="h-12 w-12 flex-shrink-0">
-              <AvatarImage src={user.avatar || "/placeholder.svg"} />
-              <AvatarFallback>{user.fullName.charAt(0)}</AvatarFallback>
-            </Avatar>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1">
-                <p className="font-semibold truncate">{highlightText(user.fullName, query)}</p>
-                {user.badge === "verified" && <CheckCircle2 className="h-4 w-4 text-blue-500 flex-shrink-0" />}
-              </div>
+    <Card className="hover:bg-muted/50 transition-colors h-full relative group">
+      <CardContent className="p-4">
+        <div className="flex items-start gap-3">
+          <Avatar className="h-12 w-12 flex-shrink-0">
+            <AvatarImage src={user.avatar || "/placeholder.svg"} />
+            <AvatarFallback>{user.fullName.charAt(0)}</AvatarFallback>
+          </Avatar>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1">
+              <Link href={`/user/${user.username}`} onClick={handleClick} className="font-semibold truncate hover:underline">
+                <SearchResultHighlight text={user.fullName} query={query} />
+              </Link>
+              {user.badge === "verified" && <CheckCircle2 className="h-4 w-4 text-blue-500 flex-shrink-0" />}
+            </div>
+            <Link href={`/user/${user.username}`} onClick={handleClick}>
               <p className="text-sm text-muted-foreground truncate">@{user.username}</p>
-              {user.location && (
-                <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
-                  <MapPin className="h-3 w-3" />
-                  {user.location}
-                </p>
-              )}
-              {user.bio && (
-                <p className="text-sm text-muted-foreground line-clamp-2 mt-1">
-                  {highlightText(user.bio, query)}
-                </p>
-              )}
-              <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
-                <span>{user.followers?.length || 0} followers</span>
-                <span>{user.following?.length || 0} following</span>
-              </div>
+            </Link>
+            {user.location && (
+              <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                <MapPin className="h-3 w-3" />
+                {user.location}
+              </p>
+            )}
+            {user.bio && (
+              <p className="text-sm text-muted-foreground line-clamp-2 mt-1">
+                <SearchResultHighlight text={user.bio} query={query} />
+              </p>
+            )}
+            <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
+              <span>{user.followers?.length || 0} followers</span>
+              <span>{user.following?.length || 0} following</span>
             </div>
           </div>
-        </CardContent>
-      </Card>
-    </Link>
+        </div>
+        {onPreview && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              onPreview({ type: "users", data: user })
+            }}
+          >
+            <Eye className="h-4 w-4" />
+          </Button>
+        )}
+      </CardContent>
+    </Card>
   )
 }
 
@@ -2651,7 +2801,15 @@ function PetCard({ pet, query }: { pet: Pet; query: string }) {
   )
 }
 
-function BlogCard({ post, query }: { post: BlogPost; query: string }) {
+function BlogCard({ 
+  post, 
+  query,
+  onPreview 
+}: { 
+  post: BlogPost
+  query: string
+  onPreview?: (result: { type: string; data: BlogPost }) => void
+}) {
   const { user: currentUser } = useAuth()
   const users = getUsers()
   const pets = getPets()
@@ -2678,52 +2836,70 @@ function BlogCard({ post, query }: { post: BlogPost; query: string }) {
   }
 
   return (
-    <Link href={`/blog/${post.id}`} onClick={handleClick}>
-      <Card className="hover:bg-muted/50 transition-colors cursor-pointer">
-        <CardContent className="p-4">
-          <div className="flex gap-4">
-            {post.coverImage && (
+    <Card className="hover:bg-muted/50 transition-colors relative group">
+      <CardContent className="p-4">
+        <div className="flex gap-4">
+          {post.coverImage && (
+            <Link href={`/blog/${post.id}`} onClick={handleClick}>
               <div className="relative w-32 h-32 flex-shrink-0 rounded-lg overflow-hidden">
                 <Image src={post.coverImage} alt={post.title} fill className="object-cover" />
               </div>
-            )}
-            <div className="flex-1 min-w-0">
-              <h3 className="font-semibold text-lg mb-2 line-clamp-2">{highlightText(post.title, query)}</h3>
+            </Link>
+          )}
+          <div className="flex-1 min-w-0">
+            <Link href={`/blog/${post.id}`} onClick={handleClick}>
+              <h3 className="font-semibold text-lg mb-2 line-clamp-2 hover:underline">
+                <SearchResultHighlight text={post.title} query={query} />
+              </h3>
               <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
-                {highlightText(post.content.substring(0, 150), query)}
+                <SearchResultHighlight text={post.content.substring(0, 150)} query={query} />
               </p>
-              <div className="flex items-center gap-4 flex-wrap mb-2">
-                {post.tags.slice(0, 3).map((tag) => (
-                  <Badge key={tag} variant="secondary" className="text-xs">
-                    {tag}
-                  </Badge>
-                ))}
-                {post.hashtags?.slice(0, 2).map((tag) => (
-                  <Badge key={tag} variant="outline" className="text-xs">
-                    #{tag}
-                  </Badge>
-                ))}
-              </div>
-              <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                {author && <span>By {author.fullName}</span>}
-                {pet && <span>• {pet.name}</span>}
-                <span>• {formatCommentDate(post.createdAt)}</span>
-                <div className="flex items-center gap-3">
-                  <span className="flex items-center gap-1">
-                    <Heart className="h-3 w-3" />
-                    {totalReactions}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <MessageSquare className="h-3 w-3" />
-                    {comments}
-                  </span>
-                </div>
+            </Link>
+            <div className="flex items-center gap-4 flex-wrap mb-2">
+              {post.tags.slice(0, 3).map((tag) => (
+                <Badge key={tag} variant="secondary" className="text-xs">
+                  {tag}
+                </Badge>
+              ))}
+              {post.hashtags?.slice(0, 2).map((tag) => (
+                <Badge key={tag} variant="outline" className="text-xs">
+                  #{tag}
+                </Badge>
+              ))}
+            </div>
+            <div className="flex items-center gap-4 text-xs text-muted-foreground">
+              {author && <span>By {author.fullName}</span>}
+              {pet && <span>• {pet.name}</span>}
+              <span>• {formatCommentDate(post.createdAt)}</span>
+              <div className="flex items-center gap-3">
+                <span className="flex items-center gap-1">
+                  <Heart className="h-3 w-3" />
+                  {totalReactions}
+                </span>
+                <span className="flex items-center gap-1">
+                  <MessageSquare className="h-3 w-3" />
+                  {comments}
+                </span>
               </div>
             </div>
           </div>
-        </CardContent>
-      </Card>
-    </Link>
+        </div>
+        {onPreview && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              onPreview({ type: "blogs", data: post })
+            }}
+          >
+            <Eye className="h-4 w-4" />
+          </Button>
+        )}
+      </CardContent>
+    </Card>
   )
 }
 
@@ -2836,11 +3012,25 @@ function GroupCard({ group, query }: { group: Group; query: string }) {
 }
 
 function EventCard({ event, query }: { event: GroupEvent; query: string }) {
+  const { user: currentUser } = useAuth()
   const group = getGroups().find((g) => g.id === event.groupId)
   const startDate = formatDate(event.startDate)
 
+  const handleClick = () => {
+    try {
+      trackResultClick({
+        query: query || undefined,
+        clickedResultType: "event",
+        clickedResultId: event.id,
+        isAuthenticated: Boolean(currentUser),
+      })
+    } catch (error) {
+      console.debug("Analytics tracking error:", error)
+    }
+  }
+
   return (
-    <Link href={group ? `/groups/${group.slug}/events/${event.id}` : "/groups"}>
+    <Link href={group ? `/groups/${group.slug}/events/${event.id}` : "/groups"} onClick={handleClick}>
       <Card className="hover:bg-muted/50 transition-colors cursor-pointer">
         <CardContent className="p-4 space-y-3">
           <div className="flex items-start gap-3">
@@ -2877,103 +3067,6 @@ function EventCard({ event, query }: { event: GroupEvent; query: string }) {
               )}
             </div>
           </div>
-          {event.description && (
-            <p className="text-sm text-muted-foreground line-clamp-2">
-              {highlightText(event.description, query)}
-            </p>
-          )}
-        </CardContent>
-      </Card>
-    </Link>
-  )
-}
-
-function Pagination({
-  currentPage,
-  totalPages,
-  onPageChange,
-  totalItems,
-}: {
-  currentPage: number
-  totalPages: number
-  onPageChange: (page: number) => void
-  totalItems: number
-}) {
-  const startItem = (currentPage - 1) * RESULTS_PER_PAGE + 1
-  const endItem = Math.min(currentPage * RESULTS_PER_PAGE, totalItems)
-
-  return (
-    <div className="flex items-center justify-between mt-6">
-      <p className="text-sm text-muted-foreground">
-        Showing {startItem}-{endItem} of {totalItems} results
-      </p>
-      <div className="flex items-center gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => onPageChange(currentPage - 1)}
-          disabled={currentPage === 1}
-        >
-          <ChevronLeft className="h-4 w-4" />
-          Previous
-        </Button>
-        <div className="flex items-center gap-1">
-          {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-            let pageNum: number
-            if (totalPages <= 5) {
-              pageNum = i + 1
-            } else if (currentPage <= 3) {
-              pageNum = i + 1
-            } else if (currentPage >= totalPages - 2) {
-              pageNum = totalPages - 4 + i
-            } else {
-              pageNum = currentPage - 2 + i
-            }
-            return (
-              <Button
-                key={pageNum}
-                variant={currentPage === pageNum ? "default" : "outline"}
-                size="sm"
-                onClick={() => onPageChange(pageNum)}
-                className="w-10"
-              >
-                {pageNum}
-              </Button>
-            )
-          })}
-        </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => onPageChange(currentPage + 1)}
-          disabled={currentPage === totalPages}
-        >
-          Next
-          <ChevronRight className="h-4 w-4" />
-        </Button>
-      </div>
-    </div>
-  )
-}
-
-function highlightText(text: string, searchTerm: string) {
-  if (!searchTerm.trim()) return text
-  const parts = text.split(new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`, "gi"))
-  return (
-    <span>
-      {parts.map((part, i) =>
-        part.toLowerCase() === searchTerm.toLowerCase() ? (
-          <mark key={i} className="bg-yellow-200 dark:bg-yellow-900 rounded px-0.5">
-            {part}
-          </mark>
-        ) : (
-          part
-        ),
-      )}
-    </span>
-  )
-}
-
           {event.description && (
             <p className="text-sm text-muted-foreground line-clamp-2">
               {highlightText(event.description, query)}

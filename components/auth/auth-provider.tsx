@@ -13,7 +13,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     initializeStorage()
-    // Initialize auth state - this will check storage and set auth accordingly
+    // Initialize auth state - fetch session from server
     initialize()
   }, [initialize])
 

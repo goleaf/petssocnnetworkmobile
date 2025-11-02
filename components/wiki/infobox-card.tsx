@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge"
 import type { WikiArticle } from "@/lib/types"
 import { Calendar, Eye, Heart, User } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
+import { BreedInfoboxDisplay } from "./breed-infobox-display"
 
 interface InfoboxCardProps {
   article: WikiArticle
@@ -17,6 +18,12 @@ export function InfoboxCard({
   likeCount = article.likes?.length || 0,
   authorName,
 }: InfoboxCardProps) {
+  // If this is a breed article with breedData, show the breed infobox display
+  if (article.category === "breeds" && article.breedData) {
+    return <BreedInfoboxDisplay breedData={article.breedData} />
+  }
+
+  // Otherwise show the default quick info card
   return (
     <Card className="sticky top-4">
       <CardHeader>

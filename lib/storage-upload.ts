@@ -24,6 +24,9 @@ export interface ImageUploadResult {
   height: number
   size: number
   mimeType: string
+  moderationId?: string
+  isFlagged?: boolean
+  blurOnWarning?: boolean
 }
 
 /**
@@ -112,12 +115,136 @@ export async function uploadImage(
   // Upload file to storage
   await uploadFileToStorage(file, uploadUrl)
 
+  // Moderate the uploaded image
+  let moderationId: string | undefined
+  let isFlagged = false
+  let blurOnWarning = true
+
+  try {
+    const { ContentModerationService, queueMediaForModeration } = await import("./moderation")
+    const moderationService = new ContentModerationService({
+      autoModerate: true,
+      blurOnWarning: true,
+    })
+
+    const moderationResult = await moderationService.moderateMedia(fileUrl, "image")
+    
+    const moderation = await queueMediaForModeration(
+      fileUrl,
+      "image",
+      moderationResult,
+      {
+        width: dimensions.width,
+        height: dimensions.height,
+        fileSize: file.size,
+      }
+    )
+
+    moderationId = moderation.id
+    isFlagged = moderationResult.flagged
+    blurOnWarning = moderation.blurOnWarning
+  } catch (error) {
+    // If moderation fails, log but don't block upload
+    console.error("Moderation error:", error)
+  }
+
   return {
     url: fileUrl,
     width: dimensions.width,
     height: dimensions.height,
     size: file.size,
     mimeType: file.type,
+    moderationId,
+    isFlagged,
+    blurOnWarning,
+  }
+}
+
+/**
+ * Upload video file (similar to uploadImage but for videos)
+ */
+export async function uploadVideo(
+  file: File,
+  folder: string = "videos"
+): Promise<{
+  url: string
+  size: number
+  mimeType: string
+  moderationId?: string
+  isFlagged?: boolean
+  blurOnWarning?: boolean
+  duration?: number
+}> {
+  // Validate file type
+  if (!file.type.startsWith("video/")) {
+    throw new Error("File must be a video")
+  }
+
+  // Validate file size (max 100MB for videos)
+  const MAX_SIZE = 100 * 1024 * 1024
+  if (file.size > MAX_SIZE) {
+    throw new Error("Video size must be less than 100MB")
+  }
+
+  // Generate unique filename
+  const extension = file.name.split(".").pop() || "mp4"
+  const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${extension}`
+
+  // Get signed upload URL
+  const { uploadUrl, fileUrl } = await getSignedUploadUrl(
+    fileName,
+    file.type,
+    file.size,
+    folder
+  )
+
+  // Upload file to storage
+  await uploadFileToStorage(file, uploadUrl)
+
+  // Moderate the uploaded video
+  let moderationId: string | undefined
+  let isFlagged = false
+  let blurOnWarning = true
+  let duration: number | undefined
+
+  try {
+    // Get video duration (simplified - in production use video element or API)
+    duration = await getVideoDuration(file)
+
+    const { ContentModerationService, queueMediaForModeration } = await import("./moderation")
+    const moderationService = new ContentModerationService({
+      autoModerate: true,
+      blurOnWarning: true,
+    })
+
+    const moderationResult = await moderationService.moderateMedia(fileUrl, "video")
+    
+    const moderation = await queueMediaForModeration(
+      fileUrl,
+      "video",
+      moderationResult,
+      {
+        fileSize: file.size,
+        duration,
+      }
+    )
+
+    moderationId = moderation.id
+    isFlagged = moderationResult.flagged
+    blurOnWarning = moderation.blurOnWarning
+  } catch (error) {
+    // If moderation fails, log but don't block upload
+    console.error("Moderation error:", error)
+  }
+
+  return {
+    url: fileUrl,
+    size: file.size,
+    mimeType: file.type,
+    moderationId,
+    isFlagged,
+    blurOnWarning,
+    duration,
   }
 }
 
@@ -147,6 +274,28 @@ export function getImageDimensions(file: File): Promise<{ width: number; height:
 }
 
 /**
+ * Get video duration from a file
+ */
+export function getVideoDuration(file: File): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const video = document.createElement("video")
+    const url = URL.createObjectURL(file)
+
+    video.onloadedmetadata = () => {
+      URL.revokeObjectURL(url)
+      resolve(video.duration)
+    }
+
+    video.onerror = () => {
+      URL.revokeObjectURL(url)
+      reject(new Error("Failed to load video"))
+    }
+
+    video.src = url
+  })
+}
+
+/**
  * Get a signed download URL for viewing images
  */
 export async function getSignedDownloadUrl(fileUrl: string): Promise<string> {
@@ -166,4 +315,3 @@ export async function getSignedDownloadUrl(fileUrl: string): Promise<string> {
   const data = await response.json()
   return data.downloadUrl
 }
-

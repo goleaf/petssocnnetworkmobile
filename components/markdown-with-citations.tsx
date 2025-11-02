@@ -5,15 +5,17 @@ import ReactMarkdown from "react-markdown"
 import { ReferenceList } from "@/components/reference-list"
 import { InlineCitation } from "@/components/citation-renderer"
 import { parseCitationsFromMarkdown, validateSources } from "@/lib/citations"
+import { getSources, createOrUpdateSource } from "@/lib/sources"
 import type { Citation, Source } from "@/lib/types"
 
 interface MarkdownWithCitationsProps {
   content: string
   className?: string
+  articleId?: string // Optional article ID for context
 }
 
 // Component to render markdown with inline citations
-export function MarkdownWithCitations({ content, className }: MarkdownWithCitationsProps) {
+export function MarkdownWithCitations({ content, className, articleId }: MarkdownWithCitationsProps) {
   const [sources, setSources] = useState<Source[]>([])
   const [citations, setCitations] = useState<Citation[]>([])
 
@@ -21,15 +23,56 @@ export function MarkdownWithCitations({ content, className }: MarkdownWithCitati
     return parseCitationsFromMarkdown(content)
   }, [content])
 
+  // Load existing sources from storage and merge with parsed sources
   useEffect(() => {
+    const existingSources = getSources()
+    const mergedSources: Source[] = []
+
+    // Create or update sources from parsed sources
+    for (const parsedSource of parsedSources) {
+      const existing = existingSources.find((s) => s.url === parsedSource.url)
+      if (existing) {
+        // Use existing source with its status (brokenAt, lastChecked, etc.)
+        mergedSources.push(existing)
+      } else {
+        // Create new source
+        const newSource = createOrUpdateSource({
+          url: parsedSource.url,
+          title: parsedSource.title,
+          publisher: parsedSource.publisher,
+          date: parsedSource.date,
+        })
+        mergedSources.push(newSource)
+      }
+    }
+
     setCitations(parsedCitations)
-    setSources(parsedSources)
+    setSources(mergedSources)
 
     // Validate sources in background
-    if (parsedSources.length > 0) {
-      validateSources(parsedSources).then((validatedSources) => {
+    if (mergedSources.length > 0) {
+      validateSources(mergedSources).then((validatedSources) => {
+        // Update sources in storage
+        validatedSources.forEach((source) => {
+          createOrUpdateSource(source)
+        })
         setSources(validatedSources)
       })
+    }
+
+    // Listen for source updates
+    const handleSourceUpdate = () => {
+      const updatedSources = getSources()
+      const updatedMerged = mergedSources.map((source) => {
+        const updated = updatedSources.find((s) => s.id === source.id || s.url === source.url)
+        return updated || source
+      })
+      setSources(updatedMerged)
+    }
+
+    window.addEventListener("sourceUpdated", handleSourceUpdate)
+    return () => {
+      window.removeEventListener("sourceUpdated", handleSourceUpdate)
     }
   }, [parsedCitations, parsedSources])
 
@@ -106,7 +149,12 @@ export function MarkdownWithCitations({ content, className }: MarkdownWithCitati
     <div className={className}>
       <ReactMarkdown components={components}>{cleanedContent}</ReactMarkdown>
       {citations.length > 0 && (
-        <ReferenceList citations={citations} sources={sources} className="mt-8" />
+        <ReferenceList
+          citations={citations}
+          sources={sources}
+          className="mt-8"
+          articleId={articleId}
+        />
       )}
     </div>
   )

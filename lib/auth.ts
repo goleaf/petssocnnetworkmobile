@@ -1,15 +1,15 @@
 "use client"
 
 import { create } from "zustand"
-import { persist } from "zustand/middleware"
 import type { User, UserRole } from "./types"
-import { getCurrentUser, setCurrentUser as setStorageUser, getUsers } from "./storage"
+import { loginAction, registerAction, logoutAction } from "./actions/auth"
 
 interface AuthState {
   user: User | null
   isAuthenticated: boolean
+  isLoading: boolean
   login: (username: string, password: string) => Promise<{ success: boolean; error?: string }>
-  logout: () => void
+  logout: () => Promise<void>
   register: (data: {
     email: string
     password: string
@@ -17,164 +17,80 @@ interface AuthState {
     fullName: string
     role?: UserRole
   }) => Promise<{ success: boolean; error?: string }>
-  switchUser: (userId: string) => void
-  initialize: () => void
+  initialize: () => Promise<void>
   hasRole: (role: UserRole) => boolean
   isAdmin: () => boolean
   isModerator: () => boolean
+  refresh: () => Promise<void>
 }
 
-export const useAuth = create<AuthState>()(
-  persist(
-    (set) => ({
-      user: null,
-      isAuthenticated: false,
+export const useAuth = create<AuthState>((set, get) => ({
+  user: null,
+  isAuthenticated: false,
+  isLoading: true,
 
-      initialize: () => {
-        const currentUser = getCurrentUser()
-        // Only set authenticated if there's a valid user in storage
-        if (currentUser) {
-          set({ user: currentUser, isAuthenticated: true })
-        } else {
-          // Clear any stale auth state
-          set({ user: null, isAuthenticated: false })
-          if (typeof window !== "undefined") {
-            localStorage.removeItem("pet_social_current_user")
-          }
-        }
-      },
+  initialize: async () => {
+    try {
+      set({ isLoading: true })
+      // Fetch session from server
+      const response = await fetch("/api/auth/session")
+      const data = await response.json()
+      
+      if (data.user) {
+        set({ user: data.user, isAuthenticated: true, isLoading: false })
+      } else {
+        set({ user: null, isAuthenticated: false, isLoading: false })
+      }
+    } catch (error) {
+      console.error("Error initializing auth:", error)
+      set({ user: null, isAuthenticated: false, isLoading: false })
+    }
+  },
 
-      login: async (username: string, password: string) => {
-        // Validate input
-        if (!username || username.trim() === "") {
-          return { success: false, error: "Username is required" }
-        }
-        if (!password || password.trim() === "") {
-          return { success: false, error: "Password is required" }
-        }
+  refresh: async () => {
+    await get().initialize()
+  },
 
-        // Simulate API call
-        await new Promise((resolve) => setTimeout(resolve, 500))
+  login: async (username: string, password: string) => {
+    const result = await loginAction({ username, password })
+    
+    if (result.success) {
+      // Refresh session after successful login
+      await get().refresh()
+    }
+    
+    return result
+  },
 
-        const users = getUsers()
-        const user = users.find((u) => u.username === username.trim())
+  logout: async () => {
+    await logoutAction()
+    // Clear client state
+    set({ user: null, isAuthenticated: false })
+  },
 
-        if (!user) {
-          return { success: false, error: "Invalid username or password" }
-        }
+  register: async (data) => {
+    const result = await registerAction(data)
+    
+    if (result.success) {
+      // Refresh session after successful registration
+      await get().refresh()
+    }
+    
+    return result
+  },
 
-        if (!user.followingPets) {
-          user.followingPets = []
-        }
+  hasRole: (role: UserRole) => {
+    const state = get()
+    return state.user?.role === role || false
+  },
 
-        // If user doesn't have a password set, set it from the provided password
-        if (!user.password) {
-          if (!password || password.trim() === "") {
-            return { success: false, error: "Password is required" }
-          }
-          // Set the password for the user
-          const users = getUsers()
-          const userIndex = users.findIndex((u) => u.id === user.id)
-          if (userIndex !== -1) {
-            users[userIndex] = { ...users[userIndex], password }
-            if (typeof window !== "undefined") {
-              localStorage.setItem("pet_social_users", JSON.stringify(users))
-            }
-            // Update the user object for login
-            user.password = password
-          }
-        } else {
-          // Verify password matches if user has a password
-          if (user.password !== password) {
-            return { success: false, error: "Invalid username or password" }
-          }
-        }
+  isAdmin: () => {
+    const state = get()
+    return state.user?.role === "admin" || false
+  },
 
-        setStorageUser(user.id)
-        set({ user, isAuthenticated: true })
-        return { success: true }
-      },
-
-      logout: () => {
-        if (typeof window !== "undefined") {
-          localStorage.removeItem("pet_social_current_user")
-        }
-        // Clear persisted auth state
-        set({ user: null, isAuthenticated: false })
-        // Clear persisted zustand state
-        if (typeof window !== "undefined") {
-          localStorage.removeItem("pet-social-auth")
-        }
-      },
-
-      register: async (data) => {
-        // Simulate API call
-        await new Promise((resolve) => setTimeout(resolve, 500))
-
-        const users = getUsers()
-
-        // Check if email or username already exists
-        if (users.some((u) => u.email === data.email)) {
-          return { success: false, error: "Email already exists" }
-        }
-        if (users.some((u) => u.username === data.username)) {
-          return { success: false, error: "Username already taken" }
-        }
-
-        // Create new user
-        const newUser: User = {
-          id: String(Date.now()),
-          email: data.email,
-          username: data.username,
-          password: data.password,
-          fullName: data.fullName,
-          role: data.role || "user",
-          joinedAt: new Date().toISOString().split("T")[0],
-          followers: [],
-          following: [],
-          followingPets: [],
-        }
-
-        users.push(newUser)
-        if (typeof window !== "undefined") {
-          localStorage.setItem("pet_social_users", JSON.stringify(users))
-        }
-
-        setStorageUser(newUser.id)
-        set({ user: newUser, isAuthenticated: true })
-        return { success: true }
-      },
-
-      switchUser: (userId: string) => {
-        const users = getUsers()
-        const user = users.find((u) => u.id === userId)
-        if (user) {
-          if (!user.followingPets) {
-            user.followingPets = []
-          }
-          setStorageUser(userId)
-          set({ user, isAuthenticated: true })
-        }
-      },
-
-      hasRole: (role: UserRole) => {
-        const state = useAuth.getState()
-        return state.user?.role === role
-      },
-
-      isAdmin: () => {
-        const state = useAuth.getState()
-        return state.user?.role === "admin"
-      },
-
-      isModerator: () => {
-        const state = useAuth.getState()
-        return state.user?.role === "moderator" || state.user?.role === "admin"
-      },
-    }),
-    {
-      name: "pet-social-auth",
-      partialize: (state) => ({ user: state.user, isAuthenticated: state.isAuthenticated }),
-    },
-  ),
-)
+  isModerator: () => {
+    const state = get()
+    return state.user?.role === "moderator" || state.user?.role === "admin" || false
+  },
+}))

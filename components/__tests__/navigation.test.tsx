@@ -63,6 +63,7 @@ describe('Navigation', () => {
   it('should show navigation items for unauthenticated users', () => {
     render(<Navigation />)
     expect(screen.getByText('Blogs')).toBeInTheDocument()
+    expect(screen.getByText('Groups')).toBeInTheDocument()
     expect(screen.getByText('Wiki')).toBeInTheDocument()
     expect(screen.getByText('Shelters')).toBeInTheDocument()
     expect(screen.getByText('Search')).toBeInTheDocument()

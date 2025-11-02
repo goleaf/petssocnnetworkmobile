@@ -29,7 +29,7 @@ import {
   Redo,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import type { JSONContent } from "@tiptap/core"
+import type { JSONContent } from "@tiptap/react"
 
 interface TipTapEditorProps {
   content?: JSONContent | string

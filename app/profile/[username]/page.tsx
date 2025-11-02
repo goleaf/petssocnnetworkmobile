@@ -15,6 +15,9 @@ import Link from "next/link"
 import { useCallback, useEffect, useState } from "react"
 import { formatCommentDate, formatDate } from "@/lib/utils/date"
 import { getPetUrlFromPet } from "@/lib/utils/pet-url"
+import { CompactStatBlock, ProfileStats } from "@/components/profile-stats"
+import { BadgeDisplay } from "@/components/badge-display"
+import { getProfileOverview } from "@/lib/utils/profile-overview"
 import {
   canViewProfile,
   canViewUserPosts,
@@ -169,7 +172,12 @@ export default function ProfilePage({ params }: { params: Promise<{ username: st
   const canViewStatistics = canViewProfileSection("statistics", user, viewerId)
   const canViewActivityLogs = canViewProfileSection("activity", user, viewerId)
 
-const getPrivacyMessage = (scope: "pets" | "posts" | "followers" | "following") =>
+  // Get profile overview for badges and highlights
+  const profileOverview = getProfileOverview(user.id)
+  const badges = profileOverview?.badges
+  const highlights = profileOverview?.highlights
+
+  const getPrivacyMessage = (scope: "pets" | "posts" | "followers" | "following") =>
   getPrivacyNotice({
     profileUser: user,
     scope,
@@ -244,7 +252,10 @@ const getPrivacyMessage = (scope: "pets" | "posts" | "followers" | "following") 
                 <div className="space-y-1">
                   {canViewBasics ? (
                     <>
-                      <h1 className="text-3xl font-bold">{user.fullName}</h1>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h1 className="text-3xl font-bold">{user.fullName}</h1>
+                        <BadgeDisplay user={user} size="lg" variant="icon" />
+                      </div>
                       <p className="text-muted-foreground">@{user.username}</p>
                     </>
                   ) : (
@@ -291,155 +302,39 @@ const getPrivacyMessage = (scope: "pets" | "posts" | "followers" | "following") 
                 </div>
               )}
               {canViewStatistics ? (
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-4">
-                  {canViewPets ? (
-                    <Link href={`/profile/${user.username}/pets`}>
-                      <Card className="hover:shadow-md transition-all duration-200 hover:border-primary/50 cursor-pointer group h-full">
-                        <CardContent className="p-2 text-center">
-                          <div className="flex flex-col items-center justify-center space-y-1">
-                            <div className="p-1 rounded-full bg-primary/10 group-hover:bg-primary/20 transition-colors">
-                              <PawPrint className="h-3 w-3 text-primary group-hover:scale-110 transition-transform" />
-                            </div>
-                            <div>
-                              <p className="text-base font-bold text-foreground group-hover:text-primary transition-colors">
-                                {pets.length}
-                              </p>
-                              <p className="text-[10px] font-medium text-muted-foreground">
-                                {pets.length === 1 ? "Pet" : "Pets"}
-                              </p>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </Link>
-                  ) : (
-                    <Card className="opacity-50 cursor-not-allowed h-full">
-                      <CardContent className="p-2 text-center space-y-2">
-                        <div className="flex flex-col items-center justify-center space-y-1">
-                          <div className="p-1 rounded-full bg-muted">
-                            <Lock className="h-3 w-3 text-muted-foreground" />
-                          </div>
-                          <div>
-                            <p className="text-base font-bold text-muted-foreground">—</p>
-                            <p className="text-[10px] font-medium text-muted-foreground">Pets</p>
-                          </div>
-                        </div>
-                        <p className="text-[10px] leading-tight text-muted-foreground">{getPrivacyMessage("pets")}</p>
-                      </CardContent>
-                    </Card>
-                  )}
-                  {canViewPosts ? (
-                    <Link href={`/profile/${user.username}/posts`}>
-                      <Card className="hover:shadow-md transition-all duration-200 hover:border-primary/50 cursor-pointer group h-full">
-                        <CardContent className="p-2 text-center">
-                          <div className="flex flex-col items-center justify-center space-y-1">
-                            <div className="p-1 rounded-full bg-primary/10 group-hover:bg-primary/20 transition-colors">
-                              <FileText className="h-3 w-3 text-primary group-hover:scale-110 transition-transform" />
-                            </div>
-                            <div>
-                              <p className="text-base font-bold text-foreground group-hover:text-primary transition-colors">
-                                {posts.length}
-                              </p>
-                              <p className="text-[10px] font-medium text-muted-foreground">Posts</p>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </Link>
-                  ) : (
-                    <Card className="opacity-50 cursor-not-allowed h-full">
-                      <CardContent className="p-2 text-center space-y-2">
-                        <div className="flex flex-col items-center justify-center space-y-1">
-                          <div className="p-1 rounded-full bg-muted">
-                            <Lock className="h-3 w-3 text-muted-foreground" />
-                          </div>
-                          <div>
-                            <p className="text-base font-bold text-muted-foreground">—</p>
-                            <p className="text-[10px] font-medium text-muted-foreground">Posts</p>
-                          </div>
-                        </div>
-                        <p className="text-[10px] leading-tight text-muted-foreground">{getPrivacyMessage("posts")}</p>
-                      </CardContent>
-                    </Card>
-                  )}
-                  {canViewFollowersList ? (
-                    <Link href={`/user/${user.username}/followers`}>
-                      <Card className="hover:shadow-md transition-all duration-200 hover:border-primary/50 cursor-pointer group h-full">
-                        <CardContent className="p-2 text-center">
-                          <div className="flex flex-col items-center justify-center space-y-1">
-                            <div className="p-1 rounded-full bg-primary/10 group-hover:bg-primary/20 transition-colors">
-                              <Users className="h-3 w-3 text-primary group-hover:scale-110 transition-transform" />
-                            </div>
-                            <div>
-                              <p className="text-base font-bold text-foreground group-hover:text-primary transition-colors">
-                                {user.followers.length}
-                              </p>
-                              <p className="text-[10px] font-medium text-muted-foreground">
-                                {user.followers.length === 1 ? "Follower" : "Followers"}
-                              </p>
-                              <p className="text-[9px] text-muted-foreground/70">
-                                {user.followers.length} {user.followers.length === 1 ? "person" : "people"}
-                              </p>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </Link>
-                  ) : (
-                    <Card className="opacity-50 cursor-not-allowed h-full">
-                      <CardContent className="p-2 text-center space-y-2">
-                        <div className="flex flex-col items-center justify-center space-y-1">
-                          <div className="p-1 rounded-full bg-muted">
-                            <Lock className="h-3 w-3 text-muted-foreground" />
-                          </div>
-                          <div>
-                            <p className="text-base font-bold text-muted-foreground">—</p>
-                            <p className="text-[10px] font-medium text-muted-foreground">Followers</p>
-                            <p className="text-[9px] text-muted-foreground/70">— people</p>
-                          </div>
-                        </div>
-                        <p className="text-[10px] leading-tight text-muted-foreground">{getPrivacyMessage("followers")}</p>
-                      </CardContent>
-                    </Card>
-                  )}
-                  {canViewFollowingList ? (
-                    <Link href={`/user/${user.username}/following`}>
-                      <Card className="hover:shadow-md transition-all duration-200 hover:border-primary/50 cursor-pointer group h-full">
-                        <CardContent className="p-2 text-center">
-                          <div className="flex flex-col items-center justify-center space-y-1">
-                            <div className="p-1 rounded-full bg-primary/10 group-hover:bg-primary/20 transition-colors">
-                              <Heart className="h-3 w-3 text-primary group-hover:scale-110 transition-transform" />
-                            </div>
-                            <div>
-                              <p className="text-base font-bold text-foreground group-hover:text-primary transition-colors">
-                                {user.following.length}
-                              </p>
-                              <p className="text-[10px] font-medium text-muted-foreground">Following</p>
-                              <p className="text-[9px] text-muted-foreground/70">
-                                {user.following.length} {user.following.length === 1 ? "person" : "people"}
-                              </p>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </Link>
-                  ) : (
-                    <Card className="opacity-50 cursor-not-allowed h-full">
-                      <CardContent className="p-2 text-center space-y-2">
-                        <div className="flex flex-col items-center justify-center space-y-1">
-                          <div className="p-1 rounded-full bg-muted">
-                            <Lock className="h-3 w-3 text-muted-foreground" />
-                          </div>
-                          <div>
-                            <p className="text-base font-bold text-muted-foreground">—</p>
-                            <p className="text-[10px] font-medium text-muted-foreground">Following</p>
-                            <p className="text-[9px] text-muted-foreground/70">— people</p>
-                          </div>
-                        </div>
-                        <p className="text-[10px] leading-tight text-muted-foreground">{getPrivacyMessage("following")}</p>
-                      </CardContent>
-                    </Card>
-                  )}
+                <div className="mt-4 space-y-4">
+                  {/* Pets and Posts stats */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <CompactStatBlock
+                      label={pets.length === 1 ? "Pet" : "Pets"}
+                      value={canViewPets ? pets.length : "—"}
+                      icon={PawPrint}
+                      href={canViewPets ? `/profile/${user.username}/pets` : undefined}
+                      isLocked={!canViewPets}
+                      lockedMessage={!canViewPets ? getPrivacyMessage("pets") : undefined}
+                    />
+                    <CompactStatBlock
+                      label="Posts"
+                      value={canViewPosts ? posts.length : "—"}
+                      icon={FileText}
+                      href={canViewPosts ? `/profile/${user.username}/posts` : undefined}
+                      isLocked={!canViewPosts}
+                      lockedMessage={!canViewPosts ? getPrivacyMessage("posts") : undefined}
+                    />
+                  </div>
+                  {/* Followers/Following stats with badges and highlights */}
+                  <ProfileStats
+                    followers={user.followers.length}
+                    following={user.following.length}
+                    followersHref={canViewFollowersList ? `/user/${user.username}/followers` : undefined}
+                    followingHref={canViewFollowingList ? `/user/${user.username}/following` : undefined}
+                    canViewFollowers={canViewFollowersList}
+                    canViewFollowing={canViewFollowingList}
+                    followersLockedMessage={!canViewFollowersList ? getPrivacyMessage("followers") : undefined}
+                    followingLockedMessage={!canViewFollowingList ? getPrivacyMessage("following") : undefined}
+                    badges={badges}
+                    highlights={highlights}
+                  />
                 </div>
               ) : (
                 <div className="mt-4 flex items-center gap-2 rounded-lg border border-dashed border-muted-foreground/40 bg-muted/30 p-4 text-sm text-muted-foreground">

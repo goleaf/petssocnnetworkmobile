@@ -9,6 +9,7 @@
 
 import type { User, UserRole, WikiArticle, BlogPost, ExpertProfile } from "./types"
 import { getUsers } from "./storage"
+import { isFlagEnabled } from "./flags"
 
 /**
  * Permission Action Types
@@ -66,6 +67,7 @@ export function isExpert(user: User | null | undefined): boolean {
  * 
  * AUDIT: All authenticated users can create wiki articles.
  * However, health category articles require expert status.
+ * Also checks WIKI_WRITE feature flag.
  * 
  * @param user - User attempting to create
  * @param category - Wiki category (optional, required for health checks)
@@ -76,6 +78,13 @@ export function canCreateWiki(
   category?: string
 ): boolean {
   if (!user) return false
+
+  // Check WIKI_WRITE feature flag (admins/moderators bypass)
+  if (user.role !== "admin" && user.role !== "moderator") {
+    if (!isFlagEnabled("WIKI_WRITE")) {
+      return false
+    }
+  }
 
   // Health category requires expert status
   if (category === "health") {
@@ -92,6 +101,7 @@ export function canCreateWiki(
  * AUDIT: Users can edit if:
  * - They own the article OR
  * - They are admin/moderator
+ * Also checks WIKI_WRITE feature flag.
  * 
  * @param user - User attempting to edit
  * @param article - Wiki article being edited
@@ -103,13 +113,18 @@ export function canEditWiki(
 ): boolean {
   if (!user || !article) return false
 
-  // Owner can always edit
-  if (article.authorId === user.id) {
+  // Admin and moderator can always edit (bypass flag check)
+  if (user.role === "admin" || user.role === "moderator") {
     return true
   }
 
-  // Admin and moderator can edit any article
-  if (user.role === "admin" || user.role === "moderator") {
+  // Check WIKI_WRITE feature flag
+  if (!isFlagEnabled("WIKI_WRITE")) {
+    return false
+  }
+
+  // Owner can edit if flag is enabled
+  if (article.authorId === user.id) {
     return true
   }
 
@@ -297,7 +312,9 @@ export function getPermissionResult(
 
     switch (action) {
       case "create_wiki":
-        if (resource?.category === "health") {
+        if (!isFlagEnabled("WIKI_WRITE")) {
+          reason = "Wiki writing is currently disabled"
+        } else if (resource?.category === "health") {
           reason = "Only verified experts can create health-related wiki articles"
         } else {
           reason = "You don't have permission to create wiki articles"
@@ -305,7 +322,11 @@ export function getPermissionResult(
         break
 
       case "edit_wiki":
-        reason = "You can only edit your own wiki articles"
+        if (!isFlagEnabled("WIKI_WRITE")) {
+          reason = "Wiki writing is currently disabled"
+        } else {
+          reason = "You can only edit your own wiki articles"
+        }
         break
 
       case "publish_health":

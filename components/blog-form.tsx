@@ -19,12 +19,16 @@ import {
 } from "@/components/ui/tooltip"
 import { TagInput } from "@/components/ui/tag-input"
 import { PrivacySelector } from "@/components/privacy-selector"
+import { PrivacyCircleSelector } from "@/components/privacy-circle-selector"
 import { Switch } from "@/components/ui/switch"
 import { BookOpen } from "lucide-react"
+import { WikiSelector } from "@/components/wiki-selector"
 import { MarkdownEditor } from "@/components/markdown-editor"
 import { MediaAttachmentsEditor } from "@/components/media-attachments-editor"
 import { BrandAffiliationDisclosure } from "@/components/brand-affiliation-disclosure"
-import type { BlogPost, BlogPostMedia, PrivacyLevel } from "@/lib/types"
+import { ImageUpload } from "@/components/image-upload"
+import type { BlogPost, BlogPostMedia, PrivacyLevel, PrivacyCircle, BlogPostPoll, BlogPostLocation, BlogPostTemplate } from "@/lib/types"
+import type { ImageUploadResult } from "@/lib/storage-upload"
 import { normalizeCategoryList } from "@/lib/utils/categories"
 import {
   Save,
@@ -38,6 +42,11 @@ import {
   Globe,
   Users,
   Lock,
+  BarChart,
+  MapPin,
+  FileType,
+  X,
+  Plus,
 } from "lucide-react"
 
 // Label with Tooltip Component
@@ -50,7 +59,8 @@ interface LabelWithTooltipProps {
 
 function LabelWithTooltip({ htmlFor, tooltip, required, icon, children }: LabelWithTooltipProps & { icon?: any }) {
   const labelContent = (
-    <Label htmlFor={htmlFor} required={required} icon={icon} className="flex items-center gap-1.5">
+    <Label htmlFor={htmlFor} required={required} className="flex items-center gap-1.5">
+      {icon && <span className="flex items-center">{icon}</span>}
       {children}
       {tooltip && (
         <Tooltip>
@@ -76,6 +86,7 @@ export interface BlogFormData {
   tags: string[]
   categories: string[]
   privacy: PrivacyLevel
+  privacyCircle?: PrivacyCircle
   hashtags: string[]
   coverImage?: string
   media: BlogPostMedia
@@ -85,6 +96,10 @@ export interface BlogFormData {
     organizationType?: "brand" | "organization" | "sponsor" | "affiliate"
   }
   disableWikiLinks?: boolean
+  relatedWikiIds?: string[] // Array of WikiArticle IDs to attach
+  poll?: BlogPostPoll
+  location?: BlogPostLocation
+  template?: BlogPostTemplate
 }
 
 interface BlogFormProps {
@@ -124,6 +139,7 @@ export function BlogForm({
     tags: initialData?.tags ? [...initialData.tags] : [],
     categories: initialData?.categories ? [...initialData.categories] : [],
     privacy: (initialData?.privacy || "public") as PrivacyLevel,
+    privacyCircle: initialData?.privacyCircle,
     hashtags: initialData?.hashtags ? [...initialData.hashtags] : [],
     coverImage: initialData?.coverImage || undefined,
     media: {
@@ -131,10 +147,14 @@ export function BlogForm({
       videos: initialData?.media?.videos ? [...initialData.media.videos] : [],
       links: initialData?.media?.links ? initialData.media.links.map((link) => ({ ...link })) : [],
     },
-    brandAffiliation: initialData?.brandAffiliation || {
+    brandAffiliation: (initialData as any)?.brandAffiliation || {
       disclosed: false,
     },
-    disableWikiLinks: initialData?.disableWikiLinks || false,
+    disableWikiLinks: (initialData as any)?.disableWikiLinks || false,
+    relatedWikiIds: (initialData as any)?.relatedWikiIds ? [...(initialData as any).relatedWikiIds] : [],
+    poll: (initialData as any)?.poll ? { ...(initialData as any).poll } : undefined,
+    location: (initialData as any)?.location ? { ...(initialData as any).location } : undefined,
+    template: (initialData as any)?.template || "general",
   })
 
   const [errors, setErrors] = useState<ValidationErrors>({})
@@ -143,7 +163,7 @@ export function BlogForm({
   const [imagePreview, setImagePreview] = useState<string>(initialData?.coverImage || "")
   const [imageError, setImageError] = useState<string>("")
   const [imageDimensions, setImageDimensions] = useState<{ width: number; height: number } | null>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [isUploadingImage, setIsUploadingImage] = useState(false)
 
   // Real-time validation
   const validateField = (name: string, value: any): string | undefined => {
@@ -199,70 +219,39 @@ export function BlogForm({
     return Object.keys(newErrors).length === 0
   }
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-
-    // Check file type
-    if (!file.type.startsWith("image/")) {
-      setImageError("Please select an image file")
-      return
-    }
-
+  const handleImageUploadComplete = (result: ImageUploadResult) => {
+    setImageDimensions({ width: result.width, height: result.height })
+    setImagePreview(result.url)
+    setFormData((prev) => ({ ...prev, coverImage: result.url }))
     setImageError("")
-    const reader = new FileReader()
 
-    reader.onload = (event) => {
-      const dataUrl = event.target?.result as string
-      if (!dataUrl) return
+    // Validate dimensions
+    if (result.width < MIN_WIDTH || result.height < MIN_HEIGHT) {
+      setImageError(
+        `Image dimensions are too small. Minimum required: ${MIN_WIDTH}x${MIN_HEIGHT}px. Current: ${result.width}x${result.height}px`
+      )
+    } else {
+      // Check if aspect ratio is approximately 16:9 (allow some tolerance)
+      const aspectRatio = result.width / result.height
+      const targetRatio = 16 / 9
+      const tolerance = 0.1
 
-      const img = new window.Image()
-      img.onload = () => {
-        const width = img.naturalWidth
-        const height = img.naturalHeight
-
-        setImageDimensions({ width, height })
-
-        // Validate dimensions
-        if (width < MIN_WIDTH || height < MIN_HEIGHT) {
-          setImageError(
-            `Image dimensions are too small. Minimum required: ${MIN_WIDTH}x${MIN_HEIGHT}px. Current: ${width}x${height}px`
-          )
-          setImagePreview("")
-          setFormData((prev) => ({ ...prev, coverImage: undefined }))
-          return
-        }
-
-        // Check if aspect ratio is approximately 16:9 (allow some tolerance)
-        const aspectRatio = width / height
-        const targetRatio = 16 / 9
-        const tolerance = 0.1
-
-        if (Math.abs(aspectRatio - targetRatio) > tolerance) {
-          setImageError(
-            `Image aspect ratio should be approximately 16:9 (width:height). Current ratio: ${aspectRatio.toFixed(2)}:1, recommended: 1.78:1`
-          )
-          // Still allow upload, but show warning
-        } else {
-          setImageError("")
-        }
-
-        setImagePreview(dataUrl)
-        setFormData((prev) => ({ ...prev, coverImage: dataUrl }))
+      if (Math.abs(aspectRatio - targetRatio) > tolerance) {
+        setImageError(
+          `Image aspect ratio should be approximately 16:9 (width:height). Current ratio: ${aspectRatio.toFixed(2)}:1, recommended: 1.78:1`
+        )
+        // Still allow upload, but show warning
+      } else {
+        setImageError("")
       }
-
-      img.onerror = () => {
-        setImageError("Failed to load image. Please try another file.")
-      }
-
-      img.src = dataUrl
     }
+    setIsUploadingImage(false)
+  }
 
-    reader.onerror = () => {
-      setImageError("Failed to read file. Please try again.")
-    }
-
-    reader.readAsDataURL(file)
+  const handleImageUploadError = (error: Error) => {
+    setImageError(error.message)
+    setImagePreview("")
+    setIsUploadingImage(false)
   }
 
   const handleRemoveImage = () => {
@@ -270,9 +259,6 @@ export function BlogForm({
     setImagePreview("")
     setImageDimensions(null)
     setImageError("")
-    if (fileInputRef.current) {
-      fileInputRef.current.value = ""
-    }
   }
 
   // Auto-save draft (only for create mode)
@@ -436,6 +422,23 @@ export function BlogForm({
               </div>
             </div>
 
+            {/* Privacy Circle Selector - Only show when privacy is not public */}
+            {formData.privacy !== "public" && (
+              <div className="space-y-2">
+                <LabelWithTooltip 
+                  htmlFor="privacyCircle"
+                  tooltip="Select a privacy circle for targeted sharing. Your last choice is remembered."
+                >
+                  Privacy Circle
+                </LabelWithTooltip>
+                <PrivacyCircleSelector
+                  value={formData.privacyCircle}
+                  onChange={(value) => handleFieldChange("privacyCircle", value)}
+                  className="w-full md:w-auto"
+                />
+              </div>
+            )}
+
             <div className="space-y-2">
               <LabelWithTooltip 
                 htmlFor="title" 
@@ -465,72 +468,16 @@ export function BlogForm({
               >
                 Cover Image
               </LabelWithTooltip>
-              {imagePreview ? (
-                <div className="space-y-3">
-                  <div className="relative aspect-video w-full overflow-hidden rounded-lg border border-input bg-muted">
-                    <img src={imagePreview} alt="Cover preview" className="w-full h-full object-cover" />
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      size="sm"
-                      className="absolute top-2 right-2"
-                      onClick={handleRemoveImage}
-                    >
-                      <Trash2 className="h-4 w-4 mr-1" />
-                      Remove
-                    </Button>
-                    {imageDimensions && (
-                      <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
-                        {imageDimensions.width} × {imageDimensions.height}px
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => fileInputRef.current?.click()}
-                      className="flex-1"
-                    >
-                      <Upload className="h-4 w-4 mr-2" />
-                      Change Image
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-center w-full">
-                    <label
-                      htmlFor="coverImage"
-                      className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed border-input rounded-lg cursor-pointer bg-muted/50 hover:bg-muted transition-colors"
-                    >
-                      <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                        <ImageIcon className="h-10 w-10 mb-3 text-muted-foreground" />
-                        <p className="mb-2 text-sm text-muted-foreground">
-                          <span className="font-semibold">Click to upload</span> or drag and drop
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          Minimum: {MIN_WIDTH}×{MIN_HEIGHT}px (16:9 aspect ratio)
-                        </p>
-                      </div>
-                      <input
-                        ref={fileInputRef}
-                        id="coverImage"
-                        type="file"
-                        className="hidden"
-                        accept="image/*"
-                        onChange={handleImageChange}
-                      />
-                    </label>
-                  </div>
-                </div>
-              )}
-              {imageError && (
-                <div className="flex items-center gap-2 text-sm text-destructive bg-destructive/10 p-3 rounded-md border border-destructive/20">
-                  <AlertCircle className="h-4 w-4 flex-shrink-0" />
-                  <span>{imageError}</span>
-                </div>
-              )}
+              <ImageUpload
+                onUploadComplete={handleImageUploadComplete}
+                onError={handleImageUploadError}
+                folder="articles/cover"
+                maxSize={10 * 1024 * 1024}
+                existingImageUrl={imagePreview}
+                onRemove={handleRemoveImage}
+                showPreview={true}
+                disabled={isUploadingImage || isSubmitting}
+              />
               {imageDimensions && !imageError && imageDimensions.width >= MIN_WIDTH && imageDimensions.height >= MIN_HEIGHT && (
                 <p className="text-sm text-muted-foreground flex items-center gap-1">
                   <span className="h-2 w-2 rounded-full bg-green-500"></span>
@@ -645,6 +592,27 @@ export function BlogForm({
                   checked={!formData.disableWikiLinks}
                   onCheckedChange={(checked) => handleFieldChange("disableWikiLinks", !checked)}
                 />
+              </div>
+
+              <div className="space-y-2">
+                <LabelWithTooltip
+                  htmlFor="relatedWikiIds"
+                  tooltip="Attach related wiki articles to your blog post. These will be displayed at the end of your post to help readers learn more."
+                >
+                  <div className="flex items-center gap-2">
+                    <BookOpen className="h-4 w-4 text-muted-foreground" />
+                    Related Wiki Articles
+                  </div>
+                </LabelWithTooltip>
+                <WikiSelector
+                  selectedIds={formData.relatedWikiIds || []}
+                  onChange={(ids) => handleFieldChange("relatedWikiIds", ids)}
+                  maxSelections={5}
+                  placeholder="Select related wiki articles..."
+                />
+                <p className="text-xs text-muted-foreground">
+                  Select up to 5 wiki articles that are related to your blog post content
+                </p>
               </div>
 
               <LabelWithTooltip

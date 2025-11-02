@@ -12,7 +12,6 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
 import {
   Select,
   SelectContent,
@@ -48,8 +47,6 @@ export function CitationModal({ open, onOpenChange, onInsert, content }: Citatio
   const [newSourceDate, setNewSourceDate] = useState("")
   
   // Citation form
-  const [citationLocator, setCitationLocator] = useState("")
-  const [citationText, setCitationText] = useState("")
   const [citationNeededMode, setCitationNeededMode] = useState(false)
 
   // Extract existing citations to get next citation number
@@ -70,8 +67,6 @@ export function CitationModal({ open, onOpenChange, onInsert, content }: Citatio
       setSources(getSources())
       setSearchQuery("")
       setSelectedSourceId("")
-      setCitationLocator("")
-      setCitationText("")
       setCitationNeededMode(false)
       setNewSourceUrl("")
       setNewSourceTitle("")
@@ -143,16 +138,10 @@ export function CitationModal({ open, onOpenChange, onInsert, content }: Citatio
       const citationId = nextCitationNumber.toString()
       citationMarkdown = `[^${citationId}]`
 
-      // Build source definition
+      // Build source definition in format: [^1]: URL "Title"
       sourceDefinition = `\n\n[^${citationId}]: ${source.url}`
-      if (source.title) {
+      if (source.title && source.title !== source.url) {
         sourceDefinition += ` "${source.title}"`
-      }
-      if (citationLocator) {
-        sourceDefinition += ` (see: ${citationLocator})`
-      }
-      if (citationText) {
-        sourceDefinition += ` | ${citationText}`
       }
     } else {
       return
@@ -359,30 +348,6 @@ export function CitationModal({ open, onOpenChange, onInsert, content }: Citatio
             </Label>
           </div>
 
-          {!citationNeededMode && selectedSourceId && (
-            <>
-              <div className="space-y-2">
-                <Label htmlFor="citation-locator">Location Reference (optional)</Label>
-                <Input
-                  id="citation-locator"
-                  placeholder="e.g., 'p. 42', 'section 3.2', 'timestamp 1:23'"
-                  value={citationLocator}
-                  onChange={(e) => setCitationLocator(e.target.value)}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="citation-text">Citation Note (optional)</Label>
-                <Textarea
-                  id="citation-text"
-                  placeholder="Additional citation text or note"
-                  value={citationText}
-                  onChange={(e) => setCitationText(e.target.value)}
-                  rows={2}
-                />
-              </div>
-            </>
-          )}
         </div>
 
         <DialogFooter>

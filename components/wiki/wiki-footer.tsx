@@ -45,23 +45,28 @@ function getRelatedArticles(
       }
     })
 
+    // Only score articles that have shared tags (at least one matching tag required)
     // Score: Number of shared tags + bonus for category match
     let score = sharedTags.length
-    if (article.category === currentArticle.category) {
-      score += 0.5
-    }
+    
+    // Only apply bonuses if there are shared tags
+    if (sharedTags.length > 0) {
+      if (article.category === currentArticle.category) {
+        score += 0.5
+      }
 
-    // Bonus for subcategory match
-    if (article.subcategory && article.subcategory === currentArticle.subcategory) {
-      score += 0.5
-    }
+      // Bonus for subcategory match
+      if (article.subcategory && article.subcategory === currentArticle.subcategory) {
+        score += 0.5
+      }
 
-    // Bonus for species overlap
-    if (article.species && currentArticle.species) {
-      const sharedSpecies = article.species.filter((s) =>
-        currentArticle.species?.includes(s)
-      )
-      score += sharedSpecies.length * 0.3
+      // Bonus for species overlap
+      if (article.species && currentArticle.species) {
+        const sharedSpecies = article.species.filter((s) =>
+          currentArticle.species?.includes(s)
+        )
+        score += sharedSpecies.length * 0.3
+      }
     }
 
     return { article, score, sharedTags }

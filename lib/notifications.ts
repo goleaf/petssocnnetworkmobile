@@ -721,6 +721,34 @@ export function addNotification(notification: Notification) {
   }
 }
 
+/**
+ * Create a notification from partial notification data
+ * This is a convenience wrapper around addNotification that accepts partial Notification objects
+ */
+export function createNotification(partial: Partial<Notification> & { userId: string; type: NotificationType; message: string }) {
+  const notification: Notification = {
+    id: partial.id ?? `notif_${Date.now()}_${Math.random().toString(16).slice(2)}`,
+    userId: partial.userId,
+    type: partial.type,
+    actorId: partial.actorId,
+    targetId: partial.targetId,
+    targetType: partial.targetType ?? "post",
+    message: partial.message,
+    read: partial.read ?? false,
+    createdAt: partial.createdAt ?? nowIso(),
+    priority: partial.priority,
+    category: partial.category,
+    channels: partial.channels,
+    batchKey: partial.batchKey,
+    metadata: partial.metadata,
+    actions: partial.actions,
+    deliveries: partial.deliveries,
+    updatedAt: partial.updatedAt,
+    digestScheduledFor: partial.digestScheduledFor,
+  }
+  addNotification(notification)
+}
+
 export function markAsRead(notificationId: string) {
   if (typeof window === "undefined") return
   const notifications = getNotifications()

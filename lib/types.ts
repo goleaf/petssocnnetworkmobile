@@ -1,12 +1,23 @@
 export type UserRole = "user" | "admin" | "moderator"
 
+export type UserStatus = "active" | "muted" | "suspended" | "banned"
+
 export interface User {
   id: string
   email: string
   username: string
+  handle?: string // User handle/display name
   password?: string
   fullName: string
   role?: UserRole
+  roles?: UserRole[] // Array of roles for multiple role support
+  reputation?: number // User reputation score
+  strikes?: number // Number of strikes/warnings
+  status?: UserStatus // User account status
+  muteExpiry?: string // ISO date string for mute expiration
+  suspendExpiry?: string // ISO date string for suspension expiration
+  lastSeen?: string // ISO date string for last seen timestamp
+  createdAt?: string // ISO date string for account creation (alias for joinedAt)
   avatar?: string
   bio?: string
   location?: string
@@ -29,6 +40,8 @@ export interface User {
     sections?: ProfileSectionPrivacy
   }
   blockedUsers?: string[] // User IDs that are blocked
+  mutedUsers?: string[] // User IDs that are muted (soft block)
+  closeFriends?: string[] // User IDs in close friends list
   occupation?: string
   website?: string
   phone?: string
@@ -38,6 +51,7 @@ export interface User {
   isPro?: boolean
   proExpiresAt?: string
   shelterSponsorship?: ShelterSponsorship
+  moderationCaseId?: string // Link to moderation case for appeal tracker
 }
 
 export interface Pet {
@@ -46,7 +60,9 @@ export interface Pet {
   name: string
   slug?: string // URL-friendly slug for routing
   species: "dog" | "cat" | "bird" | "rabbit" | "hamster" | "fish" | "other"
-  breed?: string
+  speciesId?: string // Reference to Species (structured data)
+  breed?: string // Legacy: kept for backward compatibility
+  breedId?: string // Reference to Breed (structured data relationship: Pet → Breed → Species)
   age?: number
   gender?: "male" | "female"
   avatar?: string
@@ -76,6 +92,10 @@ export interface Pet {
   specialNeeds?: string
   privacy?: PrivacyLevel | PetPrivacySettings
   socialCircle?: PetSocialCircle
+  // Structured data support
+  tags?: string[] // Topic tags (e.g., ["species:dog", "topic:training"])
+  categories?: string[] // Classification categories
+  properties?: Record<string, string | number | boolean> // Key-value properties
 }
 
 export type PetRelationshipType =
@@ -181,12 +201,173 @@ export interface BlogPostMedia {
   links: BlogPostMediaLink[]
 }
 
+// Poll types for blog posts
+export interface BlogPostPollOption {
+  id: string
+  text: string
+  voteCount: number
+}
+
+export interface BlogPostPoll {
+  question: string
+  options: BlogPostPollOption[]
+  allowMultiple: boolean
+  totalVotes: number
+  expiresAt?: string
+  isClosed?: boolean
+}
+
+export interface BlogPostPollVote {
+  userId: string
+  optionIds: string[]
+  votedAt: string
+}
+
+// Location types for blog posts
+export interface BlogPostLocation {
+  name?: string
+  address: string
+  latitude: number
+  longitude: number
+  placeId?: string // Reference to Place if it exists
+  leashRequired?: boolean
+  permitRequired?: boolean
+  additionalInfo?: string
+}
+
+// Post template types
+export type BlogPostTemplate = "lost-found" | "adoption-story" | "health-update" | "training-tip" | "adventure-story" | "general"
+
+export type BlogPostQueueStatus = "draft" | "review" | "scheduled" | "published" | "flagged"
+
+// Content lifecycle status for wiki articles and blog posts
+export type ContentLifecycleStatus = "draft" | "review" | "published" | "flagged"
+
+// Sensitive topic categories that require flagged revisions
+export type SensitiveTopicCategory = "health" | "regulatory"
+
+// User preference for viewing sensitive content
+export type ContentViewPreference = "stable" | "latest"
+
+// User preferences for content viewing
+export interface UserContentPreferences {
+  userId: string
+  sensitiveContentViewPreference?: ContentViewPreference // Preference for viewing sensitive content (stable vs latest)
+  defaultToStableForHealth?: boolean // Default to stable view for health topics
+  defaultToStableForRegulatory?: boolean // Default to stable view for regulatory topics
+  updatedAt: string
+}
+
+// Flagged revision status
+export type FlaggedRevisionStatus = "pending" | "reviewing" | "approved" | "rejected" | "resolved"
+
+// Flagged revision for sensitive topics
+export interface FlaggedRevision {
+  id: string
+  revisionId: string // ID of the WikiRevision or BlogPost revision
+  articleId: string // ID of the WikiArticle or BlogPost
+  articleType: "wiki" | "blog"
+  category: SensitiveTopicCategory // "health" | "regulatory"
+  status: FlaggedRevisionStatus
+  priority: "low" | "medium" | "high" | "urgent"
+  flaggedBy?: string // User ID who flagged this revision
+  flaggedAt: string // ISO timestamp
+  flagReason: string // Reason for flagging
+  assignedTo?: string // User ID assigned to review
+  reviewedBy?: string // User ID who reviewed
+  reviewedAt?: string // ISO timestamp of review
+  reviewNotes?: string // Notes from reviewer
+  resolvedAt?: string // ISO timestamp when resolved
+  resolution?: "approved" | "rejected" | "modified"
+}
+
+// Audit log for flagged revisions
+export interface FlaggedRevisionAuditLog {
+  id: string
+  flaggedRevisionId: string
+  action: "created" | "assigned" | "reviewed" | "approved" | "rejected" | "resolved" | "updated"
+  performedBy: string // User ID
+  performedAt: string // ISO timestamp
+  notes?: string
+  changes?: Record<string, unknown> // Field changes
+}
+
+// Blog Series & Reading Lists
+export interface BlogSeries {
+  id: string
+  title: string
+  description?: string
+  authorId: string
+  slug: string
+  posts: string[] // BlogPost IDs in order
+  coverImage?: string
+  createdAt: string
+  updatedAt: string
+  published: boolean
+}
+
+export interface ReadingList {
+  id: string
+  userId: string
+  name: string
+  description?: string
+  postIds: string[] // BlogPost IDs
+  isPublic: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+// Author Page Information
+export interface AuthorInfo {
+  byline?: string // Short author bio/description
+  vetBadge?: boolean // Whether author is a verified veterinarian
+  contactLinks?: {
+    email?: string
+    website?: string
+    social?: {
+      twitter?: string
+      instagram?: string
+      facebook?: string
+      linkedin?: string
+    }
+  }
+  credentials?: string[] // Professional credentials (e.g., ["DVM", "PhD"])
+  specialization?: string[] // Areas of expertise
+}
+
+// MDX Callout Types
+export type CalloutType = "vet-tip" | "safety-warning" | "checklist" | "info" | "note"
+
+export interface MDXCallout {
+  type: CalloutType
+  title?: string
+  content: string
+  items?: string[] // For checklist type
+}
+
+// Blog Section Promotion
+export interface BlogSectionPromotion {
+  id: string
+  postId: string
+  blockId: string // Content block identifier within the post
+  sectionContent: string
+  citations?: string[]
+  wikiSlug?: string // Generated wiki article slug
+  status: "pending" | "approved" | "rejected" | "published"
+  promotedBy: string // User ID
+  promotedAt: string
+  wikiArticleId?: string // Created wiki article ID
+}
+
 export interface BlogPost {
   id: string
   petId: string
   authorId: string
   title: string
   content: string
+  slug?: string // URL-friendly slug (generated from title)
+  seriesId?: string // ID of BlogSeries this post belongs to
+  seriesOrder?: number // Order within the series
   coverImage?: string
   tags: string[]
   categories: string[]
@@ -195,13 +376,35 @@ export interface BlogPost {
   createdAt: string
   updatedAt: string
   privacy?: "public" | "private" | "followers-only"
-  isDraft?: boolean
+  privacyCircle?: PrivacyCircle
+  isDraft?: boolean // Deprecated: use queueStatus instead
+  queueStatus?: BlogPostQueueStatus // Draft → Review → Scheduled → Published → Flagged workflow
+  scheduledAt?: string // ISO timestamp when post should be published
+  reviewedBy?: string // User ID who reviewed/approved
+  reviewedAt?: string // ISO timestamp of review
+  reviewNotes?: string // Admin notes during review
+  // Content lifecycle fields for sensitive topics
+  isSensitiveTopic?: boolean // Whether this post covers sensitive topics (health, regulatory)
+  sensitiveCategories?: SensitiveTopicCategory[] // Categories of sensitive topics
+  flaggedRevisionId?: string // Reference to FlaggedRevision if flagged
+  featuredOnHomepage?: boolean // Whether post is featured on homepage
+  relatedWikiIds?: string[] // Array of WikiArticle IDs to attach
   hashtags?: string[]
   isPromoted?: boolean
   promotedUntil?: string
   promotionStatus?: "pending" | "approved" | "rejected"
   promotionBudget?: number
   media?: BlogPostMedia
+  poll?: PostPoll
+  placeId?: string
+  reports?: ArticleReport[] // User reports on this article
+  coiFlags?: COIFlag[] // Conflict of Interest flags
+  // New fields for series, author, and MDX
+  seriesId?: string // ID of BlogSeries this post belongs to
+  seriesOrder?: number // Order within the series (1-based)
+  authorInfo?: AuthorInfo // Author page information
+  mdxCallouts?: MDXCallout[] // MDX callouts in the content
+  sectionPromotions?: BlogSectionPromotion[] // Sections promoted to wiki
 }
 
 export type ReactionType = "like" | "love" | "laugh" | "wow" | "sad" | "angry"
@@ -316,6 +519,61 @@ export interface WikiArticle {
   updatedAt: string
   reports?: ArticleReport[] // User reports on this article
   coiFlags?: COIFlag[] // Conflict of Interest flags
+  breedData?: any // Breed infobox data with computed tags (only for breeds category)
+  // Content lifecycle fields
+  lifecycleStatus?: ContentLifecycleStatus // Draft → Review → Publish → Flagged workflow
+  isSensitiveTopic?: boolean // Whether this article covers sensitive topics (health, regulatory)
+  sensitiveCategories?: SensitiveTopicCategory[] // Categories of sensitive topics
+  reviewedBy?: string // User ID who reviewed/approved
+  reviewedAt?: string // ISO timestamp of review
+  reviewNotes?: string // Admin notes during review
+  flaggedRevisionId?: string // Reference to FlaggedRevision if flagged
+  stableRevisionId?: string // ID of the stable revision (for sensitive topics)
+  latestRevisionId?: string // ID of the latest revision (may be flagged)
+}
+
+export type HealthConditionSeverity = "mild" | "moderate" | "severe" | "critical"
+export type HealthConditionUrgency = "routine" | "urgent" | "emergency"
+
+export interface HealthCondition {
+  id: string
+  title: string
+  slug: string
+  affectedSpecies: string[] // e.g., ["dog", "cat"]
+  affectedBreeds?: string[] // Specific breeds affected
+  symptoms: string[] // List of symptoms
+  severity: HealthConditionSeverity
+  urgencyFlag: boolean // "seek vet now?" flag
+  typicalOnsetAge?: {
+    min?: number // Minimum age in months
+    max?: number // Maximum age in months
+    unit: "weeks" | "months" | "years"
+  }
+  causes: string[] // List of causes
+  risks: string[] // Risk factors
+  diagnosis: string // Diagnosis information
+  treatmentOptions: string[] // Treatment options
+  recovery: string // Recovery information
+  prognosis: string // Prognosis information
+  prevention: string[] // Prevention measures
+  references: Array<{
+    id: string
+    title: string
+    url: string
+    publisher?: string
+    date?: string
+  }>
+  reviewer?: {
+    vetId: string
+    vetName: string
+    licenseNumber?: string
+    credentials?: string[]
+  }
+  reviewDate?: string // ISO date string
+  createdAt: string
+  updatedAt: string
+  coverImage?: string
+  tags?: string[]
 }
 
 export interface Activity {
@@ -435,6 +693,8 @@ export interface InsuranceInfo {
 
 export type PrivacyLevel = "public" | "private" | "followers-only"
 
+export type PrivacyCircle = "followers-only" | "group-only" | "close-friends"
+
 export interface PetPrivacySettings {
   visibility: PrivacyLevel
   interactions: PrivacyLevel
@@ -461,6 +721,7 @@ export type NotificationType =
   | "friend_request_declined"
   | "friend_request_cancelled"
   | "message"
+  | "watch_update"
 
 export type NotificationPriority = "low" | "normal" | "high" | "urgent"
 
@@ -742,6 +1003,14 @@ export interface PollOption {
   voteCount: number
 }
 
+export interface PostPoll {
+  question: string
+  options: PollOption[]
+  allowMultiple?: boolean
+  expiresAt?: string
+  isClosed?: boolean
+}
+
 export interface GroupPoll {
   id: string
   groupId: string
@@ -786,12 +1055,15 @@ export interface EventRSVP {
   locationShare?: EventLocationShare
 }
 
+export type GroupEventType = "adoption-drive" | "meetup" | "vaccination-clinic" | "other"
+
 export interface GroupEvent {
   id: string
   groupId: string
   authorId: string
   title: string
   description: string
+  eventType?: GroupEventType
   location?: string
   startDate: string
   endDate?: string
@@ -807,6 +1079,8 @@ export interface GroupEvent {
   updatedAt: string
   locationSharingEnabled?: boolean
   locationSharingDescription?: string
+  reminderSent?: boolean // Whether reminder has been sent
+  reminderSentAt?: string // When reminder was sent
 }
 
 export interface GroupResource {
@@ -1020,23 +1294,85 @@ export interface Organization {
 }
 
 export interface ExpertProfile {
+  id: string
   userId: string
   credential: string
   licenseNo?: string
   region?: string
+  status: "pending" | "verified" | "expired" | "revoked"
   verifiedAt?: string
+  expiresAt?: string
+  revokedAt?: string
+  documents?: Array<{
+    name: string
+    url: string
+    type: string
+    uploadedAt: string
+  }>
+  reviewNotes?: string
+  reviewedBy?: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface ExpertVerificationRequest {
+  id: string
+  userId: string
+  status: "pending" | "approved" | "rejected"
+  credential: string
+  credentialFileUrls: string[]
+  licenseNo?: string
+  region?: string
+  reviewedBy?: string
+  reviewedAt?: string
+  reason?: string
+  createdAt: string
+  updatedAt: string
 }
 
 export type PlaceModerationStatus = "pending" | "approved" | "rejected"
+export type PlaceType = "dog_park" | "trail" | "beach" | "pet_friendly_venue"
+export type LeashRule = "required" | "optional" | "prohibited" | "off_leash_allowed"
+
+export interface PlaceHours {
+  monday?: { open: string; close: string; closed?: boolean }
+  tuesday?: { open: string; close: string; closed?: boolean }
+  wednesday?: { open: string; close: string; closed?: boolean }
+  thursday?: { open: string; close: string; closed?: boolean }
+  friday?: { open: string; close: string; closed?: boolean }
+  saturday?: { open: string; close: string; closed?: boolean }
+  sunday?: { open: string; close: string; closed?: boolean }
+  notes?: string // Additional hours information
+}
+
+export interface PlaceUserReport {
+  id: string
+  userId: string
+  reportType: "crowding" | "cleanliness"
+  rating: number // 1-5 scale
+  comment?: string
+  reportedAt: string
+}
 
 export interface Place {
   id: string
   name: string
+  type: PlaceType
   address: string
   lat: number
   lng: number
+  hours?: PlaceHours
+  leashRule?: LeashRule
   amenities: string[]
   rules: string[]
+  hazards?: string[] // Safety concerns and potential dangers
+  fenced?: boolean // Whether the area is fenced
+  smallDogArea?: boolean // Separate area for small dogs
+  waterStation?: boolean // Water available on-site
+  parkingInfo?: string // Parking availability and details
+  permitRequired?: boolean // Whether a permit is required
+  photos?: string[] // Photo URLs for the place
+  userReports?: PlaceUserReport[] // User-reported crowding and cleanliness
   moderationStatus: PlaceModerationStatus
   createdAt: string
   updatedAt: string
@@ -1049,4 +1385,796 @@ export interface PlacePhoto {
   caption?: string
   uploadedById: string
   createdAt: string
+}
+
+// Offline Cache Types
+export interface CachedArticle {
+  id: string
+  type: "blog" | "wiki"
+  data: BlogPost | WikiArticle
+  cachedAt: string
+  lastAccessed: string
+  accessCount: number
+}
+
+export interface CachedImage {
+  url: string
+  blob: Blob
+  cachedAt: string
+  lastAccessed: string
+  accessCount: number
+  size: number
+}
+
+export interface SyncStatus {
+  isOnline: boolean
+  lastSyncAt?: string
+  pendingSyncCount: number
+  syncInProgress: boolean
+  lastError?: string
+}
+
+export interface OfflineRead {
+  articleId: string
+  articleType: "blog" | "wiki"
+  readAt: string
+  progress?: number // 0-100
+}
+
+// Re-Review Request System for Wiki Articles
+export interface ReReviewRequest {
+  id: string
+  articleId: string
+  requestedBy: string // User ID who requested the re-review
+  status: "pending" | "in_progress" | "completed" | "cancelled"
+  reason?: string // Optional reason provided by requester
+  assignedTo?: string // Expert user ID assigned to review
+  createdAt: string
+  updatedAt: string
+  completedAt?: string
+  notes?: string // Notes from the reviewer
+}
+
+export interface Product {
+  id: string
+  name: string
+  brand?: string
+  category: string
+  description?: string
+  price?: number
+  currency: string
+  imageUrl?: string
+  tags: string[]
+  inStock: boolean
+  rating?: number
+  reviewCount: number
+  isRecalled: boolean
+  recallNotice?: string
+  safetyNotices: string[]
+  createdAt: string
+  updatedAt: string
+}
+
+export type WikiRevisionStatus = "draft" | "stable" | "deprecated"
+
+export interface WikiRevision {
+  id: string
+  articleId: string
+  content: string
+  status: WikiRevisionStatus
+  authorId: string
+  createdAt: string
+  updatedAt: string
+  verifiedBy?: string
+  summary?: string
+  reasonForChange?: string // Reason for making this revision
+}
+
+// Re-Review Request System for Wiki Articles
+export interface ReReviewRequest {
+  id: string
+  articleId: string
+  requestedBy: string // User ID who requested the re-review
+  status: "pending" | "in_progress" | "completed" | "cancelled"
+  reason?: string // Optional reason provided by requester
+  assignedTo?: string // Expert user ID assigned to review
+  createdAt: string
+  updatedAt: string
+  completedAt?: string
+  notes?: string // Notes from the reviewer
+}
+
+export interface Product {
+  id: string
+  name: string
+  brand?: string
+  category: string
+  description?: string
+  price?: number
+  currency: string
+  imageUrl?: string
+  tags: string[]
+  inStock: boolean
+  rating?: number
+  reviewCount: number
+  isRecalled: boolean
+  recallNotice?: string
+  safetyNotices: string[]
+  createdAt: string
+  updatedAt: string
+}
+
+export type WikiRevisionStatus = "draft" | "stable" | "deprecated"
+
+export interface WikiRevision {
+  id: string
+  articleId: string
+  content: string
+  status: WikiRevisionStatus
+  authorId: string
+  createdAt: string
+  updatedAt: string
+  verifiedBy?: string
+  summary?: string
+  reasonForChange?: string // Reason for making this revision
+}
+
+
+// Media Moderation Types
+export type MediaModerationStatus = 'pending' | 'approved' | 'rejected' | 'flagged' | 'reviewed';
+
+export type ModerationReason = 'graphic_content' | 'inappropriate' | 'violence' | 'explicit' | 'other';
+
+export interface MediaModeration {
+  id: string;
+  mediaUrl: string;
+  mediaType: 'image' | 'video';
+  status: MediaModerationStatus;
+  moderationScore?: number; // 0-1 confidence score
+  reason?: ModerationReason;
+  autoFlagged: boolean;
+  reviewedBy?: string;
+  reviewedAt?: Date;
+  createdAt: Date;
+  updatedAt: Date;
+  blurOnWarning: boolean;
+  metadata?: {
+    width?: number;
+    height?: number;
+    duration?: number;
+    fileSize?: number;
+  };
+}
+
+export interface ModerationQueueItem {
+  id: string;
+  mediaUrl: string;
+  mediaType: 'image' | 'video';
+  status: MediaModerationStatus;
+  moderationScore: number;
+  reason?: ModerationReason;
+  createdAt: Date;
+  metadata?: {
+    width?: number;
+    height?: number;
+    duration?: number;
+    fileSize?: number;
+  };
+}
+
+export interface ModerationReviewAction {
+  action: 'approve' | 'reject' | 'flag';
+  reason?: ModerationReason;
+  notes?: string;
+}
+
+// Moderation Reports Types
+export type ReportType = 'spam' | 'abuse' | 'misinfo' | 'graphic';
+export type ReportStatus = 'open' | 'triaged' | 'closed';
+export type ReportAge = 'last-hour' | 'last-day' | 'last-week' | 'last-month' | 'all';
+export type ReporterReputation = 'high' | 'medium' | 'low' | 'all';
+
+export interface ModerationReport {
+  id: string;
+  reporterId: string;
+  reporterName?: string;
+  reporterReputation?: ReporterReputation;
+  subjectType: 'post' | 'comment' | 'media' | 'wiki';
+  subjectId: string;
+  subjectContent?: string; // Preview of reported content
+  reason: string;
+  type: ReportType;
+  status: ReportStatus;
+  assignedTo?: string;
+  assignedToName?: string;
+  createdAt: string;
+  updatedAt: string;
+  evidence?: EvidenceItem[];
+  actorHistory?: ActorHistoryItem[];
+  actions: ModerationActionItem[];
+}
+
+export interface EvidenceItem {
+  id: string;
+  type: 'image' | 'video' | 'text' | 'link';
+  url?: string;
+  content?: string;
+  thumbnail?: string;
+}
+
+export interface ActorHistoryItem {
+  id: string;
+  actorId: string;
+  actorName?: string;
+  action: string;
+  timestamp: string;
+  details?: string;
+}
+
+export interface ModerationActionItem {
+  id: string;
+  reportId: string;
+  actorId: string;
+  actorName?: string;
+  type: 'warn' | 'mute' | 'shadowban' | 'suspend' | 'reject' | 'approve';
+  reason?: string;
+  metadata?: {
+    muteDays?: number;
+    escalateToSenior?: boolean;
+  };
+  createdAt: string;
+}
+
+export interface BulkActionRequest {
+  reportIds: string[];
+  action: 'warn' | 'mute' | 'shadowban' | 'suspend' | 'reject' | 'approve';
+  reason: string;
+  template?: string;
+  escalateToSenior?: boolean;
+  muteDays?: number;
+}
+
+export interface ReportFilters {
+  type?: ReportType | 'all';
+  status?: ReportStatus | 'all';
+  age?: ReportAge;
+  reporterReputation?: ReporterReputation;
+}
+
+export type AnnouncementPriority = "low" | "normal" | "high" | "urgent"
+
+export type AnnouncementDismissalPolicy = "session" | "permanent" | "temporary" | "never"
+
+export type AnnouncementStatus = "draft" | "active" | "expired" | "archived"
+
+export interface Announcement {
+  id: string
+  title: string
+  content: string
+  priority: AnnouncementPriority
+  status: AnnouncementStatus
+  dismissalPolicy: AnnouncementDismissalPolicy
+  startDate?: string // ISO timestamp - when to start showing
+  endDate?: string // ISO timestamp - when to stop showing
+  createdBy: string
+  createdAt: string
+  updatedAt: string
+  targetAudience?: "all" | "logged-in" | "logged-out"
+  actionUrl?: string
+  actionText?: string
+  variant?: "info" | "warning" | "success" | "error"
+}
+
+export interface AnnouncementDismissal {
+  announcementId: string
+  userId?: string // undefined for anonymous users (session-based)
+  dismissedAt: string
+  expiresAt?: string // For temporary dismissals
+}
+
+// Reporting and Moderation Types
+
+export type ArticleReportReason =
+  | "spam"
+  | "harassment"
+  | "misinformation"
+  | "inappropriate"
+  | "copyright"
+  | "impersonation"
+  | "hate_speech"
+  | "self_harm"
+  | "animal_abuse"
+  | "violence"
+  | "illegal"
+  | "other"
+
+export type ReportStatus = "pending" | "investigating" | "resolved" | "dismissed"
+export type ReportPriority = "low" | "medium" | "high" | "urgent"
+export type ReportSeverity = "low" | "medium" | "high" | "critical"
+export type ReportCategory = "content" | "behavior" | "safety" | "policy" | "other"
+
+export interface ArticleReport {
+  id: string
+  reporterId: string
+  reason: ArticleReportReason
+  message?: string
+  reportedAt: string
+  status: ReportStatus
+  priority?: ReportPriority
+  assignedTo?: string
+  notes?: string
+  resolvedAt?: string
+}
+
+export interface COIFlag {
+  id: string
+  flaggedBy: string
+  flaggedAt: string
+  reason: string
+  details?: string
+  severity: ReportSeverity
+  status: "active" | "resolved" | "dismissed"
+  relatedEntities?: string[]
+}
+
+// Prisma-based Reporting System Types
+
+export interface ReportReason {
+  id: string
+  code: string
+  name: string
+  description?: string
+  category: ReportCategory
+  severity: ReportSeverity
+  active: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export interface ContentReport {
+  id: string
+  reporterId: string
+  contentType: string // "blog_post", "article", "comment", "place", "product", etc.
+  contentId: string
+  reasonId: string
+  customReason?: string
+  description?: string
+  status: ReportStatus
+  priority: ReportPriority
+  assignedTo?: string
+  notes?: string
+  createdAt: string
+  updatedAt: string
+  resolvedAt?: string
+  reason?: ReportReason
+}
+
+export interface ModerationQueue {
+  id: string
+  contentType: string
+  contentId: string
+  priority: ReportPriority
+  reportedBy: string[]
+  reportCount: number
+  autoFlagged: boolean
+  autoReason?: string
+  status: "pending" | "in_review" | "resolved"
+  assignedTo?: string
+  createdAt: string
+  updatedAt: string
+  reviewedAt?: string
+}
+
+export interface SoftDeleteAudit {
+  id: string
+  contentType: string
+  contentId: string
+  deletedBy: string
+  reason?: string
+  metadata?: Record<string, unknown>
+  deletedAt: string
+  restoredAt?: string
+  restoredBy?: string
+}
+
+export interface ModerationActionLog {
+  id: string
+  action: "approve" | "reject" | "delete" | "warn" | "ban" | "restore" | "other"
+  contentType: string
+  contentId: string
+  performedBy: string
+  reason?: string
+  metadata?: Record<string, unknown>
+  createdAt: string
+}
+
+// Edit Request System for Content Moderation
+export type EditRequestType = "blog" | "wiki" | "pet" | "user"
+
+export type EditRequestStatus = "pending" | "approved" | "rejected"
+
+export interface EditRequest {
+  id: string
+  type: EditRequestType
+  contentId: string // ID of the content being edited
+  authorId: string // User who made the edit
+  reporterId?: string // User who reported the content (for edits triggered by reports)
+  status: EditRequestStatus
+  originalData: Record<string, unknown> // Original content data
+  editedData: Record<string, unknown> // New content data
+  changesSummary: string // Human-readable summary of changes
+  reason?: string // Reason for rejection (if rejected)
+  reviewedBy?: string // Admin/moderator who reviewed
+  reviewedAt?: string // Timestamp of review
+  createdAt: string // When the edit was requested
+  priority?: "low" | "medium" | "high" // Manual priority assignment
+}
+
+export interface EditRequestAuditLog {
+  id: string
+  editRequestId: string
+  action: "created" | "approved" | "rejected" | "priority_changed"
+  performedBy: string
+  performedAt: string
+  reason?: string
+  metadata?: Record<string, unknown>
+}
+
+
+// Privacy Request Types
+export type PrivacyRequestType = "data_export" | "data_deletion" | "content_takedown"
+
+export type PrivacyRequestStatus = "pending" | "in_progress" | "completed" | "rejected" | "cancelled"
+
+export interface PrivacyRequest {
+  id: string
+  userId: string
+  type: PrivacyRequestType
+  status: PrivacyRequestStatus
+  requestedAt: string // When the request was submitted
+  startedAt?: string // When processing began
+  completedAt?: string // When request was fully processed
+  slaDeadline: string // SLA deadline for completion
+  slaWarningThreshold: number // Minutes before deadline to show warning
+  assignedTo?: string // Admin user ID handling the request
+  priority: "low" | "normal" | "high" | "urgent" // Based on SLA time remaining
+  metadata?: {
+    petId?: string // For content takedown requests
+    contentId?: string // For content takedown requests
+    contentType?: "post" | "wiki" | "comment" | "photo" // For content takedown
+    exportFormat?: "json" | "csv" // For data export
+    reason?: string // For content takedown or deletion
+  }
+  notes?: string // Internal admin notes
+  adminNotes?: string[] // Array of admin notes with timestamps
+  rejectionReason?: string // If status is rejected
+}
+
+export interface PrivacyRequestMetrics {
+  totalRequests: number
+  pendingRequests: number
+  inProgressRequests: number
+  completedRequests: number
+  overdueRequests: number
+  averageCompletionTime: number // In hours
+  slaComplianceRate: number // Percentage of requests completed within SLA
+  requestsByType: Record<PrivacyRequestType, number>
+  requestsByPriority: Record<string, number>
+}
+
+export interface SessionDevice {
+  deviceId: string
+  userId: string
+  name: string // Device name (e.g., "iPhone 13", "Chrome on Windows")
+  type: "mobile" | "tablet" | "desktop" | "other"
+  os?: string // Operating system
+  browser?: string // Browser name
+  ip?: string // IP address
+  lastActivity: string // ISO timestamp
+  createdAt: string // ISO timestamp
+  isCurrent: boolean // Whether this is the current session
+}
+
+export type WebhookStatus = "active" | "paused" | "failed"
+export type WebhookHttpMethod = "POST" | "PUT" | "PATCH"
+
+export interface WebhookDelivery {
+  id: string
+  webhookId: string
+  status: "pending" | "success" | "failed"
+  attempts: number
+  maxAttempts: number
+  responseCode?: number
+  responseBody?: string
+  errorMessage?: string
+  createdAt: string
+  deliveredAt?: string
+}
+
+export interface Webhook {
+  id: string
+  name: string
+  url: string
+  method: WebhookHttpMethod
+  status: WebhookStatus
+  secret?: string // HMAC secret
+  events: string[] // Event types to trigger webhook
+  retryCount: number // Number of retry attempts (default: 3)
+  retryDelay: number // Delay between retries in milliseconds (default: 1000)
+  timeout: number // Request timeout in milliseconds (default: 30000)
+  headers?: Record<string, string> // Custom headers
+  createdAt: string
+  updatedAt: string
+  lastDeliveryAt?: string
+  lastDeliveryStatus?: "success" | "failed"
+  deliveryHistory?: WebhookDelivery[]
+}
+
+export interface ApiKey {
+  id: string
+  name: string
+  key: string // Full API key (only shown once on creation)
+  keyPrefix: string // First 8 characters for display
+  scopes: string[] // Permissions/scopes
+  lastUsedAt?: string
+  expiresAt?: string
+  createdAt: string
+  isActive: boolean
+}
+
+export interface IntegrationSettings {
+  webhooks: Webhook[]
+  apiKeys: ApiKey[]
+}
+
+export type PinnedItemType = "post" | "pet" | "wiki"
+
+export interface PinnedItem {
+  id: string
+  type: PinnedItemType
+  itemId: string
+  pinnedAt: string
+  title?: string
+  description?: string
+  image?: string
+}
+
+export type CareGuideCategory = "nutrition" | "grooming" | "enrichment" | "senior-care" | "puppy-kitten-care"
+
+export type CareGuideFrequency = "daily" | "weekly" | "bi-weekly" | "monthly" | "quarterly" | "as-needed" | "seasonal"
+
+export interface CareGuideStep {
+  id: string
+  order: number
+  title: string
+  description: string
+  duration?: string // e.g., "5-10 minutes"
+  tips?: string[]
+  warnings?: string[]
+}
+
+export interface EquipmentItem {
+  id: string
+  name: string
+  description?: string
+  required: boolean
+  alternatives?: string[]
+}
+
+export interface CommonMistake {
+  id: string
+  title: string
+  description: string
+  consequences?: string
+  howToAvoid: string
+}
+
+export interface SeasonalityNote {
+  season: "spring" | "summer" | "fall" | "winter" | "all-seasons"
+  notes: string
+  adjustments?: string[]
+}
+
+export interface CareGuide {
+  id: string
+  title: string
+  slug: string
+  category: CareGuideCategory
+  species: ("dog" | "cat" | "bird" | "rabbit" | "hamster" | "fish" | "other")[]
+  description: string
+  coverImage?: string
+  steps: CareGuideStep[]
+  frequency: CareGuideFrequency
+  frequencyDetails?: string // Additional frequency notes
+  equipment: EquipmentItem[]
+  commonMistakes: CommonMistake[]
+  seasonalityNotes?: SeasonalityNote[]
+  authorId?: string
+  views: number
+  likes: string[]
+  createdAt: string
+  updatedAt: string
+  tags?: string[]
+  difficulty?: "beginner" | "intermediate" | "advanced"
+  estimatedTime?: string // Total time estimate
+}
+
+export interface TranslationGlossary {
+  id: string
+  sourceTerm: string // Term in source language (usually English)
+  targetLanguage: string // Language code (e.g., "es", "fr")
+  targetTerm: string // Translated term
+  context?: string // Optional context or usage notes
+  category?: string // Optional category (e.g., "medical", "breed", "care")
+  createdAt: string
+  updatedAt: string
+  createdBy?: string // User ID who created the entry
+}
+
+// ==================== MODERATION & REVIEWER TOOLS TYPES ====================
+
+export type ChangeType = "create" | "edit" | "delete" | "revert" | "move" | "protect" | "unprotect"
+
+export type ChangeStatus = "pending" | "approved" | "rejected" | "auto-approved"
+
+export type QueueType = "new-pages" | "flagged-health" | "coi-edits" | "image-reviews"
+
+export type TriageCategory = "needs-maps" | "outdated-laws" | "needs-citations" | "needs-medical-review" | "needs-legal-review" | "needs-translation" | "pending-expert-review"
+
+export interface ContentDiff {
+  field: string
+  oldValue: string | null
+  newValue: string | null
+  diffHtml?: string // HTML representation of the diff
+}
+
+export interface RecentChange {
+  id: string
+  type: ChangeType
+  status: ChangeStatus
+  contentType: "wiki" | "blog" | "post" | "pet-profile" | "article"
+  contentId: string
+  contentTitle: string
+  contentSlug?: string
+  changes: ContentDiff[]
+  summary?: string // Edit summary/comment
+  changedBy: string // User ID
+  changedByName?: string // User display name
+  changedAt: string
+  reviewedBy?: string // Moderator/Reviewer ID
+  reviewedAt?: string
+  reviewComment?: string
+  tags?: string[]
+  triageCategories?: TriageCategory[]
+  flaggedFor?: QueueType[]
+  isMinor?: boolean
+  isRevert?: boolean
+  revertedChangeId?: string
+}
+
+export interface QueueItem {
+  id: string
+  queueType: QueueType
+  changeId: string
+  priority: "low" | "medium" | "high" | "urgent"
+  assignedTo?: string // Moderator/Reviewer ID
+  assignedAt?: string
+  createdAt: string
+  updatedAt: string
+  status: "pending" | "in-progress" | "resolved" | "dismissed"
+  notes?: string
+  change: RecentChange
+}
+
+export interface BulkOperation {
+  id: string
+  type: "revert" | "range-block" | "approve" | "reject" | "assign-category"
+  targetIds: string[] // Change IDs or user IDs
+  filters?: {
+    contentType?: RecentChange["contentType"]
+    changedBy?: string
+    dateRange?: {
+      from: string
+      to: string
+    }
+    tags?: string[]
+    triageCategories?: TriageCategory[]
+  }
+  performedBy: string
+  performedAt: string
+  result: {
+    succeeded: number
+    failed: number
+    errors?: Array<{ id: string; error: string }>
+  }
+  metadata?: Record<string, unknown>
+}
+
+export interface RangeBlock {
+  id: string
+  ipRange: string // e.g., "192.168.1.0/24" or "10.0.0.0-10.0.0.255"
+  reason: string
+  expiresAt?: string
+  createdAt: string
+  createdBy: string
+  isActive: boolean
+  affectedChanges?: string[] // Change IDs affected by this block
+}
+
+export interface LinkRule {
+  id: string
+  domain: string // e.g., "example.com" or "*.example.com" for wildcard
+  pattern?: string // Regex pattern for more complex matching
+  type: "whitelist" | "blacklist"
+  reason?: string
+  createdAt: string
+  createdBy: string
+  isActive: boolean
+  appliesTo: ("wiki" | "blog" | "post" | "comment" | "all")[]
+}
+
+export interface DetectedLink {
+  url: string
+  domain: string
+  rule?: LinkRule // Matching rule if any
+  status: "allowed" | "blocked" | "warning" | "unknown"
+  detectedAt: string
+  detectedIn: {
+    contentType: RecentChange["contentType"]
+    contentId: string
+    field: string
+  }
+}
+
+export interface HiddenCategory {
+  id: string
+  name: string
+  slug: string
+  description?: string
+  color?: string // Hex color for UI display
+  icon?: string
+  isActive: boolean
+  createdAt: string
+  createdBy: string
+  itemCount?: number // Number of items assigned to this category
+}
+
+export interface CategoryAssignment {
+  id: string
+  categoryId: string
+  contentType: RecentChange["contentType"]
+  contentId: string
+  assignedBy: string
+  assignedAt: string
+  notes?: string
+}
+
+export interface ModerationStats {
+  recentChanges: {
+    total: number
+    pending: number
+    approved: number
+    rejected: number
+  }
+  queues: {
+    [K in QueueType]: {
+      pending: number
+      inProgress: number
+      resolved: number
+    }
+  }
+  bulkOperations: {
+    last24Hours: number
+    last7Days: number
+  }
+  links: {
+    whitelisted: number
+    blacklisted: number
+    detected: number
+    blocked: number
+  }
+  categories: {
+    total: number
+    assignments: number
+  }
 }

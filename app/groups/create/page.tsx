@@ -121,7 +121,7 @@ export default function CreateGroupPage() {
           <BackButton href="/groups">Back to Groups</BackButton>
         </div>
 
-        <Card className="mb-4 md:mb-6">
+        <Card className="mb-6">
           <CardHeader>
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-primary/10">

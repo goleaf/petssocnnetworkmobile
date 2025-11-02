@@ -48,6 +48,7 @@ import { FriendRequestButton, FriendRequestsSection } from "@/components/friend-
 import { canViewPet, canInteractWithPet } from "@/lib/utils/privacy"
 import { PetBreedSummary } from "@/components/pet-breed-summary"
 import { PetCareChecklist } from "@/components/pet-care-checklist"
+import { PetFavorites } from "@/components/pet/pet-favorites"
 
 const formatSpecies = (species: string) => species.charAt(0).toUpperCase() + species.slice(1)
 
@@ -486,66 +487,14 @@ export default function PetProfilePage({ params }: { params: Promise<{ username:
             )}
 
             {/* Favorite Things */}
-            {pet.favoriteThings && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Star className="h-5 w-5" />
-                    Favorite Things
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {pet.favoriteThings.toys && pet.favoriteThings.toys.length > 0 && (
-                    <div>
-                      <p className="text-sm font-medium mb-2">Toys</p>
-                      <div className="flex flex-wrap gap-2">
-                        {pet.favoriteThings.toys.map((toy) => (
-                          <Badge key={toy} variant="outline">
-                            {toy}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {pet.favoriteThings.activities && pet.favoriteThings.activities.length > 0 && (
-                    <div>
-                      <p className="text-sm font-medium mb-2">Activities</p>
-                      <div className="flex flex-wrap gap-2">
-                        {pet.favoriteThings.activities.map((activity) => (
-                          <Badge key={activity} variant="outline">
-                            {activity}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {pet.favoriteThings.places && pet.favoriteThings.places.length > 0 && (
-                    <div>
-                      <p className="text-sm font-medium mb-2">Places</p>
-                      <div className="flex flex-wrap gap-2">
-                        {pet.favoriteThings.places.map((place) => (
-                          <Badge key={place} variant="outline">
-                            {place}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {pet.favoriteThings.foods && pet.favoriteThings.foods.length > 0 && (
-                    <div>
-                      <p className="text-sm font-medium mb-2">Foods</p>
-                      <div className="flex flex-wrap gap-2">
-                        {pet.favoriteThings.foods.map((food) => (
-                          <Badge key={food} variant="outline">
-                            {food}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            )}
+            <PetFavorites
+              pet={pet}
+              currentUserId={currentUser?.id || null}
+              onPetUpdate={(updatedPet) => {
+                setPet(updatedPet)
+                refreshPetData()
+              }}
+            />
 
             {/* Diet Information */}
             {pet.dietInfo && (

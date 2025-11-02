@@ -13,6 +13,7 @@ import { getBlogPosts, getPets, getUsers } from "@/lib/storage"
 import { formatCommentDate } from "@/lib/utils/date"
 import { stripHtml } from "@/lib/utils/strip-html"
 import { slugifyCategory, formatCategoryLabel } from "@/lib/utils/categories"
+import { calculateReadingTime, formatReadingTime } from "@/lib/utils/reading-time"
 import { useAuth } from "@/lib/auth"
 import { Search, Heart, FileText, Sparkles, Camera, GraduationCap, Gamepad2, Plane, ChevronLeft, ChevronRight, Clock, TrendingUp, Plus, User, BookOpen, Tag } from "lucide-react"
 import Link from "next/link"
@@ -20,6 +21,7 @@ import { canViewPost } from "@/lib/utils/privacy"
 import { useStorageListener } from "@/lib/hooks/use-storage-listener"
 import type { BlogPost, Pet, User as UserType } from "@/lib/types"
 import { PostContent } from "@/components/post/post-content"
+import { BadgeDisplay } from "@/components/badge-display"
 
 const POSTS_PER_PAGE = 9
 const STORAGE_KEYS_TO_WATCH = ["pet_social_blog_posts", "pet_social_users", "pet_social_pets"]
@@ -207,7 +209,10 @@ export default function BlogPage() {
                 <AvatarFallback>{pet?.name?.charAt(0) ?? "?"}</AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold">{pet?.name}</p>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="text-sm font-semibold">{pet?.name}</p>
+                  {author && <BadgeDisplay user={author} size="sm" variant="icon" />}
+                </div>
                 <p className="text-xs text-muted-foreground">by {author?.fullName}</p>
               </div>
             </div>
@@ -216,12 +221,20 @@ export default function BlogPage() {
               <PostContent content={post.content} post={post} />
             </div>
             <div className="flex items-center justify-between text-sm text-muted-foreground">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 flex-wrap">
                 <div className="flex items-center gap-1">
                   <Heart className="h-4 w-4" />
                   {post.likes.length}
                 </div>
                 <span>{formatCommentDate(post.createdAt)}</span>
+                <span className="text-xs">•</span>
+                <span className="text-xs">{formatReadingTime(calculateReadingTime(post.content))}</span>
+                {post.updatedAt && post.updatedAt !== post.createdAt && (
+                  <>
+                    <span className="text-xs">•</span>
+                    <span className="text-xs italic">Updated {formatCommentDate(post.updatedAt)}</span>
+                  </>
+                )}
               </div>
             </div>
             {postCategories.length > 0 && (

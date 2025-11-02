@@ -9,7 +9,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
-import { X, Lock, Eye, EyeOff, Loader2, AlertCircle, CheckCircle2, GraduationCap, Heart, HeartHandshake, UtensilsCrossed } from "lucide-react"
+import { X, Lock, Eye, EyeOff, Loader2, AlertCircle, CheckCircle2, GraduationCap, Heart, HeartHandshake, UtensilsCrossed, Users, Image as ImageIcon, Settings, Tag, Gavel } from "lucide-react"
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import type { GroupType, GroupCategory, GroupVisibilitySettings, GroupContentVisibility } from "@/lib/types"
 import { getGroupCategories, getDefaultGroupVisibility } from "@/lib/storage"
 import { getAnimalConfigLucide } from "@/lib/animal-types"
@@ -272,13 +273,17 @@ export function GroupForm({ onSubmit, onCancel, initialData, isLoading = false }
 
       {/* Basic Information */}
       <Card>
-        <CardHeader>
-          <CardTitle>Basic Information</CardTitle>
-          <CardDescription>Set up your group's basic information</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="p-6 space-y-6">
+          <div className="flex items-center gap-3 mb-4">
+            <Users className="h-5 w-5 text-primary" />
+            <div>
+              <h2 className="text-xl font-semibold">Basic Information</h2>
+              <p className="text-sm text-muted-foreground mt-1">Set up your group's basic information</p>
+            </div>
+          </div>
           <div className="space-y-2">
-            <Label htmlFor="name">
+            <Label htmlFor="name" className="flex items-center gap-2">
+              <Users className="h-4 w-4" />
               Group Name <span className="text-destructive">*</span>
             </Label>
             <Input
@@ -304,12 +309,15 @@ export function GroupForm({ onSubmit, onCancel, initialData, isLoading = false }
               onChange={(e) => handleFieldChange("description", e.target.value)}
               placeholder="Describe what your group is about"
               rows={4}
-              className={errors.description ? "border-destructive" : ""}
+              className={`resize-none ${errors.description ? "border-destructive" : ""}`}
               disabled={isLoading}
             />
             {errors.description && (
               <p className="text-sm text-destructive">{errors.description}</p>
             )}
+            <p className="text-xs text-muted-foreground">
+              Share what your group is about and what members can expect
+            </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -352,15 +360,17 @@ export function GroupForm({ onSubmit, onCancel, initialData, isLoading = false }
               <div className="space-y-2">
                 <Label htmlFor="subcategoryId">Subcategory (Optional)</Label>
                 <Select
-                  value={formData.subcategoryId || ""}
-                  onValueChange={(value) => handleFieldChange("subcategoryId", value || undefined)}
+                  value={formData.subcategoryId ?? "__none"}
+                  onValueChange={(value) =>
+                    handleFieldChange("subcategoryId", value === "__none" ? undefined : value)
+                  }
                   disabled={isLoading}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select a subcategory" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value="__none">None</SelectItem>
                     {subcategories.map((subcategory) => (
                       <SelectItem key={subcategory.id} value={subcategory.id}>
                         {subcategory.name}
@@ -432,48 +442,72 @@ export function GroupForm({ onSubmit, onCancel, initialData, isLoading = false }
 
       {/* Images */}
       <Card>
-        <CardHeader>
-          <CardTitle>Images</CardTitle>
-          <CardDescription>Set your group's cover image and avatar (optional)</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="coverImage">Cover Image URL</Label>
-            <Input
-              id="coverImage"
-              value={formData.coverImage}
-              onChange={(e) => handleFieldChange("coverImage", e.target.value)}
-              placeholder="/path/to/cover-image.jpg"
-              disabled={isLoading}
-            />
-            <p className="text-xs text-muted-foreground">
-              URL to your group's cover image (recommended: 1200x400px)
-            </p>
+        <CardContent className="p-6 space-y-6">
+          <div className="flex items-center gap-3 mb-4">
+            <ImageIcon className="h-5 w-5 text-primary" />
+            <div>
+              <h2 className="text-xl font-semibold">Images</h2>
+              <p className="text-sm text-muted-foreground mt-1">Set your group's cover image and avatar (optional)</p>
+            </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="avatar">Avatar URL</Label>
-            <Input
-              id="avatar"
-              value={formData.avatar}
-              onChange={(e) => handleFieldChange("avatar", e.target.value)}
-              placeholder="/path/to/avatar.png"
-              disabled={isLoading}
-            />
-            <p className="text-xs text-muted-foreground">
-              URL to your group's avatar (recommended: 200x200px)
-            </p>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="coverImage">Cover Image URL</Label>
+              <Input
+                id="coverImage"
+                value={formData.coverImage}
+                onChange={(e) => handleFieldChange("coverImage", e.target.value)}
+                placeholder="https://example.com/cover-image.jpg"
+                disabled={isLoading}
+              />
+              <p className="text-xs text-muted-foreground">
+                URL to your group's cover image (recommended: 1200x400px)
+              </p>
+            </div>
+
+            <div className="flex flex-col md:flex-row gap-6 items-start">
+              <div className="flex flex-col items-center gap-3">
+                <Avatar className="h-32 w-32 border-4 border-background shadow-lg">
+                  <AvatarImage src={formData.avatar || "/placeholder.svg"} alt={formData.name || "Group"} />
+                  <AvatarFallback className="text-4xl">
+                    {(formData.name || "G").charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <p className="text-xs text-muted-foreground text-center">Avatar Preview</p>
+              </div>
+
+              <div className="flex-1 space-y-2 w-full">
+                <Label htmlFor="avatar" className="flex items-center gap-2">
+                  <ImageIcon className="h-4 w-4" />
+                  Avatar URL
+                </Label>
+                <Input
+                  id="avatar"
+                  value={formData.avatar}
+                  onChange={(e) => handleFieldChange("avatar", e.target.value)}
+                  placeholder="https://example.com/avatar.png"
+                  disabled={isLoading}
+                />
+                <p className="text-xs text-muted-foreground">
+                  URL to your group's avatar (recommended: 200x200px)
+                </p>
+              </div>
+            </div>
           </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
 
       {/* Visibility */}
       <Card>
-        <CardHeader>
-          <CardTitle>Visibility &amp; Discovery</CardTitle>
-          <CardDescription>Control how people find this group and who can see its content</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="p-6 space-y-6">
+          <div className="flex items-center gap-3 mb-4">
+            <Settings className="h-5 w-5 text-primary" />
+            <div>
+              <h2 className="text-xl font-semibold">Visibility &amp; Discovery</h2>
+              <p className="text-sm text-muted-foreground mt-1">Control how people find this group and who can see its content</p>
+            </div>
+          </div>
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
             <div className="space-y-1">
               <Label>Discoverability</Label>
@@ -541,11 +575,14 @@ export function GroupForm({ onSubmit, onCancel, initialData, isLoading = false }
 
       {/* Tags */}
       <Card>
-        <CardHeader>
-          <CardTitle>Tags</CardTitle>
-          <CardDescription>Add tags to help people discover your group (optional)</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="p-6 space-y-6">
+          <div className="flex items-center gap-3 mb-4">
+            <Tag className="h-5 w-5 text-primary" />
+            <div>
+              <h2 className="text-xl font-semibold">Tags</h2>
+              <p className="text-sm text-muted-foreground mt-1">Add tags to help people discover your group (optional)</p>
+            </div>
+          </div>
           <div className="flex gap-2">
             <Input
               value={newTag}
@@ -585,11 +622,14 @@ export function GroupForm({ onSubmit, onCancel, initialData, isLoading = false }
 
       {/* Rules */}
       <Card>
-        <CardHeader>
-          <CardTitle>Group Rules</CardTitle>
-          <CardDescription>Set guidelines for your group members (optional)</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="p-6 space-y-6">
+          <div className="flex items-center gap-3 mb-4">
+            <Gavel className="h-5 w-5 text-primary" />
+            <div>
+              <h2 className="text-xl font-semibold">Group Rules</h2>
+              <p className="text-sm text-muted-foreground mt-1">Set guidelines for your group members (optional)</p>
+            </div>
+          </div>
           <div className="flex gap-2">
             <Input
               value={newRule}
@@ -628,11 +668,22 @@ export function GroupForm({ onSubmit, onCancel, initialData, isLoading = false }
       </Card>
 
       {/* Actions */}
-      <div className="flex items-center justify-end gap-4">
-        <Button type="button" variant="outline" onClick={onCancel} disabled={isLoading}>
+      <div className="flex flex-col sm:flex-row gap-3 justify-end pt-4 border-t">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onCancel}
+          disabled={isLoading}
+          className="w-full sm:w-auto"
+        >
+          <X className="h-4 w-4 mr-2" />
           Cancel
         </Button>
-        <Button type="submit" disabled={isLoading}>
+        <Button
+          type="submit"
+          disabled={isLoading}
+          className="w-full sm:w-auto"
+        >
           {isLoading ? (
             <>
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />

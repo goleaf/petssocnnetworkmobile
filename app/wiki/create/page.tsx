@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { BackButton } from "@/components/ui/back-button"
 import { WikiForm, type WikiFormData } from "@/components/wiki-form"
-import { addWikiArticle, generateWikiSlug } from "@/lib/storage"
+import { addWikiArticle, generateWikiSlug, getWikiArticleBySlug } from "@/lib/storage"
 import { getPermissionResult } from "@/lib/policy"
 import { FileText, FolderOpen, AlertCircle } from "lucide-react"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
@@ -44,10 +44,21 @@ export default function CreateWikiPage() {
 
     setPermissionError(null)
 
+    // Generate slug and check for conflicts
+    let baseSlug = generateWikiSlug(formData.title)
+    let slug = baseSlug
+    let counter = 1
+    
+    // Check if slug exists and append number if needed
+    while (getWikiArticleBySlug(slug)) {
+      slug = `${baseSlug}-${counter}`
+      counter++
+    }
+
     const newArticle = {
       id: String(Date.now()),
       title: formData.title,
-      slug: generateWikiSlug(formData.title),
+      slug,
       category: formData.category,
       subcategory: formData.subcategory || undefined,
       species: formData.species && formData.species.length > 0 ? formData.species : undefined,

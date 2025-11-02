@@ -14,14 +14,16 @@ export function formatDate(dateString: string): string {
 /**
  * Formats a date in human-readable format (e.g., "2 hours ago")
  * Falls back to YYYY-MM-DD format for dates older than 30 days
+ * Note: This function should only be used on the client side to avoid hydration mismatches
  */
-export function formatCommentDate(dateString: string): string {
+export function formatCommentDate(dateString: string, referenceDate?: Date): string {
   const date = new Date(dateString)
-  const now = new Date()
+  // Use provided reference date or current time (only on client to avoid hydration mismatch)
+  const now = referenceDate || (typeof window !== 'undefined' ? new Date() : new Date(0))
   const daysDiff = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24))
 
   // If less than 30 days, show relative time
-  if (daysDiff < 30) {
+  if (daysDiff < 30 && typeof window !== 'undefined') {
     return formatDistanceToNow(date, { addSuffix: true })
   }
 

@@ -11,8 +11,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { PrivacySelector } from "@/components/privacy-selector"
-import { getBlogPosts, getPets, getUsers, getPetsByOwnerId, addBlogPost, deleteBlogPost, togglePostReaction, toggleFollow } from "@/lib/storage"
-import { PawPrint, Heart, Users, BookOpen, TrendingUp, MessageCircle, Share2, MoreHorizontal, Globe, UsersIcon, Lock, Edit2, Trash2, Smile, Plus, Filter, Send, UserPlus, Rocket, ArrowRight, FileText, Video, Link2, ExternalLink, ShieldCheck } from "lucide-react"
+import { getBlogPosts, getPets, getUsers, getPetsByOwnerId, addBlogPost, deleteBlogPost, togglePostReaction, toggleFollow, getCommentsByPostId, getPlaces } from "@/lib/storage"
+import { PawPrint, Heart, Users, BookOpen, TrendingUp, MessageCircle, Share2, MoreHorizontal, Globe, UsersIcon, Lock, Edit2, Trash2, Smile, Plus, Filter, Send, UserPlus, Rocket, ArrowRight, FileText, Video, Link2, ExternalLink, ShieldCheck, Pin } from "lucide-react"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -25,6 +25,10 @@ import { MediaGallery } from "@/components/media-gallery"
 import { getFriendSuggestions, type FriendSuggestion } from "@/lib/friend-suggestions"
 import { useStorageListener } from "@/lib/hooks/use-storage-listener"
 import { PostContent } from "@/components/post/post-content"
+import { PinnedItems } from "@/components/pinned-items"
+import { PinButton } from "@/components/ui/pin-button"
+import { rankPosts } from "@/lib/utils/post-ranking"
+import type { Place } from "@/lib/types"
 
 const STORAGE_KEYS_TO_WATCH = ["pet_social_blog_posts", "pet_social_users", "pet_social_pets"]
 
@@ -50,6 +54,7 @@ export default function HomePage() {
   const [selectedPet, setSelectedPet] = useState("")
   const [filter, setFilter] = useState<"all" | "following">("all")
   const [isFeedLoading, setIsFeedLoading] = useState(true)
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
 
   const refreshFeatured = useCallback(() => {
     const posts = getBlogPosts()
@@ -59,10 +64,29 @@ export default function HomePage() {
     const visiblePosts = posts.filter((post) => {
       const author = users.find((candidate) => candidate.id === post.authorId)
       if (!author) return false
+      
+      // Only show published or scheduled posts
+      const status = post.queueStatus || (post.isDraft ? "draft" : "published")
+      if (status !== "published" && status !== "scheduled") return false
+      
+      // Check if scheduled post should be visible (if scheduledAt is in the past or now)
+      if (status === "scheduled" && post.scheduledAt) {
+        const scheduledDate = new Date(post.scheduledAt)
+        if (scheduledDate > new Date()) {
+          return false // Don't show future scheduled posts
+        }
+      }
+      
       return canViewPost(post, author, viewerId)
     })
 
+    // Prioritize featured posts from queue, then sort by likes
     const featured = [...visiblePosts].sort((a, b) => {
+      // First, prioritize featuredOnHomepage posts
+      if (a.featuredOnHomepage && !b.featuredOnHomepage) return -1
+      if (!a.featuredOnHomepage && b.featuredOnHomepage) return 1
+      
+      // Then sort by likes/reactions
       const aLikes = a.reactions
         ? Object.values(a.reactions).reduce((sum, arr) => sum + (arr?.length || 0), 0)
         : a.likes.length
@@ -191,6 +215,29 @@ export default function HomePage() {
   useEffect(() => {
     refreshPersonalData()
   }, [refreshPersonalData])
+
+  // Get user location for proximity ranking
+  useEffect(() => {
+    if (typeof window !== "undefined" && "geolocation" in navigator && isAuthenticated) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setUserLocation({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+          })
+        },
+        (error) => {
+          // User denied or error - continue without location (proximity will be 0)
+          console.log("Location access denied or unavailable:", error.message)
+        },
+        {
+          enableHighAccuracy: false,
+          timeout: 5000,
+          maximumAge: 300000, // Cache for 5 minutes
+        }
+      )
+    }
+  }, [isAuthenticated])
 
   useEffect(() => {
     if (!user) {
@@ -555,6 +602,9 @@ export default function HomePage() {
               </CardContent>
             </Card>
 
+            {/* Pinned Items */}
+            <PinnedItems />
+
             {/* Suggested Users */}
             <Card>
               <CardHeader>
@@ -635,38 +685,44 @@ export default function HomePage() {
 
   // If user is not logged in, show landing page
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-muted">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/30">
       {/* Hero Section */}
       <div className="container mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-8 sm:py-12 md:py-16 lg:py-20">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 sm:gap-10 md:gap-12 lg:gap-16 items-center">
           {/* Left Side - Hero Content */}
-          <div className="space-y-4 sm:space-y-5 md:space-y-6 order-2 lg:order-1">
-            <div className="inline-flex items-center gap-2 px-2.5 sm:px-3 py-1 rounded-full bg-primary/10 text-primary text-xs sm:text-sm font-medium">
+          <div className="space-y-5 sm:space-y-6 md:space-y-7 order-2 lg:order-1">
+            <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 rounded-full bg-gradient-to-r from-primary/10 to-primary/5 text-primary text-xs sm:text-sm font-semibold shadow-sm border border-primary/20 animate-in fade-in slide-in-from-top-4 duration-700">
               <PawPrint className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               <span className="whitespace-nowrap">The Social Network for Pet Lovers</span>
             </div>
-            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold leading-tight sm:leading-tight md:leading-tight text-balance">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold leading-tight sm:leading-tight md:leading-tight text-balance bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent animate-in fade-in slide-in-from-left-4 duration-1000">
               Connect, Share, and Learn About Your Pets
             </h1>
-            <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-muted-foreground text-pretty">
+            <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-muted-foreground text-pretty leading-relaxed animate-in fade-in slide-in-from-left-4 duration-1000 delay-200">
               Join a vibrant community of pet owners. Share your pet{"'"}s adventures, discover care tips, and connect
               with fellow animal lovers.
             </p>
-            <div className="flex flex-wrap gap-3 sm:gap-4 md:gap-4 pt-2">
-              {stats.map((stat) => (
-                <div key={stat.label} className="flex items-center gap-2 sm:gap-2.5 min-w-0">
-                  <stat.icon className="h-4 w-4 sm:h-5 sm:w-5 text-primary flex-shrink-0" />
-                  <div className="min-w-0">
-                    <p className="font-bold text-base sm:text-lg md:text-xl">{stat.value}+</p>
-                    <p className="text-xs sm:text-sm text-muted-foreground truncate">{stat.label}</p>
-                  </div>
-                </div>
+            <div className="flex flex-wrap gap-4 sm:gap-5 md:gap-6 pt-4 animate-in fade-in slide-in-from-left-4 duration-1000 delay-300">
+              {stats.map((stat, index) => (
+                <Card key={stat.label} className="flex-1 min-w-[140px] sm:min-w-[160px] border-2 hover:border-primary/30 hover:shadow-lg transition-all duration-300 bg-gradient-to-br from-card to-card/50">
+                  <CardContent className="p-4 sm:p-5">
+                    <div className="flex items-center gap-3 sm:gap-3.5">
+                      <div className="p-2 rounded-lg bg-primary/10">
+                        <stat.icon className="h-5 w-5 sm:h-6 sm:w-6 text-primary flex-shrink-0" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-bold text-lg sm:text-xl md:text-2xl text-foreground">{stat.value}+</p>
+                        <p className="text-xs sm:text-sm text-muted-foreground truncate font-medium">{stat.label}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
               ))}
             </div>
           </div>
 
           {/* Right Side - Auth Forms */}
-          <div className="flex flex-col gap-4 sm:gap-5 md:gap-6 order-1 lg:order-2">
+          <div className="flex flex-col gap-4 sm:gap-5 md:gap-6 order-1 lg:order-2 animate-in fade-in slide-in-from-right-4 duration-1000">
             {showRegister ? (
               <RegisterForm
                 onSuccess={() => {}}
@@ -677,12 +733,24 @@ export default function HomePage() {
             )}
             
             {/* Demo Credentials Section */}
-            <Card className="border-dashed">
-              <CardContent className="p-3 sm:p-4">
-                <p className="text-xs sm:text-sm font-semibold mb-2 text-muted-foreground">Demo Credentials</p>
-                <div className="space-y-1.5 sm:space-y-2 text-xs sm:text-xs text-muted-foreground">
-                  <p className="break-words"><strong className="text-foreground">Username:</strong> sarahpaws, mikecatlover, emmabirds, alexrabbits</p>
-                  <p><strong className="text-foreground">Password:</strong> password123</p>
+            <Card className="border-2 border-dashed border-primary/30 bg-gradient-to-br from-primary/5 to-transparent hover:border-primary/50 hover:shadow-md transition-all duration-300">
+              <CardContent className="p-4 sm:p-5">
+                <div className="flex items-start gap-2 mb-3">
+                  <ShieldCheck className="h-4 w-4 sm:h-5 sm:w-5 text-primary flex-shrink-0 mt-0.5" />
+                  <p className="text-xs sm:text-sm font-semibold text-foreground">Demo Credentials</p>
+                </div>
+                <div className="space-y-2 text-xs sm:text-sm text-muted-foreground pl-6">
+                  <p className="break-words">
+                    <strong className="text-foreground font-semibold">Username:</strong>{" "}
+                    <span className="font-mono bg-muted px-1.5 py-0.5 rounded">sarahpaws</span>,{" "}
+                    <span className="font-mono bg-muted px-1.5 py-0.5 rounded">mikecatlover</span>,{" "}
+                    <span className="font-mono bg-muted px-1.5 py-0.5 rounded">emmabirds</span>,{" "}
+                    <span className="font-mono bg-muted px-1.5 py-0.5 rounded">alexrabbits</span>
+                  </p>
+                  <p>
+                    <strong className="text-foreground font-semibold">Password:</strong>{" "}
+                    <span className="font-mono bg-muted px-1.5 py-0.5 rounded">password123</span>
+                  </p>
                 </div>
               </CardContent>
             </Card>
@@ -691,55 +759,63 @@ export default function HomePage() {
       </div>
 
       {/* Features Section */}
-      <div className="container mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-12 sm:py-16 md:py-20">
-        <div className="text-center mb-8 sm:mb-10 md:mb-12 px-2">
-          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-3 sm:mb-4">Everything You Need for Your Pet Community</h2>
-          <p className="text-muted-foreground text-sm sm:text-base md:text-lg lg:text-xl">Discover features designed for pet lovers</p>
+      <div className="container mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-12 sm:py-16 md:py-20 bg-gradient-to-b from-transparent via-muted/20 to-transparent">
+        <div className="text-center mb-10 sm:mb-12 md:mb-16 px-2">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs sm:text-sm font-medium mb-4">
+            <Rocket className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            <span>Platform Features</span>
+          </div>
+          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-3 sm:mb-4 bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
+            Everything You Need for Your Pet Community
+          </h2>
+          <p className="text-muted-foreground text-sm sm:text-base md:text-lg lg:text-xl max-w-2xl mx-auto">
+            Discover features designed for pet lovers
+          </p>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 md:gap-8 max-w-7xl mx-auto">
-          <Card className="h-full">
-            <CardContent className="p-4 sm:p-5 md:p-6 space-y-3">
-              <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                <PawPrint className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6 md:gap-8 max-w-7xl mx-auto">
+          <Card className="h-full group hover:shadow-xl hover:border-primary/30 transition-all duration-300 border-2 bg-gradient-to-br from-card to-card/80">
+            <CardContent className="p-5 sm:p-6 md:p-7 space-y-4">
+              <div className="h-12 w-12 sm:h-14 sm:w-14 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform duration-300">
+                <PawPrint className="h-6 w-6 sm:h-7 sm:w-7 text-primary" />
               </div>
-              <h3 className="text-lg sm:text-xl md:text-2xl font-semibold">Pet Profiles</h3>
-              <p className="text-muted-foreground text-sm sm:text-base">
+              <h3 className="text-xl sm:text-2xl md:text-2xl font-bold">Pet Profiles</h3>
+              <p className="text-muted-foreground text-sm sm:text-base leading-relaxed">
                 Create detailed profiles for each of your pets. Share their photos, stories, and milestones with the
                 community.
               </p>
             </CardContent>
           </Card>
-          <Card className="h-full">
-            <CardContent className="p-4 sm:p-5 md:p-6 space-y-3">
-              <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                <BookOpen className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
+          <Card className="h-full group hover:shadow-xl hover:border-primary/30 transition-all duration-300 border-2 bg-gradient-to-br from-card to-card/80">
+            <CardContent className="p-5 sm:p-6 md:p-7 space-y-4">
+              <div className="h-12 w-12 sm:h-14 sm:w-14 rounded-xl bg-gradient-to-br from-blue-500/20 to-blue-500/10 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform duration-300">
+                <BookOpen className="h-6 w-6 sm:h-7 sm:w-7 text-blue-500" />
               </div>
-              <h3 className="text-lg sm:text-xl md:text-2xl font-semibold">Pet Care Wiki</h3>
-              <p className="text-muted-foreground text-sm sm:text-base">
+              <h3 className="text-xl sm:text-2xl md:text-2xl font-bold">Pet Care Wiki</h3>
+              <p className="text-muted-foreground text-sm sm:text-base leading-relaxed">
                 Access comprehensive guides on pet care, health, training, and nutrition. Learn from experts and
                 experienced pet owners.
               </p>
             </CardContent>
           </Card>
-          <Card className="h-full sm:col-span-2 lg:col-span-1">
-            <CardContent className="p-4 sm:p-5 md:p-6 space-y-3">
-              <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                <Heart className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
+          <Card className="h-full sm:col-span-2 lg:col-span-1 group hover:shadow-xl hover:border-primary/30 transition-all duration-300 border-2 bg-gradient-to-br from-card to-card/80">
+            <CardContent className="p-5 sm:p-6 md:p-7 space-y-4">
+              <div className="h-12 w-12 sm:h-14 sm:w-14 rounded-xl bg-gradient-to-br from-pink-500/20 to-pink-500/10 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform duration-300">
+                <Heart className="h-6 w-6 sm:h-7 sm:w-7 text-pink-500" />
               </div>
-              <h3 className="text-lg sm:text-xl md:text-2xl font-semibold">Social Features</h3>
-              <p className="text-muted-foreground text-sm sm:text-base">
+              <h3 className="text-xl sm:text-2xl md:text-2xl font-bold">Social Features</h3>
+              <p className="text-muted-foreground text-sm sm:text-base leading-relaxed">
                 Follow other pet owners, like and comment on posts, and build connections with people who share your
                 love for animals.
               </p>
             </CardContent>
           </Card>
-          <Card className="h-full sm:col-span-2 lg:col-span-1">
-            <CardContent className="p-4 sm:p-5 md:p-6 space-y-3">
-              <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-lg bg-emerald-500/10 flex items-center justify-center flex-shrink-0">
-                <ShieldCheck className="h-5 w-5 sm:h-6 sm:w-6 text-emerald-500" />
+          <Card className="h-full sm:col-span-2 lg:col-span-1 group hover:shadow-xl hover:border-primary/30 transition-all duration-300 border-2 bg-gradient-to-br from-card to-card/80">
+            <CardContent className="p-5 sm:p-6 md:p-7 space-y-4">
+              <div className="h-12 w-12 sm:h-14 sm:w-14 rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-500/10 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform duration-300">
+                <ShieldCheck className="h-6 w-6 sm:h-7 sm:w-7 text-emerald-500" />
               </div>
-              <h3 className="text-lg sm:text-xl md:text-2xl font-semibold">Message Privacy</h3>
-              <p className="text-muted-foreground text-sm sm:text-base">
+              <h3 className="text-xl sm:text-2xl md:text-2xl font-bold">Message Privacy</h3>
+              <p className="text-muted-foreground text-sm sm:text-base leading-relaxed">
                 Keep sensitive conversations secure with automatic end-to-end encryption for direct messages and shared
                 attachments.
               </p>
@@ -751,44 +827,49 @@ export default function HomePage() {
       {/* Featured Posts Section */}
       {featuredPosts.length > 0 && (
         <div className="container mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-12 sm:py-16 md:py-20">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 sm:gap-6 mb-6 sm:mb-8">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 sm:gap-6 mb-8 sm:mb-10">
             <div className="min-w-0">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs sm:text-sm font-medium mb-3">
+                <TrendingUp className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                <span>Trending Now</span>
+              </div>
               <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-2 flex items-center gap-2 flex-wrap">
-                <TrendingUp className="h-6 w-6 sm:h-7 sm:w-7 md:h-8 md:w-8 flex-shrink-0" />
-                <span>Trending Stories</span>
+                <TrendingUp className="h-6 w-6 sm:h-7 sm:w-7 md:h-8 md:w-8 flex-shrink-0 text-primary" />
+                <span className="bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">Trending Stories</span>
               </h2>
               <p className="text-muted-foreground text-sm sm:text-base">Popular posts from our community</p>
             </div>
             <Link href="/blog" className="flex-shrink-0">
-              <Button variant="outline" size="sm" className="w-full sm:w-auto">
+              <Button variant="outline" size="sm" className="w-full sm:w-auto border-2 hover:border-primary/50 hover:shadow-md transition-all duration-300">
                 <ArrowRight className="h-4 w-4 mr-2" />
                 View All
               </Button>
             </Link>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 md:gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6 md:gap-8">
             {featuredPosts.map((post) => {
               const pet = getPets().find((p) => p.id === post.petId)
               const featureImage = post.coverImage || post.media?.images?.[0]
               return (
-                <Card key={post.id} className="overflow-hidden hover:shadow-lg transition-shadow p-0 h-full flex flex-col">
+                <Card key={post.id} className="overflow-hidden hover:shadow-xl hover:border-primary/30 transition-all duration-300 p-0 h-full flex flex-col group border-2 bg-gradient-to-br from-card to-card/80">
                   {featureImage && (
-                    <div className="aspect-video w-full overflow-hidden flex-shrink-0">
-                      <img src={featureImage} alt={post.title} className="h-full w-full object-cover" />
+                    <div className="aspect-video w-full overflow-hidden flex-shrink-0 relative">
+                      <img src={featureImage} alt={post.title} className="h-full w-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
                     </div>
                   )}
-                  <CardContent className="p-4 sm:p-5 flex flex-col flex-1">
-                    <h3 className="font-semibold text-base sm:text-lg md:text-xl line-clamp-2 mb-2">{post.title}</h3>
-                    <p className="text-xs sm:text-sm text-muted-foreground mb-1">By {pet?.name}</p>
-                    <p className="text-xs sm:text-sm text-muted-foreground line-clamp-2 sm:line-clamp-3 mb-3 flex-1">{post.content}</p>
-                    <div className="flex items-center gap-2 sm:gap-3 text-xs sm:text-sm flex-wrap">
-                      <div className="flex items-center gap-1 text-muted-foreground">
-                        <Heart className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                        {post.likes.length}
+                  <CardContent className="p-5 sm:p-6 flex flex-col flex-1">
+                    <h3 className="font-bold text-lg sm:text-xl md:text-xl line-clamp-2 mb-2 group-hover:text-primary transition-colors">{post.title}</h3>
+                    <p className="text-xs sm:text-sm text-muted-foreground mb-1 font-medium">By {pet?.name}</p>
+                    <p className="text-xs sm:text-sm text-muted-foreground line-clamp-2 sm:line-clamp-3 mb-4 flex-1 leading-relaxed">{post.content}</p>
+                    <div className="flex items-center gap-3 sm:gap-4 text-xs sm:text-sm flex-wrap pt-2 border-t border-border">
+                      <div className="flex items-center gap-1.5 text-muted-foreground">
+                        <Heart className="h-3.5 w-3.5 sm:h-4 sm:w-4 fill-red-500 text-red-500" />
+                        <span className="font-semibold">{post.likes.length}</span>
                       </div>
-                      <div className="flex gap-1 flex-wrap">
+                      <div className="flex gap-1.5 flex-wrap">
                         {post.tags.slice(0, 2).map((tag: string) => (
-                          <Badge key={tag} variant="secondary" className="text-xs">
+                          <Badge key={tag} variant="secondary" className="text-xs font-medium">
                             {tag}
                           </Badge>
                         ))}
@@ -804,14 +885,26 @@ export default function HomePage() {
 
       {/* CTA Section */}
       <div className="container mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-12 sm:py-16 md:py-20">
-        <Card className="bg-primary text-primary-foreground">
-          <CardContent className="p-6 sm:p-8 md:p-10 lg:p-12 text-center space-y-3 sm:space-y-4 md:space-y-5">
-            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold">Ready to Join the Community?</h2>
-            <p className="text-sm sm:text-base md:text-lg lg:text-xl opacity-90 max-w-2xl mx-auto">
+        <Card className="bg-gradient-to-br from-primary via-primary to-primary/90 text-primary-foreground border-0 shadow-2xl overflow-hidden relative">
+          <div className="absolute inset-0 bg-gradient-to-r from-primary/50 to-transparent opacity-50"></div>
+          <CardContent className="p-6 sm:p-8 md:p-10 lg:p-12 text-center space-y-4 sm:space-y-5 md:space-y-6 relative z-10">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary-foreground/20 text-primary-foreground text-xs sm:text-sm font-medium mb-2">
+              <Rocket className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              <span>Start Your Journey</span>
+            </div>
+            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold leading-tight">
+              Ready to Join the Community?
+            </h2>
+            <p className="text-sm sm:text-base md:text-lg lg:text-xl opacity-95 max-w-2xl mx-auto leading-relaxed">
               Create your account today and start sharing your pet{"'"}s amazing journey
             </p>
-            <Button size="lg" variant="secondary" onClick={() => setShowRegister(true)} className="w-full sm:w-auto">
-              <Rocket className="h-4 w-4 mr-2" />
+            <Button 
+              size="lg" 
+              variant="secondary" 
+              onClick={() => setShowRegister(true)} 
+              className="w-full sm:w-auto h-12 sm:h-14 px-8 text-base sm:text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+            >
+              <Rocket className="h-5 w-5 mr-2" />
               Get Started Free
             </Button>
           </CardContent>
@@ -919,30 +1012,44 @@ function FeedPostCard({
               </div>
             </div>
           </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8">
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <Link href={`/blog/${post.id}`}>
-                <DropdownMenuItem>View full post</DropdownMenuItem>
-              </Link>
-              {isOwner && (
-                <>
-                  <DropdownMenuItem onClick={() => onEdit(post)}>
-                    <Edit2 className="h-4 w-4 mr-2" />
-                    Edit post
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => onDelete(post.id)} className="text-destructive">
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Delete post
-                  </DropdownMenuItem>
-                </>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <div className="flex items-center gap-2">
+            <PinButton
+              type="post"
+              itemId={post.id}
+              metadata={{
+                title: post.title,
+                description: post.content.substring(0, 200),
+                image: post.coverImage || post.media?.images?.[0],
+              }}
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+            />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <Link href={`/blog/${post.id}`}>
+                  <DropdownMenuItem>View full post</DropdownMenuItem>
+                </Link>
+                {isOwner && (
+                  <>
+                    <DropdownMenuItem onClick={() => onEdit(post)}>
+                      <Edit2 className="h-4 w-4 mr-2" />
+                      Edit post
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => onDelete(post.id)} className="text-destructive">
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete post
+                    </DropdownMenuItem>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
 
         {/* Post Content */}

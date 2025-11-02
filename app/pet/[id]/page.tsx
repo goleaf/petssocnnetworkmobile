@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, use, useCallback } from "react"
+import { useState, useEffect, use, useCallback, useMemo } from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { EditButton } from "@/components/ui/edit-button"
@@ -8,8 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Progress } from "@/components/ui/progress"
-import { getPetById, getUserById, getBlogPosts, togglePetFollow, getPets } from "@/lib/storage"
-import type { PrivacyLevel } from "@/lib/types"
+import { getPetById, getUserById, getBlogPosts, togglePetFollow, getPets, getUsers } from "@/lib/storage"
+import type { PrivacyLevel, Pet, User } from "@/lib/types"
 import { useAuth } from "@/lib/auth"
 import {
   Calendar,
@@ -48,6 +48,8 @@ import { FriendRequestButton, FriendRequestsSection } from "@/components/friend-
 import { canInteractWithPet, canViewPet } from "@/lib/utils/privacy"
 import { PetBreedSummary } from "@/components/pet-breed-summary"
 import { PetCareChecklist } from "@/components/pet-care-checklist"
+import { PinButton } from "@/components/ui/pin-button"
+import { PetNetworkView } from "@/components/friendship-network/pet-network-view"
 
 const formatSpecies = (species: string) => species.charAt(0).toUpperCase() + species.slice(1)
 
@@ -63,6 +65,8 @@ export default function PetProfilePage({ params }: { params: Promise<{ id: strin
   const [isLoading, setIsLoading] = useState(true)
   const [photoViewerOpen, setPhotoViewerOpen] = useState(false)
   const [selectedPhotoIndex, setSelectedPhotoIndex] = useState(0)
+  const [allPets, setAllPets] = useState<Pet[]>([])
+  const [users, setUsers] = useState<User[]>([])
 
   const loadPetData = useCallback(async () => {
     const fetchedPet = await getPetById(id)
@@ -75,17 +79,20 @@ export default function PetProfilePage({ params }: { params: Promise<{ id: strin
       const fetchedPosts = await getBlogPosts()
       setPosts(fetchedPosts.filter((p) => p.petId === fetchedPet.id))
 
-      const allPets = getPets()
+      const fetchedAllPets = getPets()
+      setAllPets(fetchedAllPets)
+      setUsers(getUsers())
+      
       if (fetchedPet.friends && fetchedPet.friends.length > 0) {
         const friendPets = fetchedPet.friends
-          .map((friendId: string) => allPets.find((petItem) => petItem.id === friendId))
+          .map((friendId: string) => fetchedAllPets.find((petItem) => petItem.id === friendId))
           .filter(Boolean)
         setFriends(friendPets)
       } else {
         setFriends([])
       }
 
-      const suggestions = findMutualFriendSuggestions(fetchedPet, allPets).slice(0, 6)
+      const suggestions = findMutualFriendSuggestions(fetchedPet, fetchedAllPets).slice(0, 6)
       setMutualFriendSuggestions(suggestions)
     } else {
       setOwner(null)
@@ -122,6 +129,18 @@ export default function PetProfilePage({ params }: { params: Promise<{ id: strin
       setIsFollowing(pet.followers && pet.followers.includes(currentUser.id))
     }
   }, [currentUser, pet])
+
+  const petLookup = useMemo(() => {
+    const map = new Map<string, Pet>()
+    allPets.forEach((pet) => map.set(pet.id, pet))
+    return map
+  }, [allPets])
+
+  const ownerLookup = useMemo(() => {
+    const map = new Map<string, User>()
+    users.forEach((item) => map.set(item.id, item))
+    return map
+  }, [users])
 
   if (isLoading) {
     return <LoadingSpinner fullScreen />
@@ -313,6 +332,19 @@ export default function PetProfilePage({ params }: { params: Promise<{ id: strin
                       </Button>
                     </Link>
                   )}
+                  {pet && (
+                    <PinButton
+                      type="pet"
+                      itemId={pet.id}
+                      metadata={{
+                        title: pet.name,
+                        description: pet.bio,
+                        image: pet.avatar,
+                      }}
+                      variant="outline"
+                      size="sm"
+                    />
+                  )}
                   {!isOwner && interactionRestriction && (
                     <p className="text-xs text-muted-foreground max-w-xs">
                       {!currentUser ? (
@@ -408,7 +440,7 @@ export default function PetProfilePage({ params }: { params: Promise<{ id: strin
       </Card>
 
       <Tabs defaultValue="about" className="mt-8">
-        <TabsList className="grid w-full grid-cols-3 lg:grid-cols-7">
+        <TabsList className="grid w-full grid-cols-3 lg:grid-cols-8">
           <TabsTrigger value="about">About</TabsTrigger>
           <TabsTrigger
             value="health"
@@ -422,6 +454,10 @@ export default function PetProfilePage({ params }: { params: Promise<{ id: strin
           <TabsTrigger value="photos">Photos</TabsTrigger>
           <TabsTrigger value="achievements">Achievements</TabsTrigger>
           <TabsTrigger value="friends">Friends</TabsTrigger>
+          <TabsTrigger value="network">
+            <Users className="h-4 w-4 mr-1" />
+            Network
+          </TabsTrigger>
           <TabsTrigger value="training">Training</TabsTrigger>
           <TabsTrigger value="posts">Posts</TabsTrigger>
         </TabsList>
@@ -1060,6 +1096,25 @@ export default function PetProfilePage({ params }: { params: Promise<{ id: strin
             </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        <TabsContent value="network">
+          {pet && allPets.length > 0 && users.length > 0 ? (
+            <PetNetworkView
+              pet={pet}
+              allPets={allPets}
+              users={users}
+              petLookup={petLookup}
+              ownerLookup={ownerLookup}
+            />
+          ) : (
+            <Card>
+              <CardContent className="p-8 text-center text-muted-foreground">
+                <Users className="h-12 w-12 mx-auto mb-4 opacity-60" />
+                <p>Loading network data...</p>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
         <TabsContent value="training">

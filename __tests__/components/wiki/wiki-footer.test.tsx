@@ -126,7 +126,7 @@ describe("WikiFooter", () => {
     expect(screen.getAllByText("Puppy Training: The First 6 Months")[0]).toBeInTheDocument()
     
     // Should find article #4 (Bird Care) which shares "beginners" and "health" tags
-    expect(screen.getByText("Bird Care 101: Essential Tips for New Owners")).toBeInTheDocument()
+    expect(screen.getAllByText("Bird Care 101: Essential Tips for New Owners")[0]).toBeInTheDocument()
   })
 
   it("should render article network when tags exist", () => {
@@ -187,7 +187,7 @@ describe("WikiFooter", () => {
 
     const relatedArticles = [
       screen.getAllByText("Puppy Training: The First 6 Months")[0],
-      screen.getByText("Bird Care 101: Essential Tips for New Owners"),
+      screen.getAllByText("Bird Care 101: Essential Tips for New Owners")[0],
     ]
 
     // Should be in deterministic order
@@ -215,16 +215,14 @@ describe("WikiFooter", () => {
   })
 
   it("should handle articles with no matching articles gracefully", () => {
-    getWikiArticles.mockReturnValue([
-      {
-        ...mockArticles[0],
-        tags: ["completely-unique-tag"],
-      }
-    ])
+    const isolatedArticle = {
+      ...mockArticles[0],
+      tags: ["completely-unique-tag"],
+    }
+    
+    getWikiArticles.mockReturnValue([isolatedArticle])
 
-    const article = mockArticles[0]
-
-    const { container } = render(<WikiFooter article={article} />)
+    const { container } = render(<WikiFooter article={isolatedArticle} />)
     expect(container.firstChild).toBeNull()
   })
 })

@@ -13,6 +13,7 @@ import type {
   EventLocationShare,
   EventRSVP,
   ExpertProfile,
+  ExpertVerificationRequest,
   FriendCategory,
   FriendRequest,
   Group,
@@ -39,6 +40,7 @@ import type {
   PollVote,
   ReactionType,
   ModerationAction,
+  ReReviewRequest,
   User,
   WatchEntry,
   WikiArticle,
@@ -46,11 +48,20 @@ import type {
   WikiRevisionStatus,
   WikiTranslation,
   TranslationStatus,
+  TranslationGlossary,
   Conversation,
   DirectMessage,
+  MessageReaction,
   MessageSearchResult,
   Place,
   PlacePhoto,
+  PinnedItem,
+  PinnedItemType,
+  Source,
+  IntegrationSettings,
+  Webhook,
+  ApiKey,
+  WebhookDelivery,
 } from "./types"
 import {
   mockUsers,
@@ -60,6 +71,7 @@ import {
   mockWikiArticles,
   mockConversations,
   mockDirectMessages,
+  WIKI_CATEGORY_IMAGE_POOLS,
 } from "./mock-data"
 import { calculateAge } from "./utils/date"
 import { addNotification, createMentionNotification } from "./notifications"
@@ -67,6 +79,7 @@ import { extractMentions } from "./utils/mentions"
 import { normalizeCategoryList } from "./utils/categories"
 import { invalidateCache } from "./cache"
 import { sanitizeLocationForStorage } from "./utils/location-obfuscation"
+import { generateGroupsForAnimal } from "./generate-groups"
 
 const STORAGE_KEYS = {
   USERS: "pet_social_users",
@@ -96,11 +109,23 @@ const STORAGE_KEYS = {
   PLACES: "pet_social_places",
   PLACE_PHOTOS: "pet_social_place_photos",
   WIKI_TRANSLATIONS: "pet_social_wiki_translations",
+  TRANSLATION_GLOSSARY: "pet_social_translation_glossary",
   EDIT_REQUESTS: "pet_social_edit_requests",
   EDIT_REQUEST_AUDIT_LOGS: "pet_social_edit_request_audit_logs",
+  ROLLBACK_HISTORY: "pet_social_rollback_history",
+  ARTICLE_REPORTS: "pet_social_article_reports",
+  COI_FLAGS: "pet_social_coi_flags",
   ORGANIZATIONS: "pet_social_organizations",
   EXPERT_PROFILES: "pet_social_expert_profiles",
+  EXPERT_VERIFICATION_REQUESTS: "pet_social_expert_verification_requests",
   WATCH_ENTRIES: "pet_social_watch_entries",
+  PINNED_ITEMS: "pet_social_pinned_items",
+  ANNOUNCEMENTS: "pet_social_announcements",
+  ANNOUNCEMENT_DISMISSALS: "pet_social_announcement_dismissals",
+  SOURCES: "pet_social_sources",
+  INTEGRATIONS: "pet_social_integrations",
+  PRODUCTS: "pet_social_products",
+  RECALLS: "pet_social_recalls",
 }
 
 const DEFAULT_CONVERSATIONS: Conversation[] = JSON.parse(JSON.stringify(mockConversations)) as Conversation[]
@@ -150,15 +175,15 @@ export function setStorageAdapter(adapter: StorageAdapter) {
   storageAdapter = adapter
 }
 
-function readData<T>(key: string, fallback: T): T {
+export function readData<T>(key: string, fallback: T): T {
   return storageAdapter.read(key, fallback)
 }
 
-function writeData<T>(key: string, value: T): void {
+export function writeData<T>(key: string, value: T): void {
   storageAdapter.write(key, value)
 }
 
-function generateStorageId(prefix: string): string {
+export function generateStorageId(prefix: string): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
     return `${prefix}_${crypto.randomUUID()}`
   }
@@ -179,6 +204,10 @@ export function generatePetSlug(name: string): string {
 
 export function generateGroupSlug(name: string): string {
   return generatePetSlug(name)
+}
+
+export function generateWikiSlug(title: string): string {
+  return generatePetSlug(title)
 }
 
 const DEFAULT_GROUP_CATEGORIES: GroupCategory[] = [
@@ -213,6 +242,149 @@ const DEFAULT_GROUP_CATEGORIES: GroupCategory[] = [
     subcategories: [
       { id: "cat-birds-training", name: "Training" },
       { id: "cat-birds-health", name: "Health" },
+    ],
+  },
+  {
+    id: "cat-rabbits",
+    name: "Rabbit Communities",
+    slug: "rabbit-communities",
+    description: "Care tips, housing setups, and nutrition for rabbit owners.",
+    color: "#ec4899",
+    subcategories: [
+      { id: "cat-rabbits-care", name: "Care" },
+      { id: "cat-rabbits-housing", name: "Housing" },
+    ],
+  },
+  {
+    id: "cat-hamsters",
+    name: "Hamster Communities",
+    slug: "hamster-communities",
+    description: "Hamster care, cage setups, and enrichment ideas.",
+    color: "#f97316",
+    subcategories: [
+      { id: "cat-hamsters-care", name: "Care" },
+      { id: "cat-hamsters-enrichment", name: "Enrichment" },
+    ],
+  },
+  {
+    id: "cat-fish",
+    name: "Fish Communities",
+    slug: "fish-communities",
+    description: "Aquarium setups, water quality, and fish care.",
+    color: "#06b6d4",
+    subcategories: [
+      { id: "cat-fish-aquarium", name: "Aquarium Setup" },
+      { id: "cat-fish-care", name: "Care" },
+    ],
+  },
+  {
+    id: "cat-turtles",
+    name: "Turtle Communities",
+    slug: "turtle-communities",
+    description: "Turtle care, habitat setups, and health management.",
+    color: "#10b981",
+    subcategories: [
+      { id: "cat-turtles-habitat", name: "Habitat" },
+      { id: "cat-turtles-health", name: "Health" },
+    ],
+  },
+  {
+    id: "cat-snakes",
+    name: "Snake Communities",
+    slug: "snake-communities",
+    description: "Snake care, enclosure setups, and handling tips.",
+    color: "#059669",
+    subcategories: [
+      { id: "cat-snakes-enclosure", name: "Enclosure" },
+      { id: "cat-snakes-care", name: "Care" },
+    ],
+  },
+  {
+    id: "cat-lizards",
+    name: "Lizard Communities",
+    slug: "lizard-communities",
+    description: "Lizard care, terrarium setups, and species-specific advice.",
+    color: "#84cc16",
+    subcategories: [
+      { id: "cat-lizards-terrarium", name: "Terrarium" },
+      { id: "cat-lizards-care", name: "Care" },
+    ],
+  },
+  {
+    id: "cat-guinea-pigs",
+    name: "Guinea Pig Communities",
+    slug: "guinea-pig-communities",
+    description: "Guinea pig care, cage setups, and nutrition.",
+    color: "#f43f5e",
+    subcategories: [
+      { id: "cat-guinea-pigs-care", name: "Care" },
+      { id: "cat-guinea-pigs-nutrition", name: "Nutrition" },
+    ],
+  },
+  {
+    id: "cat-ferrets",
+    name: "Ferret Communities",
+    slug: "ferret-communities",
+    description: "Ferret care, enrichment, and health management.",
+    color: "#6366f1",
+    subcategories: [
+      { id: "cat-ferrets-care", name: "Care" },
+      { id: "cat-ferrets-enrichment", name: "Enrichment" },
+    ],
+  },
+  {
+    id: "cat-chinchillas",
+    name: "Chinchilla Communities",
+    slug: "chinchilla-communities",
+    description: "Chinchilla care, cage setups, and dust bath tips.",
+    color: "#8b5cf6",
+    subcategories: [
+      { id: "cat-chinchillas-care", name: "Care" },
+      { id: "cat-chinchillas-housing", name: "Housing" },
+    ],
+  },
+  {
+    id: "cat-hedgehogs",
+    name: "Hedgehog Communities",
+    slug: "hedgehog-communities",
+    description: "Hedgehog care, habitat setups, and health tips.",
+    color: "#a855f7",
+    subcategories: [
+      { id: "cat-hedgehogs-care", name: "Care" },
+      { id: "cat-hedgehogs-habitat", name: "Habitat" },
+    ],
+  },
+  {
+    id: "cat-gerbils",
+    name: "Gerbil Communities",
+    slug: "gerbil-communities",
+    description: "Gerbil care, cage setups, and enrichment ideas.",
+    color: "#ef4444",
+    subcategories: [
+      { id: "cat-gerbils-care", name: "Care" },
+      { id: "cat-gerbils-enrichment", name: "Enrichment" },
+    ],
+  },
+  {
+    id: "cat-mice",
+    name: "Mouse Communities",
+    slug: "mouse-communities",
+    description: "Mouse care, cage setups, and health management.",
+    color: "#6b7280",
+    subcategories: [
+      { id: "cat-mice-care", name: "Care" },
+      { id: "cat-mice-housing", name: "Housing" },
+    ],
+  },
+  {
+    id: "cat-rats",
+    name: "Rat Communities",
+    slug: "rat-communities",
+    description: "Rat care, cage setups, and training tips.",
+    color: "#475569",
+    subcategories: [
+      { id: "cat-rats-care", name: "Care" },
+      { id: "cat-rats-training", name: "Training" },
     ],
   },
   {
@@ -283,7 +455,27 @@ function normalizeGroup(group: Group): Group {
   }
 }
 
-const DEFAULT_GROUPS: Group[] = [
+// Generate groups for all animal types (25+ per type)
+const animalCategoryMap: Record<string, string> = {
+  dog: "cat-dogs",
+  cat: "cat-cats",
+  bird: "cat-birds",
+  rabbit: "cat-rabbits",
+  hamster: "cat-hamsters",
+  fish: "cat-fish",
+  turtle: "cat-turtles",
+  snake: "cat-snakes",
+  lizard: "cat-lizards",
+  "guinea-pig": "cat-guinea-pigs",
+  ferret: "cat-ferrets",
+  chinchilla: "cat-chinchillas",
+  hedgehog: "cat-hedgehogs",
+  gerbil: "cat-gerbils",
+  mouse: "cat-mice",
+  rat: "cat-rats",
+}
+
+const BASE_GROUPS: Group[] = [
   {
     id: "group-1",
     name: "Golden Retriever Adventures",
@@ -354,6 +546,18 @@ const DEFAULT_GROUPS: Group[] = [
     },
   },
 ]
+
+// Generate groups for each animal type
+let groupIdCounter = 4
+const generatedGroups: Group[] = []
+
+Object.entries(animalCategoryMap).forEach(([animalType, categoryId]) => {
+  const groups = generateGroupsForAnimal(animalType, categoryId, 25, groupIdCounter)
+  generatedGroups.push(...groups)
+  groupIdCounter += groups.length
+})
+
+const DEFAULT_GROUPS: Group[] = [...BASE_GROUPS, ...generatedGroups]
 
 const FULL_PERMISSIONS = {
   canPost: true,
@@ -752,6 +956,34 @@ function normalizePet(pet: Pet): Pet {
   }
 }
 
+function normalizeWikiArticle(article: WikiArticle, index: number): WikiArticle {
+  const poolKey = article.category as keyof typeof WIKI_CATEGORY_IMAGE_POOLS
+  const imagePool = Array.isArray(WIKI_CATEGORY_IMAGE_POOLS[poolKey])
+    ? [...WIKI_CATEGORY_IMAGE_POOLS[poolKey]]
+    : [...WIKI_CATEGORY_IMAGE_POOLS.default]
+
+  const normalizedCoverImage =
+    typeof article.coverImage === "string" && article.coverImage.trim().length > 0
+      ? article.coverImage
+      : imagePool[index % imagePool.length]
+
+  const normalizedLikes = Array.isArray(article.likes)
+    ? Array.from(
+        new Set(
+          article.likes.filter(
+            (id): id is string => typeof id === "string" && id.trim().length > 0,
+          ),
+        ),
+      )
+    : []
+
+  return {
+    ...article,
+    coverImage: normalizedCoverImage,
+    likes: normalizedLikes,
+  }
+}
+
 // Initialize storage with mock data if empty
 export function initializeStorage() {
   if (typeof window === "undefined") return
@@ -789,7 +1021,12 @@ export function initializeStorage() {
     localStorage.setItem(STORAGE_KEYS.COMMENTS, JSON.stringify(mockComments))
   }
   if (!localStorage.getItem(STORAGE_KEYS.WIKI_ARTICLES)) {
-    localStorage.setItem(STORAGE_KEYS.WIKI_ARTICLES, JSON.stringify(mockWikiArticles))
+    const seededArticles = mockWikiArticles.map((article, index) => normalizeWikiArticle(article, index))
+    localStorage.setItem(STORAGE_KEYS.WIKI_ARTICLES, JSON.stringify(seededArticles))
+  } else {
+    const existingArticles = JSON.parse(localStorage.getItem(STORAGE_KEYS.WIKI_ARTICLES) || "[]") as WikiArticle[]
+    const normalizedArticles = existingArticles.map((article, index) => normalizeWikiArticle(article, index))
+    localStorage.setItem(STORAGE_KEYS.WIKI_ARTICLES, JSON.stringify(normalizedArticles))
   }
   if (!localStorage.getItem(STORAGE_KEYS.WIKI_REVISIONS)) {
     localStorage.setItem(STORAGE_KEYS.WIKI_REVISIONS, JSON.stringify([]))
@@ -1046,7 +1283,7 @@ export function blockUser(userId: string, blockUserId: string) {
     }
   }
 
-  users[userIndex] = user
+  users[userIndex] = normalizeUser(user)
   localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users))
 
   removeMutualInteractions(userId, blockUserId)
@@ -1067,8 +1304,151 @@ export function unblockUser(userId: string, unblockUserId: string) {
   // Remove from blocked list
   user.blockedUsers = user.blockedUsers.filter((id) => id !== unblockUserId)
 
-  users[userIndex] = user
+  users[userIndex] = normalizeUser(user)
   localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users))
+}
+
+export function muteUser(userId: string, muteUserId: string) {
+  if (typeof window === "undefined") return
+  const users = getUsers()
+
+  const userIndex = users.findIndex((u) => u.id === userId)
+  if (userIndex === -1) return
+
+  const user = users[userIndex]
+  if (!user.mutedUsers) {
+    user.mutedUsers = []
+  }
+
+  // Add to muted list if not already muted
+  if (!user.mutedUsers.includes(muteUserId)) {
+    user.mutedUsers.push(muteUserId)
+  }
+
+  users[userIndex] = normalizeUser(user)
+  localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users))
+}
+
+export function unmuteUser(userId: string, unmuteUserId: string) {
+  if (typeof window === "undefined") return
+  const users = getUsers()
+
+  const userIndex = users.findIndex((u) => u.id === userId)
+  if (userIndex === -1) return
+
+  const user = users[userIndex]
+  if (!user.mutedUsers) {
+    user.mutedUsers = []
+  }
+
+  // Remove from muted list
+  user.mutedUsers = user.mutedUsers.filter((id) => id !== unmuteUserId)
+
+  users[userIndex] = normalizeUser(user)
+  localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users))
+}
+
+export function setCloseFriends(userId: string, closeFriendIds: string[]) {
+  if (typeof window === "undefined") return
+  const users = getUsers()
+
+  const userIndex = users.findIndex((u) => u.id === userId)
+  if (userIndex === -1) return
+
+  const user = users[userIndex]
+  // Ensure all IDs are unique and valid strings
+  const uniqueIds = Array.from(new Set(closeFriendIds.filter((id) => typeof id === "string" && id)))
+  user.closeFriends = uniqueIds
+
+  users[userIndex] = normalizeUser(user)
+  localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users))
+}
+
+export function importContacts(
+  userId: string,
+  contacts: Array<{ email?: string; phone?: string; name?: string }>,
+): {
+  matchedUsers: User[]
+  suggestions: Array<{ user: User; reason: string }>
+} {
+  if (typeof window === "undefined") {
+    return { matchedUsers: [], suggestions: [] }
+  }
+
+  const users = getUsers()
+  const currentUser = users.find((u) => u.id === userId)
+  if (!currentUser) {
+    return { matchedUsers: [], suggestions: [] }
+  }
+
+  const matchedUsers: User[] = []
+  const suggestions: Array<{ user: User; reason: string }> = []
+
+  // Normalize contact data for matching
+  const normalizedContacts = contacts.map((contact) => ({
+    email: contact.email?.toLowerCase().trim(),
+    phone: contact.phone?.replace(/\D/g, ""), // Remove non-digits
+    name: contact.name?.toLowerCase().trim(),
+  }))
+
+  for (const contact of normalizedContacts) {
+    // Find users by email
+    if (contact.email) {
+      const matchedByEmail = users.find(
+        (u) => u.email?.toLowerCase().trim() === contact.email && u.id !== userId,
+      )
+      if (matchedByEmail && !matchedUsers.find((u) => u.id === matchedByEmail.id)) {
+        matchedUsers.push(matchedByEmail)
+        suggestions.push({
+          user: matchedByEmail,
+          reason: contact.name
+            ? `Found ${matchedByEmail.fullName} (${contact.name})`
+            : `Found ${matchedByEmail.fullName}`,
+        })
+      }
+    }
+
+    // Find users by phone (if available in user data)
+    if (contact.phone && contact.phone.length > 0) {
+      const matchedByPhone = users.find(
+        (u) =>
+          u.phone &&
+          u.phone.replace(/\D/g, "") === contact.phone &&
+          u.id !== userId &&
+          !matchedUsers.find((m) => m.id === u.id),
+      )
+      if (matchedByPhone) {
+        matchedUsers.push(matchedByPhone)
+        suggestions.push({
+          user: matchedByPhone,
+          reason: contact.name
+            ? `Found ${matchedByPhone.fullName} (${contact.name})`
+            : `Found ${matchedByPhone.fullName}`,
+        })
+      }
+    }
+  }
+
+  // Filter out users already being followed or blocked
+  const currentUserFollowing = new Set(currentUser.following ?? [])
+  const currentUserBlocked = new Set(currentUser.blockedUsers ?? [])
+  const currentUserMuted = new Set(currentUser.mutedUsers ?? [])
+
+  const filteredSuggestions = suggestions.filter(
+    (s) =>
+      !currentUserFollowing.has(s.user.id) &&
+      !currentUserBlocked.has(s.user.id) &&
+      !currentUserMuted.has(s.user.id) &&
+      !s.user.blockedUsers?.includes(userId) &&
+      !s.user.mutedUsers?.includes(userId),
+  )
+
+  return {
+    matchedUsers: Array.from(new Set(matchedUsers.map((u) => u.id))).map((id) =>
+      matchedUsers.find((u) => u.id === id)!,
+    ),
+    suggestions: filteredSuggestions,
+  }
 }
 
 function removeMutualInteractions(userId: string, otherUserId: string) {
@@ -1936,6 +2316,13 @@ export function updatePet(pet: Pet) {
   }
 }
 
+export function deletePet(petId: string) {
+  if (typeof window === "undefined") return
+  const pets = getPets()
+  const filteredPets = pets.filter((p) => p.id !== petId)
+  persistPets(filteredPets)
+}
+
 export function addPet(pet: Pet) {
   if (typeof window === "undefined") return
   const pets = getPets()
@@ -2263,6 +2650,14 @@ function getAllGroupMembers(): GroupMember[] {
 
 function setAllGroupMembers(members: GroupMember[]): void {
   writeData(STORAGE_KEYS.GROUP_MEMBERS, members)
+}
+
+export function getGroupMembers(): GroupMember[] {
+  return getAllGroupMembers()
+}
+
+export function getAllGroupMembersPublic(): GroupMember[] {
+  return getAllGroupMembers()
 }
 
 export function getGroupMembersByGroupId(groupId: string): GroupMember[] {
@@ -3058,6 +3453,123 @@ export function getModerationActionsByGroupId(groupId: string): ModerationAction
     .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
 }
 
+// Group Rule Templates operations
+function getAllGroupRuleTemplates(): GroupRuleTemplate[] {
+  return readData(STORAGE_KEYS.GROUP_RULE_TEMPLATES, DEFAULT_GROUP_RULE_TEMPLATES)
+}
+
+function setAllGroupRuleTemplates(templates: GroupRuleTemplate[]): void {
+  writeData(STORAGE_KEYS.GROUP_RULE_TEMPLATES, templates)
+}
+
+export function getGroupRuleTemplates(): GroupRuleTemplate[] {
+  return getAllGroupRuleTemplates()
+}
+
+export function getGroupRuleTemplateById(id: string): GroupRuleTemplate | undefined {
+  return getAllGroupRuleTemplates().find((template) => template.id === id)
+}
+
+export function addGroupRuleTemplate(template: GroupRuleTemplate): void {
+  const templates = getAllGroupRuleTemplates()
+  templates.push(template)
+  setAllGroupRuleTemplates(templates)
+}
+
+export function updateGroupRuleTemplate(templateId: string, updated: Partial<GroupRuleTemplate>): void {
+  const templates = getAllGroupRuleTemplates()
+  const index = templates.findIndex((t) => t.id === templateId)
+  if (index === -1) return
+  templates[index] = { ...templates[index], ...updated, id: templateId, updatedAt: new Date().toISOString() }
+  setAllGroupRuleTemplates(templates)
+}
+
+export function deleteGroupRuleTemplate(templateId: string): void {
+  const templates = getAllGroupRuleTemplates().filter((t) => t.id !== templateId)
+  setAllGroupRuleTemplates(templates)
+}
+
+// Group Approvals operations
+function getAllGroupApprovals(): GroupApproval[] {
+  return readData(STORAGE_KEYS.GROUP_APPROVALS, DEFAULT_GROUP_APPROVALS)
+}
+
+function setAllGroupApprovals(approvals: GroupApproval[]): void {
+  writeData(STORAGE_KEYS.GROUP_APPROVALS, approvals)
+}
+
+export function getGroupApprovals(): GroupApproval[] {
+  return getAllGroupApprovals()
+}
+
+export function getGroupApprovalByGroupId(groupId: string): GroupApproval | undefined {
+  return getAllGroupApprovals().find((approval) => approval.groupId === groupId)
+}
+
+export function getPendingGroupApprovals(): GroupApproval[] {
+  return getAllGroupApprovals().filter((approval) => approval.status === "pending")
+}
+
+export function addGroupApproval(approval: GroupApproval): void {
+  const approvals = getAllGroupApprovals()
+  approvals.push(approval)
+  setAllGroupApprovals(approvals)
+}
+
+export function updateGroupApproval(approvalId: string, updated: Partial<GroupApproval>): void {
+  const approvals = getAllGroupApprovals()
+  const index = approvals.findIndex((a) => a.id === approvalId)
+  if (index === -1) return
+  approvals[index] = { ...approvals[index], ...updated, id: approvalId }
+  setAllGroupApprovals(approvals)
+}
+
+export function approveGroup(groupId: string, approvedById: string): void {
+  const group = getGroupById(groupId)
+  if (!group) return
+
+  // Update group approval status
+  updateGroup(groupId, {
+    approvalStatus: "approved",
+    approvedById,
+    approvedAt: new Date().toISOString(),
+  })
+
+  // Update approval record
+  const approval = getGroupApprovalByGroupId(groupId)
+  if (approval) {
+    updateGroupApproval(approval.id, {
+      status: "approved",
+      reviewedAt: new Date().toISOString(),
+      reviewedBy: approvedById,
+    })
+  }
+}
+
+export function rejectGroup(groupId: string, approvedById: string, rejectionReason: string): void {
+  const group = getGroupById(groupId)
+  if (!group) return
+
+  // Update group approval status
+  updateGroup(groupId, {
+    approvalStatus: "rejected",
+    rejectedReason: rejectionReason,
+    approvedById,
+    approvedAt: new Date().toISOString(),
+  })
+
+  // Update approval record
+  const approval = getGroupApprovalByGroupId(groupId)
+  if (approval) {
+    updateGroupApproval(approval.id, {
+      status: "rejected",
+      reviewedAt: new Date().toISOString(),
+      reviewedBy: approvedById,
+      rejectionReason,
+    })
+  }
+}
+
 // Comment operations
 export function getComments(): Comment[] {
   if (typeof window === "undefined") return []
@@ -3188,6 +3700,60 @@ export function toggleCommentReaction(commentId: string, userId: string, reactio
   }
 }
 
+// Photo Reaction operations
+export function togglePhotoReaction(petId: string, photoIndex: number, userId: string, reactionType: ReactionType) {
+  if (typeof window === "undefined") return
+  const photoKey = `${petId}:${photoIndex}`
+  const pet = getPetById(petId)
+  if (!pet) return
+  
+  // Check if user is blocked
+  if (areUsersBlocked(userId, pet.ownerId)) {
+    return
+  }
+
+  const storageKey = "pet_social_photo_reactions"
+  const allReactions = readData<Record<string, Record<ReactionType, string[]>>>(storageKey, {})
+  const reactions = allReactions[photoKey] || { ...DEFAULT_REACTIONS }
+  const reactionArray = reactions[reactionType] || []
+  const hasReacted = reactionArray.includes(userId)
+  
+  if (hasReacted) {
+    // Remove reaction
+    reactions[reactionType] = reactionArray.filter((id) => id !== userId)
+  } else {
+    // Remove from other reactions first (user can only have one reaction)
+    Object.keys(reactions).forEach((key) => {
+      if (key !== reactionType) {
+        reactions[key as ReactionType] = reactions[key as ReactionType].filter((id) => id !== userId)
+      }
+    })
+    // Add reaction
+    reactions[reactionType] = [...reactionArray, userId]
+  }
+
+  // Save to storage
+  allReactions[photoKey] = reactions
+  writeData(storageKey, allReactions)
+}
+
+export function getPhotoReactions(
+  petId: string,
+  photoIndex: number
+): Record<string, Record<ReactionType, string[]>> {
+  const photoKey = `${petId}:${photoIndex}`
+  const storageKey = "pet_social_photo_reactions"
+  const allReactions = readData<Record<string, Record<ReactionType, string[]>>>(storageKey, {})
+  
+  // Ensure the photo key exists with default reactions
+  if (!allReactions[photoKey]) {
+    allReactions[photoKey] = { ...DEFAULT_REACTIONS }
+  }
+  
+  // Return format expected by component: { [photoKey]: reactions }
+  return { [photoKey]: allReactions[photoKey] }
+}
+
 export function flagComment(
   commentId: string,
   userId: string,
@@ -3276,15 +3842,124 @@ export function moderateComment(
   return comments[index]
 }
 
+// Editorial Discussion operations (separate from public comments)
+export function getEditorialDiscussionsByArticleId(articleId: string): EditorialDiscussion[] {
+  if (typeof window === "undefined") return []
+  const data = localStorage.getItem(STORAGE_KEYS.EDITORIAL_DISCUSSIONS)
+  const discussions: EditorialDiscussion[] = data ? JSON.parse(data) : []
+  return discussions.filter((d) => d.articleId === articleId).sort((a, b) => 
+    new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+  )
+}
+
+export function addEditorialDiscussion(discussion: EditorialDiscussion): EditorialDiscussion {
+  if (typeof window === "undefined") return discussion
+  const discussions = getEditorialDiscussions()
+  discussions.push(discussion)
+  localStorage.setItem(STORAGE_KEYS.EDITORIAL_DISCUSSIONS, JSON.stringify(discussions))
+  return discussion
+}
+
+export function getEditorialDiscussions(): EditorialDiscussion[] {
+  if (typeof window === "undefined") return []
+  const data = localStorage.getItem(STORAGE_KEYS.EDITORIAL_DISCUSSIONS)
+  return data ? JSON.parse(data) : []
+}
+
+export function updateEditorialDiscussion(
+  discussionId: string,
+  content: string,
+  options?: { editorId?: string; format?: "markdown" | "plaintext" }
+): EditorialDiscussion | null {
+  if (typeof window === "undefined") return null
+  const discussions = getEditorialDiscussions()
+  const index = discussions.findIndex((d) => d.id === discussionId)
+  if (index === -1) return null
+
+  discussions[index] = {
+    ...discussions[index],
+    content,
+    updatedAt: new Date().toISOString(),
+    editedBy: options?.editorId,
+    format: options?.format || discussions[index].format || "markdown",
+  }
+
+  localStorage.setItem(STORAGE_KEYS.EDITORIAL_DISCUSSIONS, JSON.stringify(discussions))
+  return discussions[index]
+}
+
+export function deleteEditorialDiscussion(discussionId: string): boolean {
+  if (typeof window === "undefined") return false
+  const discussions = getEditorialDiscussions()
+  const filtered = discussions.filter((d) => {
+    // Also delete any replies to this discussion
+    if (d.id === discussionId || d.parentDiscussionId === discussionId) {
+      return false
+    }
+    return true
+  })
+
+  if (filtered.length === discussions.length) return false
+
+  localStorage.setItem(STORAGE_KEYS.EDITORIAL_DISCUSSIONS, JSON.stringify(filtered))
+  return true
+}
+
+export function toggleEditorialDiscussionReaction(
+  discussionId: string,
+  userId: string,
+  reactionType: ReactionType
+): EditorialDiscussion | null {
+  if (typeof window === "undefined") return null
+  const discussions = getEditorialDiscussions()
+  const index = discussions.findIndex((d) => d.id === discussionId)
+  if (index === -1) return null
+
+  const discussion = discussions[index]
+  const reactions = discussion.reactions || {
+    like: [],
+    love: [],
+    laugh: [],
+    wow: [],
+    sad: [],
+    angry: [],
+  }
+
+  const userReactions = Object.entries(reactions).find(([, userIds]) => userIds.includes(userId))
+  if (userReactions && userReactions[0] === reactionType) {
+    // Remove reaction if already reacted with same type
+    reactions[reactionType as ReactionType] = reactions[reactionType as ReactionType].filter((id) => id !== userId)
+  } else {
+    // Remove from other reaction types and add to new one
+    Object.keys(reactions).forEach((type) => {
+      reactions[type as ReactionType] = reactions[type as ReactionType].filter((id) => id !== userId)
+    })
+    reactions[reactionType].push(userId)
+  }
+
+  discussions[index] = {
+    ...discussion,
+    reactions,
+  }
+
+  localStorage.setItem(STORAGE_KEYS.EDITORIAL_DISCUSSIONS, JSON.stringify(discussions))
+  return discussions[index]
+}
+
 // Wiki operations
 export function getWikiArticles(): WikiArticle[] {
   if (typeof window === "undefined") return []
   const data = localStorage.getItem(STORAGE_KEYS.WIKI_ARTICLES)
-  return data ? JSON.parse(data) : []
+  const articles = (data ? JSON.parse(data) : []) as WikiArticle[]
+  return articles.map((article, index) => normalizeWikiArticle(article, index))
 }
 
 export function getWikiArticleBySlug(slug: string): WikiArticle | undefined {
   return getWikiArticles().find((a) => a.slug === slug)
+}
+
+export function getWikiArticleById(id: string): WikiArticle | undefined {
+  return getWikiArticles().find((a) => a.id === id)
 }
 
 export function getWikiArticlesByCategory(category: string): WikiArticle[] {
@@ -3297,11 +3972,11 @@ export function addWikiArticle(article: WikiArticle) {
   // Check if article with same id already exists
   const existingIndex = articles.findIndex((a) => a.id === article.id)
   if (existingIndex === -1) {
-    articles.push(article)
+    articles.push(normalizeWikiArticle(article, articles.length))
     localStorage.setItem(STORAGE_KEYS.WIKI_ARTICLES, JSON.stringify(articles))
   } else {
     // If exists, update it
-    articles[existingIndex] = article
+    articles[existingIndex] = normalizeWikiArticle(article, existingIndex)
     localStorage.setItem(STORAGE_KEYS.WIKI_ARTICLES, JSON.stringify(articles))
   }
 }
@@ -3311,7 +3986,7 @@ export function updateWikiArticle(article: WikiArticle) {
   const articles = getWikiArticles()
   const index = articles.findIndex((a) => a.id === article.id)
   if (index !== -1) {
-    articles[index] = article
+    articles[index] = normalizeWikiArticle(article, index)
     localStorage.setItem(STORAGE_KEYS.WIKI_ARTICLES, JSON.stringify(articles))
     
     // Invalidate cache when breed article is updated
@@ -3402,6 +4077,23 @@ export function rollbackToStableRevision(
 
   updateWikiArticle(updatedArticle)
 
+  // Create rollback history entry
+  const rollbackHistory: RollbackHistoryEntry = {
+    id: `rollback_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    contentId: articleId,
+    contentType: "wiki",
+    rolledBackFrom: article.currentRevisionId || "",
+    rolledBackTo: stableRevision.id,
+    performedBy,
+    performedAt: new Date().toISOString(),
+    reason: `Rolled back to stable revision`,
+    metadata: {
+      articleTitle: article.title,
+      stableRevisionId: stableRevision.id,
+    },
+  }
+  addRollbackHistoryEntry(rollbackHistory)
+
   // Create audit log entry
   // Note: Using empty groupId for wiki articles as they are not group-specific
   addModerationAction({
@@ -3416,6 +4108,64 @@ export function rollbackToStableRevision(
   })
 
   return { success: true }
+}
+
+// Health Condition operations
+export function getHealthConditions(): HealthCondition[] {
+  if (typeof window === "undefined") return []
+  const data = localStorage.getItem(STORAGE_KEYS.HEALTH_CONDITIONS)
+  return data ? JSON.parse(data) : []
+}
+
+export function getHealthConditionBySlug(slug: string): HealthCondition | undefined {
+  return getHealthConditions().find((c) => c.slug === slug)
+}
+
+export function getHealthConditionById(id: string): HealthCondition | undefined {
+  return getHealthConditions().find((c) => c.id === id)
+}
+
+export function getHealthConditionsBySpecies(species: string[]): HealthCondition[] {
+  return getHealthConditions().filter((c) =>
+    c.affectedSpecies.some((s) => species.includes(s))
+  )
+}
+
+export function getHealthConditionsBySeverity(severity: HealthCondition["severity"]): HealthCondition[] {
+  return getHealthConditions().filter((c) => c.severity === severity)
+}
+
+export function getUrgentHealthConditions(): HealthCondition[] {
+  return getHealthConditions().filter((c) => c.urgencyFlag === true)
+}
+
+export function addHealthCondition(condition: HealthCondition) {
+  if (typeof window === "undefined") return
+  const conditions = getHealthConditions()
+  // Check if condition with same id already exists
+  const existingIndex = conditions.findIndex((c) => c.id === condition.id)
+  if (existingIndex !== -1) {
+    throw new Error("Health condition with this ID already exists")
+  }
+  conditions.push(condition)
+  localStorage.setItem(STORAGE_KEYS.HEALTH_CONDITIONS, JSON.stringify(conditions))
+}
+
+export function updateHealthCondition(condition: HealthCondition) {
+  if (typeof window === "undefined") return
+  const conditions = getHealthConditions()
+  const index = conditions.findIndex((c) => c.id === condition.id)
+  if (index !== -1) {
+    conditions[index] = condition
+    localStorage.setItem(STORAGE_KEYS.HEALTH_CONDITIONS, JSON.stringify(conditions))
+  }
+}
+
+export function deleteHealthCondition(id: string) {
+  if (typeof window === "undefined") return
+  const conditions = getHealthConditions()
+  const filtered = conditions.filter((c) => c.id !== id)
+  localStorage.setItem(STORAGE_KEYS.HEALTH_CONDITIONS, JSON.stringify(filtered))
 }
 
 // Activity operations
@@ -3475,6 +4225,69 @@ export function updateDirectMessage(messageId: string, updates: Partial<DirectMe
       snippet: merged.content ?? existing.content,
     })
   }
+}
+
+// Wiki Translation Functions
+export function getWikiTranslations(): WikiTranslation[] {
+  return readData<WikiTranslation[]>(STORAGE_KEYS.WIKI_TRANSLATIONS, [])
+}
+
+export function getWikiTranslationsByArticleId(articleId: string): WikiTranslation[] {
+  return getWikiTranslations().filter((t) => t.articleId === articleId)
+}
+
+export function getWikiTranslationByArticleIdAndLang(articleId: string, languageCode: string): WikiTranslation | undefined {
+  return getWikiTranslations().find((t) => t.articleId === articleId && t.languageCode === languageCode)
+}
+
+export function createWikiTranslation(translation: WikiTranslation): void {
+  if (typeof window === "undefined") return
+  const translations = getWikiTranslations()
+  translations.push(translation)
+  writeData(STORAGE_KEYS.WIKI_TRANSLATIONS, translations)
+}
+
+export function updateWikiTranslation(id: string, updates: Partial<WikiTranslation>): void {
+  if (typeof window === "undefined") return
+  const translations = getWikiTranslations()
+  const index = translations.findIndex((t) => t.id === id)
+  if (index !== -1) {
+    translations[index] = { ...translations[index], ...updates }
+    writeData(STORAGE_KEYS.WIKI_TRANSLATIONS, translations)
+  }
+}
+
+// Translation Glossary Functions
+export function getTranslationGlossary(): TranslationGlossary[] {
+  return readData<TranslationGlossary[]>(STORAGE_KEYS.TRANSLATION_GLOSSARY, [])
+}
+
+export function getTranslationGlossaryById(id: string): TranslationGlossary | undefined {
+  return getTranslationGlossary().find((g) => g.id === id)
+}
+
+export function createTranslationGlossary(glossary: TranslationGlossary): void {
+  if (typeof window === "undefined") return
+  const glossaryEntries = getTranslationGlossary()
+  glossaryEntries.push(glossary)
+  writeData(STORAGE_KEYS.TRANSLATION_GLOSSARY, glossaryEntries)
+}
+
+export function updateTranslationGlossary(id: string, updates: Partial<TranslationGlossary>): void {
+  if (typeof window === "undefined") return
+  const glossaryEntries = getTranslationGlossary()
+  const index = glossaryEntries.findIndex((g) => g.id === id)
+  if (index !== -1) {
+    glossaryEntries[index] = { ...glossaryEntries[index], ...updates }
+    writeData(STORAGE_KEYS.TRANSLATION_GLOSSARY, glossaryEntries)
+  }
+}
+
+export function deleteTranslationGlossary(id: string): void {
+  if (typeof window === "undefined") return
+  const glossaryEntries = getTranslationGlossary()
+  const filtered = glossaryEntries.filter((g) => g.id !== id)
+  writeData(STORAGE_KEYS.TRANSLATION_GLOSSARY, filtered)
 }
 
 // Place Functions
@@ -3604,7 +4417,23 @@ export function getVerifiedExpertProfiles(): ExpertProfile[] {
 
 export function isExpertVerified(userId: string): boolean {
   const profile = getExpertProfileByUserId(userId)
-  return profile?.verifiedAt !== undefined
+  if (!profile || !profile.verifiedAt) return false
+  
+  // Check if expired
+  if (profile.status === "expired" || profile.status === "revoked") {
+    return false
+  }
+  
+  // Check expiry date
+  if (profile.expiresAt) {
+    const now = new Date()
+    const expiresAt = new Date(profile.expiresAt)
+    if (expiresAt < now) {
+      return false
+    }
+  }
+  
+  return profile.status === "verified"
 }
 
 export function addExpertProfile(profile: ExpertProfile): void {
@@ -3693,6 +4522,146 @@ export function markRevisionAsStable(
   }
 
   updateWikiArticle(updatedArticle)
+
+  return { success: true }
+}
+
+// Expert Verification Request Functions
+export function getExpertVerificationRequests(): ExpertVerificationRequest[] {
+  return readData<ExpertVerificationRequest[]>(STORAGE_KEYS.EXPERT_VERIFICATION_REQUESTS, [])
+}
+
+export function getExpertVerificationRequestById(requestId: string): ExpertVerificationRequest | undefined {
+  return getExpertVerificationRequests().find((req) => req.id === requestId)
+}
+
+export function getExpertVerificationRequestByUserId(userId: string): ExpertVerificationRequest | undefined {
+  return getExpertVerificationRequests().find((req) => req.userId === userId)
+}
+
+export function getPendingExpertVerificationRequests(): ExpertVerificationRequest[] {
+  return getExpertVerificationRequests().filter((req) => req.status === "pending")
+}
+
+export function createExpertVerificationRequest(
+  userId: string,
+  credential: string,
+  credentialFileUrls: string[],
+  licenseNo?: string,
+  region?: string
+): ExpertVerificationRequest {
+  const requests = getExpertVerificationRequests()
+  
+  // Check if user already has a pending request
+  const existingRequest = requests.find((req) => req.userId === userId && req.status === "pending")
+  if (existingRequest) {
+    throw new Error("You already have a pending verification request")
+  }
+  
+  // Check if user is already verified
+  if (isExpertVerified(userId)) {
+    throw new Error("You are already verified as an expert")
+  }
+
+  const request: ExpertVerificationRequest = {
+    id: `evr_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    userId,
+    status: "pending",
+    credential,
+    licenseNo,
+    region,
+    credentialFileUrls,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  }
+
+  requests.push(request)
+  writeData(STORAGE_KEYS.EXPERT_VERIFICATION_REQUESTS, requests)
+
+  return request
+}
+
+export function updateExpertVerificationRequest(
+  requestId: string,
+  updates: Partial<ExpertVerificationRequest>
+): ExpertVerificationRequest | null {
+  const requests = getExpertVerificationRequests()
+  const index = requests.findIndex((req) => req.id === requestId)
+  
+  if (index === -1) {
+    return null
+  }
+
+  requests[index] = {
+    ...requests[index],
+    ...updates,
+    updatedAt: new Date().toISOString(),
+  }
+
+  writeData(STORAGE_KEYS.EXPERT_VERIFICATION_REQUESTS, requests)
+  return requests[index]
+}
+
+export function approveExpertVerificationRequest(
+  requestId: string,
+  reviewerId: string
+): { success: boolean; error?: string } {
+  const request = getExpertVerificationRequestById(requestId)
+  if (!request) {
+    return { success: false, error: "Request not found" }
+  }
+
+  if (request.status !== "pending") {
+    return { success: false, error: "Request is not pending" }
+  }
+
+  // Update request status
+  updateExpertVerificationRequest(requestId, {
+    status: "approved",
+    reviewedBy: reviewerId,
+    reviewedAt: new Date().toISOString(),
+  })
+
+  // Create or update expert profile
+  const existingProfile = getExpertProfileByUserId(request.userId)
+  const profile: ExpertProfile = {
+    userId: request.userId,
+    credential: request.credential,
+    licenseNo: request.licenseNo,
+    region: request.region,
+    verifiedAt: new Date().toISOString(),
+    credentialFileUrls: request.credentialFileUrls,
+  }
+
+  if (existingProfile) {
+    updateExpertProfile(request.userId, profile)
+  } else {
+    addExpertProfile(profile)
+  }
+
+  return { success: true }
+}
+
+export function rejectExpertVerificationRequest(
+  requestId: string,
+  reviewerId: string,
+  reason: string
+): { success: boolean; error?: string } {
+  const request = getExpertVerificationRequestById(requestId)
+  if (!request) {
+    return { success: false, error: "Request not found" }
+  }
+
+  if (request.status !== "pending") {
+    return { success: false, error: "Request is not pending" }
+  }
+
+  updateExpertVerificationRequest(requestId, {
+    status: "rejected",
+    reviewedBy: reviewerId,
+    reviewedAt: new Date().toISOString(),
+    reason,
+  })
 
   return { success: true }
 }
@@ -3799,6 +4768,222 @@ export function addEditRequestAuditLog(log: EditRequestAuditLog): void {
 
 export function getEditRequestAuditLogById(id: string): EditRequestAuditLog | undefined {
   return getEditRequestAuditLogs().find((log) => log.id === id)
+}
+
+// Re-Review Request Functions
+export function getReReviewRequests(): ReReviewRequest[] {
+  return readData<ReReviewRequest[]>(STORAGE_KEYS.RE_REVIEW_REQUESTS, [])
+}
+
+export function getReReviewRequestById(id: string): ReReviewRequest | undefined {
+  return getReReviewRequests().find((req) => req.id === id)
+}
+
+export function getReReviewRequestsByArticle(articleId: string): ReReviewRequest[] {
+  return getReReviewRequests().filter((req) => req.articleId === articleId)
+}
+
+export function getPendingReReviewRequests(): ReReviewRequest[] {
+  return getReReviewRequests().filter((req) => req.status === "pending")
+}
+
+export function getReReviewRequestsByRequester(requestedBy: string): ReReviewRequest[] {
+  return getReReviewRequests().filter((req) => req.requestedBy === requestedBy)
+}
+
+export function requestReReview(params: {
+  articleId: string
+  requestedBy: string
+  reason?: string
+}): { success: boolean; error?: string; requestId?: string } {
+  if (typeof window === "undefined") {
+    return { success: false, error: "Not available in server context" }
+  }
+
+  const article = getWikiArticles().find((a) => a.id === params.articleId)
+  if (!article) {
+    return { success: false, error: "Article not found" }
+  }
+
+  // Check if there's already a pending request for this article from this user
+  const existingRequests = getReReviewRequestsByArticle(params.articleId)
+  const userPendingRequest = existingRequests.find(
+    (req) => req.requestedBy === params.requestedBy && req.status === "pending"
+  )
+
+  if (userPendingRequest) {
+    return { success: false, error: "You already have a pending re-review request for this article" }
+  }
+
+  // Create new re-review request
+  const request: ReReviewRequest = {
+    id: `rereview_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    articleId: params.articleId,
+    requestedBy: params.requestedBy,
+    status: "pending",
+    reason: params.reason,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  }
+
+  const requests = getReReviewRequests()
+  requests.push(request)
+  writeData(STORAGE_KEYS.RE_REVIEW_REQUESTS, requests)
+
+  return { success: true, requestId: request.id }
+}
+
+export function updateReReviewRequest(
+  id: string,
+  updates: Partial<ReReviewRequest>
+): { success: boolean; error?: string } {
+  if (typeof window === "undefined") {
+    return { success: false, error: "Not available in server context" }
+  }
+
+  const requests = getReReviewRequests()
+  const index = requests.findIndex((req) => req.id === id)
+  if (index === -1) {
+    return { success: false, error: "Re-review request not found" }
+  }
+
+  requests[index] = {
+    ...requests[index],
+    ...updates,
+    updatedAt: new Date().toISOString(),
+  }
+
+  writeData(STORAGE_KEYS.RE_REVIEW_REQUESTS, requests)
+  return { success: true }
+}
+
+export function deleteReReviewRequest(id: string): void {
+  const requests = getReReviewRequests()
+  const filtered = requests.filter((req) => req.id !== id)
+  writeData(STORAGE_KEYS.RE_REVIEW_REQUESTS, filtered)
+}
+
+// Flagged Revision Functions
+export function getFlaggedRevisions(): FlaggedRevision[] {
+  return readData<FlaggedRevision[]>(STORAGE_KEYS.FLAGGED_REVISIONS, [])
+}
+
+export function getFlaggedRevisionById(id: string): FlaggedRevision | undefined {
+  return getFlaggedRevisions().find((fr) => fr.id === id)
+}
+
+export function getFlaggedRevisionsByStatus(status: FlaggedRevisionStatus): FlaggedRevision[] {
+  return getFlaggedRevisions().filter((fr) => fr.status === status)
+}
+
+export function getPendingFlaggedRevisions(): FlaggedRevision[] {
+  return getFlaggedRevisions().filter((fr) => fr.status === "pending" || fr.status === "flagged")
+}
+
+export function getFlaggedRevisionsByArticleId(articleId: string): FlaggedRevision[] {
+  return getFlaggedRevisions().filter((fr) => fr.articleId === articleId)
+}
+
+export function getFlaggedRevisionsByRevisionId(revisionId: string): FlaggedRevision[] {
+  return getFlaggedRevisions().filter((fr) => fr.revisionId === revisionId)
+}
+
+export function getFlaggedRevisionsByCategory(category: "health" | "regulatory"): FlaggedRevision[] {
+  return getFlaggedRevisions().filter((fr) => fr.category === category)
+}
+
+export function addFlaggedRevision(flaggedRevision: FlaggedRevision): void {
+  const flagged = getFlaggedRevisions()
+  flagged.push(flaggedRevision)
+  writeData(STORAGE_KEYS.FLAGGED_REVISIONS, flagged)
+  
+  // Create audit log entry
+  addFlaggedRevisionAuditLog({
+    id: `audit_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    flaggedRevisionId: flaggedRevision.id,
+    action: "flagged",
+    performedBy: flaggedRevision.flaggedBy || "system",
+    performedAt: new Date().toISOString(),
+    rationale: flaggedRevision.flagReason,
+    newStatus: flaggedRevision.status,
+  })
+}
+
+export function updateFlaggedRevision(id: string, updates: Partial<FlaggedRevision>): void {
+  const flagged = getFlaggedRevisions()
+  const index = flagged.findIndex((fr) => fr.id === id)
+  if (index !== -1) {
+    const oldFlagged = flagged[index]
+    const updatedAt = new Date().toISOString()
+    flagged[index] = { ...oldFlagged, ...updates, updatedAt }
+    writeData(STORAGE_KEYS.FLAGGED_REVISIONS, flagged)
+    
+    // Create audit log for status changes
+    if (updates.status && updates.status !== oldFlagged.status) {
+      addFlaggedRevisionAuditLog({
+        id: `audit_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        flaggedRevisionId: id,
+        action: updates.status === "approved" ? "approved" : updates.status === "rejected" ? "rejected" : "status_changed",
+        performedBy: updates.reviewedBy || oldFlagged.flaggedBy || "system",
+        performedAt: updatedAt,
+        rationale: updates.rationale,
+        previousStatus: oldFlagged.status,
+        newStatus: updates.status,
+      })
+    }
+    
+    // Create audit log for priority changes
+    if (updates.priority && updates.priority !== oldFlagged.priority) {
+      addFlaggedRevisionAuditLog({
+        id: `audit_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        flaggedRevisionId: id,
+        action: "priority_changed",
+        performedBy: updates.reviewedBy || oldFlagged.flaggedBy || "system",
+        performedAt: updatedAt,
+        previousPriority: oldFlagged.priority,
+        newPriority: updates.priority,
+      })
+    }
+    
+    // Create audit log for note additions
+    if (updates.notes && updates.notes !== oldFlagged.notes) {
+      addFlaggedRevisionAuditLog({
+        id: `audit_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        flaggedRevisionId: id,
+        action: "note_added",
+        performedBy: updates.reviewedBy || oldFlagged.flaggedBy || "system",
+        performedAt: updatedAt,
+        rationale: updates.notes,
+      })
+    }
+  }
+}
+
+export function deleteFlaggedRevision(id: string): void {
+  const flagged = getFlaggedRevisions()
+  const filtered = flagged.filter((fr) => fr.id !== id)
+  writeData(STORAGE_KEYS.FLAGGED_REVISIONS, filtered)
+}
+
+// Flagged Revision Audit Log Functions
+export function getFlaggedRevisionAuditLogs(): FlaggedRevisionAuditLog[] {
+  return readData<FlaggedRevisionAuditLog[]>(STORAGE_KEYS.FLAGGED_REVISION_AUDIT_LOGS, [])
+}
+
+export function getFlaggedRevisionAuditLogsByFlaggedRevisionId(flaggedRevisionId: string): FlaggedRevisionAuditLog[] {
+  return getFlaggedRevisionAuditLogs()
+    .filter((log) => log.flaggedRevisionId === flaggedRevisionId)
+    .sort((a, b) => new Date(a.performedAt).getTime() - new Date(b.performedAt).getTime())
+}
+
+export function addFlaggedRevisionAuditLog(log: FlaggedRevisionAuditLog): void {
+  const logs = getFlaggedRevisionAuditLogs()
+  logs.push(log)
+  writeData(STORAGE_KEYS.FLAGGED_REVISION_AUDIT_LOGS, logs)
+}
+
+export function getFlaggedRevisionAuditLogById(id: string): FlaggedRevisionAuditLog | undefined {
+  return getFlaggedRevisionAuditLogs().find((log) => log.id === id)
 }
 
 // Watch Functions
@@ -3917,4 +5102,913 @@ export function notifyWatchers(
       },
     })
   })
+}
+
+// Rollback History Operations
+export function getRollbackHistory(): RollbackHistoryEntry[] {
+  const history = readData<RollbackHistoryEntry[]>(STORAGE_KEYS.ROLLBACK_HISTORY, [])
+  // Sort by date descending (newest first)
+  return history.sort((a, b) => new Date(b.performedAt).getTime() - new Date(a.performedAt).getTime())
+}
+
+export function getRollbackHistoryByContentId(contentId: string): RollbackHistoryEntry[] {
+  return getRollbackHistory()
+    .filter((entry) => entry.contentId === contentId)
+}
+
+export function getRollbackHistoryByContentType(contentType: "blog" | "wiki"): RollbackHistoryEntry[] {
+  return getRollbackHistory()
+    .filter((entry) => entry.contentType === contentType)
+}
+
+export function addRollbackHistoryEntry(entry: RollbackHistoryEntry): void {
+  const history = getRollbackHistory()
+  history.push(entry)
+  writeData(STORAGE_KEYS.ROLLBACK_HISTORY, history)
+}
+
+// Article Report Operations
+export function reportArticle(params: {
+  articleId: string
+  contentType: "blog" | "wiki"
+  reporterId: string
+  reason: ArticleReportReason
+  message?: string
+}): { success: boolean; error?: string; reportId?: string } {
+  if (typeof window === "undefined") {
+    return { success: false, error: "Not available in server context" }
+  }
+
+  const report: ArticleReport = {
+    id: `report_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    reporterId: params.reporterId,
+    reason: params.reason,
+    message: params.message,
+    reportedAt: new Date().toISOString(),
+    status: "pending",
+  }
+
+  // Add report to the article
+  if (params.contentType === "blog") {
+    const post = getBlogPostById(params.articleId)
+    if (!post) {
+      return { success: false, error: "Blog post not found" }
+    }
+    const reports = post.reports || []
+    reports.push(report)
+    updateBlogPost({ ...post, reports })
+  } else {
+    // Try by ID first, then by slug
+    const articles = getWikiArticles()
+    let article = articles.find((a) => a.id === params.articleId)
+    if (!article) {
+      article = getWikiArticleBySlug(params.articleId)
+    }
+    if (!article) {
+      return { success: false, error: "Article not found" }
+    }
+    const reports = article.reports || []
+    reports.push(report)
+    updateWikiArticle({ ...article, reports })
+  }
+
+  // Store in global reports list for moderation dashboard
+  const allReports = getArticleReports()
+  allReports.push(report)
+  writeData(STORAGE_KEYS.ARTICLE_REPORTS, allReports)
+
+  return { success: true, reportId: report.id }
+}
+
+export function getArticleReports(): ArticleReport[] {
+  return readData<ArticleReport[]>(STORAGE_KEYS.ARTICLE_REPORTS, [])
+}
+
+export function getPendingArticleReports(): ArticleReport[] {
+  return getArticleReports().filter((r) => r.status === "pending")
+}
+
+export function updateArticleReport(
+  reportId: string,
+  updates: Partial<ArticleReport>
+): { success: boolean; error?: string } {
+  const reports = getArticleReports()
+  const index = reports.findIndex((r) => r.id === reportId)
+  if (index === -1) {
+    return { success: false, error: "Report not found" }
+  }
+
+  reports[index] = { ...reports[index], ...updates }
+  writeData(STORAGE_KEYS.ARTICLE_REPORTS, reports)
+
+  // Also update in the article itself
+  const allBlogPosts = getBlogPosts()
+  for (const post of allBlogPosts) {
+    if (post.reports && post.reports.length > 0) {
+      const reportIndex = post.reports.findIndex((r) => r.id === reportId)
+      if (reportIndex !== -1) {
+        const updatedReports = [...post.reports]
+        updatedReports[reportIndex] = { ...updatedReports[reportIndex], ...updates }
+        updateBlogPost({ ...post, reports: updatedReports })
+        break
+      }
+    }
+  }
+
+  const allWikiArticles = getWikiArticles()
+  for (const article of allWikiArticles) {
+    if (article.reports && article.reports.length > 0) {
+      const reportIndex = article.reports.findIndex((r) => r.id === reportId)
+      if (reportIndex !== -1) {
+        const updatedReports = [...article.reports]
+        updatedReports[reportIndex] = { ...updatedReports[reportIndex], ...updates }
+        updateWikiArticle({ ...article, reports: updatedReports })
+        break
+      }
+    }
+  }
+
+  return { success: true }
+}
+
+// COI Flag Operations
+export function addCOIFlag(params: {
+  contentId: string
+  contentType: "blog" | "wiki"
+  flaggedBy: string
+  reason: string
+  details?: string
+  severity: "low" | "medium" | "high" | "critical"
+  relatedEntities?: string[]
+}): { success: boolean; error?: string; flagId?: string } {
+  if (typeof window === "undefined") {
+    return { success: false, error: "Not available in server context" }
+  }
+
+  const flag: COIFlag = {
+    id: `coi_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    flaggedBy: params.flaggedBy,
+    flaggedAt: new Date().toISOString(),
+    reason: params.reason,
+    details: params.details,
+    severity: params.severity,
+    status: "active",
+    relatedEntities: params.relatedEntities,
+  }
+
+  // Add flag to the article
+  if (params.contentType === "blog") {
+    const post = getBlogPostById(params.contentId)
+    if (!post) {
+      return { success: false, error: "Blog post not found" }
+    }
+    const flags = post.coiFlags || []
+    flags.push(flag)
+    updateBlogPost({ ...post, coiFlags: flags })
+  } else {
+    // Try by ID first, then by slug
+    const articles = getWikiArticles()
+    let article = articles.find((a) => a.id === params.contentId)
+    if (!article) {
+      article = getWikiArticleBySlug(params.contentId)
+    }
+    if (!article) {
+      return { success: false, error: "Article not found" }
+    }
+    const flags = article.coiFlags || []
+    flags.push(flag)
+    updateWikiArticle({ ...article, coiFlags: flags })
+  }
+
+  // Store in global COI flags list
+  const allFlags = getCOIFlags()
+  allFlags.push(flag)
+  writeData(STORAGE_KEYS.COI_FLAGS, allFlags)
+
+  return { success: true, flagId: flag.id }
+}
+
+export function getCOIFlags(): COIFlag[] {
+  return readData<COIFlag[]>(STORAGE_KEYS.COI_FLAGS, [])
+}
+
+export function getActiveCOIFlags(): COIFlag[] {
+  return getCOIFlags().filter((f) => f.status === "active")
+}
+
+export function getCOIFlagsBySeverity(severity: "low" | "medium" | "high" | "critical"): COIFlag[] {
+  return getActiveCOIFlags().filter((f) => f.severity === severity)
+}
+
+export function updateCOIFlag(
+  flagId: string,
+  updates: Partial<COIFlag>
+): { success: boolean; error?: string } {
+  const flags = getCOIFlags()
+  const index = flags.findIndex((f) => f.id === flagId)
+  if (index === -1) {
+    return { success: false, error: "COI flag not found" }
+  }
+
+  flags[index] = { ...flags[index], ...updates }
+  writeData(STORAGE_KEYS.COI_FLAGS, flags)
+
+  // Also update in the article itself
+  const allBlogPosts = getBlogPosts()
+  for (const post of allBlogPosts) {
+    if (post.coiFlags && post.coiFlags.length > 0) {
+      const flagIndex = post.coiFlags.findIndex((f) => f.id === flagId)
+      if (flagIndex !== -1) {
+        const updatedFlags = [...post.coiFlags]
+        updatedFlags[flagIndex] = { ...updatedFlags[flagIndex], ...updates }
+        updateBlogPost({ ...post, coiFlags: updatedFlags })
+        break
+      }
+    }
+  }
+
+  const allWikiArticles = getWikiArticles()
+  for (const article of allWikiArticles) {
+    if (article.coiFlags && article.coiFlags.length > 0) {
+      const flagIndex = article.coiFlags.findIndex((f) => f.id === flagId)
+      if (flagIndex !== -1) {
+        const updatedFlags = [...article.coiFlags]
+        updatedFlags[flagIndex] = { ...updatedFlags[flagIndex], ...updates }
+        updateWikiArticle({ ...article, coiFlags: updatedFlags })
+        break
+      }
+    }
+  }
+
+  return { success: true }
+}
+
+// Magic Link Token Storage Functions
+export function getMagicLinkTokens(): MagicLinkToken[] {
+  return storage.read<MagicLinkToken[]>(STORAGE_KEYS.MAGIC_LINK_TOKENS, [])
+}
+
+export function getMagicLinkToken(token: string): MagicLinkToken | undefined {
+  const tokens = getMagicLinkTokens()
+  return tokens.find((t) => t.token === token && !t.used && t.expiresAt > Date.now())
+}
+
+export function createMagicLinkToken(
+  email: string,
+  deviceInfo?: { ip?: string; userAgent?: string }
+): MagicLinkToken {
+  const tokens = getMagicLinkTokens()
+  
+  // Generate secure random token
+  const randomBytes = new Uint8Array(32)
+  if (typeof window !== "undefined" && window.crypto) {
+    window.crypto.getRandomValues(randomBytes)
+  } else if (typeof crypto !== "undefined") {
+    crypto.getRandomValues(randomBytes)
+  } else {
+    // Fallback for environments without crypto
+    for (let i = 0; i < 32; i++) {
+      randomBytes[i] = Math.floor(Math.random() * 256)
+    }
+  }
+  const token = Buffer.from(randomBytes)
+    .toString("base64")
+    .replace(/[+/=]/g, (c) => ({ "+": "-", "/": "_", "=": "" }[c] || c))
+    .substring(0, 48)
+  
+  const magicLink: MagicLinkToken = {
+    token,
+    email: email.toLowerCase().trim(),
+    expiresAt: Date.now() + 60 * 60 * 1000, // 1 hour
+    used: false,
+    createdAt: Date.now(),
+    deviceInfo,
+  }
+  
+  tokens.push(magicLink)
+  storage.write(STORAGE_KEYS.MAGIC_LINK_TOKENS, tokens)
+  
+  // Clean up expired tokens (older than 24 hours)
+  const validTokens = tokens.filter(
+    (t) => !t.used && (t.expiresAt > Date.now() || t.createdAt > Date.now() - 24 * 60 * 60 * 1000)
+  )
+  storage.write(STORAGE_KEYS.MAGIC_LINK_TOKENS, validTokens)
+  
+  return magicLink
+}
+
+export function markMagicLinkTokenAsUsed(token: string): boolean {
+  const tokens = getMagicLinkTokens()
+  const tokenIndex = tokens.findIndex((t) => t.token === token)
+  
+  if (tokenIndex === -1) {
+    return false
+  }
+  
+  tokens[tokenIndex].used = true
+  storage.write(STORAGE_KEYS.MAGIC_LINK_TOKENS, tokens)
+  return true
+}
+
+// Session Device Storage Functions
+export function getSessionDevices(userId: string): SessionDevice[] {
+  const allDevices = storage.read<SessionDevice[]>(STORAGE_KEYS.SESSION_DEVICES, [])
+  return allDevices.filter((d) => d.userId === userId)
+}
+
+export function getSessionDevice(deviceId: string): SessionDevice | undefined {
+  const allDevices = storage.read<SessionDevice[]>(STORAGE_KEYS.SESSION_DEVICES, [])
+  return allDevices.find((d) => d.deviceId === deviceId)
+}
+
+export function createSessionDevice(
+  userId: string,
+  deviceInfo: {
+    name: string
+    type: "mobile" | "tablet" | "desktop" | "other"
+    os?: string
+    browser?: string
+    ip?: string
+  }
+): SessionDevice {
+  const allDevices = storage.read<SessionDevice[]>(STORAGE_KEYS.SESSION_DEVICES, [])
+  
+  // Mark all existing devices for this user as not current
+  allDevices.forEach((d) => {
+    if (d.userId === userId) {
+      d.isCurrent = false
+    }
+  })
+  
+  const deviceId = `${userId}-${Date.now()}-${Math.random().toString(36).substring(7)}`
+  const now = new Date().toISOString()
+  
+  const device: SessionDevice = {
+    deviceId,
+    userId,
+    name: deviceInfo.name,
+    type: deviceInfo.type,
+    os: deviceInfo.os,
+    browser: deviceInfo.browser,
+    ip: deviceInfo.ip,
+    lastActivity: now,
+    createdAt: now,
+    isCurrent: true,
+  }
+  
+  allDevices.push(device)
+  storage.write(STORAGE_KEYS.SESSION_DEVICES, allDevices)
+  
+  return device
+}
+
+export function updateSessionDeviceActivity(deviceId: string): void {
+  const allDevices = storage.read<SessionDevice[]>(STORAGE_KEYS.SESSION_DEVICES, [])
+  const device = allDevices.find((d) => d.deviceId === deviceId)
+  
+  if (device) {
+    device.lastActivity = new Date().toISOString()
+    storage.write(STORAGE_KEYS.SESSION_DEVICES, allDevices)
+  }
+}
+
+export function revokeSessionDevice(deviceId: string, userId: string): boolean {
+  const allDevices = storage.read<SessionDevice[]>(STORAGE_KEYS.SESSION_DEVICES, [])
+  const deviceIndex = allDevices.findIndex(
+    (d) => d.deviceId === deviceId && d.userId === userId
+  )
+  
+  if (deviceIndex === -1) {
+    return false
+  }
+  
+  allDevices.splice(deviceIndex, 1)
+  storage.write(STORAGE_KEYS.SESSION_DEVICES, allDevices)
+  return true
+}
+
+export function revokeAllSessionDevices(userId: string, exceptDeviceId?: string): number {
+  const allDevices = storage.read<SessionDevice[]>(STORAGE_KEYS.SESSION_DEVICES, [])
+  const initialLength = allDevices.length
+  
+  const filtered = allDevices.filter(
+    (d) => d.userId !== userId || (exceptDeviceId && d.deviceId === exceptDeviceId)
+  )
+  
+  storage.write(STORAGE_KEYS.SESSION_DEVICES, filtered)
+  return initialLength - filtered.length
+}
+
+// Announcement Functions
+export function getAnnouncements(): Announcement[] {
+  return readData<Announcement[]>(STORAGE_KEYS.ANNOUNCEMENTS, [])
+}
+
+export function getAnnouncementById(id: string): Announcement | undefined {
+  return getAnnouncements().find((a) => a.id === id)
+}
+
+export function getActiveAnnouncements(userId?: string): Announcement[] {
+  const now = new Date().toISOString()
+  const announcements = getAnnouncements()
+  
+  return announcements
+    .filter((announcement) => {
+      // Filter by status
+      if (announcement.status !== "active") return false
+      
+      // Filter by date range
+      if (announcement.startDate && announcement.startDate > now) return false
+      if (announcement.endDate && announcement.endDate < now) return false
+      
+      // Filter by target audience
+      if (announcement.targetAudience === "logged-in" && !userId) return false
+      if (announcement.targetAudience === "logged-out" && userId) return false
+      
+      return true
+    })
+    .sort((a, b) => {
+      // Sort by priority: urgent > high > normal > low
+      const priorityOrder: Record<string, number> = {
+        urgent: 4,
+        high: 3,
+        normal: 2,
+        low: 1,
+      }
+      return (priorityOrder[b.priority] || 0) - (priorityOrder[a.priority] || 0)
+    })
+}
+
+export function addAnnouncement(announcement: Omit<Announcement, "id" | "createdAt" | "updatedAt">): Announcement {
+  const announcements = getAnnouncements()
+  const now = new Date().toISOString()
+  
+  const newAnnouncement: Announcement = {
+    ...announcement,
+    id: generateStorageId("announcement"),
+    createdAt: now,
+    updatedAt: now,
+  }
+  
+  announcements.push(newAnnouncement)
+  writeData(STORAGE_KEYS.ANNOUNCEMENTS, announcements)
+  
+  return newAnnouncement
+}
+
+export function updateAnnouncement(id: string, updates: Partial<Announcement>): Announcement | null {
+  const announcements = getAnnouncements()
+  const index = announcements.findIndex((a) => a.id === id)
+  
+  if (index === -1) return null
+  
+  announcements[index] = {
+    ...announcements[index],
+    ...updates,
+    updatedAt: new Date().toISOString(),
+  }
+  
+  writeData(STORAGE_KEYS.ANNOUNCEMENTS, announcements)
+  return announcements[index]
+}
+
+export function deleteAnnouncement(id: string): boolean {
+  const announcements = getAnnouncements()
+  const filtered = announcements.filter((a) => a.id !== id)
+  
+  if (filtered.length === announcements.length) return false
+  
+  writeData(STORAGE_KEYS.ANNOUNCEMENTS, filtered)
+  return true
+}
+
+// Announcement Dismissal Functions
+export function getAnnouncementDismissals(userId?: string): AnnouncementDismissal[] {
+  const dismissals = readData<AnnouncementDismissal[]>(STORAGE_KEYS.ANNOUNCEMENT_DISMISSALS, [])
+  const now = new Date().toISOString()
+  
+  // Filter by user and active dismissals (not expired)
+  return dismissals.filter((d) => {
+    if (userId && d.userId !== userId) return false
+    if (!userId && d.userId !== undefined) return false // Session-based dismissals for anonymous users
+    
+    // Check if temporary dismissal has expired
+    if (d.expiresAt && d.expiresAt < now) return false
+    
+    return true
+  })
+}
+
+export function isAnnouncementDismissed(announcementId: string, userId?: string): boolean {
+  const dismissals = getAnnouncementDismissals(userId)
+  return dismissals.some((d) => d.announcementId === announcementId)
+}
+
+export function dismissAnnouncement(
+  announcementId: string,
+  userId?: string,
+  dismissalPolicy: AnnouncementDismissalPolicy = "permanent"
+): void {
+  const dismissals = readData<AnnouncementDismissal[]>(STORAGE_KEYS.ANNOUNCEMENT_DISMISSALS, [])
+  const now = new Date().toISOString()
+  
+  // Remove existing dismissal for this announcement and user
+  const filtered = dismissals.filter(
+    (d) => !(d.announcementId === announcementId && d.userId === userId)
+  )
+  
+  // Calculate expiration based on dismissal policy
+  let expiresAt: string | undefined
+  if (dismissalPolicy === "temporary") {
+    // Temporary dismissals expire after 24 hours
+    const expiryDate = new Date()
+    expiryDate.setHours(expiryDate.getHours() + 24)
+    expiresAt = expiryDate.toISOString()
+  } else if (dismissalPolicy === "session") {
+    // Session dismissals expire after browser session (we'll handle this in the component)
+    // For now, we'll set a short expiry (handled by component clearing on refresh)
+    expiresAt = undefined
+  }
+  
+  const dismissal: AnnouncementDismissal = {
+    announcementId,
+    userId,
+    dismissedAt: now,
+    expiresAt,
+  }
+  
+  filtered.push(dismissal)
+  writeData(STORAGE_KEYS.ANNOUNCEMENT_DISMISSALS, filtered)
+}
+
+export function clearExpiredDismissals(): void {
+  const dismissals = readData<AnnouncementDismissal[]>(STORAGE_KEYS.ANNOUNCEMENT_DISMISSALS, [])
+  const now = new Date().toISOString()
+  
+  const active = dismissals.filter((d) => {
+    if (!d.expiresAt) return true // Permanent dismissals
+    return d.expiresAt >= now
+  })
+  
+  writeData(STORAGE_KEYS.ANNOUNCEMENT_DISMISSALS, active)
+}
+
+// Source Functions
+export function getSources(): Source[] {
+  return readData<Source[]>(STORAGE_KEYS.SOURCES, [])
+}
+
+export function getSourceById(id: string): Source | undefined {
+  return getSources().find((source) => source.id === id)
+}
+
+export function addSource(source: Source): void {
+  const sources = getSources()
+  sources.push(source)
+  writeData(STORAGE_KEYS.SOURCES, sources)
+}
+
+export function updateSource(id: string, updates: Partial<Source>): void {
+  const sources = getSources()
+  const index = sources.findIndex((source) => source.id === id)
+  if (index !== -1) {
+    sources[index] = { ...sources[index], ...updates }
+    writeData(STORAGE_KEYS.SOURCES, sources)
+  }
+}
+
+export function deleteSource(id: string): void {
+  const sources = getSources()
+  const filtered = sources.filter((source) => source.id !== id)
+  writeData(STORAGE_KEYS.SOURCES, filtered)
+}
+
+// Moderation Queue Storage Functions
+export function getModerationQueueItems(): ModerationQueueItem[] {
+  return readData<ModerationQueueItem[]>(STORAGE_KEYS.MODERATION_QUEUE, [])
+}
+
+export function addModerationQueueItem(item: ModerationQueueItem): void {
+  const items = getModerationQueueItems()
+  items.push(item)
+  writeData(STORAGE_KEYS.MODERATION_QUEUE, items)
+}
+
+export function updateModerationQueueItem(id: string, updates: Partial<ModerationQueueItem>): void {
+  const items = getModerationQueueItems()
+  const index = items.findIndex((item) => item.id === id)
+  if (index !== -1) {
+    items[index] = { ...items[index], ...updates, updatedAt: new Date().toISOString() }
+    writeData(STORAGE_KEYS.MODERATION_QUEUE, items)
+  }
+}
+
+export function deleteModerationQueueItem(id: string): void {
+  const items = getModerationQueueItems()
+  const filtered = items.filter((item) => item.id !== id)
+  writeData(STORAGE_KEYS.MODERATION_QUEUE, filtered)
+}
+
+export function getModerationActionLogs(): ModerationActionLogType[] {
+  return readData<ModerationActionLogType[]>(STORAGE_KEYS.MODERATION_ACTION_LOGS, [])
+}
+
+export function addModerationActionLog(log: ModerationActionLogType): void {
+  const logs = getModerationActionLogs()
+  logs.push(log)
+  writeData(STORAGE_KEYS.MODERATION_ACTION_LOGS, logs)
+}
+
+export function getSoftDeleteRecords(): SoftDeleteRecord[] {
+  return readData<SoftDeleteRecord[]>(STORAGE_KEYS.SOFT_DELETE_RECORDS, [])
+}
+
+export function addSoftDeleteRecord(record: SoftDeleteRecord): void {
+  const records = getSoftDeleteRecords()
+  records.push(record)
+  writeData(STORAGE_KEYS.SOFT_DELETE_RECORDS, records)
+}
+
+export function deleteSoftDeleteRecord(id: string): void {
+  const records = getSoftDeleteRecords()
+  const filtered = records.filter((record) => record.id !== id)
+  writeData(STORAGE_KEYS.SOFT_DELETE_RECORDS, filtered)
+}
+
+// Integration Operations
+export function getIntegrationSettings(): IntegrationSettings {
+  return readData<IntegrationSettings>(STORAGE_KEYS.INTEGRATIONS, {
+    webhooks: [],
+    apiKeys: [],
+  })
+}
+
+export function saveIntegrationSettings(settings: IntegrationSettings): void {
+  writeData(STORAGE_KEYS.INTEGRATIONS, settings)
+}
+
+// Webhook Operations
+export function getWebhooks(): Webhook[] {
+  const settings = getIntegrationSettings()
+  return settings.webhooks
+}
+
+export function getWebhookById(webhookId: string): Webhook | null {
+  const webhooks = getWebhooks()
+  return webhooks.find((w) => w.id === webhookId) || null
+}
+
+export function createWebhook(webhook: Omit<Webhook, "id" | "createdAt" | "updatedAt">): Webhook {
+  const settings = getIntegrationSettings()
+  const newWebhook: Webhook = {
+    ...webhook,
+    id: `wh_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    deliveryHistory: [],
+  }
+  settings.webhooks.push(newWebhook)
+  saveIntegrationSettings(settings)
+  return newWebhook
+}
+
+export function updateWebhook(webhookId: string, updates: Partial<Webhook>): { success: boolean; error?: string } {
+  const settings = getIntegrationSettings()
+  const index = settings.webhooks.findIndex((w) => w.id === webhookId)
+  if (index === -1) {
+    return { success: false, error: "Webhook not found" }
+  }
+  settings.webhooks[index] = {
+    ...settings.webhooks[index],
+    ...updates,
+    updatedAt: new Date().toISOString(),
+  }
+  saveIntegrationSettings(settings)
+  return { success: true }
+}
+
+export function deleteWebhook(webhookId: string): { success: boolean; error?: string } {
+  const settings = getIntegrationSettings()
+  const index = settings.webhooks.findIndex((w) => w.id === webhookId)
+  if (index === -1) {
+    return { success: false, error: "Webhook not found" }
+  }
+  settings.webhooks.splice(index, 1)
+  saveIntegrationSettings(settings)
+  return { success: true }
+}
+
+export function addWebhookDelivery(webhookId: string, delivery: WebhookDelivery): void {
+  const webhook = getWebhookById(webhookId)
+  if (!webhook) return
+  if (!webhook.deliveryHistory) {
+    webhook.deliveryHistory = []
+  }
+  webhook.deliveryHistory.push(delivery)
+  // Keep only last 50 deliveries
+  if (webhook.deliveryHistory.length > 50) {
+    webhook.deliveryHistory = webhook.deliveryHistory.slice(-50)
+  }
+  webhook.lastDeliveryAt = delivery.createdAt
+  webhook.lastDeliveryStatus = delivery.status === "success" ? "success" : "failed"
+  updateWebhook(webhookId, webhook)
+}
+
+// API Key Operations
+export function getApiKeys(): ApiKey[] {
+  const settings = getIntegrationSettings()
+  return settings.apiKeys
+}
+
+export function getApiKeyById(keyId: string): ApiKey | null {
+  const keys = getApiKeys()
+  return keys.find((k) => k.id === keyId) || null
+}
+
+export function createApiKey(
+  name: string,
+  scopes: string[],
+  expiresAt?: string
+): { success: boolean; error?: string; apiKey?: ApiKey } {
+  const settings = getIntegrationSettings()
+  
+  // Generate API key (32 random bytes as hex string = 64 characters)
+  const keyBytes = new Uint8Array(32)
+  crypto.getRandomValues(keyBytes)
+  const key = Array.from(keyBytes)
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("")
+  
+  const newApiKey: ApiKey = {
+    id: `ak_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`,
+    name,
+    key,
+    keyPrefix: key.substring(0, 8),
+    scopes,
+    createdAt: new Date().toISOString(),
+    expiresAt,
+    isActive: true,
+  }
+  
+  settings.apiKeys.push(newApiKey)
+  saveIntegrationSettings(settings)
+  
+  return { success: true, apiKey: newApiKey }
+}
+
+export function updateApiKey(keyId: string, updates: Partial<ApiKey>): { success: boolean; error?: string } {
+  const settings = getIntegrationSettings()
+  const index = settings.apiKeys.findIndex((k) => k.id === keyId)
+  if (index === -1) {
+    return { success: false, error: "API key not found" }
+  }
+  settings.apiKeys[index] = { ...settings.apiKeys[index], ...updates }
+  saveIntegrationSettings(settings)
+  return { success: true }
+}
+
+export function deleteApiKey(keyId: string): { success: boolean; error?: string } {
+  const settings = getIntegrationSettings()
+  const index = settings.apiKeys.findIndex((k) => k.id === keyId)
+  if (index === -1) {
+    return { success: false, error: "API key not found" }
+  }
+  settings.apiKeys.splice(index, 1)
+  saveIntegrationSettings(settings)
+  return { success: true }
+}
+
+export function revokeApiKey(keyId: string): { success: boolean; error?: string } {
+  return updateApiKey(keyId, { isActive: false })
+}
+
+export function activateApiKey(keyId: string): { success: boolean; error?: string } {
+  return updateApiKey(keyId, { isActive: true })
+}
+
+// Pinned Items Operations
+export function getPinnedItems(): PinnedItem[] {
+  return readData<PinnedItem[]>(STORAGE_KEYS.PINNED_ITEMS, [])
+}
+
+export function isItemPinned(type: PinnedItemType, itemId: string): boolean {
+  const items = getPinnedItems()
+  return items.some((item) => item.type === type && item.itemId === itemId)
+}
+
+export function addPinnedItem(
+  type: PinnedItemType,
+  itemId: string,
+  metadata?: { title?: string; description?: string; image?: string }
+): { success: boolean; error?: string } {
+  const items = getPinnedItems()
+  
+  // Check if already pinned
+  if (isItemPinned(type, itemId)) {
+    return { success: false, error: "Item is already pinned" }
+  }
+
+  const newItem: PinnedItem = {
+    id: generateStorageId("pinned"),
+    type,
+    itemId,
+    pinnedAt: new Date().toISOString(),
+    ...metadata,
+  }
+
+  items.push(newItem)
+  writeData(STORAGE_KEYS.PINNED_ITEMS, items)
+  return { success: true }
+}
+
+export function removePinnedItem(type: PinnedItemType, itemId: string): { success: boolean; error?: string } {
+  const items = getPinnedItems()
+  const filtered = items.filter((item) => !(item.type === type && item.itemId === itemId))
+  
+  if (filtered.length === items.length) {
+    return { success: false, error: "Item is not pinned" }
+  }
+
+  writeData(STORAGE_KEYS.PINNED_ITEMS, filtered)
+  return { success: true }
+}
+
+export function togglePinnedItem(
+  type: PinnedItemType,
+  itemId: string,
+  metadata?: { title?: string; description?: string; image?: string }
+): { success: boolean; error?: string; isPinned: boolean } {
+  const isPinned = isItemPinned(type, itemId)
+  
+  if (isPinned) {
+    const result = removePinnedItem(type, itemId)
+    return { ...result, isPinned: false }
+  } else {
+    const result = addPinnedItem(type, itemId, metadata)
+    return { ...result, isPinned: true }
+  }
+}
+
+// Care Guides Storage Functions
+
+function getCareGuides(): CareGuide[] {
+  const guides = readData<CareGuide[]>(STORAGE_KEYS.CARE_GUIDES, [])
+  if (guides.length === 0 && isBrowser) {
+    // Initialize with mock data on first load
+    writeData(STORAGE_KEYS.CARE_GUIDES, mockCareGuides)
+    return mockCareGuides
+  }
+  return guides
+}
+
+function writeCareGuides(guides: CareGuide[]): void {
+  writeData(STORAGE_KEYS.CARE_GUIDES, guides)
+}
+
+export function getAllCareGuides(): CareGuide[] {
+  return getCareGuides()
+}
+
+export function getCareGuideBySlug(slug: string): CareGuide | null {
+  const guides = getCareGuides()
+  return guides.find((guide) => guide.slug === slug) || null
+}
+
+export function getCareGuidesByCategory(category: CareGuideCategory): CareGuide[] {
+  const guides = getCareGuides()
+  return guides.filter((guide) => guide.category === category)
+}
+
+export function getCareGuidesBySpecies(species: string): CareGuide[] {
+  const guides = getCareGuides()
+  return guides.filter((guide) => guide.species.includes(species as any))
+}
+
+export function incrementCareGuideViews(slug: string): void {
+  const guides = getCareGuides()
+  const guide = guides.find((g) => g.slug === slug)
+  if (guide) {
+    guide.views += 1
+    writeCareGuides(guides)
+  }
+}
+
+export function toggleCareGuideLike(slug: string, userId: string): { success: boolean; isLiked: boolean } {
+  const guides = getCareGuides()
+  const guide = guides.find((g) => g.slug === slug)
+  
+  if (!guide) {
+    return { success: false, isLiked: false }
+  }
+  
+  const index = guide.likes.indexOf(userId)
+  if (index > -1) {
+    guide.likes.splice(index, 1)
+    writeCareGuides(guides)
+    return { success: true, isLiked: false }
+  } else {
+    guide.likes.push(userId)
+    writeCareGuides(guides)
+    return { success: true, isLiked: true }
+  }
 }

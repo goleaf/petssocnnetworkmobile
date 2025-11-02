@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth"
+import { useMemo } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -20,8 +21,10 @@ import {
   deleteBlogPost,
   blockUser,
   unblockUser,
+  getWikiRevisions,
+  getGroupMembersByGroupId,
 } from "@/lib/storage"
-import type { User, BlogPost } from "@/lib/types"
+import type { User, BlogPost, WikiRevision, Group } from "@/lib/types"
 import {
   MapPin,
   Calendar,
@@ -59,6 +62,10 @@ import {
   Baby,
   ShieldCheck,
   Ban,
+  Camera,
+  FileText,
+  Users as UsersIcon,
+  Pin,
 } from "lucide-react"
 import Link from "next/link"
 import { BadgeDisplay } from "@/components/badge-display"
@@ -87,6 +94,8 @@ import {
 import { getPrivacyNotice } from "@/lib/utils/privacy-messages"
 import { useStorageListener } from "@/lib/hooks/use-storage-listener"
 import { PostContent } from "@/components/post/post-content"
+import { CompactStatBlock, ProfileStats } from "@/components/profile-stats"
+import { getProfileOverview } from "@/lib/utils/profile-overview"
 
 const STORAGE_KEYS_TO_WATCH = ["pet_social_users", "pet_social_pets", "pet_social_blog_posts"]
 
@@ -98,8 +107,9 @@ export default function UserProfilePage() {
   const [pets, setPets] = useState<any[]>([])
   const [feedPosts, setFeedPosts] = useState<BlogPost[]>([])
   const [blogPosts, setBlogPosts] = useState<BlogPost[]>([])
+  const { checkIsPinned } = usePinnedItems()
   const [isFollowing, setIsFollowing] = useState(false)
-  const [activeTab, setActiveTab] = useState("feed")
+  const [activeTab, setActiveTab] = useState("posts")
   const [editingPostId, setEditingPostId] = useState<string | null>(null)
   const [editPostContent, setEditPostContent] = useState("")
   const [editingBlogPostId, setEditingBlogPostId] = useState<string | null>(null)
@@ -307,6 +317,15 @@ export default function UserProfilePage() {
       canRequestAccess: canFollow,
     })
 
+  // Calculate mutual followers
+  const mutualFollowersCount = useMemo(() => {
+    if (!currentUser || isOwnProfile) return 0
+    const currentUserFollowing = currentUser.following || []
+    const profileUserFollowers = user.followers || []
+    const mutual = currentUserFollowing.filter((id) => profileUserFollowers.includes(id))
+    return mutual.length
+  }, [currentUser, user, isOwnProfile])
+
   const stats = [
     { label: "Pets", value: canViewPets ? pets.length : 0, icon: PawPrint, canView: canViewPets },
     { label: "Feed Posts", value: canViewPosts ? feedPosts.length : 0, icon: MessageCircle, canView: canViewPosts },
@@ -314,6 +333,11 @@ export default function UserProfilePage() {
     { label: "Followers", value: canViewFollowersList ? user.followers.length : 0, icon: Users, canView: canViewFollowersList },
     { label: "Following", value: canViewFollowingList ? user.following.length : 0, icon: Heart, canView: canViewFollowingList },
   ]
+
+  // Get profile overview for badges and highlights
+  const profileOverview = useMemo(() => getProfileOverview(user.id), [user.id])
+  const badges = profileOverview?.badges
+  const highlights = profileOverview?.highlights
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background via-background to-muted/30">
@@ -339,6 +363,11 @@ export default function UserProfilePage() {
                       <TierBadge user={user} size="md" showPoints={isOwnProfile} />
                     </div>
                     <p className="text-muted-foreground text-sm sm:text-base">@{user.username}</p>
+                    {mutualFollowersCount > 0 && !isOwnProfile && (
+                      <Badge variant="secondary" className="mt-1 w-fit">
+                        {mutualFollowersCount} mutual follower{mutualFollowersCount !== 1 ? "s" : ""}
+                      </Badge>
+                    )}
                     {user.isPro && user.proExpiresAt && (
                       <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
                         Pro member until {formatDate(user.proExpiresAt)}
@@ -438,59 +467,47 @@ export default function UserProfilePage() {
                   </div>
                 )}
 
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3 md:gap-4">
-                  {stats.map((stat) => {
-                    let linkHref = "#"
-                    if (stat.label === "Pets") {
-                      linkHref = `/user/${user.username}/pets`
-                    } else if (stat.label === "Posts") {
-                      linkHref = `/user/${user.username}/posts`
-                    } else if (stat.label === "Followers") {
-                      linkHref = `/user/${user.username}/followers`
-                    } else if (stat.label === "Following") {
-                      linkHref = `/user/${user.username}/following`
-                    }
-
-                    return (
-                      <Link
-                        key={stat.label}
-                        href={linkHref}
-                        onClick={(e) => {
-                          if (linkHref.startsWith("#")) {
-                            e.preventDefault()
-                            // Scroll to the tab section
-                            const tabs = document.querySelector('[role="tablist"]')
-                            if (tabs) {
-                              tabs.scrollIntoView({ behavior: "smooth", block: "start" })
-                              // Switch to the appropriate tab
-                              const tabButton = document.querySelector(
-                                linkHref === "#pets"
-                                  ? '[role="tab"][value="pets"]'
-                                  : '[role="tab"][value="posts"]'
-                              ) as HTMLButtonElement
-                              if (tabButton) {
-                                setTimeout(() => tabButton.click(), 100)
-                              }
-                            }
-                          }
-                        }}
-                      >
-                        <Card className="hover:bg-accent/50 transition-all duration-300 ease-in-out cursor-pointer group h-full border-transparent hover:border-input hover:shadow-md hover:scale-105">
-                          <CardContent className="px-2 py-3 sm:px-3 sm:py-4 text-center">
-                            <div className="flex flex-col items-center justify-center gap-1">
-                              <div className="flex items-center justify-center gap-1">
-                                <stat.icon className="h-4 w-4 sm:h-5 sm:w-5 text-primary group-hover:text-foreground transition-all duration-300 ease-in-out" />
-                                <p className="text-base sm:text-lg md:text-xl font-bold text-foreground group-hover:text-foreground transition-all duration-300 ease-in-out">
-                                  {stat.value}
-                                </p>
-                              </div>
-                              <p className="text-xs sm:text-sm font-medium text-muted-foreground group-hover:text-accent-foreground leading-tight transition-all duration-300 ease-in-out">{stat.label}</p>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      </Link>
-                    )
-                  })}
+                <div className="space-y-4">
+                  {/* Pets, Feed Posts, Blog Posts stats */}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3 md:gap-4">
+                    <CompactStatBlock
+                      label="Pets"
+                      value={stats.find((s) => s.label === "Pets")?.value || 0}
+                      icon={PawPrint}
+                      href={canViewPets ? `/user/${user.username}/pets` : undefined}
+                      isLocked={!canViewPets}
+                      lockedMessage={!canViewPets ? getPrivacyMessage("pets") : undefined}
+                    />
+                    <CompactStatBlock
+                      label="Feed Posts"
+                      value={stats.find((s) => s.label === "Feed Posts")?.value || 0}
+                      icon={MessageCircle}
+                      href={canViewPosts ? `#feed` : undefined}
+                      isLocked={!canViewPosts}
+                      lockedMessage={!canViewPosts ? getPrivacyMessage("posts") : undefined}
+                    />
+                    <CompactStatBlock
+                      label="Blog Posts"
+                      value={stats.find((s) => s.label === "Blog Posts")?.value || 0}
+                      icon={BookOpen}
+                      href={canViewPosts ? `#blog` : undefined}
+                      isLocked={!canViewPosts}
+                      lockedMessage={!canViewPosts ? getPrivacyMessage("posts") : undefined}
+                    />
+                  </div>
+                  {/* Followers/Following stats with badges and highlights */}
+                  <ProfileStats
+                    followers={user.followers.length}
+                    following={user.following.length}
+                    followersHref={canViewFollowersList ? `/user/${user.username}/followers` : undefined}
+                    followingHref={canViewFollowingList ? `/user/${user.username}/following` : undefined}
+                    canViewFollowers={canViewFollowersList}
+                    canViewFollowing={canViewFollowingList}
+                    followersLockedMessage={!canViewFollowersList ? getPrivacyMessage("followers") : undefined}
+                    followingLockedMessage={!canViewFollowingList ? getPrivacyMessage("following") : undefined}
+                    badges={badges}
+                    highlights={highlights}
+                  />
                 </div>
               </div>
             </div>
@@ -504,17 +521,18 @@ export default function UserProfilePage() {
               value={activeTab}
               onValueChange={setActiveTab}
               items={[
-                { value: "feed", label: "Feed Posts", icon: MessageCircle, color: "text-blue-500" },
-                { value: "blog", label: "Blog Posts", icon: BookOpen, color: "text-purple-500" },
+                { value: "posts", label: "Posts", icon: MessageCircle, color: "text-blue-500" },
                 { value: "pets", label: "Pets", icon: PawPrint, color: "text-orange-500" },
-                { value: "about", label: "About", icon: UserIcon, color: "text-indigo-500" },
+                { value: "photos", label: "Photos", icon: Camera, color: "text-green-500" },
+                { value: "wiki-edits", label: "Wiki Edits", icon: FileText, color: "text-purple-500" },
+                { value: "groups", label: "Groups", icon: UsersIcon, color: "text-pink-500" },
               ]}
               className="w-full"
-              defaultGridCols={{ mobile: 2, tablet: 4, desktop: 4 }}
+              defaultGridCols={{ mobile: 2, tablet: 3, desktop: 5 }}
               showLabels={{ mobile: true, desktop: true }}
             >
 
-              <TabsContent value="feed" className="space-y-4">
+              <TabsContent value="posts" className="space-y-4">
                 {!canViewPosts ? (
                   <Card>
                     <CardContent className="p-12 text-center text-muted-foreground">
@@ -641,7 +659,16 @@ export default function UserProfilePage() {
                     </CardContent>
                   </Card>
                 ) : blogPosts.length > 0 ? (
-                  blogPosts.map((post) => {
+                  [...blogPosts]
+                    .sort((a, b) => {
+                      // Show pinned posts first
+                      const aPinned = checkIsPinned("post", a.id)
+                      const bPinned = checkIsPinned("post", b.id)
+                      if (aPinned !== bPinned) return aPinned ? -1 : 1
+                      // Then by date
+                      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+                    })
+                    .map((post) => {
                     const pet = pets.find((p) => p.id === post.petId)
                     const isOwnPost = isOwnProfile && post.authorId === currentUser?.id
                     return (
@@ -657,7 +684,15 @@ export default function UserProfilePage() {
                                       <AvatarFallback>{pet.name.charAt(0)}</AvatarFallback>
                                     </Avatar>
                                     <div className="min-w-0 flex-1">
-                                      <p className="font-semibold text-sm sm:text-base truncate">{pet.name}</p>
+                                      <div className="flex items-center gap-2">
+                                        <p className="font-semibold text-sm sm:text-base truncate">{pet.name}</p>
+                                        {checkIsPinned("post", post.id) && (
+                                          <Badge variant="secondary" className="flex items-center gap-1 text-xs">
+                                            <Pin className="h-3 w-3 fill-current" />
+                                            Pinned
+                                          </Badge>
+                                        )}
+                                      </div>
                                       <p className="text-xs text-muted-foreground">
                                         {formatDate(post.createdAt)}
                                       </p>

@@ -1,5 +1,5 @@
 import React from "react"
-import { render, screen, fireEvent, waitFor, within } from "@testing-library/react"
+import { render, screen, fireEvent, waitFor, within, act } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { Typeahead, type TypeaheadOption } from "../typeahead"
 
@@ -60,12 +60,15 @@ describe("Typeahead", () => {
     expect(onValueChange).not.toHaveBeenCalled()
     
     // Fast-forward time
-    jest.advanceTimersByTime(300)
+    await act(async () => {
+      jest.advanceTimersByTime(300)
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    })
     
     // Should call after debounce
     await waitFor(() => {
       expect(onValueChange).toHaveBeenCalledWith("do")
-    })
+    }, { timeout: 1000 })
   })
 
   it("opens dropdown when typing", async () => {
@@ -73,11 +76,14 @@ describe("Typeahead", () => {
     const input = screen.getByRole("textbox")
     
     await userEvent.type(input, "d")
-    jest.advanceTimersByTime(300)
+    await act(async () => {
+      jest.advanceTimersByTime(300)
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    })
     
     await waitFor(() => {
       expect(screen.getByRole("listbox")).toBeInTheDocument()
-    })
+    }, { timeout: 1000 })
   })
 
   it("filters options based on query", async () => {
@@ -85,12 +91,15 @@ describe("Typeahead", () => {
     const input = screen.getByRole("textbox")
     
     await userEvent.type(input, "dog")
-    jest.advanceTimersByTime(300)
+    await act(async () => {
+      jest.advanceTimersByTime(300)
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    })
     
     await waitFor(() => {
       expect(screen.getByRole("option", { name: /dog/i })).toBeInTheDocument()
       expect(screen.queryByRole("option", { name: /cat/i })).not.toBeInTheDocument()
-    })
+    }, { timeout: 1000 })
   })
 
   it("highlights matching text", async () => {
@@ -98,14 +107,17 @@ describe("Typeahead", () => {
     const input = screen.getByRole("textbox")
     
     await userEvent.type(input, "do")
-    jest.advanceTimersByTime(300)
+    await act(async () => {
+      jest.advanceTimersByTime(300)
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    })
     
     await waitFor(() => {
       const option = screen.getByRole("option", { name: /dog/i })
       const mark = within(option).getByText("do")
       expect(mark).toBeInTheDocument()
       expect(mark.tagName.toLowerCase()).toBe("mark")
-    })
+    }, { timeout: 1000 })
   })
 
   it("navigates options with arrow keys", async () => {
@@ -114,11 +126,14 @@ describe("Typeahead", () => {
     const input = screen.getByRole("textbox")
     
     await userEvent.type(input, "d")
-    jest.advanceTimersByTime(300)
+    await act(async () => {
+      jest.advanceTimersByTime(300)
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    })
     
     await waitFor(() => {
       expect(screen.getByRole("listbox")).toBeInTheDocument()
-    })
+    }, { timeout: 1000 })
     
     // Arrow down
     fireEvent.keyDown(input, { key: "ArrowDown" })
@@ -127,7 +142,7 @@ describe("Typeahead", () => {
       const option = screen.getByRole("option", { name: /dog/i })
       expect(option).toHaveAttribute("aria-selected", "true")
       expect(input).toHaveAttribute("aria-activedescendant", "typeahead-option-0")
-    })
+    }, { timeout: 1000 })
   })
 
   it("selects option with Enter key", async () => {
@@ -143,11 +158,14 @@ describe("Typeahead", () => {
     const input = screen.getByRole("textbox")
     
     await userEvent.type(input, "dog")
-    jest.advanceTimersByTime(300)
+    await act(async () => {
+      jest.advanceTimersByTime(300)
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    })
     
     await waitFor(() => {
       expect(screen.getByRole("listbox")).toBeInTheDocument()
-    })
+    }, { timeout: 1000 })
     
     // Arrow down to highlight first option
     fireEvent.keyDown(input, { key: "ArrowDown" })
@@ -158,7 +176,7 @@ describe("Typeahead", () => {
     await waitFor(() => {
       expect(onSelect).toHaveBeenCalledWith(mockOptions[0])
       expect(onValueChange).toHaveBeenCalledWith("Dog")
-    })
+    }, { timeout: 1000 })
   })
 
   it("closes dropdown with Escape key", async () => {
@@ -184,24 +202,27 @@ describe("Typeahead", () => {
     const input = screen.getByRole("textbox")
     
     await userEvent.type(input, "d")
-    jest.advanceTimersByTime(300)
+    await act(async () => {
+      jest.advanceTimersByTime(300)
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    })
     
     await waitFor(() => {
       expect(screen.getByRole("listbox")).toBeInTheDocument()
-    })
+    }, { timeout: 1000 })
     
     // Navigate with arrow keys
     fireEvent.keyDown(input, { key: "ArrowDown" })
     
     await waitFor(() => {
       expect(input).toHaveAttribute("aria-activedescendant", "typeahead-option-0")
-    })
+    }, { timeout: 1000 })
     
     fireEvent.keyDown(input, { key: "ArrowDown" })
     
     await waitFor(() => {
       expect(input).toHaveAttribute("aria-activedescendant", "typeahead-option-1")
-    })
+    }, { timeout: 1000 })
   })
 
   it("displays empty state when no results", async () => {
@@ -218,12 +239,15 @@ describe("Typeahead", () => {
     const input = screen.getByRole("textbox")
     
     await userEvent.type(input, "xyz")
-    jest.advanceTimersByTime(300)
+    await act(async () => {
+      jest.advanceTimersByTime(300)
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    })
     
     await waitFor(() => {
       expect(screen.getByText("No results found")).toBeInTheDocument()
       expect(screen.getByText("Create new")).toBeInTheDocument()
-    })
+    }, { timeout: 1000 })
   })
 
   it("calls empty state CTA when clicked", async () => {
@@ -241,12 +265,15 @@ describe("Typeahead", () => {
     const input = screen.getByRole("textbox")
     
     await userEvent.type(input, "xyz")
-    jest.advanceTimersByTime(300)
+    await act(async () => {
+      jest.advanceTimersByTime(300)
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    })
     
     await waitFor(() => {
       const button = screen.getByText("Create")
       expect(button).toBeInTheDocument()
-    })
+    }, { timeout: 1000 })
     
     await userEvent.click(screen.getByText("Create"))
     
@@ -259,7 +286,10 @@ describe("Typeahead", () => {
     const input = screen.getByRole("textbox")
     
     await userEvent.type(input, "test")
-    jest.advanceTimersByTime(300)
+    await act(async () => {
+      jest.advanceTimersByTime(300)
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    })
     
     const clearButton = screen.getByLabelText("Clear input")
     await userEvent.click(clearButton)
@@ -274,19 +304,25 @@ describe("Typeahead", () => {
     
     // Type less than min length
     await userEvent.type(input, "do")
-    jest.advanceTimersByTime(300)
+    await act(async () => {
+      jest.advanceTimersByTime(300)
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    })
     
     await waitFor(() => {
       expect(screen.queryByRole("listbox")).not.toBeInTheDocument()
-    })
+    }, { timeout: 1000 })
     
     // Type min length
     await userEvent.type(input, "g")
-    jest.advanceTimersByTime(300)
+    await act(async () => {
+      jest.advanceTimersByTime(300)
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    })
     
     await waitFor(() => {
       expect(screen.getByRole("listbox")).toBeInTheDocument()
-    })
+    }, { timeout: 1000 })
   })
 
   it("limits results with maxResults", async () => {
@@ -299,12 +335,15 @@ describe("Typeahead", () => {
     const input = screen.getByRole("textbox")
     
     await userEvent.type(input, "o")
-    jest.advanceTimersByTime(300)
+    await act(async () => {
+      jest.advanceTimersByTime(300)
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    })
     
     await waitFor(() => {
       const options = screen.getAllByRole("option")
       expect(options.length).toBeLessThanOrEqual(5)
-    })
+    }, { timeout: 1000 })
   })
 
   it("handles mouse selection", async () => {
@@ -313,11 +352,14 @@ describe("Typeahead", () => {
     const input = screen.getByRole("textbox")
     
     await userEvent.type(input, "dog")
-    jest.advanceTimersByTime(300)
+    await act(async () => {
+      jest.advanceTimersByTime(300)
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    })
     
     await waitFor(() => {
       expect(screen.getByRole("listbox")).toBeInTheDocument()
-    })
+    }, { timeout: 1000 })
     
     const option = screen.getByRole("option", { name: /dog/i })
     await userEvent.click(option)
@@ -325,7 +367,7 @@ describe("Typeahead", () => {
     await waitFor(() => {
       expect(onSelect).toHaveBeenCalledWith(mockOptions[0])
       expect(screen.queryByRole("listbox")).not.toBeInTheDocument()
-    })
+    }, { timeout: 1000 })
   })
 
   it("updates highlighted index on mouse enter", async () => {
@@ -333,18 +375,21 @@ describe("Typeahead", () => {
     const input = screen.getByRole("textbox")
     
     await userEvent.type(input, "d")
-    jest.advanceTimersByTime(300)
+    await act(async () => {
+      jest.advanceTimersByTime(300)
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    })
     
     await waitFor(() => {
       expect(screen.getByRole("listbox")).toBeInTheDocument()
-    })
+    }, { timeout: 1000 })
     
     const option = screen.getByRole("option", { name: /dog/i })
     fireEvent.mouseEnter(option)
     
     await waitFor(() => {
       expect(option).toHaveAttribute("aria-selected", "true")
-    })
+    }, { timeout: 1000 })
   })
 
   it("is disabled when disabled prop is true", () => {
@@ -368,11 +413,14 @@ describe("Typeahead", () => {
     const input = screen.getByRole("textbox")
     
     await userEvent.type(input, "dog")
-    jest.advanceTimersByTime(300)
+    await act(async () => {
+      jest.advanceTimersByTime(300)
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    })
     
     await waitFor(() => {
       expect(screen.getByTestId("custom-option")).toBeInTheDocument()
-    })
+    }, { timeout: 1000 })
   })
 
   it("handles custom filterOptions", async () => {
@@ -384,11 +432,14 @@ describe("Typeahead", () => {
     const input = screen.getByRole("textbox")
     
     await userEvent.type(input, "c")
-    jest.advanceTimersByTime(300)
+    await act(async () => {
+      jest.advanceTimersByTime(300)
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    })
     
     await waitFor(() => {
       expect(screen.getByRole("option", { name: /cat/i })).toBeInTheDocument()
       expect(screen.queryByRole("option", { name: /dog/i })).not.toBeInTheDocument()
-    })
+    }, { timeout: 1000 })
   })
 })

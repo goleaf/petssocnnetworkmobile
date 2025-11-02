@@ -343,6 +343,55 @@ async function seedWikiArticles() {
   console.log(`✓ Seeded ${wikiData.length} wiki article stubs`)
 }
 
+async function seedReportReasons() {
+  console.log('Seeding report reasons...')
+  
+  const reportReasons = [
+    // Content violations
+    { code: 'spam', name: 'Spam', description: 'Repetitive, unwanted, or promotional content', category: 'content', severity: 'medium' },
+    { code: 'misinformation', name: 'False Information', description: 'Inaccurate, misleading, or unverified claims', category: 'content', severity: 'high' },
+    { code: 'inappropriate', name: 'Inappropriate Content', description: 'Offensive, vulgar, or unsuitable material', category: 'content', severity: 'high' },
+    { code: 'copyright', name: 'Copyright Infringement', description: 'Unauthorized use of copyrighted material', category: 'content', severity: 'critical' },
+    { code: 'impersonation', name: 'Impersonation', description: 'Pretending to be another person or organization', category: 'content', severity: 'high' },
+    
+    // Behavior violations
+    { code: 'harassment', name: 'Harassment', description: 'Targeted bullying, threats, or intimidation', category: 'behavior', severity: 'critical' },
+    { code: 'hate_speech', name: 'Hate Speech', description: 'Discriminatory language or content', category: 'behavior', severity: 'critical' },
+    { code: 'trolling', name: 'Trolling', description: 'Deliberately disruptive or provocative behavior', category: 'behavior', severity: 'medium' },
+    { code: 'abuse', name: 'Abuse', description: 'Verbal or emotional abuse directed at users', category: 'behavior', severity: 'critical' },
+    
+    // Safety violations
+    { code: 'self_harm', name: 'Self-Harm Content', description: 'Depiction or promotion of self-harm', category: 'safety', severity: 'critical' },
+    { code: 'animal_abuse', name: 'Animal Abuse', description: 'Depiction or promotion of animal cruelty', category: 'safety', severity: 'critical' },
+    { code: 'violence', name: 'Violence', description: 'Graphic or gratuitous violence', category: 'safety', severity: 'high' },
+    { code: 'illegal', name: 'Illegal Activity', description: 'Promotion or depiction of illegal acts', category: 'safety', severity: 'critical' },
+    
+    // Policy violations
+    { code: 'spam_bot', name: 'Bot Activity', description: 'Automated bot or spam account', category: 'policy', severity: 'medium' },
+    { code: 'fake_account', name: 'Fake Account', description: 'Fake or impersonated account', category: 'policy', severity: 'high' },
+    { code: 'solicitation', name: 'Solicitation', description: 'Inappropriate sales or transaction attempts', category: 'policy', severity: 'low' },
+    
+    // Other
+    { code: 'other', name: 'Other', description: 'Reason not listed above', category: 'other', severity: 'low' },
+  ]
+  
+  for (const reason of reportReasons) {
+    await prisma.reportReason.upsert({
+      where: { code: reason.code },
+      update: {},
+      create: {
+        code: reason.code,
+        name: reason.name,
+        description: reason.description,
+        category: reason.category,
+        severity: reason.severity,
+        active: true,
+      },
+    })
+  }
+  console.log(`✓ Seeded ${reportReasons.length} report reasons`)
+}
+
 async function main() {
   try {
     console.log('🌱 Starting seed process...\n')
@@ -352,6 +401,7 @@ async function main() {
     await seedPlaces(cities)
     await seedProducts()
     await seedWikiArticles()
+    await seedReportReasons()
 
     console.log('\n✅ Seed process completed successfully!')
   } catch (error) {

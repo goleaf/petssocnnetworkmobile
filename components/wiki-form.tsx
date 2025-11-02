@@ -36,9 +36,11 @@ import {
   CheckCircle,
 } from "lucide-react"
 import { MarkdownEditor } from "@/components/markdown-editor"
+import { ImageUpload } from "@/components/image-upload"
 import { ANIMAL_TYPES } from "@/lib/animal-types"
 import { BrandAffiliationDisclosure } from "@/components/brand-affiliation-disclosure"
 import type { HealthArticleData, UrgencyLevel } from "@/lib/types"
+import type { ImageUploadResult } from "@/lib/storage-upload"
 
 // Label with Tooltip Component
 interface LabelWithTooltipProps {
@@ -157,6 +159,7 @@ export interface WikiFormData {
   content: string
   coverImage?: string
   tags?: string[]
+  reasonForChange?: string // Reason for making this edit
   brandAffiliation?: {
     disclosed: boolean
     organizationName?: string
@@ -245,6 +248,7 @@ export function WikiForm({ mode, initialData, onSubmit, onCancel }: WikiFormProp
     content: initialData?.content || "",
     coverImage: initialData?.coverImage || "",
     tags: initialData?.tags || [],
+    reasonForChange: "",
     brandAffiliation: initialData?.revisions?.[initialData.revisions.length - 1]?.brandAffiliation || {
       disclosed: false,
     },
@@ -261,6 +265,21 @@ export function WikiForm({ mode, initialData, onSubmit, onCancel }: WikiFormProp
   const [errors, setErrors] = useState<ValidationErrors>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
+  const [isUploadingImage, setIsUploadingImage] = useState(false)
+
+  const handleImageUploadComplete = (result: ImageUploadResult) => {
+    setFormData((prev) => ({ ...prev, coverImage: result.url }))
+    setIsUploadingImage(false)
+  }
+
+  const handleImageUploadError = (error: Error) => {
+    setMessage({ type: "error", text: error.message })
+    setIsUploadingImage(false)
+  }
+
+  const handleRemoveImage = () => {
+    setFormData((prev) => ({ ...prev, coverImage: "" }))
+  }
 
   // Real-time validation
   const validateField = (name: string, value: any): string | undefined => {
@@ -287,6 +306,14 @@ export function WikiForm({ mode, initialData, onSubmit, onCancel }: WikiFormProp
       case "category":
         if (!value) {
           return "Category is required"
+        }
+        break
+      case "reasonForChange":
+        if (mode === "edit" && (!value || value.trim().length === 0)) {
+          return "Reason for change is required"
+        }
+        if (mode === "edit" && value.trim().length > 500) {
+          return "Reason must be less than 500 characters"
         }
         break
     }
@@ -317,6 +344,12 @@ export function WikiForm({ mode, initialData, onSubmit, onCancel }: WikiFormProp
 
     const categoryError = validateField("category", formData.category)
     if (categoryError) newErrors.category = categoryError
+
+    // Only validate reason for change in edit mode
+    if (mode === "edit") {
+      const reasonError = validateField("reasonForChange", formData.reasonForChange)
+      if (reasonError) newErrors.reasonForChange = reasonError
+    }
 
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
@@ -502,14 +535,16 @@ export function WikiForm({ mode, initialData, onSubmit, onCancel }: WikiFormProp
                     Subcategory
                   </LabelWithTooltip>
                   <Select
-                    value={formData.subcategory || ""}
-                    onValueChange={(value) => handleFieldChange("subcategory", value || undefined)}
+                    value={formData.subcategory ?? "__none"}
+                    onValueChange={(value) =>
+                      handleFieldChange("subcategory", value === "__none" ? undefined : value)
+                    }
                   >
                     <SelectTrigger className="h-10 w-full">
                       <SelectValue placeholder="Select subcategory (optional)" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">None</SelectItem>
+                      <SelectItem value="__none">None</SelectItem>
                       {availableSubcategories.map((sub) => (
                         <SelectItem key={sub.value} value={sub.value}>
                           {sub.label}
@@ -566,30 +601,20 @@ export function WikiForm({ mode, initialData, onSubmit, onCancel }: WikiFormProp
             <div className="space-y-2">
               <LabelWithTooltip 
                 htmlFor="coverImage"
-                tooltip="Enter a URL for a cover image. This image will be displayed at the top of your article."
+                tooltip="Upload a cover image for your article. This image will be displayed at the top of your article."
               >
-                Cover Image URL
+                Cover Image
               </LabelWithTooltip>
-              <Input
-                id="coverImage"
-                type="url"
-                value={formData.coverImage || ""}
-                onChange={(e) => handleFieldChange("coverImage", e.target.value || undefined)}
-                placeholder="https://example.com/image.jpg"
-                className="h-10"
+              <ImageUpload
+                onUploadComplete={handleImageUploadComplete}
+                onError={handleImageUploadError}
+                folder="wiki/cover"
+                maxSize={10 * 1024 * 1024}
+                existingImageUrl={formData.coverImage || undefined}
+                onRemove={handleRemoveImage}
+                showPreview={true}
+                disabled={isUploadingImage || isSubmitting}
               />
-              {formData.coverImage && (
-                <div className="mt-2 rounded-md overflow-hidden border border-input">
-                  <img
-                    src={formData.coverImage}
-                    alt="Cover preview"
-                    className="w-full h-48 object-cover"
-                    onError={(e) => {
-                      e.currentTarget.style.display = "none"
-                    }}
-                  />
-                </div>
-              )}
             </div>
 
             <div className="space-y-2">
@@ -851,6 +876,38 @@ export function WikiForm({ mode, initialData, onSubmit, onCancel }: WikiFormProp
             showReminder={true}
             className="mt-6"
           />
+        )}
+
+        {/* Reason for Change - Only shown in edit mode */}
+        {mode === "edit" && (
+          <Card>
+            <CardHeaderWithIcon
+              title="Edit Summary"
+              description="Please provide a brief reason for your changes to this article"
+              icon={FileText}
+            />
+            <CardContent className="space-y-2">
+              <LabelWithTooltip 
+                htmlFor="reasonForChange" 
+                required
+                tooltip="Explain what changes you made and why. This helps other editors understand the revision history."
+              >
+                Reason for Change
+              </LabelWithTooltip>
+              <Textarea
+                id="reasonForChange"
+                value={formData.reasonForChange || ""}
+                onChange={(e) => handleFieldChange("reasonForChange", e.target.value)}
+                placeholder="e.g., Updated treatment recommendations based on latest veterinary guidelines, fixed typos, added missing information about breed-specific considerations..."
+                className={`min-h-[80px] ${errors.reasonForChange ? "border-destructive" : ""}`}
+                required
+              />
+              {errors.reasonForChange && <p className="text-xs text-destructive">{errors.reasonForChange}</p>}
+              <p className="text-xs text-muted-foreground">
+                {(formData.reasonForChange || "").length}/500 characters
+              </p>
+            </CardContent>
+          </Card>
         )}
 
         {/* Submit Buttons */}

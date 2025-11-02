@@ -4,9 +4,10 @@ import * as React from "react"
 import Link from "next/link"
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import type { WikiArticle } from "@/lib/types"
 import { formatCategoryLabel } from "@/lib/utils/categories"
-import { BookOpen } from "lucide-react"
+import { BookOpen, ExternalLink } from "lucide-react"
 
 interface WikiLinkProps {
   article: WikiArticle
@@ -23,6 +24,57 @@ const categoryColors: Record<WikiArticle["category"], string> = {
   breeds: "bg-pink-500",
 }
 
+// Helper to extract basic info from breed data
+function getBreedBasicInfo(article: WikiArticle) {
+  if (!article.breedData) return null
+  
+  const info: string[] = []
+  
+  if (article.breedData.sizeClass) {
+    info.push(`Size: ${article.breedData.sizeClass.charAt(0).toUpperCase() + article.breedData.sizeClass.slice(1)}`)
+  }
+  
+  if (article.breedData.lifeExpectancyYears) {
+    info.push(`Lifespan: ${article.breedData.lifeExpectancyYears} years`)
+  }
+  
+  if (article.breedData.originCountry) {
+    info.push(`Origin: ${article.breedData.originCountry}`)
+  }
+  
+  if (article.breedData.coatType) {
+    info.push(`Coat: ${article.breedData.coatType}`)
+  }
+  
+  return info
+}
+
+// Helper to extract basic info from health data
+function getHealthBasicInfo(article: WikiArticle) {
+  const healthData = (article as any).healthData
+  if (!healthData) return null
+  
+  const info: string[] = []
+  
+  if (healthData.urgency) {
+    const urgency = healthData.urgency.charAt(0).toUpperCase() + healthData.urgency.slice(1)
+    info.push(`Severity: ${urgency}`)
+  }
+  
+  if (healthData.symptoms && healthData.symptoms.length > 0) {
+    const symptomsDisplay = healthData.symptoms.length > 2 
+      ? `${healthData.symptoms.slice(0, 2).join(", ")}, +${healthData.symptoms.length - 2}`
+      : healthData.symptoms.join(", ")
+    info.push(`Symptoms: ${symptomsDisplay}`)
+  }
+  
+  if (healthData.onsetAge) {
+    info.push(`Onset: ${healthData.onsetAge}`)
+  }
+  
+  return info
+}
+
 export function WikiLink({ article, children, className }: WikiLinkProps) {
   // Get a preview snippet from the content (first 150 characters)
   const previewText = article.content
@@ -35,6 +87,10 @@ export function WikiLink({ article, children, className }: WikiLinkProps) {
     .replace(/\s+\S*$/, "") // Remove partial last word
     + (article.content.length > 150 ? "..." : "")
 
+  // Get breed-specific or health-specific basic info if available
+  const breedInfo = getBreedBasicInfo(article)
+  const healthInfo = getHealthBasicInfo(article)
+
   return (
     <HoverCard openDelay={300} closeDelay={100}>
       <HoverCardTrigger asChild>
@@ -45,11 +101,11 @@ export function WikiLink({ article, children, className }: WikiLinkProps) {
           {children}
         </Link>
       </HoverCardTrigger>
-      <HoverCardContent className="w-80 p-0" side="top" align="start">
+      <HoverCardContent className="w-96 p-0" side="top" align="start">
         <div className="space-y-3">
           {/* Thumbnail */}
           {article.coverImage && (
-            <div className="relative w-full h-32 overflow-hidden rounded-t-md">
+            <div className="relative w-full h-40 overflow-hidden rounded-t-md">
               <img
                 src={article.coverImage}
                 alt={article.title}
@@ -59,11 +115,11 @@ export function WikiLink({ article, children, className }: WikiLinkProps) {
           )}
           
           {/* Content */}
-          <div className="px-4 pb-4 space-y-2">
+          <div className="px-4 pb-4 space-y-3">
             {/* Title and Type */}
             <div className="space-y-1">
               <div className="flex items-start justify-between gap-2">
-                <h4 className="font-semibold text-sm leading-tight line-clamp-2">{article.title}</h4>
+                <h4 className="font-semibold text-base leading-tight">{article.title}</h4>
                 <BookOpen className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
               </div>
               <div className="flex items-center gap-2 flex-wrap">
@@ -86,15 +142,29 @@ export function WikiLink({ article, children, className }: WikiLinkProps) {
               </div>
             </div>
             
+            {/* Basic Info for Breeds/Conditions */}
+            {(breedInfo || healthInfo) && (breedInfo || healthInfo)!.length > 0 && (
+              <div className="flex flex-wrap gap-2 py-1">
+                {(breedInfo || healthInfo)!.map((item, idx) => (
+                  <span key={idx} className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
+                    {item}
+                  </span>
+                ))}
+              </div>
+            )}
+            
             {/* Preview */}
-            <p className="text-xs text-muted-foreground line-clamp-3 leading-relaxed">
+            <p className="text-sm text-muted-foreground line-clamp-3 leading-relaxed">
               {previewText}
             </p>
             
-            {/* View count */}
-            <div className="text-xs text-muted-foreground pt-1 border-t">
-              {article.views} {article.views === 1 ? "view" : "views"}
-            </div>
+            {/* Read More Button */}
+            <Button asChild variant="outline" size="sm" className="w-full">
+              <Link href={`/wiki/${article.slug}`}>
+                Read more
+                <ExternalLink className="ml-2 h-3 w-3" />
+              </Link>
+            </Button>
           </div>
         </div>
       </HoverCardContent>

@@ -14,6 +14,7 @@ import { getPetUrlFromPet } from "@/lib/utils/pet-url"
 import { getFriendSuggestions, type FriendSuggestion } from "@/lib/friend-suggestions"
 import { canViewPost } from "@/lib/utils/privacy"
 import { useStorageListener } from "@/lib/hooks/use-storage-listener"
+import { CompactStatBlock } from "@/components/profile-stats"
 
 const STORAGE_KEYS_TO_WATCH = ["pet_social_blog_posts", "pet_social_users", "pet_social_pets"]
 
@@ -108,20 +109,31 @@ export default function DashboardContent({ user }: { user: User }) {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        {stats.map((stat) => (
-          <Card key={stat.title}>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">{stat.title}</p>
-                  <p className="text-3xl font-bold mt-1">{stat.value}</p>
-                </div>
-                <stat.icon className={`h-8 w-8 ${stat.color}`} />
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3 md:gap-4 mb-8">
+        <CompactStatBlock
+          label="My Pets"
+          value={stats.find((s) => s.title === "My Pets")?.value || 0}
+          icon={PawPrint}
+          href="/dashboard/add-pet"
+        />
+        <CompactStatBlock
+          label="Following"
+          value={stats.find((s) => s.title === "Following")?.value || 0}
+          icon={Users}
+          href={`/user/${user.username}/following`}
+        />
+        <CompactStatBlock
+          label="Followers"
+          value={stats.find((s) => s.title === "Followers")?.value || 0}
+          icon={Heart}
+          href={`/user/${user.username}/followers`}
+        />
+        <CompactStatBlock
+          label="Total Posts"
+          value={stats.find((s) => s.title === "Total Posts")?.value || 0}
+          icon={BookOpen}
+          href="/blog"
+        />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

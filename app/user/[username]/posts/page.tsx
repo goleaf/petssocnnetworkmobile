@@ -50,7 +50,7 @@ export default function UserPostsPage({ params }: { params: Promise<{ username: 
   const [searchQuery, setSearchQuery] = useState("")
   const [sortBy, setSortBy] = useState<SortOption>("recent")
   const [showFilters, setShowFilters] = useState(false)
-  const [tagFilter, setTagFilter] = useState<string>("")
+  const [tagFilter, setTagFilter] = useState<string>("all")
   const [dateFrom, setDateFrom] = useState<string>("")
   const [dateTo, setDateTo] = useState<string>("")
 
@@ -105,7 +105,7 @@ export default function UserPostsPage({ params }: { params: Promise<{ username: 
     }
 
     // Tag filter
-    if (tagFilter) {
+    if (tagFilter !== "all") {
       filtered = filtered.filter(
         (post) =>
           post.tags?.includes(tagFilter) || post.hashtags?.includes(tagFilter)
@@ -163,13 +163,15 @@ export default function UserPostsPage({ params }: { params: Promise<{ username: 
 
   const clearFilters = () => {
     setSearchQuery("")
-    setTagFilter("")
+    setTagFilter("all")
     setDateFrom("")
     setDateTo("")
     setSortBy("recent")
   }
 
-  const hasActiveFilters = searchQuery || tagFilter || dateFrom || dateTo
+  const hasActiveFilters = Boolean(
+    searchQuery || dateFrom || dateTo || tagFilter !== "all",
+  )
 
   if (!user) return null
 
@@ -260,7 +262,7 @@ export default function UserPostsPage({ params }: { params: Promise<{ username: 
                         <SelectValue placeholder="All tags" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">All tags</SelectItem>
+                        <SelectItem value="all">All tags</SelectItem>
                         {allTags.map((tag) => (
                           <SelectItem key={tag} value={tag}>
                             {tag}

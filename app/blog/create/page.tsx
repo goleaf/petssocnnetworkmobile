@@ -40,13 +40,23 @@ export default function CreateBlogPage() {
   const { user } = useAuth()
   const router = useRouter()
   const [myPets, setMyPets] = useState<any[]>([])
+  // Load last used privacy setting from localStorage
+  const getLastPrivacy = (): PrivacyLevel => {
+    if (typeof window === "undefined") return "public"
+    const stored = localStorage.getItem("pet_social_last_post_privacy")
+    if (stored === "public" || stored === "followers-only" || stored === "private") {
+      return stored as PrivacyLevel
+    }
+    return "public"
+  }
+
   const [formData, setFormData] = useState<CreateBlogFormState>({
     petId: "",
     title: "",
     content: "",
     tags: "",
     categories: "",
-    privacy: "public",
+    privacy: getLastPrivacy(),
     hashtags: "",
     media: {
       images: [],
@@ -57,6 +67,7 @@ export default function CreateBlogPage() {
   const [draftId, setDraftId] = useState<string>("")
   const [lastSaved, setLastSaved] = useState<string>("")
   const [existingDrafts, setExistingDrafts] = useState<Draft[]>([])
+  const [suggestedTags, setSuggestedTags] = useState<string[]>([])
 
   useEffect(() => {
     if (!user) {
@@ -74,6 +85,9 @@ export default function CreateBlogPage() {
 
     const newDraftId = `draft_${Date.now()}`
     setDraftId(newDraftId)
+
+    // Load suggested tags
+    setSuggestedTags(getSuggestedTags(10))
   }, [user, router])
 
   useEffect(() => {
@@ -134,6 +148,7 @@ export default function CreateBlogPage() {
         .filter((tag) => tag),
       categories,
       likes: [],
+      queueStatus: "draft", // New posts start as drafts
       createdAt: new Date().toISOString().split("T")[0],
       updatedAt: new Date().toISOString().split("T")[0],
       privacy: formData.privacy,
@@ -299,7 +314,13 @@ export default function CreateBlogPage() {
                 <Label htmlFor="privacy">Privacy</Label>
                 <PrivacySelector
                   value={formData.privacy}
-                  onChange={(value) => setFormData({ ...formData, privacy: value })}
+                  onChange={(value) => {
+                    setFormData({ ...formData, privacy: value })
+                    // Save to localStorage for next time
+                    if (typeof window !== "undefined") {
+                      localStorage.setItem("pet_social_last_post_privacy", value)
+                    }
+                  }}
                 />
               </div>
             </div>
@@ -344,16 +365,40 @@ export default function CreateBlogPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="tags" description="Add tags separated by commas">
+              <Label htmlFor="tags" description="Add tags to help categorize your post. Type a tag and press Enter to add it.">
                 Tags
               </Label>
-              <Input
-                id="tags"
+              <TagInput
                 value={formData.tags}
-                onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
-                placeholder="adventure, training, funny (comma separated)"
-                className="h-11"
+                onChange={(value) => setFormData({ ...formData, tags: value })}
+                placeholder="adventure, training, funny"
+                suggestions={suggestedTags}
               />
+              {suggestedTags.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-2 items-center">
+                  <Sparkles className="h-3 w-3 text-muted-foreground" />
+                  <span className="text-xs text-muted-foreground">Trending:</span>
+                  {suggestedTags.slice(0, 8).map((tag) => {
+                    const currentTags = formData.tags.split(",").map((t) => t.trim()).filter(Boolean)
+                    if (currentTags.includes(tag)) return null
+                    return (
+                      <Badge
+                        key={tag}
+                        variant="outline"
+                        className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors text-xs"
+                        onClick={() => {
+                          const tags = formData.tags.split(",").map((t) => t.trim()).filter(Boolean)
+                          if (!tags.includes(tag)) {
+                            setFormData({ ...formData, tags: [...tags, tag].join(", ") })
+                          }
+                        }}
+                      >
+                        {tag}
+                      </Badge>
+                    )
+                  })}
+                </div>
+              )}
             </div>
 
             <div className="space-y-2">

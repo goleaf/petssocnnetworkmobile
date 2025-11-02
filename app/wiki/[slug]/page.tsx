@@ -16,7 +16,12 @@ import {
   getLatestRevision,
   isStaleContent,
   rollbackToStableRevision,
+  markRevisionAsStable,
+  canPublishStableHealthRevision,
+  getLatestRevision as getLatestRevisionForArticle,
 } from "@/lib/storage"
+import { cacheArticle, getCachedArticle, trackOfflineRead } from "@/lib/offline-cache"
+import { useOfflineSync } from "@/lib/hooks/use-offline-sync"
 import { useAuth } from "@/lib/auth"
 import { canUserModerate } from "@/lib/utils/comments"
 import {
@@ -42,6 +47,7 @@ import { WikiFooter } from "@/components/wiki/wiki-footer"
 import { BrandAffiliationLabel } from "@/components/brand-affiliation-label"
 import { getTranslatedContent, getBaseLanguage, isRTL } from "@/lib/utils/translations"
 import { Languages } from "lucide-react"
+import { PinButton } from "@/components/ui/pin-button"
 
 export default function WikiArticlePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params)
@@ -57,6 +63,8 @@ export default function WikiArticlePage({ params }: { params: Promise<{ slug: st
   const [viewingStable, setViewingStable] = useState(true)
   const [isRollingBack, setIsRollingBack] = useState(false)
   const [rollbackError, setRollbackError] = useState<string | null>(null)
+  const [isPublishingStable, setIsPublishingStable] = useState(false)
+  const [publishError, setPublishError] = useState<string | null>(null)
   
   // Translation support
   const languageCode = searchParams.get("lang") || null
@@ -68,45 +76,104 @@ export default function WikiArticlePage({ params }: { params: Promise<{ slug: st
   } | null>(null)
 
   useEffect(() => {
-    // Load data only on client side
-    const loadedArticle = getWikiArticleBySlug(slug)
-    if (loadedArticle) {
-      // For health pages, default to stable version
-      const isHealthPage = loadedArticle.category === "health"
-      if (isHealthPage && loadedArticle.stableRevisionId) {
-        const stableRev = getStableRevision(loadedArticle.id)
-        if (stableRev) {
-          // Use stable revision content
-          const articleWithStableContent = {
-            ...loadedArticle,
-            content: stableRev.content,
+    async function loadArticle() {
+      // Try to load from cache first if offline
+      let loadedArticle: WikiArticle | null = null
+      
+      if (!isOnline) {
+        // First get article by slug to get ID, then check cache
+        const tempArticle = getWikiArticleBySlug(slug)
+        if (tempArticle) {
+          const cached = await getCachedArticle(tempArticle.id, "wiki")
+          if (cached && "category" in cached) {
+            loadedArticle = cached as WikiArticle
           }
-          setArticle(articleWithStableContent)
-          setViewingStable(true)
+        }
+      }
+      
+      // If not cached, load from storage
+      if (!loadedArticle) {
+        loadedArticle = getWikiArticleBySlug(slug) || null
+        
+        // Cache the article for offline access
+        if (loadedArticle && isOnline) {
+          await cacheArticle(loadedArticle, "wiki")
+        }
+      }
+      
+      if (loadedArticle) {
+        // For health pages, default to stable version
+        const isHealthPage = loadedArticle.category === "health"
+        if (isHealthPage && loadedArticle.stableRevisionId) {
+          const stableRev = getStableRevision(loadedArticle.id)
+          if (stableRev) {
+            // Use stable revision content
+            const articleWithStableContent = {
+              ...loadedArticle,
+              content: stableRev.content,
+            }
+            setArticle(articleWithStableContent)
+            setViewingStable(true)
+          } else {
+            setArticle(loadedArticle)
+            setViewingStable(false)
+          }
         } else {
           setArticle(loadedArticle)
           setViewingStable(false)
         }
-      } else {
-        setArticle(loadedArticle)
-        setViewingStable(false)
+        // Load translated content if language is specified
+        if (languageCode) {
+          const translated = getTranslatedContent(loadedArticle, languageCode)
+          setTranslatedContent(translated)
+        } else {
+          setTranslatedContent(null)
+        }
+        
+        setAuthor(getUserById(loadedArticle.authorId))
+        setCommentCount(getCommentsByWikiArticleId(loadedArticle.id).length)
+        if (currentUser) {
+          setHasLiked(loadedArticle.likes.includes(currentUser.id))
+        }
+        
+        // Track offline read
+        await trackOfflineRead(loadedArticle.id, "wiki")
       }
-      // Load translated content if language is specified
-      if (languageCode) {
-        const translated = getTranslatedContent(loadedArticle, languageCode)
-        setTranslatedContent(translated)
-      } else {
-        setTranslatedContent(null)
-      }
-      
-      setAuthor(getUserById(loadedArticle.authorId))
-      setCommentCount(getCommentsByWikiArticleId(loadedArticle.id).length)
-      if (currentUser) {
-        setHasLiked(loadedArticle.likes.includes(currentUser.id))
+      setIsLoading(false)
+    }
+    
+    loadArticle()
+  }, [slug, currentUser, languageCode, isOnline])
+
+  // Inject JSON-LD structured data
+  useEffect(() => {
+    if (!article) return
+
+    // Generate JSON-LD
+    const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://pawsocial.com'
+    const jsonLd = generateJsonLd(article, baseUrl)
+
+    // Remove existing script if any
+    const existingScript = document.querySelector('script[type="application/ld+json"][data-wiki-article]')
+    if (existingScript) {
+      existingScript.remove()
+    }
+
+    // Create and inject script tag
+    const script = document.createElement('script')
+    script.type = 'application/ld+json'
+    script.setAttribute('data-wiki-article', 'true')
+    script.text = JSON.stringify(jsonLd).replace(/</g, '\u003c')
+    document.head.appendChild(script)
+
+    // Cleanup function
+    return () => {
+      const scriptToRemove = document.querySelector('script[type="application/ld+json"][data-wiki-article]')
+      if (scriptToRemove) {
+        scriptToRemove.remove()
       }
     }
-    setIsLoading(false)
-  }, [slug, currentUser, languageCode])
+  }, [article])
 
   useEffect(() => {
     // Increment view count
@@ -195,6 +262,39 @@ export default function WikiArticlePage({ params }: { params: Promise<{ slug: st
     setIsRollingBack(false)
   }
 
+  const handlePublishStable = async () => {
+    if (!article || !currentUser) return
+    
+    const latestRev = getLatestRevisionForArticle(article.id)
+    if (!latestRev) {
+      setPublishError("No revision to publish")
+      return
+    }
+
+    setIsPublishingStable(true)
+    setPublishError(null)
+
+    const result = markRevisionAsStable(article.id, latestRev.id, currentUser.id)
+    
+    if (result.success) {
+      // Refresh article data
+      const refreshedArticle = getWikiArticleBySlug(slug)
+      if (refreshedArticle) {
+        const stableRev = getStableRevision(refreshedArticle.id)
+        if (stableRev) {
+          setArticle({ ...refreshedArticle, content: stableRev.content })
+          setViewingStable(true)
+        } else {
+          setArticle(refreshedArticle)
+        }
+      }
+    } else {
+      setPublishError(result.error || "Failed to publish stable")
+    }
+    
+    setIsPublishingStable(false)
+  }
+
   const totalCommentsCount = commentCount
 
   // Check if content is stale
@@ -203,6 +303,9 @@ export default function WikiArticlePage({ params }: { params: Promise<{ slug: st
   const hasStableRevision = article?.stableRevisionId !== undefined
   const hasLatestRevision = getLatestRevision(article?.id || "") !== undefined
   const isHealthPage = article?.category === "health"
+  const canPublishStable = currentUser && isHealthPage ? canPublishStableHealthRevision(currentUser.id) : false
+  const latestRevision = article ? getLatestRevisionForArticle(article.id) : undefined
+  const hasUnpublishedChanges = isHealthPage && latestRevision && latestRevision.status === "draft" && (!hasStableRevision || latestRevision.id !== article.stableRevisionId)
 
 
   if (isLoading) {
@@ -217,9 +320,24 @@ export default function WikiArticlePage({ params }: { params: Promise<{ slug: st
     )
   }
 
+  // Generate JSON-LD for SEO (inject early)
+  const jsonLdScript = article ? (() => {
+    const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://pawsocial.com'
+    const jsonLd = generateJsonLd(article, baseUrl)
+    return JSON.stringify(jsonLd).replace(/</g, '\u003c')
+  })() : null
+
   return (
-    <div className="container mx-auto px-4 py-8 max-w-7xl">
-      <BackButton href="/wiki" label="Back to Wiki" />
+    <>
+      {/* JSON-LD Structured Data - Injected in head via useEffect, also here for immediate visibility */}
+      {jsonLdScript && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: jsonLdScript }}
+        />
+      )}
+      <div className="container mx-auto px-4 py-8 max-w-7xl">
+        <BackButton href="/wiki" label="Back to Wiki" />
 
       {/* Stale content banner */}
       {isStale && (
@@ -243,6 +361,11 @@ export default function WikiArticlePage({ params }: { params: Promise<{ slug: st
           <AlertTitle>Rollback Failed</AlertTitle>
           <AlertDescription>{rollbackError}</AlertDescription>
         </Alert>
+      )}
+
+      {/* Urgency Banner for Health Articles */}
+      {isHealthPage && article.healthData?.urgency && (
+        <UrgencyBanner urgency={article.healthData.urgency} />
       )}
 
       <Card className={article.coverImage ? "p-0 overflow-hidden" : ""}>
@@ -332,6 +455,19 @@ export default function WikiArticlePage({ params }: { params: Promise<{ slug: st
                   Translate
                 </Button>
               </Link>
+              {article && (
+                <PinButton
+                  type="wiki"
+                  itemId={article.slug}
+                  metadata={{
+                    title: article.title,
+                    description: article.content.substring(0, 200),
+                    image: article.coverImage,
+                  }}
+                  variant="outline"
+                  size="sm"
+                />
+              )}
             </div>
             <div className="flex items-center gap-2">
               {currentUser && currentUser.id === article.authorId && (
@@ -341,6 +477,19 @@ export default function WikiArticlePage({ params }: { params: Promise<{ slug: st
                     Edit Article
                   </Button>
                 </Link>
+              )}
+              {/* Publish Stable button for verified experts on health pages */}
+              {isHealthPage && canPublishStable && hasUnpublishedChanges && (
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={handlePublishStable}
+                  disabled={isPublishingStable}
+                  className="gap-2"
+                >
+                  <CheckCircle className="h-4 w-4" />
+                  {isPublishingStable ? "Publishing..." : "Publish Stable"}
+                </Button>
               )}
               {/* Toggle between stable and latest for health pages */}
               {isHealthPage && hasStableRevision && hasLatestRevision && (
@@ -419,6 +568,7 @@ export default function WikiArticlePage({ params }: { params: Promise<{ slug: st
           />
         </CardContent>
       </Card>
-    </div>
+      </div>
+    </>
   )
 }

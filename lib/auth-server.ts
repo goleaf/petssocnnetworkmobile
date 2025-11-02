@@ -8,7 +8,7 @@
  */
 
 import { cookies } from "next/headers"
-import { getUsers, getUserById } from "./storage"
+import { getServerUsers, getServerUserById } from "./storage-server"
 import type { User, UserRole } from "./types"
 
 export const SESSION_COOKIE_NAME = "pet-social-session"
@@ -98,8 +98,8 @@ export async function getCurrentUser(): Promise<User | null> {
   }
 
   // In production, fetch from database
-  // For now, use localStorage-based storage (will be replaced with DB)
-  const user = getUserById(session.userId)
+  // For now, use server-safe storage (will be replaced with DB)
+  const user = getServerUserById(session.userId)
   
   if (!user) {
     // User not found, clear session
@@ -134,11 +134,67 @@ export async function clearSession(): Promise<void> {
 }
 
 /**
+ * Fetch session and user data (alias for getSession + getCurrentUser)
+ * Returns both session and user, or null if not authenticated
+ */
+export async function fetchSession(): Promise<{ session: SessionData; user: User } | null> {
+  const session = await getSession()
+  if (!session) {
+    return null
+  }
+  
+  const user = await getCurrentUser()
+  if (!user) {
+    return null
+  }
+  
+  return { session, user }
+}
+
+/**
  * Check if user has a specific role
  */
 export async function hasRole(role: UserRole): Promise<boolean> {
   const session = await getSession()
   return session?.role === role || false
+}
+
+/**
+ * Check if user has one of the specified roles
+ * @param user - User object (from fetchSession or getCurrentUser)
+ * @param roles - Array of roles to check
+ */
+export function hasRoleInRoles(user: User | null, roles: UserRole[]): boolean {
+  if (!user || !user.role) {
+    return false
+  }
+  
+  // Empty roles array means no access
+  if (roles.length === 0) {
+    return false
+  }
+  
+  // Map role names (case-insensitive, with ContentManager -> moderator)
+  const roleMap: Record<string, UserRole> = {
+    admin: "admin",
+    moderator: "moderator",
+    contentmanager: "moderator", // ContentManager maps to moderator
+    user: "user",
+  }
+  
+  const normalizedUserRole = user.role.toLowerCase() as UserRole
+  
+  // Admin has access to everything (as long as roles array is not empty)
+  if (normalizedUserRole === "admin") {
+    return true
+  }
+  
+  const normalizedRoles = roles.map(r => {
+    const normalized = r.toLowerCase()
+    return roleMap[normalized] || normalized as UserRole
+  })
+  
+  return normalizedRoles.includes(normalizedUserRole)
 }
 
 /**

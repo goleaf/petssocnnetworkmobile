@@ -1,4 +1,4 @@
-import type { User, Pet, BlogPost, Comment, WikiArticle, Conversation, DirectMessage, Place, PlacePhoto } from "./types"
+import type { User, Pet, BlogPost, Comment, WikiArticle, Conversation, DirectMessage, Place, PlacePhoto, CareGuide } from "./types"
 
 export const mockUsers: User[] = [
   {
@@ -2814,6 +2814,42 @@ export const mockComments: Comment[] = [
   },
 ]
 
+export const WIKI_CATEGORY_IMAGE_POOLS = {
+  care: [
+    "/animal-shelter-dogs-cats.jpg",
+    "/cat-in-box.jpg",
+    "/golden-retriever-playing.png",
+    "/rabbit-room-setup.jpg",
+  ],
+  health: [
+    "/rabbit-health-care.jpg",
+    "/woman-and-loyal-companion.png",
+    "/golden-retriever-swimming.jpg",
+  ],
+  training: [
+    "/dog-agility-course.png",
+    "/puppy-training.png",
+    "/golden-retriever-running.png",
+  ],
+  nutrition: [
+    "/dog-food-nutrition.png",
+    "/animal-shelter-dogs-cats.jpg",
+    "/golden-retriever-beach.png",
+  ],
+  behavior: [
+    "/cat-behavior.png",
+    "/black-cat-portrait.png",
+    "/black-cat-in-sunlight.jpg",
+  ],
+  breeds: [
+    "/golden-retriever.png",
+    "/maine-coon-cat.png",
+    "/colorful-parrots.jpg",
+    "/cute-rabbits.jpg",
+  ],
+  default: ["/placeholder.jpg"],
+} as const
+
 export const mockWikiArticles: WikiArticle[] = [
   {
     id: "1",
@@ -3156,6 +3192,12 @@ Consider professional training if you're struggling with aggression, severe anxi
           
           const likes = Array.from({ length: Math.floor(Math.random() * 5) }, (_, j) => String((j % 4) + 1))
           
+          const imagePool =
+            WIKI_CATEGORY_IMAGE_POOLS[category as keyof typeof WIKI_CATEGORY_IMAGE_POOLS] ||
+            WIKI_CATEGORY_IMAGE_POOLS.default
+
+          const coverImage = imagePool[(articleId + i) % imagePool.length]
+
           additionalArticles.push({
             id: String(articleId),
             title: `${title} - Part ${articleNumber}`,
@@ -3169,6 +3211,7 @@ Consider professional training if you're struggling with aggression, severe anxi
             likes,
             createdAt: dateStr,
             updatedAt: dateStr,
+            coverImage,
           })
           
           articleId++
@@ -3551,4 +3594,886 @@ export const mockPlacePhotos: PlacePhoto[] = [
     uploadedById: "5",
     createdAt: "2024-03-05T10:00:00.000Z",
   },
+]
+
+export const mockCareGuides: CareGuide[] = [
+  {
+    id: "care-guide-1",
+    title: "Complete Dog Nutrition Guide",
+    slug: "complete-dog-nutrition-guide",
+    category: "nutrition",
+    species: ["dog"],
+    description: "A comprehensive guide to feeding your dog properly at every life stage, including portion sizes, feeding schedules, and dietary requirements.",
+    coverImage: "/dog-food.jpg",
+    steps: [
+      {
+        id: "step-1",
+        order: 1,
+        title: "Determine Daily Caloric Needs",
+        description: "Calculate your dog's daily caloric requirements based on weight, age, activity level, and life stage. Puppies need more calories per pound than adult dogs, and active dogs need more than sedentary ones.",
+        duration: "10 minutes",
+        tips: [
+          "Use online calculators or consult your veterinarian",
+          "Consider your dog's body condition score",
+          "Adjust for spayed/neutered status"
+        ],
+        warnings: [
+          "Overfeeding can lead to obesity and health problems",
+          "Underfeeding can cause malnutrition"
+        ]
+      },
+      {
+        id: "step-2",
+        order: 2,
+        title: "Choose High-Quality Food",
+        description: "Select a complete and balanced commercial dog food that meets AAFCO standards. Look for whole meat proteins, healthy fats, and minimal fillers.",
+        duration: "15 minutes",
+        tips: [
+          "Read ingredient labels carefully",
+          "Choose foods with named meat sources (chicken, beef, etc.)",
+          "Avoid foods with artificial colors, flavors, or preservatives"
+        ]
+      },
+      {
+        id: "step-3",
+        order: 3,
+        title: "Establish Feeding Schedule",
+        description: "Create a consistent feeding routine. Adult dogs typically do well with 2 meals per day, while puppies need 3-4 meals daily.",
+        duration: "5 minutes",
+        tips: [
+          "Feed at the same times each day",
+          "Remove uneaten food after 20 minutes",
+          "Avoid feeding immediately before or after exercise"
+        ]
+      },
+      {
+        id: "step-4",
+        order: 4,
+        title: "Measure Portions Accurately",
+        description: "Use a kitchen scale or measuring cup to ensure accurate portion sizes. Follow the feeding guidelines on your dog food bag as a starting point.",
+        duration: "2 minutes per meal",
+        tips: [
+          "Adjust portions based on your dog's body condition",
+          "Account for treats in daily caloric intake",
+          "Re-evaluate portions if your dog gains or loses weight"
+        ]
+      }
+    ],
+    frequency: "daily",
+    frequencyDetails: "Feed 2-3 times daily for adult dogs, 3-4 times for puppies",
+    equipment: [
+      {
+        id: "eq-1",
+        name: "Measuring Cup or Kitchen Scale",
+        description: "For accurate portion measurement",
+        required: true
+      },
+      {
+        id: "eq-2",
+        name: "Food Bowl",
+        description: "Stainless steel or ceramic bowls are best",
+        required: true
+      },
+      {
+        id: "eq-3",
+        name: "Water Bowl",
+        description: "Always provide fresh water",
+        required: true
+      },
+      {
+        id: "eq-4",
+        name: "Slow Feeder Bowl",
+        description: "For dogs that eat too quickly",
+        required: false,
+        alternatives: ["Puzzle feeder", "Food-dispensing toys"]
+      }
+    ],
+    commonMistakes: [
+      {
+        id: "mistake-1",
+        title: "Free-feeding (leaving food out all day)",
+        description: "Leaving food available 24/7 can lead to overeating and makes it difficult to monitor your dog's appetite.",
+        consequences: "Obesity, difficulty identifying health issues early",
+        howToAvoid: "Establish set meal times and remove uneaten food after 20 minutes"
+      },
+      {
+        id: "mistake-2",
+        title: "Overfeeding treats",
+        description: "Treats should make up no more than 10% of your dog's daily caloric intake.",
+        consequences: "Weight gain, nutritional imbalance",
+        howToAvoid: "Count treat calories in daily total, use healthy treats, or use kibble as treats"
+      },
+      {
+        id: "mistake-3",
+        title: "Sudden diet changes",
+        description: "Changing your dog's food abruptly can cause digestive upset.",
+        consequences: "Diarrhea, vomiting, refusal to eat",
+        howToAvoid: "Gradually transition over 7-10 days, mixing old and new food"
+      }
+    ],
+    seasonalityNotes: [
+      {
+        season: "winter",
+        notes: "Dogs may need slightly more calories in cold weather if they spend significant time outdoors. Indoor dogs typically don't need adjustments.",
+        adjustments: ["Increase portions by 10-15% for outdoor dogs", "Monitor weight closely"]
+      },
+      {
+        season: "summer",
+        notes: "Ensure adequate hydration. Some dogs may eat less in hot weather.",
+        adjustments: ["Increase water availability", "Feed during cooler parts of the day"]
+      }
+    ],
+    authorId: "1",
+    views: 1245,
+    likes: ["2", "3", "5"],
+    createdAt: "2024-01-10T10:00:00.000Z",
+    updatedAt: "2024-01-10T10:00:00.000Z",
+    tags: ["nutrition", "feeding", "diet", "dog-care"],
+    difficulty: "beginner",
+    estimatedTime: "30 minutes per day"
+  },
+  {
+    id: "care-guide-2",
+    title: "Dog Grooming Essentials",
+    slug: "dog-grooming-essentials",
+    category: "grooming",
+    species: ["dog"],
+    description: "Learn the fundamentals of keeping your dog clean, healthy, and well-groomed. Includes brushing, bathing, nail trimming, and ear care.",
+    coverImage: "/dog-grooming.jpg",
+    steps: [
+      {
+        id: "step-1",
+        order: 1,
+        title: "Brushing and Coat Care",
+        description: "Regular brushing removes loose hair, prevents mats, and distributes natural oils. Frequency depends on coat type - short-haired dogs need weekly brushing, while long-haired dogs may need daily attention.",
+        duration: "10-20 minutes",
+        tips: [
+          "Use the right brush for your dog's coat type",
+          "Brush in the direction of hair growth",
+          "Be gentle around sensitive areas"
+        ]
+      },
+      {
+        id: "step-2",
+        order: 2,
+        title: "Bathing Your Dog",
+        description: "Bathe your dog every 4-6 weeks, or as needed. Use dog-specific shampoo and ensure thorough rinsing to prevent skin irritation.",
+        duration: "20-30 minutes",
+        tips: [
+          "Brush before bathing to remove loose hair",
+          "Use lukewarm water",
+          "Protect ears with cotton balls",
+          "Rinse thoroughly - shampoo residue can cause irritation"
+        ],
+        warnings: [
+          "Don't bathe too frequently - it can strip natural oils",
+          "Avoid getting water in ears",
+          "Never use human shampoo"
+        ]
+      },
+      {
+        id: "step-3",
+        order: 3,
+        title: "Nail Trimming",
+        description: "Trim nails every 2-4 weeks to prevent overgrowth, splitting, and discomfort. Only trim the tip, avoiding the quick (the pink area containing blood vessels).",
+        duration: "5-10 minutes",
+        tips: [
+          "Start slowly if your dog is nervous",
+          "Use sharp, quality nail clippers",
+          "Have styptic powder on hand in case of bleeding",
+          "Reward with treats"
+        ],
+        warnings: [
+          "Cutting the quick causes pain and bleeding",
+          "Dark nails make it harder to see the quick"
+        ]
+      },
+      {
+        id: "step-4",
+        order: 4,
+        title: "Ear Cleaning",
+        description: "Check and clean ears weekly, especially for floppy-eared breeds. Look for redness, odor, or excessive wax.",
+        duration: "5 minutes",
+        tips: [
+          "Use dog-specific ear cleaner",
+          "Never insert anything deep into the ear canal",
+          "Gently wipe outer ear with cotton ball"
+        ],
+        warnings: [
+          "Signs of infection require veterinary attention",
+          "Don't use cotton swabs deep in ear"
+        ]
+      },
+      {
+        id: "step-5",
+        order: 5,
+        title: "Dental Care",
+        description: "Brush your dog's teeth daily or at least 3 times per week using dog-specific toothpaste and a soft brush.",
+        duration: "2-3 minutes",
+        tips: [
+          "Start slowly and make it positive",
+          "Use enzymatic toothpaste",
+          "Offer dental chews as supplements"
+        ]
+      }
+    ],
+    frequency: "weekly",
+    frequencyDetails: "Full grooming session weekly, with daily brushing for long-haired breeds and daily dental care",
+    equipment: [
+      {
+        id: "eq-1",
+        name: "Slicker Brush",
+        description: "For removing mats and loose hair",
+        required: true
+      },
+      {
+        id: "eq-2",
+        name: "Dog Shampoo",
+        description: "pH-balanced for dogs",
+        required: true
+      },
+      {
+        id: "eq-3",
+        name: "Nail Clippers",
+        description: "Guillotine or scissor-style clippers",
+        required: true
+      },
+      {
+        id: "eq-4",
+        name: "Ear Cleaner",
+        description: "Dog-specific ear cleaning solution",
+        required: true
+      },
+      {
+        id: "eq-5",
+        name: "Toothbrush and Toothpaste",
+        description: "Dog-specific dental care products",
+        required: true
+      },
+      {
+        id: "eq-6",
+        name: "Grooming Table",
+        description: "For easier access during grooming",
+        required: false,
+        alternatives: ["Non-slip mat on floor", "Counter with towel"]
+      }
+    ],
+    commonMistakes: [
+      {
+        id: "mistake-1",
+        title: "Bathing too frequently",
+        description: "Over-bathing strips natural oils and can cause dry, itchy skin.",
+        consequences: "Dry skin, increased shedding, skin irritation",
+        howToAvoid: "Bathe only when necessary (every 4-6 weeks) or when visibly dirty"
+      },
+      {
+        id: "mistake-2",
+        title: "Neglecting nail care",
+        description: "Long nails can cause pain, difficulty walking, and even joint problems.",
+        consequences: "Pain, difficulty walking, nail splitting, joint stress",
+        howToAvoid: "Trim nails every 2-4 weeks, or have groomer/vet do it"
+      },
+      {
+        id: "mistake-3",
+        title: "Using human products",
+        description: "Human shampoos and other products have different pH levels and can harm your dog's skin.",
+        consequences: "Skin irritation, dryness, potential toxicity",
+        howToAvoid: "Always use products specifically designed for dogs"
+      }
+    ],
+    seasonalityNotes: [
+      {
+        season: "spring",
+        notes: "Dogs shed winter coats - increase brushing frequency to manage shedding.",
+        adjustments: ["Brush daily during peak shedding", "Consider professional de-shedding treatment"]
+      },
+      {
+        season: "summer",
+        notes: "More frequent baths may be needed due to outdoor activities and swimming.",
+        adjustments: ["Rinse after swimming", "Check for skin irritations more frequently"]
+      },
+      {
+        season: "winter",
+        notes: "Paw care becomes important - check for cracked pads and remove ice/salt buildup.",
+        adjustments: ["Apply paw balm", "Wipe paws after walks", "Consider booties"]
+      }
+    ],
+    authorId: "1",
+    views: 892,
+    likes: ["2", "4", "6"],
+    createdAt: "2024-01-15T10:00:00.000Z",
+    updatedAt: "2024-01-15T10:00:00.000Z",
+    tags: ["grooming", "bathing", "brushing", "nail-care"],
+    difficulty: "beginner",
+    estimatedTime: "1-2 hours per week"
+  },
+  {
+    id: "care-guide-3",
+    title: "Puppy Care Basics",
+    slug: "puppy-care-basics",
+    category: "puppy-kitten-care",
+    species: ["dog"],
+    description: "Essential care guide for new puppy owners covering feeding, training, socialization, and health basics for the first year.",
+    coverImage: "/puppy-care.jpg",
+    steps: [
+      {
+        id: "step-1",
+        order: 1,
+        title: "Feeding Schedule",
+        description: "Puppies need frequent, small meals. Feed 3-4 times daily until 6 months, then reduce to 2-3 times. Use high-quality puppy food formulated for growth.",
+        duration: "15 minutes per meal",
+        tips: [
+          "Stick to a consistent schedule",
+          "Measure portions accurately",
+          "Provide fresh water at all times"
+        ]
+      },
+      {
+        id: "step-2",
+        order: 2,
+        title: "Potty Training",
+        description: "Establish a routine for bathroom breaks. Take your puppy out after meals, naps, playtime, and every 1-2 hours. Reward successful trips outside immediately.",
+        duration: "Throughout the day",
+        tips: [
+          "Use consistent command words",
+          "Take to the same spot each time",
+          "Never punish accidents indoors",
+          "Watch for signs (sniffing, circling)"
+        ]
+      },
+      {
+        id: "step-3",
+        order: 3,
+        title: "Socialization",
+        description: "Expose your puppy to various people, animals, sounds, and environments between 8-16 weeks. This critical period shapes their future behavior.",
+        duration: "15-30 minutes daily",
+        tips: [
+          "Keep experiences positive",
+          "Gradually increase exposure",
+          "Continue socialization throughout first year"
+        ],
+        warnings: [
+          "Ensure vaccinations are up to date before dog parks",
+          "Avoid overwhelming the puppy"
+        ]
+      },
+      {
+        id: "step-4",
+        order: 4,
+        title: "Basic Training",
+        description: "Start with basic commands: sit, stay, come, down. Use positive reinforcement with treats and praise. Keep sessions short (5-10 minutes) and fun.",
+        duration: "5-10 minutes, 2-3 times daily",
+        tips: [
+          "Start early but keep it simple",
+          "Be patient and consistent",
+          "End on a positive note"
+        ]
+      },
+      {
+        id: "step-5",
+        order: 5,
+        title: "Veterinary Care",
+        description: "Schedule vet visits for vaccinations, deworming, and health checks. Follow your vet's recommended schedule for vaccines and preventive care.",
+        duration: "30-60 minutes per visit",
+        tips: [
+          "Keep vaccination records",
+          "Ask about spay/neuter timing",
+          "Discuss parasite prevention"
+        ]
+      }
+    ],
+    frequency: "daily",
+    frequencyDetails: "Most care tasks are daily. Veterinary visits every 3-4 weeks until 16 weeks, then as recommended",
+    equipment: [
+      {
+        id: "eq-1",
+        name: "Puppy Food",
+        description: "High-quality puppy formula",
+        required: true
+      },
+      {
+        id: "eq-2",
+        name: "Crate",
+        description: "Appropriately sized crate for safe space and training",
+        required: true
+      },
+      {
+        id: "eq-3",
+        name: "Training Treats",
+        description: "Small, soft treats for training",
+        required: true
+      },
+      {
+        id: "eq-4",
+        name: "Chew Toys",
+        description: "Safe toys for teething",
+        required: true
+      },
+      {
+        id: "eq-5",
+        name: "Leash and Collar",
+        description: "Properly fitted collar and lightweight leash",
+        required: true
+      },
+      {
+        id: "eq-6",
+        name: "Puppy Pads",
+        description: "For indoor accidents during training",
+        required: false,
+        alternatives: ["Outdoor training only"]
+      }
+    ],
+    commonMistakes: [
+      {
+        id: "mistake-1",
+        title: "Inconsistent schedule",
+        description: "Puppies thrive on routine. Inconsistent feeding, potty breaks, and sleep schedules can delay training and cause stress.",
+        consequences: "Delayed potty training, behavioral issues, stress",
+        howToAvoid: "Create and stick to a daily schedule for all activities"
+      },
+      {
+        id: "mistake-2",
+        title: "Over-exercising",
+        description: "Puppies have growing bodies and shouldn't be over-exercised. Rule of thumb: 5 minutes of exercise per month of age, twice daily.",
+        consequences: "Joint damage, exhaustion, stunted growth",
+        howToAvoid: "Follow age-appropriate exercise guidelines, prioritize rest"
+      },
+      {
+        id: "mistake-3",
+        title: "Skipping socialization",
+        description: "The critical socialization window closes around 16 weeks. Missing this period can lead to fear and behavioral issues later.",
+        consequences: "Fearfulness, aggression, difficulty adapting to new situations",
+        howToAvoid: "Prioritize positive socialization experiences in first 16 weeks"
+      }
+    ],
+    authorId: "2",
+    views: 2156,
+    likes: ["1", "3", "5", "7"],
+    createdAt: "2024-02-01T10:00:00.000Z",
+    updatedAt: "2024-02-01T10:00:00.000Z",
+    tags: ["puppy", "training", "socialization", "new-owner"],
+    difficulty: "beginner",
+    estimatedTime: "2-3 hours per day"
+  },
+  {
+    id: "care-guide-4",
+    title: "Cat Grooming Guide",
+    slug: "cat-grooming-guide",
+    category: "grooming",
+    species: ["cat"],
+    description: "Learn how to properly groom your cat, including brushing, nail trimming, ear cleaning, and dental care.",
+    coverImage: "/cat-grooming.jpg",
+    steps: [
+      {
+        id: "step-1",
+        order: 1,
+        title: "Brushing Your Cat",
+        description: "Regular brushing removes loose hair, prevents mats, and reduces hairballs. Long-haired cats need daily brushing, short-haired cats need weekly.",
+        duration: "5-15 minutes",
+        tips: [
+          "Start with short sessions",
+          "Use appropriate brush for coat length",
+          "Make it a positive experience with treats"
+        ]
+      },
+      {
+        id: "step-2",
+        order: 2,
+        title: "Nail Trimming",
+        description: "Trim nails every 2-3 weeks to prevent overgrowth and damage to furniture. Only trim the sharp tip, avoiding the quick.",
+        duration: "5 minutes",
+        tips: [
+          "Wait until cat is relaxed",
+          "Use sharp cat nail clippers",
+          "Trim just the tip",
+          "Reward with treats"
+        ],
+        warnings: [
+          "Cutting the quick causes pain and bleeding",
+          "Have styptic powder ready"
+        ]
+      },
+      {
+        id: "step-3",
+        order: 3,
+        title: "Ear Cleaning",
+        description: "Check ears weekly. Clean only if dirty, using cat-specific ear cleaner. Most cats keep their ears clean, but some breeds need regular cleaning.",
+        duration: "2-3 minutes",
+        tips: [
+          "Only clean if visibly dirty",
+          "Use cotton ball with ear cleaner",
+          "Never insert anything deep",
+          "Watch for signs of infection"
+        ]
+      },
+      {
+        id: "step-4",
+        order: 4,
+        title: "Dental Care",
+        description: "Brush your cat's teeth daily or at least 3 times per week using cat-specific toothpaste and a soft brush or finger brush.",
+        duration: "1-2 minutes",
+        tips: [
+          "Start slowly and make it positive",
+          "Use enzymatic toothpaste",
+          "Offer dental treats as supplement"
+        ]
+      }
+    ],
+    frequency: "weekly",
+    frequencyDetails: "Long-haired cats: daily brushing. Short-haired: weekly brushing. Nail trimming every 2-3 weeks.",
+    equipment: [
+      {
+        id: "eq-1",
+        name: "Cat Brush",
+        description: "Slicker brush or comb appropriate for coat length",
+        required: true
+      },
+      {
+        id: "eq-2",
+        name: "Nail Clippers",
+        description: "Cat-specific nail clippers",
+        required: true
+      },
+      {
+        id: "eq-3",
+        name: "Ear Cleaner",
+        description: "Cat-specific ear cleaning solution",
+        required: false
+      },
+      {
+        id: "eq-4",
+        name: "Toothbrush and Toothpaste",
+        description: "Cat-specific dental care products",
+        required: true
+      },
+      {
+        id: "eq-5",
+        name: "Treats",
+        description: "For positive reinforcement",
+        required: true
+      }
+    ],
+    commonMistakes: [
+      {
+        id: "mistake-1",
+        title: "Bathing cats unnecessarily",
+        description: "Most cats groom themselves and rarely need baths. Bathing can be stressful and strip natural oils.",
+        consequences: "Stress, dry skin, behavioral issues",
+        howToAvoid: "Only bathe when necessary (medicated baths, extremely dirty, etc.)"
+      },
+      {
+        id: "mistake-2",
+        title: "Neglecting long-haired cats",
+        description: "Long-haired cats can develop painful mats if not brushed regularly.",
+        consequences: "Painful mats, skin irritation, need for professional shaving",
+        howToAvoid: "Brush long-haired cats daily, start from kittenhood"
+      },
+      {
+        id: "mistake-3",
+        title: "Cutting nails too short",
+        description: "Cutting into the quick causes pain and can make cats fearful of nail trimming.",
+        consequences: "Pain, bleeding, fear of grooming",
+        howToAvoid: "Only trim the sharp tip, be conservative"
+      }
+    ],
+    seasonalityNotes: [
+      {
+        season: "spring",
+        notes: "Cats shed winter coats - increase brushing frequency to manage shedding and hairballs.",
+        adjustments: ["Brush daily during peak shedding", "Consider hairball prevention treats"]
+      }
+    ],
+    authorId: "2",
+    views: 743,
+    likes: ["1", "4", "6"],
+    createdAt: "2024-01-20T10:00:00.000Z",
+    updatedAt: "2024-01-20T10:00:00.000Z",
+    tags: ["grooming", "cat-care", "brushing", "nail-care"],
+    difficulty: "beginner",
+    estimatedTime: "30 minutes per week"
+  },
+  {
+    id: "care-guide-5",
+    title: "Senior Dog Care",
+    slug: "senior-dog-care",
+    category: "senior-care",
+    species: ["dog"],
+    description: "Comprehensive guide to caring for your senior dog, including health monitoring, exercise adjustments, and special considerations.",
+    coverImage: "/senior-dog.jpg",
+    steps: [
+      {
+        id: "step-1",
+        order: 1,
+        title: "Increased Veterinary Visits",
+        description: "Senior dogs (typically 7+ years) need veterinary check-ups every 6 months instead of annually. Early detection of age-related conditions is crucial.",
+        duration: "30-60 minutes per visit",
+        tips: [
+          "Schedule comprehensive senior wellness exams",
+          "Discuss age-related screening tests",
+          "Monitor weight and body condition"
+        ]
+      },
+      {
+        id: "step-2",
+        order: 2,
+        title: "Nutrition Adjustments",
+        description: "Senior dogs may need fewer calories but still require high-quality protein. Consider senior-specific formulas or therapeutic diets if recommended by your vet.",
+        duration: "Ongoing",
+        tips: [
+          "Monitor weight closely",
+          "Consider joint-supporting supplements",
+          "Feed smaller, more frequent meals if needed"
+        ]
+      },
+      {
+        id: "step-3",
+        order: 3,
+        title: "Exercise Modifications",
+        description: "Adjust exercise to match your senior dog's capabilities. Shorter, gentler walks are often better than long, strenuous activities.",
+        duration: "10-30 minutes, 1-2 times daily",
+        tips: [
+          "Monitor for signs of fatigue or pain",
+          "Provide non-slip surfaces",
+          "Consider low-impact activities like swimming"
+        ],
+        warnings: [
+          "Watch for limping or reluctance to exercise",
+          "Consult vet if you notice mobility changes"
+        ]
+      },
+      {
+        id: "step-4",
+        order: 4,
+        title: "Comfort and Mobility Support",
+        description: "Make adjustments to help your senior dog stay comfortable. Provide orthopedic beds, ramps for furniture, and easy access to food and water.",
+        duration: "Ongoing",
+        tips: [
+          "Raise food and water bowls to reduce neck strain",
+          "Provide soft, supportive bedding",
+          "Consider ramps or steps for furniture access"
+        ]
+      },
+      {
+        id: "step-5",
+        order: 5,
+        title: "Cognitive Health",
+        description: "Keep your senior dog mentally stimulated with puzzle toys, training, and social interaction. Watch for signs of cognitive decline.",
+        duration: "15-30 minutes daily",
+        tips: [
+          "Continue training and mental stimulation",
+          "Use puzzle feeders",
+          "Maintain routines to reduce confusion"
+        ]
+      }
+    ],
+    frequency: "daily",
+    frequencyDetails: "Daily care routines with veterinary visits every 6 months",
+    equipment: [
+      {
+        id: "eq-1",
+        name: "Orthopedic Bed",
+        description: "Supportive bed for joint comfort",
+        required: true
+      },
+      {
+        id: "eq-2",
+        name: "Raised Food/Water Bowls",
+        description: "Reduce strain on neck and back",
+        required: true
+      },
+      {
+        id: "eq-3",
+        name: "Ramps or Steps",
+        description: "For accessing furniture or vehicles",
+        required: false,
+        alternatives: ["Assistance lifting"]
+      },
+      {
+        id: "eq-4",
+        name: "Joint Supplements",
+        description: "Glucosamine, chondroitin, etc.",
+        required: false
+      },
+      {
+        id: "eq-5",
+        name: "Non-slip Rugs/Mats",
+        description: "Prevent slipping on smooth surfaces",
+        required: true
+      }
+    ],
+    commonMistakes: [
+      {
+        id: "mistake-1",
+        title: "Treating all senior dogs the same",
+        description: "Aging affects dogs differently. Some remain very active, while others slow down significantly.",
+        consequences: "Inappropriate care, missed health issues",
+        howToAvoid: "Tailor care to your individual dog's needs and condition"
+      },
+      {
+        id: "mistake-2",
+        title: "Reducing exercise too much",
+        description: "While intensity should decrease, senior dogs still need regular, appropriate exercise to maintain mobility and health.",
+        consequences: "Muscle loss, weight gain, decreased mobility",
+        howToAvoid: "Maintain regular, adjusted exercise routine"
+      },
+      {
+        id: "mistake-3",
+        title: "Ignoring behavior changes",
+        description: "Changes in behavior, appetite, or activity level can indicate health problems that need veterinary attention.",
+        consequences: "Missed health issues, delayed treatment",
+        howToAvoid: "Monitor closely and report changes to veterinarian promptly"
+      }
+    ],
+    seasonalityNotes: [
+      {
+        season: "winter",
+        notes: "Senior dogs may need extra warmth and protection from cold. Arthritis can worsen in cold weather.",
+        adjustments: ["Provide extra bedding", "Consider sweaters for outdoor time", "Warm up before exercise"]
+      },
+      {
+        season: "summer",
+        notes: "Senior dogs are more susceptible to heat exhaustion. Provide shade, water, and limit outdoor time in heat.",
+        adjustments: ["Avoid midday heat", "Ensure constant water access", "Watch for signs of overheating"]
+      }
+    ],
+    authorId: "1",
+    views: 567,
+    likes: ["3", "5", "7"],
+    createdAt: "2024-02-10T10:00:00.000Z",
+    updatedAt: "2024-02-10T10:00:00.000Z",
+    tags: ["senior-care", "elderly-dogs", "health", "mobility"],
+    difficulty: "intermediate",
+    estimatedTime: "1-2 hours per day"
+  },
+  {
+    id: "care-guide-6",
+    title: "Dog Enrichment Activities",
+    slug: "dog-enrichment-activities",
+    category: "enrichment",
+    species: ["dog"],
+    description: "Keep your dog mentally and physically stimulated with enrichment activities that prevent boredom and promote wellbeing.",
+    coverImage: "/dog-enrichment.jpg",
+    steps: [
+      {
+        id: "step-1",
+        order: 1,
+        title: "Puzzle Toys and Feeders",
+        description: "Use puzzle feeders and interactive toys to make mealtime engaging. These challenge your dog mentally while slowing down eating.",
+        duration: "15-30 minutes per meal",
+        tips: [
+          "Start with easier puzzles and increase difficulty",
+          "Rotate toys to maintain interest",
+          "Supervise initially to ensure safe use"
+        ]
+      },
+      {
+        id: "step-2",
+        order: 2,
+        title: "Scent Work Games",
+        description: "Dogs have an incredible sense of smell. Hide treats or toys around the house or yard for your dog to find using their nose.",
+        duration: "10-20 minutes",
+        tips: [
+          "Start with easy hides in plain sight",
+          "Use high-value treats",
+          "Let your dog watch you hide items initially"
+        ]
+      },
+      {
+        id: "step-3",
+        order: 3,
+        title: "Training Sessions",
+        description: "Regular training sessions provide mental stimulation and strengthen your bond. Teach new tricks or practice existing commands.",
+        duration: "5-15 minutes, 2-3 times daily",
+        tips: [
+          "Keep sessions short and positive",
+          "End on a successful note",
+          "Gradually increase difficulty"
+        ]
+      },
+      {
+        id: "step-4",
+        order: 4,
+        title: "Social Enrichment",
+        description: "Social interaction with other dogs and people provides important mental stimulation. Arrange playdates or visit dog-friendly places.",
+        duration: "30-60 minutes",
+        tips: [
+          "Ensure dogs are compatible",
+          "Choose safe, controlled environments",
+          "Monitor interactions"
+        ]
+      },
+      {
+        id: "step-5",
+        order: 5,
+        title: "Environmental Exploration",
+        description: "Take your dog to new places - different parks, trails, or dog-friendly stores. New environments provide mental stimulation.",
+        duration: "30-60 minutes",
+        tips: [
+          "Start with less crowded places",
+          "Let your dog explore at their own pace",
+          "Reward calm, curious behavior"
+        ]
+      }
+    ],
+    frequency: "daily",
+    frequencyDetails: "Include enrichment activities daily. Mix different types throughout the week.",
+    equipment: [
+      {
+        id: "eq-1",
+        name: "Puzzle Feeders",
+        description: "Interactive food-dispensing toys",
+        required: true
+      },
+      {
+        id: "eq-2",
+        name: "Treats",
+        description: "High-value treats for training and games",
+        required: true
+      },
+      {
+        id: "eq-3",
+        name: "Interactive Toys",
+        description: "Toys that require problem-solving",
+        required: true
+      },
+      {
+        id: "eq-4",
+        name: "Snuffle Mat",
+        description: "Fabric mat for hiding treats",
+        required: false,
+        alternatives: ["Grass or towel"]
+      }
+    ],
+    commonMistakes: [
+      {
+        id: "mistake-1",
+        title: "Only providing physical exercise",
+        description: "Dogs need both physical and mental exercise. Mental stimulation can tire a dog more than physical activity alone.",
+        consequences: "Boredom, destructive behavior, restlessness",
+        howToAvoid: "Balance physical exercise with mental enrichment activities"
+      },
+      {
+        id: "mistake-2",
+        title: "Using the same toys repeatedly",
+        description: "Dogs can become bored with the same toys. Rotating toys maintains interest and engagement.",
+        consequences: "Decreased interest, ineffective enrichment",
+        howToAvoid: "Rotate toys weekly, introduce new challenges regularly"
+      },
+      {
+        id: "mistake-3",
+        title: "Overcomplicating activities",
+        description: "Starting with activities that are too difficult can frustrate your dog and make them lose interest.",
+        consequences: "Frustration, giving up, negative associations",
+        howToAvoid: "Start simple and gradually increase difficulty based on your dog's success"
+      }
+    ],
+    authorId: "3",
+    views: 1023,
+    likes: ["1", "2", "5", "6"],
+    createdAt: "2024-02-15T10:00:00.000Z",
+    updatedAt: "2024-02-15T10:00:00.000Z",
+    tags: ["enrichment", "mental-stimulation", "training", "activities"],
+    difficulty: "beginner",
+    estimatedTime: "30-60 minutes per day"
+  }
 ]

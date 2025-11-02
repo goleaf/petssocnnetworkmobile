@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/components/auth/auth-provider"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -44,6 +44,9 @@ import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { NOTIFICATIONS_UPDATED_EVENT } from "@/lib/push-notifications"
 import { cn } from "@/lib/utils"
+import { Switch } from "@/components/ui/switch"
+import { Label } from "@/components/ui/label"
+import { BarChart3 } from "lucide-react"
 
 const CHANNEL_META: Record<NotificationChannel, { label: string; icon: LucideIcon }> = {
   in_app: { label: "In-app", icon: Bell },
@@ -130,6 +133,7 @@ export default function NotificationsPage() {
   const [channelFilter, setChannelFilter] = useState<NotificationChannel | "all">("all")
   const [history, setHistory] = useState<NotificationHistoryEntry[]>([])
   const [showHistory, setShowHistory] = useState(false)
+  const [showStatistics, setShowStatistics] = useState(false)
   const [settings, setSettings] = useState<NotificationSettings | null>(null)
 
   const loadNotifications = useCallback(() => {
@@ -279,6 +283,92 @@ export default function NotificationsPage() {
 
   const unreadCount = notifications.filter((notification) => !notification.read).length
 
+  // Calculate statistics
+  const statistics = useMemo(() => {
+    const total = notifications.length
+    const read = notifications.filter((n) => n.read).length
+    const unread = total - read
+
+    // By category
+    const byCategory = notifications.reduce(
+      (acc, n) => {
+        const category = n.category ?? "social"
+        acc[category] = (acc[category] || 0) + 1
+        return acc
+      },
+      {} as Record<NotificationCategory, number>,
+    )
+
+    // By priority
+    const byPriority = notifications.reduce(
+      (acc, n) => {
+        const priority = n.priority ?? "normal"
+        acc[priority] = (acc[priority] || 0) + 1
+        return acc
+      },
+      {} as Record<NotificationPriority, number>,
+    )
+
+    // By channel
+    const byChannel = notifications.reduce(
+      (acc, n) => {
+        const channels = n.channels && n.channels.length > 0 ? n.channels : ["in_app"]
+        channels.forEach((channel) => {
+          acc[channel] = (acc[channel] || 0) + 1
+        })
+        return acc
+      },
+      {} as Record<NotificationChannel, number>,
+    )
+
+    // By type
+    const byType = notifications.reduce(
+      (acc, n) => {
+        acc[n.type] = (acc[n.type] || 0) + 1
+        return acc
+      },
+      {} as Record<string, number>,
+    )
+
+    // Delivery status
+    const deliveryStats = notifications.reduce(
+      (acc, n) => {
+        const deliveries = n.deliveries ?? []
+        deliveries.forEach((delivery) => {
+          const key = `${delivery.channel}_${delivery.status}`
+          acc[key] = (acc[key] || 0) + 1
+        })
+        return acc
+      },
+      {} as Record<string, number>,
+    )
+
+    // Batched notifications
+    const batchedCount = notifications.filter((n) => (n.batchCount ?? 1) > 1).length
+    const totalBatchedItems = notifications.reduce((sum, n) => sum + (n.batchCount ?? 1), 0)
+
+    // Recent activity (last 24 hours)
+    const now = Date.now()
+    const last24Hours = notifications.filter((n) => {
+      const created = new Date(n.createdAt).getTime()
+      return now - created < 24 * 60 * 60 * 1000
+    }).length
+
+    return {
+      total,
+      read,
+      unread,
+      byCategory,
+      byPriority,
+      byChannel,
+      byType,
+      deliveryStats,
+      batchedCount,
+      totalBatchedItems,
+      last24Hours,
+    }
+  }, [notifications])
+
   const filteredNotifications = notifications.filter((notification) => {
     if (filter === "unread" && notification.read) return false
     if (categoryFilter !== "all" && (notification.category ?? "social") !== categoryFilter) return false
@@ -334,9 +424,27 @@ export default function NotificationsPage() {
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl space-y-6">
       <div className="space-y-3">
-        <div>
-          <h1 className="text-3xl font-bold">Notifications</h1>
-          <p className="text-muted-foreground mt-2">Stay updated with activity across all channels</p>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold">Notifications</h1>
+            <p className="text-muted-foreground mt-2">Stay updated with activity across all channels</p>
+          </div>
+          <div className="flex items-center gap-3 pt-2">
+            <div className="flex items-center gap-2">
+              <Switch
+                id="statistics-toggle"
+                checked={showStatistics}
+                onCheckedChange={setShowStatistics}
+              />
+              <Label
+                htmlFor="statistics-toggle"
+                className="flex items-center gap-2 cursor-pointer"
+              >
+                <BarChart3 className="h-4 w-4" />
+                <span className="text-sm font-medium">Statistics</span>
+              </Label>
+            </div>
+          </div>
         </div>
 
         {settings && (
@@ -377,15 +485,162 @@ export default function NotificationsPage() {
         )}
       </div>
 
+      {showStatistics && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <BarChart3 className="h-5 w-5" />
+              Notification Statistics
+            </CardTitle>
+            <CardDescription>Overview of your notification activity and distribution</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Overview Stats */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div className="space-y-1">
+                <p className="text-sm text-muted-foreground">Total</p>
+                <p className="text-2xl font-bold">{statistics.total}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm text-muted-foreground">Unread</p>
+                <p className="text-2xl font-bold text-primary">{statistics.unread}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm text-muted-foreground">Read</p>
+                <p className="text-2xl font-bold text-muted-foreground">{statistics.read}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm text-muted-foreground">Last 24h</p>
+                <p className="text-2xl font-bold">{statistics.last24Hours}</p>
+              </div>
+            </div>
+
+            {/* By Category */}
+            {Object.keys(statistics.byCategory).length > 0 && (
+              <div className="space-y-2">
+                <h3 className="text-sm font-semibold">By Category</h3>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                  {Object.entries(statistics.byCategory).map(([category, count]) => (
+                    <div
+                      key={category}
+                      className="rounded-lg border p-3 space-y-1"
+                    >
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide">
+                        {CATEGORY_LABELS[category as NotificationCategory] ?? category}
+                      </p>
+                      <p className="text-xl font-bold">{count}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* By Priority */}
+            {Object.keys(statistics.byPriority).length > 0 && (
+              <div className="space-y-2">
+                <h3 className="text-sm font-semibold">By Priority</h3>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {Object.entries(statistics.byPriority).map(([priority, count]) => (
+                    <div
+                      key={priority}
+                      className="rounded-lg border p-3 space-y-1"
+                    >
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide">
+                        {PRIORITY_LABELS[priority as NotificationPriority] ?? priority}
+                      </p>
+                      <p className="text-xl font-bold">{count}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* By Channel */}
+            {Object.keys(statistics.byChannel).length > 0 && (
+              <div className="space-y-2">
+                <h3 className="text-sm font-semibold">By Channel</h3>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {Object.entries(statistics.byChannel).map(([channel, count]) => {
+                    const meta = CHANNEL_META[channel as NotificationChannel]
+                    return (
+                      <div
+                        key={channel}
+                        className="rounded-lg border p-3 space-y-2"
+                      >
+                        <div className="flex items-center gap-2">
+                          {meta?.icon && <meta.icon className="h-4 w-4 text-muted-foreground" />}
+                          <p className="text-xs text-muted-foreground uppercase tracking-wide">
+                            {meta?.label ?? channel}
+                          </p>
+                        </div>
+                        <p className="text-xl font-bold">{count}</p>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Batched Notifications */}
+            {statistics.batchedCount > 0 && (
+              <div className="space-y-2">
+                <h3 className="text-sm font-semibold">Batched Notifications</h3>
+                <div className="rounded-lg border p-3 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm text-muted-foreground">Batched groups</p>
+                    <p className="text-lg font-bold">{statistics.batchedCount}</p>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm text-muted-foreground">Total items in batches</p>
+                    <p className="text-lg font-bold">{statistics.totalBatchedItems}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* By Type */}
+            {Object.keys(statistics.byType).length > 0 && (
+              <div className="space-y-2">
+                <h3 className="text-sm font-semibold">By Notification Type</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                  {Object.entries(statistics.byType)
+                    .sort((a, b) => b[1] - a[1])
+                    .map(([type, count]) => (
+                      <div
+                        key={type}
+                        className="rounded-lg border p-2 flex items-center justify-between"
+                      >
+                        <p className="text-sm text-muted-foreground capitalize">
+                          {type.replace(/_/g, " ")}
+                        </p>
+                        <p className="text-lg font-bold">{count}</p>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       <div className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex gap-2">
+          <div className="flex gap-2 items-center">
             <Button variant={filter === "all" ? "default" : "outline"} size="sm" onClick={() => setFilter("all")}>
               All
             </Button>
             <Button variant={filter === "unread" ? "default" : "outline"} size="sm" onClick={() => setFilter("unread")}>
-              Unread ({unreadCount})
+              Unread Only ({unreadCount})
             </Button>
+            <Switch
+              id="unread-filter"
+              checked={filter === "unread"}
+              onCheckedChange={(checked) => setFilter(checked ? "unread" : "all")}
+              className="ml-2"
+            />
+            <Label htmlFor="unread-filter" className="text-sm cursor-pointer">
+              Unread only
+            </Label>
           </div>
           <div className="flex flex-wrap gap-2">
             <Button variant={showHistory ? "default" : "outline"} size="sm" onClick={() => setShowHistory((prev) => !prev)}>

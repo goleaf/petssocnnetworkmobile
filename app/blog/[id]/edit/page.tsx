@@ -87,6 +87,7 @@ export default function EditBlogPage({ params }: { params: Promise<{ id: string 
       updatedAt: new Date().toISOString(),
       brandAffiliation,
       disableWikiLinks: formData.disableWikiLinks || false,
+      relatedWikiIds: formData.relatedWikiIds || [],
     }
 
     updateBlogPost(updatedPost)

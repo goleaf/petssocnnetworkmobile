@@ -6,11 +6,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { BackButton } from "@/components/ui/back-button"
 import { Badge } from "@/components/ui/badge"
-import { MapPin, CheckCircle, Clock, X, Plus, ImageIcon } from "lucide-react"
-import { getPlaceById, getPlacePhotosByPlaceId, getUsers } from "@/lib/storage"
+import { MapPin, CheckCircle, Clock, X, Plus, ImageIcon, Fence, Droplets, Dog, Car, AlertTriangle, Users, Sparkles, Calendar } from "lucide-react"
+import { getPlaceById, getPlacePhotosByPlaceId, getUsers, getPlaceAverageRating, addPlaceUserReport } from "@/lib/storage"
 import { useAuth } from "@/lib/auth"
 import Link from "next/link"
 import Image from "next/image"
+import type { PlaceUserReport } from "@/lib/types"
+import { PlaceMap } from "@/components/places/PlaceMap"
 
 export default function PlaceDetailPage() {
   const params = useParams()

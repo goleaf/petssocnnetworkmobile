@@ -30,9 +30,8 @@ import {
   Home,
   Heart,
   TrendingUp,
-  Star,
-  GitBranch,
   CalendarClock,
+  UsersRound,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { NotificationsDropdown } from "@/components/notifications-dropdown"
@@ -51,16 +50,14 @@ export function Navigation() {
     ...(isAuthenticated
       ? [
           { href: "/", label: "Feed", icon: Home },
-          { href: "/friendship-network", label: "Network", icon: Users },
           { href: "/messages", label: "Messages", icon: MessageCircle },
-          { href: "/favorites", label: "Favorites", icon: Star },
         ]
       : []),
     { href: "/blog", label: "Blogs", icon: FileText },
+    { href: "/groups", label: "Groups", icon: UsersRound },
     { href: "/wiki", label: "Wiki", icon: BookOpen },
     { href: "/shelters", label: "Shelters", icon: Heart },
     { href: "/search", label: "Search", icon: Search },
-    { href: "/analytics/relationships", label: "Insights", icon: GitBranch },
   ]
 
   const handleLogout = () => {

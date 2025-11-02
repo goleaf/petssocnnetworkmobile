@@ -669,14 +669,16 @@ export default function ContentSchedulingPage() {
                   <div className="space-y-2">
                     <label className="text-sm font-medium">Featured pet</label>
                     <Select
-                      value={formState.petId}
-                      onValueChange={(value) => setFormState((prev) => ({ ...prev, petId: value }))}
+                      value={formState.petId || "__all_pets"}
+                      onValueChange={(value) =>
+                        setFormState((prev) => ({ ...prev, petId: value === "__all_pets" ? "" : value }))
+                      }
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Optional" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">All pets</SelectItem>
+                        <SelectItem value="__all_pets">All pets</SelectItem>
                         {pets.map((pet) => (
                           <SelectItem key={pet.id} value={pet.id}>
                             {pet.name}

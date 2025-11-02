@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { BackButton } from "@/components/ui/back-button"
 import { WikiForm, type WikiFormData } from "@/components/wiki-form"
-import { getWikiArticleBySlug, updateWikiArticle, generateWikiSlug } from "@/lib/storage"
+import { getWikiArticleBySlug, updateWikiArticle, generateWikiSlug, addWikiRevision } from "@/lib/storage"
 import { getPermissionResult } from "@/lib/policy"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
@@ -52,8 +52,18 @@ export default function EditWikiPage({ params }: { params: Promise<{ slug: strin
   const handleSubmit = async (formData: WikiFormData) => {
     if (!user || !article) return
 
-    // Generate new slug if title changed
-    const newSlug = article.title !== formData.title ? generateWikiSlug(formData.title) : article.slug
+    // Generate new slug if title changed and check for conflicts
+    let newSlug = article.title !== formData.title ? generateWikiSlug(formData.title) : article.slug
+    
+    // If slug changed, check for conflicts
+    if (newSlug !== article.slug) {
+      let baseSlug = newSlug
+      let counter = 1
+      while (getWikiArticleBySlug(newSlug) && newSlug !== article.slug) {
+        newSlug = `${baseSlug}-${counter}`
+        counter++
+      }
+    }
 
     // Check if disclosure is missing and flag for moderation
     const disclosureMissing = formData.brandAffiliation && !formData.brandAffiliation.disclosed
@@ -77,37 +87,55 @@ export default function EditWikiPage({ params }: { params: Promise<{ slug: strin
       healthData: formData.category === "health" && formData.healthData ? formData.healthData : undefined,
     }
 
-    // Create revision with brand affiliation if editing
-    if (brandAffiliation) {
-      const { addWikiRevision } = await import("@/lib/storage")
-      const revisionId = `revision_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-      addWikiRevision({
-        id: revisionId,
-        articleId: article.id,
-        content: formData.content,
-        status: disclosureMissing ? "draft" : "stable",
-        authorId: user.id,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        brandAffiliation,
-      })
-      
-      // Update article to reference this revision
-      updatedArticle.currentRevisionId = revisionId
-      if (!updatedArticle.revisions) {
-        updatedArticle.revisions = []
-      }
-      updatedArticle.revisions.push({
-        id: revisionId,
-        articleId: article.id,
-        content: formData.content,
-        status: disclosureMissing ? "draft" : "stable",
-        authorId: user.id,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        brandAffiliation,
-      })
+    // Create revision for every edit
+    const revisionId = `revision_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    
+    // For health articles, revisions are always drafts unless user can publish stable
+    // For non-health articles, use draft if disclosure missing, otherwise stable
+    const isHealthArticle = formData.category === "health"
+    const canPublishStable = isHealthArticle ? canPublishStableHealthRevision(user.id) : true
+    const revisionStatus = disclosureMissing || (isHealthArticle && !canPublishStable) ? "draft" : "stable"
+    
+    addWikiRevision({
+      id: revisionId,
+      articleId: article.id,
+      content: formData.content,
+      status: revisionStatus,
+      authorId: user.id,
+      reasonForChange: formData.reasonForChange,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      brandAffiliation,
+      healthData: isHealthArticle && formData.healthData ? formData.healthData : undefined,
+    })
+    
+    // Update article to reference this revision
+    updatedArticle.currentRevisionId = revisionId
+    
+    // For health articles, only update stableRevisionId if expert published as stable
+    if (isHealthArticle && canPublishStable && revisionStatus === "stable") {
+      updatedArticle.stableRevisionId = revisionId
+      updatedArticle.approvedAt = new Date().toISOString()
+    } else if (!isHealthArticle && revisionStatus === "stable") {
+      updatedArticle.stableRevisionId = revisionId
+      updatedArticle.approvedAt = new Date().toISOString()
     }
+    
+    if (!updatedArticle.revisions) {
+      updatedArticle.revisions = []
+    }
+    updatedArticle.revisions.push({
+      id: revisionId,
+      articleId: article.id,
+      content: formData.content,
+      status: revisionStatus,
+      authorId: user.id,
+      reasonForChange: formData.reasonForChange,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      brandAffiliation,
+      healthData: isHealthArticle && formData.healthData ? formData.healthData : undefined,
+    })
 
     updateWikiArticle(updatedArticle)
     

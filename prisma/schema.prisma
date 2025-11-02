@@ -11,14 +11,16 @@ datasource db {
 }
 
 model Article {
-  id          String   @id @default(uuid())
+  id          String    @id @default(uuid())
   slug        String
   title       String
   type        String
   status      String
   createdById String
-  updatedAt   DateTime @updatedAt
-  createdAt   DateTime @default(now())
+  assignedTo  String?   // Expert reviewer assigned for quality review
+  updatedAt   DateTime  @updatedAt
+  createdAt   DateTime  @default(now())
+  deletedAt   DateTime? @map("deleted_at")
 
   // Relations
   revisions   Revision[]
@@ -28,6 +30,8 @@ model Article {
   searchIndex ArticleSearchIndex?
 
   @@unique([slug, type])
+  @@index([deletedAt])
+  @@index([assignedTo])
   @@map("articles")
 }
 
@@ -78,6 +82,31 @@ model ArticleProp {
   @@map("article_props")
 }
 
+// Source model for wiki article citations
+model Source {
+  id         String   @id @default(uuid())
+  articleId  String
+  sourceId   String   // Citation ID (e.g., "1", "2")
+  title      String
+  url        String
+  publisher  String?
+  date       String?
+  license    String?
+  brokenAt   DateTime?
+  isValid    Boolean?
+  lastChecked DateTime?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  // Relations
+  article    Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+
+  @@unique([articleId, sourceId])
+  @@index([articleId])
+  @@index([url])
+  @@map("sources")
+}
+
 // FTS search index for articles
 // Note: tsvector type should be handled via raw SQL in migrations
 model ArticleSearchIndex {
@@ -90,7 +119,7 @@ model ArticleSearchIndex {
 
 // Blog Post model for FTS search
 model BlogPost {
-  id          String   @id @default(uuid())
+  id          String    @id @default(uuid())
   petId       String
   authorId    String
   title       String
@@ -99,17 +128,19 @@ model BlogPost {
   tags        String[]
   categories  String[]
   likes       String[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  privacy     String   @default("public")
-  isDraft     Boolean  @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  privacy     String    @default("public")
+  isDraft     Boolean   @default(false)
   hashtags    String[]
-  type        String   @default("blog_post")
+  type        String    @default("blog_post")
+  deletedAt   DateTime? @map("deleted_at")
 
   // Relations
   postTags    BlogPostTag[]
   searchIndex BlogPostSearchIndex?
 
+  @@index([deletedAt])
   @@map("blog_posts")
 }
 
@@ -147,19 +178,90 @@ model Synonym {
   @@map("synonyms")
 }
 
+// Alias sets for grouping equivalent terms
+model AliasSet {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  aliases   String[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([name])
+  @@map("alias_sets")
+}
+
+// Term boosts for search ranking
+model TermBoost {
+  id        String   @id @default(uuid())
+  term      String   @unique
+  boost     Float    @default(1.0) // 0.0 to 10.0
+  field     String?  // Optional field to boost (e.g., 'title', 'content')
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([term])
+  @@index([field])
+  @@map("term_boosts")
+}
+
 // Telemetry for search queries
 model SearchTelemetry {
-  id          String   @id @default(uuid())
-  query       String
-  resultCount Int      @default(0)
-  hasResults  Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  ipAddress   String?
-  userAgent   String?
+  id            String   @id @default(uuid())
+  query         String
+  resultCount   Int      @default(0)
+  hasResults    Boolean  @default(false)
+  zeroResultQuery Boolean @default(false) // Track zero-result queries specifically
+  entityTypes   String[] // Array of entity types searched (e.g., ["blog_post", "article", "place"])
+  filters       Json?    // Store filters as JSON (species, tags, etc.)
+  createdAt     DateTime @default(now())
+  ipAddress     String?
+  userAgent     String?
 
   @@index([createdAt])
   @@index([hasResults])
+  @@index([zeroResultQuery])
   @@map("search_telemetry")
+}
+
+// Saved searches with alert preferences
+model SavedSearch {
+  id          String   @id @default(uuid())
+  userId      String?  // Nullable - can be anonymous (stored in localStorage)
+  query       String
+  filters     Json     // Store filters as JSON (species, tags, entityTypes, etc.)
+  entityTypes String[] // Array of entity types to search (e.g., ["blog_post", "article"])
+  latLng      Json?    // Optional geo coordinates { lat: number, lng: number }
+  radius      Float?   // Optional radius in kilometers for geo search
+  alertEnabled Boolean  @default(false)
+  lastCheckedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  alerts      SearchAlert[]
+
+  @@index([userId])
+  @@index([alertEnabled])
+  @@index([createdAt])
+  @@map("saved_searches")
+}
+
+// Search alerts - track when new results appear for saved searches
+model SearchAlert {
+  id              String   @id @default(uuid())
+  savedSearchId   String
+  matchedEntityId String   // ID of the entity that matched
+  matchedEntityType String // Type of entity (e.g., "blog_post", "article", "place")
+  notifiedAt      DateTime?
+  createdAt       DateTime @default(now())
+
+  // Relations
+  savedSearch     SavedSearch @relation(fields: [savedSearchId], references: [id], onDelete: Cascade)
+
+  @@index([savedSearchId])
+  @@index([matchedEntityType, matchedEntityId])
+  @@index([createdAt])
+  @@map("search_alerts")
 }
 
 // Breed model
@@ -204,7 +306,7 @@ model City {
 
 // Place model
 model Place {
-  id               String   @id @default(uuid())
+  id               String    @id @default(uuid())
   name             String
   address          String
   cityId           String
@@ -212,38 +314,306 @@ model Place {
   longitude        Float
   amenities        String[]
   rules            String[]
-  moderationStatus String   @default("approved") // approved, pending, rejected
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  moderationStatus String    @default("approved") // approved, pending, rejected
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  deletedAt        DateTime? @map("deleted_at")
 
   // Relations
-  city             City     @relation(fields: [cityId], references: [id], onDelete: Cascade)
+  city             City      @relation(fields: [cityId], references: [id], onDelete: Cascade)
 
   @@index([cityId])
   @@index([moderationStatus])
   @@index([latitude, longitude])
+  @@index([deletedAt])
   @@map("places")
 }
 
 // Product model
 model Product {
-  id          String   @id @default(uuid())
-  name        String
-  brand       String?
-  category    String   // food, toys, accessories, health, etc.
-  description String?
-  price       Float?
-  currency    String   @default("USD")
-  imageUrl    String?
-  tags        String[]
-  inStock     Boolean  @default(true)
-  rating      Float?
-  reviewCount Int      @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id             String   @id @default(uuid())
+  name           String
+  brand          String?
+  category       String   // food, toys, accessories, health, etc.
+  description    String?
+  price          Float?
+  currency       String   @default("USD")
+  imageUrl       String?
+  tags           String[]
+  inStock        Boolean  @default(true)
+  rating         Float?
+  reviewCount    Int      @default(0)
+  isRecalled     Boolean  @default(false)
+  recallNotice   String?
+  safetyNotices  String[]
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  deletedAt      DateTime? @map("deleted_at")
 
   @@index([category])
   @@index([brand])
   @@index([name])
+  @@index([isRecalled])
+  @@index([deletedAt])
   @@map("products")
 }
+
+// Report Reason model - predefined reasons for reporting content
+model ReportReason {
+  id          String   @id @default(uuid())
+  code        String   @unique // e.g., "spam", "harassment", "misinformation"
+  name        String   // Human-readable name
+  description String?
+  category    String   // "content", "behavior", "safety", etc.
+  severity    String   @default("medium") // low, medium, high, critical
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([code])
+  @@index([category])
+  @@index([active])
+  @@map("report_reasons")
+}
+
+// Content Report model - user reports on any content
+model ContentReport {
+  id           String   @id @default(uuid())
+  reporterId   String
+  contentType  String   // "blog_post", "article", "comment", "place", "product", etc.
+  contentId    String
+  reasonId     String   // Reference to ReportReason
+  customReason String?  // For "other" cases
+  description  String?
+  status       String   @default("pending") // pending, investigating, resolved, dismissed
+  priority     String   @default("low") // low, medium, high, urgent
+  assignedTo   String?  // Moderator/admin assigned
+  notes        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  resolvedAt   DateTime?
+  
+  // Relations
+  reason       ReportReason @relation(fields: [reasonId], references: [id])
+
+  @@index([reporterId])
+  @@index([contentType, contentId])
+  @@index([status])
+  @@index([priority])
+  @@index([assignedTo])
+  @@index([createdAt])
+  @@map("content_reports")
+}
+
+// Moderator Queue model - tracks items awaiting moderation
+model ModerationQueue {
+  id           String   @id @default(uuid())
+  contentType  String   // Type of content
+  contentId    String
+  priority     String   @default("low") // low, medium, high, urgent
+  reportedBy   String[] // Array of user IDs who reported
+  reportCount  Int      @default(1) // Count of reports on this item
+  autoFlagged  Boolean  @default(false) // Whether auto-moderated
+  autoReason   String?  // Reason if auto-flagged
+  status       String   @default("pending") // pending, in_review, resolved
+  assignedTo   String?  // Moderator assigned
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  reviewedAt   DateTime?
+
+  @@unique([contentType, contentId])
+  @@index([status])
+  @@index([priority])
+  @@index([assignedTo])
+  @@index([createdAt])
+  @@map("moderation_queue")
+}
+
+// Soft Delete Audit model - tracks all soft deletions
+model SoftDeleteAudit {
+  id          String   @id @default(uuid())
+  contentType String   // What was deleted
+  contentId   String
+  deletedBy   String   // User/moderator who deleted
+  reason      String?  // Reason for deletion
+  metadata    Json?    // Additional context
+  deletedAt   DateTime @default(now())
+  restoredAt  DateTime? // If restored
+  restoredBy  String?
+
+  @@index([contentType, contentId])
+  @@index([deletedBy])
+  @@index([deletedAt])
+  @@index([restoredAt])
+  @@map("soft_delete_audit")
+}
+
+// Moderation Action model - tracks moderation actions taken
+model ModerationActionLog {
+  id          String   @id @default(uuid())
+  action      String   // "approve", "reject", "delete", "warn", "ban", etc.
+  contentType String   // Type of content affected
+  contentId   String
+  performedBy String   // Moderator/admin
+  reason      String?
+  metadata    Json?    // Additional details
+  createdAt   DateTime @default(now())
+
+  @@index([action])
+  @@index([contentType, contentId])
+  @@index([performedBy])
+  @@index([createdAt])
+  @@map("moderation_action_logs")
+}
+
+// Generic Audit Log model - tracks all admin actions
+model AuditLog {
+  id          String   @id @default(uuid())
+  actorId     String   // User/admin who performed the action
+  action      String   // Action type (e.g., "create", "update", "delete", "approve", etc.)
+  targetType  String   // Type of entity affected (e.g., "blog_post", "article", "user", etc.)
+  targetId    String   // ID of the affected entity
+  reason      String?  // Optional reason for the action
+  metadata    Json?    // Additional context and details
+  createdAt   DateTime @default(now())
+
+  @@index([actorId])
+  @@index([action])
+  @@index([targetType, targetId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// Pending audit queue - for resilience when database is unavailable
+model AuditQueue {
+  id          String   @id @default(uuid())
+  actorId     String
+  action      String
+  targetType  String
+  targetId    String
+  reason      String?
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  attempts    Int      @default(0)
+  lastAttempt DateTime?
+
+  @@index([createdAt])
+  @@index([attempts])
+  @@map("audit_queue")
+}
+
+// Moderation Report model - user reports on content
+model ModerationReport {
+  id          String   @id @default(uuid())
+  reporterId  String
+  subjectType String   // 'post' | 'comment' | 'media' | 'wiki'
+  subjectId   String
+  reason      String
+  status      String   @default("open") // open|triaged|closed
+  assignedTo  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  actions     ModerationAction[]
+
+  @@index([reporterId])
+  @@index([subjectType, subjectId])
+  @@index([status])
+  @@index([assignedTo])
+  @@index([createdAt])
+  @@map("moderation_reports")
+}
+
+// Moderation Action model - actions taken on reports
+model ModerationAction {
+  id         String   @id @default(uuid())
+  reportId   String
+  actorId    String
+  type       String   // warn|mute|shadowban|suspend|reject|approve
+  reason     String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  // Relations
+  report     ModerationReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@index([reportId])
+  @@index([actorId])
+  @@index([type])
+  @@index([createdAt])
+  @@map("moderation_actions")
+}
+
+// Expert Profile model - expert verification for wiki governance
+model ExpertProfile {
+  userId      String   @id
+  credential  String
+  licenseNo   String?
+  region      String?
+  verifiedAt  DateTime?
+  expiresAt   DateTime?
+  status      String   @default("pending") // pending|verified|revoked|expired
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([status])
+  @@index([verifiedAt])
+  @@index([expiresAt])
+  @@map("expert_profiles")
+}
+
+// Flagged Revision model - wiki revisions flagged for expert review
+model FlaggedRevision {
+  id           String   @id @default(uuid())
+  articleId    String
+  revisionId   String
+  type         String   // 'Health'|'Regulation'
+  flaggedAt    DateTime @default(now())
+  status       String   @default("pending") // pending|approved|changes-requested|rolled-back
+  assignedTo   String?
+  approvedBy   String?
+  approvedAt   DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([articleId])
+  @@index([revisionId])
+  @@index([status])
+  @@index([type])
+  @@index([flaggedAt])
+  @@map("flagged_revisions")
+}
+
+
+  @@index([type])
+  @@index([enabled])
+  @@index([createdAt])
+  @@map("notification_templates")
+}
+
+// Notification Send Record - audit log for sent notifications
+model NotificationSendRecord {
+  id            String   @id @default(uuid())
+  templateId    String?
+  templateName  String?
+  type          String   // email, push, in_app
+  subject       String?
+  body          String
+  segment       Json     // { roles: [], locales: [], groups: [] }
+  targetCount   Int      @default(0)
+  sentCount      Int      @default(0)
+  failedCount   Int      @default(0)
+  jobId         String?  // Reference to queue job
+  sentBy        String   // Admin user ID
+  createdAt     DateTime @default(now())
+
+  @@index([templateId])
+  @@index([sentBy])
+  @@index([createdAt])
+  @@index([jobId])
+  @@map("notification_send_records")
+}
+
+
+

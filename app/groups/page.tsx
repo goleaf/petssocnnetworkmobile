@@ -24,6 +24,7 @@ import {
   Globe,
   CheckCircle,
   EyeOff,
+  Layers,
 } from "lucide-react"
 import Link from "next/link"
 import {
@@ -55,11 +56,24 @@ const GROUP_TYPE_FILTERS: GroupTypeFilter[] = ["all", "open", "closed", "secret"
 
 // Map category IDs to animal types or custom icons
 const getCategoryIcon = (categoryId: string) => {
-  // Map specific categories to animal types
+  // Map all animal categories to their animal types
   const categoryToAnimalMap: Record<string, string> = {
     "cat-dogs": "dog",
     "cat-cats": "cat",
     "cat-birds": "bird",
+    "cat-rabbits": "rabbit",
+    "cat-hamsters": "hamster",
+    "cat-fish": "fish",
+    "cat-turtles": "turtle",
+    "cat-snakes": "snake",
+    "cat-lizards": "lizard",
+    "cat-guinea-pigs": "guinea-pig",
+    "cat-ferrets": "ferret",
+    "cat-chinchillas": "chinchilla",
+    "cat-hedgehogs": "hedgehog",
+    "cat-gerbils": "gerbil",
+    "cat-mice": "mouse",
+    "cat-rats": "rat",
     "cat-small-pets": "rabbit", // Using rabbit as representative for small pets
   }
   
@@ -101,10 +115,13 @@ export default function GroupsPage() {
   const [currentPage, setCurrentPage] = useState(initialPage)
   const [isLoading, setIsLoading] = useState(false)
 
-  const [categories] = useState<GroupCategory[]>(() => getGroupCategories())
+  const [categories, setCategories] = useState<GroupCategory[]>([])
   const [groups, setGroups] = useState<Group[]>([])
 
   useEffect(() => {
+    if (typeof window !== "undefined") {
+      setCategories(getGroupCategories())
+    }
     setMounted(true)
     loadGroups()
   }, [])
@@ -208,6 +225,11 @@ export default function GroupsPage() {
   const endIndex = startIndex + GROUPS_PER_PAGE
   const paginatedGroups = groups.slice(startIndex, endIndex)
 
+  const resolvedCategoryValue =
+    selectedCategory === "all" || categories.some((category) => category.id === selectedCategory)
+      ? selectedCategory
+      : "all"
+
   return (
     <div className="container mx-auto px-4 py-6 md:py-8 max-w-7xl">
       <div className="mb-6 md:mb-8">
@@ -261,12 +283,15 @@ export default function GroupsPage() {
           <div className="flex flex-wrap items-center gap-2 md:gap-4">
             {/* Category Filter - Full width on mobile */}
             <Tabs
-              value={selectedCategory}
+              value={resolvedCategoryValue}
               onValueChange={setSelectedCategory}
               className="w-full"
             >
               <TabsList className="flex-wrap h-auto p-1 w-full md:w-auto justify-start">
-                <TabsTrigger value="all" className="text-xs md:text-sm">All</TabsTrigger>
+                <TabsTrigger value="all" className="flex items-center gap-1 md:gap-2 text-xs md:text-sm">
+                  <Layers className="h-3 w-3 md:h-4 md:w-4 text-muted-foreground" />
+                  <span className="hidden sm:inline">All</span>
+                </TabsTrigger>
                 {categories.map((category) => {
                   const iconConfig = getCategoryIcon(category.id)
                   const IconComponent = iconConfig?.icon

@@ -88,7 +88,7 @@ export default function WikiTranslatePage({
 }: {
   params: Promise<{ slug: string }>
 }) {
-  const { slug } = use(params)
+  const { slug: articleSlug } = use(params)
   const searchParams = useSearchParams()
   const router = useRouter()
   const { user } = useAuth()
@@ -99,15 +99,16 @@ export default function WikiTranslatePage({
   )
   const [selectedTranslation, setSelectedTranslation] =
     useState<WikiTranslation | null>(null)
-  const [showDiff, setShowDiff] = useState(false)
+  const [viewMode, setViewMode] = useState<"editor" | "side-by-side" | "diff">("editor")
   const [title, setTitle] = useState("")
   const [content, setContent] = useState("")
+  const [slug, setSlug] = useState("")
   const [status, setStatus] = useState<TranslationStatus>("draft")
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
 
   useEffect(() => {
-    const loadedArticle = getWikiArticleBySlug(slug)
+    const loadedArticle = getWikiArticleBySlug(articleSlug)
     if (!loadedArticle) {
       router.push("/wiki")
       return
@@ -126,11 +127,13 @@ export default function WikiTranslatePage({
         setSelectedTranslation(translation)
         setTitle(translation.title || "")
         setContent(translation.content || "")
+        setSlug(translation.slug || "")
         setStatus(translation.status)
       } else {
         // Create new translation placeholder
         setTitle("")
         setContent("")
+        setSlug("")
         setStatus("draft")
       }
     }
@@ -151,15 +154,33 @@ export default function WikiTranslatePage({
       setSelectedTranslation(translation)
       setTitle(translation.title || "")
       setContent(translation.content || "")
+      setSlug(translation.slug || "")
       setStatus(translation.status)
     } else {
       setSelectedTranslation(null)
       setTitle("")
       setContent("")
+      setSlug("")
       setStatus("draft")
     }
-    setShowDiff(false)
+    setViewMode("editor")
     router.push(`/wiki/${slug}/translate?lang=${langCode}`)
+  }
+
+  // Generate slug from title
+  const generateSlug = (text: string): string => {
+    return text
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+  }
+
+  const handleTitleChange = (newTitle: string) => {
+    setTitle(newTitle)
+    // Auto-generate slug if empty
+    if (!slug && newTitle) {
+      setSlug(generateSlug(newTitle))
+    }
   }
 
   const handleSave = async () => {
@@ -180,6 +201,7 @@ export default function WikiTranslatePage({
       id: selectedTranslation?.id || `trans-${Date.now()}`,
       articleId: article.id,
       languageCode: selectedLang,
+      slug: slug || undefined,
       title: title || undefined,
       content: content || undefined,
       status,
@@ -301,7 +323,60 @@ export default function WikiTranslatePage({
 
       {selectedLang && (
         <>
-          {showDiff && selectedTranslation && (
+          {viewMode === "side-by-side" && (
+            <Card className="mb-6">
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <span>Side-by-Side Translation</span>
+                  <Badge className={STATUS_COLORS[status]}>
+                    {(() => {
+                      const Icon = STATUS_ICONS[status]
+                      return <Icon className="h-3 w-3 mr-1" />
+                    })()}
+                    {status}
+                  </Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-4">
+                    <div>
+                      <Label className="text-sm font-semibold">
+                        {SUPPORTED_LANGUAGES.find((l) => l.code === baseLang)?.name || baseLang} (Base)
+                      </Label>
+                      <div className="mt-2 p-4 border rounded-lg bg-muted/50">
+                        <h3 className="font-semibold mb-2">{article.title}</h3>
+                        <div className="text-sm whitespace-pre-wrap">{article.content}</div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="space-y-4">
+                    <div>
+                      <Label className="text-sm font-semibold">
+                        {SUPPORTED_LANGUAGES.find((l) => l.code === selectedLang)?.name || selectedLang} (Translation)
+                      </Label>
+                      <div className="mt-2 p-4 border rounded-lg bg-background">
+                        <Input
+                          value={title}
+                          onChange={(e) => handleTitleChange(e.target.value)}
+                          placeholder={article.title}
+                          className="mb-2 font-semibold"
+                        />
+                        <Textarea
+                          value={content}
+                          onChange={(e) => setContent(e.target.value)}
+                          placeholder={article.content}
+                          className="min-h-[300px] text-sm"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {viewMode === "diff" && selectedTranslation && (
             <Card className="mb-6">
               <CardHeader>
                 <CardTitle>Diff View</CardTitle>
@@ -318,64 +393,115 @@ export default function WikiTranslatePage({
             </Card>
           )}
 
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle>Translation Editor</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label htmlFor="translation-title">Title</Label>
-                <Input
-                  id="translation-title"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder={article.title}
-                  className="mt-1"
-                />
-              </div>
+          {viewMode === "editor" && (
+            <Card className="mb-6">
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <span>Translation Editor</span>
+                  <Badge className={STATUS_COLORS[status]}>
+                    {(() => {
+                      const Icon = STATUS_ICONS[status]
+                      return <Icon className="h-3 w-3 mr-1" />
+                    })()}
+                    {status}
+                  </Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <Label htmlFor="translation-slug">Slug (URL-friendly identifier)</Label>
+                  <Input
+                    id="translation-slug"
+                    value={slug}
+                    onChange={(e) => setSlug(e.target.value)}
+                    placeholder={article.slug}
+                    className="mt-1 font-mono text-sm"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Optional: Custom slug for this translation. If empty, will be generated from title.
+                  </p>
+                </div>
 
-              <div>
-                <Label htmlFor="translation-content">Content</Label>
-                <Textarea
-                  id="translation-content"
-                  value={content}
-                  onChange={(e) => setContent(e.target.value)}
-                  placeholder={article.content}
-                  className="mt-1 min-h-[400px] font-mono text-sm"
-                  rows={20}
-                />
-              </div>
+                <div>
+                  <Label htmlFor="translation-title">Title</Label>
+                  <Input
+                    id="translation-title"
+                    value={title}
+                    onChange={(e) => handleTitleChange(e.target.value)}
+                    placeholder={article.title}
+                    className="mt-1"
+                  />
+                </div>
 
-              <div>
-                <Label htmlFor="translation-status">Status</Label>
-                <Select value={status} onValueChange={(value) => setStatus(value as TranslationStatus)}>
-                  <SelectTrigger id="translation-status" className="w-[200px] mt-1">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="draft">Draft</SelectItem>
-                    <SelectItem value="review">Review</SelectItem>
-                    <SelectItem value="published">Published</SelectItem>
-                    <SelectItem value="outdated">Outdated</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+                <div>
+                  <Label htmlFor="translation-content">Content</Label>
+                  <Textarea
+                    id="translation-content"
+                    value={content}
+                    onChange={(e) => setContent(e.target.value)}
+                    placeholder={article.content}
+                    className="mt-1 min-h-[400px] font-mono text-sm"
+                    rows={20}
+                  />
+                </div>
 
-              <Button onClick={handleSave} disabled={isSaving} className="w-full">
-                {isSaving ? (
-                  <>
-                    <LoadingSpinner className="mr-2 h-4 w-4" />
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <Save className="mr-2 h-4 w-4" />
-                    Save Translation
-                  </>
-                )}
-              </Button>
-            </CardContent>
-          </Card>
+                <div>
+                  <Label htmlFor="translation-status">Status</Label>
+                  <Select value={status} onValueChange={(value) => setStatus(value as TranslationStatus)}>
+                    <SelectTrigger id="translation-status" className="w-[200px] mt-1">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="draft">
+                        <div className="flex items-center gap-2">
+                          <Clock className="h-4 w-4" />
+                          Draft
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="review">
+                        <div className="flex items-center gap-2">
+                          <AlertCircle className="h-4 w-4" />
+                          Review
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="published">
+                        <div className="flex items-center gap-2">
+                          <CheckCircle2 className="h-4 w-4" />
+                          Published
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="outdated">
+                        <div className="flex items-center gap-2">
+                          <XCircle className="h-4 w-4" />
+                          Outdated
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {status === "draft" && "Work in progress, not visible to users"}
+                    {status === "review" && "Awaiting review before publication"}
+                    {status === "published" && "Live and visible to users"}
+                    {status === "outdated" && "Needs update due to base article changes"}
+                  </p>
+                </div>
+
+                <Button onClick={handleSave} disabled={isSaving} className="w-full">
+                  {isSaving ? (
+                    <>
+                      <LoadingSpinner className="mr-2 h-4 w-4" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="mr-2 h-4 w-4" />
+                      Save Translation
+                    </>
+                  )}
+                </Button>
+              </CardContent>
+            </Card>
+          )}
         </>
       )}
 
@@ -388,6 +514,7 @@ export default function WikiTranslatePage({
             <TableHeader>
               <TableRow>
                 <TableHead>Language</TableHead>
+                <TableHead>Slug</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Progress</TableHead>
                 <TableHead>Translator</TableHead>
@@ -398,7 +525,7 @@ export default function WikiTranslatePage({
             <TableBody>
               {translations.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground">
+                  <TableCell colSpan={7} className="text-center text-muted-foreground">
                     No translations yet
                   </TableCell>
                 </TableRow>
@@ -411,7 +538,6 @@ export default function WikiTranslatePage({
                     ? getUserById(translation.translatorId)
                     : null
                   const progress = getTranslationProgress(article, translation)
-                  const StatusIcon = STATUS_ICONS[translation.status]
 
                   return (
                     <TableRow
@@ -424,11 +550,19 @@ export default function WikiTranslatePage({
                         {lang?.name || translation.languageCode}
                       </TableCell>
                       <TableCell>
+                        <code className="text-xs bg-muted px-2 py-1 rounded">
+                          {translation.slug || article.slug}
+                        </code>
+                      </TableCell>
+                      <TableCell>
                         <Badge
                           variant="outline"
                           className={STATUS_COLORS[translation.status]}
                         >
-                          <StatusIcon className="h-3 w-3 mr-1" />
+                          {(() => {
+                            const Icon = STATUS_ICONS[translation.status]
+                            return <Icon className="h-3 w-3 mr-1" />
+                          })()}
                           {translation.status}
                         </Badge>
                       </TableCell>

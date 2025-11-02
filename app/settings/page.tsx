@@ -11,7 +11,8 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { BackButton } from "@/components/ui/back-button"
 import { useAuth } from "@/components/auth/auth-provider"
 import { PrivacySelector } from "@/components/privacy-selector"
-import { updateUser, getUsers, blockUser, unblockUser } from "@/lib/storage"
+import { BlurToggle } from "@/components/moderation/blur-toggle"
+import { updateUser, getUsers, blockUser, unblockUser, isExpertVerified, getExpertVerificationRequestByUserId } from "@/lib/storage"
 import { getNotificationSettings, saveNotificationSettings } from "@/lib/notifications"
 import type { PrivacyLevel, NotificationSettings, NotificationChannel } from "@/lib/types"
 import {
@@ -28,6 +29,9 @@ import {
   Mail,
   Bell,
   Smartphone,
+  GraduationCap,
+  Webhook,
+  Key,
   type LucideIcon,
 } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -532,6 +536,71 @@ export default function SettingsPage() {
               )}
             </CardContent>
           </Card>
+
+          {/* Expert Verification */}
+          {user && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                  <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-lg bg-indigo-500/10 flex items-center justify-center flex-shrink-0">
+                    <GraduationCap className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-indigo-500" />
+                  </div>
+                  Expert Verification
+                </CardTitle>
+                <CardDescription className="text-xs sm:text-sm">
+                  Become a verified expert to publish stable health articles
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {isExpertVerified(user.id) ? (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
+                      <CheckCircle2 className="h-5 w-5" />
+                      <span className="font-medium">You are verified as an expert</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      You can publish stable revisions for health articles.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {(() => {
+                      const request = getExpertVerificationRequestByUserId(user.id)
+                      if (request) {
+                        const statusMessages = {
+                          pending: "Your verification request is pending review.",
+                          approved: "Your verification request has been approved!",
+                          rejected: request.reason
+                            ? `Your request was rejected: ${request.reason}`
+                            : "Your verification request was rejected.",
+                        }
+                        return (
+                          <div className="space-y-2">
+                            <p className="text-sm">{statusMessages[request.status]}</p>
+                            {request.status === "rejected" && (
+                              <Button asChild variant="outline" size="sm">
+                                <Link href="/expert/verify">Submit New Request</Link>
+                              </Button>
+                            )}
+                          </div>
+                        )
+                      }
+                      return (
+                        <div className="space-y-3">
+                          <p className="text-sm text-muted-foreground">
+                            Submit your credentials to become a verified expert. Verified experts can publish stable health articles.
+                          </p>
+                          <Button asChild>
+                            <Link href="/expert/verify">Request Expert Verification</Link>
+                          </Button>
+                        </div>
+                      )
+                    })()}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         {/* Notification Settings Section */}
@@ -596,6 +665,46 @@ export default function SettingsPage() {
               <div className="flex justify-end">
                 <Button asChild>
                   <Link href="/settings/notifications">Manage detailed preferences</Link>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Content Moderation Settings */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-lg bg-purple-500/10 flex items-center justify-center flex-shrink-0">
+                  <ShieldCheck className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-purple-500" />
+                </div>
+                Content Moderation
+              </CardTitle>
+              <CardDescription className="text-xs sm:text-sm">
+                Control how flagged content is displayed
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4 sm:space-y-6">
+              <BlurToggle />
+            </CardContent>
+          </Card>
+
+          {/* Integrations Settings */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-lg bg-green-500/10 flex items-center justify-center flex-shrink-0">
+                  <Webhook className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-green-500" />
+                </div>
+                Integrations
+              </CardTitle>
+              <CardDescription className="text-xs sm:text-sm">
+                Manage webhooks and API keys for external integrations
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex justify-end">
+                <Button asChild>
+                  <Link href="/settings/integrations">Manage Integrations</Link>
                 </Button>
               </div>
             </CardContent>

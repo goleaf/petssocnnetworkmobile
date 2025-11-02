@@ -1,9 +1,12 @@
 "use client"
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { AlertTriangle, Clock, CheckCircle } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { AlertTriangle, Clock, CheckCircle, Phone, MapPin, BookOpen, ExternalLink } from "lucide-react"
 import type { UrgencyLevel } from "@/lib/types"
 import { cn } from "@/lib/utils"
+import { getEmergencyActions } from "@/lib/utils/emergency"
+import Link from "next/link"
 
 interface UrgencyBannerProps {
   urgency: UrgencyLevel
@@ -46,6 +49,7 @@ export function UrgencyBanner({ urgency, className }: UrgencyBannerProps) {
 
   const config = urgencyConfig[urgency]
   const Icon = config.icon
+  const emergencyActions = getEmergencyActions(urgency)
 
   return (
     <Alert
@@ -59,8 +63,79 @@ export function UrgencyBanner({ urgency, className }: UrgencyBannerProps) {
     >
       <Icon className={cn("h-4 w-4", config.iconColor)} />
       <AlertTitle className={config.textColor}>{config.title}</AlertTitle>
-      <AlertDescription className={config.textColor}>
-        {config.description}
+      <AlertDescription className={cn(config.textColor, "space-y-3")}>
+        <p>{config.description}</p>
+        
+        {/* Emergency/Urgent CTAs */}
+        {emergencyActions && (urgency === "emergency" || urgency === "urgent") && (
+          <div className="flex flex-wrap gap-2 mt-4 pt-3 border-t border-current/20">
+            {urgency === "emergency" && (
+              <>
+                <Button
+                  asChild
+                  variant="destructive"
+                  size="sm"
+                  className={cn(
+                    "font-semibold",
+                    config.textColor,
+                    "bg-red-600 hover:bg-red-700 text-white border-0"
+                  )}
+                >
+                  <a href={emergencyActions.phoneUrl} className="flex items-center gap-2">
+                    <Phone className="h-4 w-4" />
+                    Call Emergency
+                  </a>
+                </Button>
+                <Button
+                  asChild
+                  variant="outline"
+                  size="sm"
+                  className={cn(
+                    "font-medium",
+                    config.textColor,
+                    "border-current/40 hover:bg-current/10"
+                  )}
+                >
+                  <a href={emergencyActions.mapsUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4" />
+                    Find Nearby Clinic
+                    <ExternalLink className="h-3 w-3" />
+                  </a>
+                </Button>
+              </>
+            )}
+            <Button
+              asChild
+              variant="outline"
+              size="sm"
+              className={cn(
+                "font-medium",
+                config.textColor,
+                "border-current/40 hover:bg-current/10"
+              )}
+            >
+              <Link href={emergencyActions.clinicFinderUrl}>
+                <MapPin className="h-4 w-4" />
+                Local Clinics
+              </Link>
+            </Button>
+            <Button
+              asChild
+              variant="outline"
+              size="sm"
+              className={cn(
+                "font-medium",
+                config.textColor,
+                "border-current/40 hover:bg-current/10"
+              )}
+            >
+              <Link href={emergencyActions.guidelinesUrl}>
+                <BookOpen className="h-4 w-4" />
+                Emergency Guidelines
+              </Link>
+            </Button>
+          </div>
+        )}
       </AlertDescription>
     </Alert>
   )

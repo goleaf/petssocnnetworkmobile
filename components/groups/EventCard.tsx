@@ -19,6 +19,32 @@ export function EventCard({ event, groupSlug, showGroupLink = false }: EventCard
   const isPast = new Date(event.startDate) < new Date()
   const isUpcoming = !isPast && !event.isCancelled
 
+  const getEventTypeIcon = () => {
+    switch (event.eventType) {
+      case "adoption-drive":
+        return <Heart className="h-4 w-4" />
+      case "meetup":
+        return <UsersRound className="h-4 w-4" />
+      case "vaccination-clinic":
+        return <Syringe className="h-4 w-4" />
+      default:
+        return <Calendar className="h-4 w-4" />
+    }
+  }
+
+  const getEventTypeLabel = () => {
+    switch (event.eventType) {
+      case "adoption-drive":
+        return "Adoption Drive"
+      case "meetup":
+        return "Meetup"
+      case "vaccination-clinic":
+        return "Vaccination Clinic"
+      default:
+        return "Event"
+    }
+  }
+
   return (
     <Link href={`/groups/${groupSlug}/events/${event.id}`}>
       <Card className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer h-full">
@@ -35,16 +61,28 @@ export function EventCard({ event, groupSlug, showGroupLink = false }: EventCard
         
         <CardHeader>
           <div className="flex items-start justify-between gap-2">
-            <CardTitle className="text-xl line-clamp-2">{event.title}</CardTitle>
-            {event.isCancelled && (
-              <Badge variant="destructive">Cancelled</Badge>
-            )}
-            {isPast && !event.isCancelled && (
-              <Badge variant="outline">Past</Badge>
-            )}
-            {isUpcoming && (
-              <Badge variant="default">Upcoming</Badge>
-            )}
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-1">
+                {event.eventType && (
+                  <Badge variant="secondary" className="flex items-center gap-1">
+                    {getEventTypeIcon()}
+                    {getEventTypeLabel()}
+                  </Badge>
+                )}
+              </div>
+              <CardTitle className="text-xl line-clamp-2">{event.title}</CardTitle>
+            </div>
+            <div className="flex flex-col gap-1">
+              {event.isCancelled && (
+                <Badge variant="destructive">Cancelled</Badge>
+              )}
+              {isPast && !event.isCancelled && (
+                <Badge variant="outline">Past</Badge>
+              )}
+              {isUpcoming && (
+                <Badge variant="default">Upcoming</Badge>
+              )}
+            </div>
           </div>
         </CardHeader>
         
