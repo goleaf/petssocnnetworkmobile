@@ -1,4 +1,5 @@
 import { test, expect } from './fixtures';
+import { testAllButtons, testAllLinks, testAllFormFields, testAllInputFields, testAllTextareaFields, testAllSelectFields } from './test-helpers';
 
 test.describe('Wiki Detailed Pages', () => {
   test.describe('Wiki Edit Page', () => {
@@ -40,27 +41,7 @@ test.describe('Wiki Detailed Pages', () => {
           await editButton.click();
           await page.waitForLoadState('networkidle');
           
-          const fields = page.locator('input, textarea, select');
-          const fieldCount = await fields.count();
-          
-          if (fieldCount > 0) {
-            for (let i = 0; i < fieldCount; i++) {
-              const field = fields.nth(i);
-              if (await field.isVisible()) {
-                await expect(field).toBeVisible();
-                
-                const tagName = await field.evaluate(el => el.tagName.toLowerCase());
-                if (tagName === 'input' || tagName === 'textarea') {
-                  const inputType = await field.getAttribute('type');
-                  if (inputType !== 'submit' && inputType !== 'button' && inputType !== 'file') {
-                    await field.fill('test content');
-                    await expect(field).toHaveValue('test content');
-                    await field.clear();
-                  }
-                }
-              }
-            }
-          }
+          await testAllFormFields(page);
         }
       }
     });
@@ -157,17 +138,7 @@ test.describe('Wiki Detailed Pages', () => {
       await page.goto('/wiki/quality');
       await page.waitForLoadState('networkidle');
       
-      const links = page.locator('a[href]');
-      const count = await links.count();
-      
-      if (count > 0) {
-        for (let i = 0; i < Math.min(count, 40); i++) {
-          const link = links.nth(i);
-          if (await link.isVisible()) {
-            await expect(link).toBeVisible();
-          }
-        }
-      }
+      await testAllLinks(page, 50);
     });
   });
 
@@ -208,17 +179,7 @@ test.describe('Wiki Detailed Pages', () => {
         await wikiLinks.first().click();
         await page.waitForLoadState('networkidle');
         
-        const buttons = page.locator('button');
-        const buttonCount = await buttons.count();
-        
-        if (buttonCount > 0) {
-          for (let i = 0; i < Math.min(buttonCount, 50); i++) {
-            const button = buttons.nth(i);
-            if (await button.isVisible()) {
-              await expect(button).toBeVisible();
-            }
-          }
-        }
+        await testAllButtons(page, 50);
       }
     });
 

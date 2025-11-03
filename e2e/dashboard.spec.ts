@@ -1,4 +1,5 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
+import { testAllButtons, testAllLinks, testAllFormFields } from './test-helpers';
 
 test.describe('Dashboard Page', () => {
   test.beforeEach(async ({ page }) => {

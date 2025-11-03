@@ -1,4 +1,5 @@
 import { test, expect } from './fixtures';
+import { testAllButtons, testAllLinks, testAllFormFields, testAllInputFields, testAllTextareaFields, testAllSelectFields } from './test-helpers';
 
 test.describe('Groups Detailed Pages', () => {
   test.describe('Group Topics Create Page', () => {
@@ -38,27 +39,7 @@ test.describe('Groups Detailed Pages', () => {
           await topicsCreateLink.click();
           await page.waitForLoadState('networkidle');
           
-          const fields = page.locator('input, textarea, select, button[role="combobox"]');
-          const fieldCount = await fields.count();
-          
-          if (fieldCount > 0) {
-            for (let i = 0; i < fieldCount; i++) {
-              const field = fields.nth(i);
-              if (await field.isVisible()) {
-                await expect(field).toBeVisible();
-                
-                const tagName = await field.evaluate(el => el.tagName.toLowerCase());
-                if (tagName === 'input' || tagName === 'textarea') {
-                  const inputType = await field.getAttribute('type');
-                  if (inputType !== 'submit' && inputType !== 'button' && inputType !== 'file') {
-                    await field.fill('test content');
-                    await expect(field).toHaveValue('test content');
-                    await field.clear();
-                  }
-                }
-              }
-            }
-          }
+          await testAllFormFields(page);
         }
       }
     });
@@ -364,17 +345,7 @@ test.describe('Groups Detailed Pages', () => {
           await pollsLink.click();
           await page.waitForLoadState('networkidle');
           
-          const buttons = page.locator('button');
-          const buttonCount = await buttons.count();
-          
-          if (buttonCount > 0) {
-            for (let i = 0; i < Math.min(buttonCount, 50); i++) {
-              const button = buttons.nth(i);
-              if (await button.isVisible()) {
-                await expect(button).toBeVisible();
-              }
-            }
-          }
+          await testAllButtons(page, 50);
         }
       }
     });
@@ -448,27 +419,7 @@ test.describe('Groups Detailed Pages', () => {
           await pollsCreateLink.click();
           await page.waitForLoadState('networkidle');
           
-          const fields = page.locator('input, textarea, select, button[role="combobox"]');
-          const fieldCount = await fields.count();
-          
-          if (fieldCount > 0) {
-            for (let i = 0; i < fieldCount; i++) {
-              const field = fields.nth(i);
-              if (await field.isVisible()) {
-                await expect(field).toBeVisible();
-                
-                const tagName = await field.evaluate(el => el.tagName.toLowerCase());
-                if (tagName === 'input' || tagName === 'textarea') {
-                  const inputType = await field.getAttribute('type');
-                  if (inputType !== 'submit' && inputType !== 'button' && inputType !== 'file') {
-                    await field.fill('test content');
-                    await expect(field).toHaveValue('test content');
-                    await field.clear();
-                  }
-                }
-              }
-            }
-          }
+          await testAllFormFields(page);
         }
       }
     });
@@ -644,17 +595,7 @@ test.describe('Groups Detailed Pages', () => {
           await eventLink.click();
           await page.waitForLoadState('networkidle');
           
-          const buttons = page.locator('button');
-          const buttonCount = await buttons.count();
-          
-          if (buttonCount > 0) {
-            for (let i = 0; i < Math.min(buttonCount, 50); i++) {
-              const button = buttons.nth(i);
-              if (await button.isVisible()) {
-                await expect(button).toBeVisible();
-              }
-            }
-          }
+          await testAllButtons(page, 50);
         }
       }
     });
@@ -728,27 +669,7 @@ test.describe('Groups Detailed Pages', () => {
           await resourcesCreateLink.click();
           await page.waitForLoadState('networkidle');
           
-          const fields = page.locator('input, textarea, select, button[role="combobox"]');
-          const fieldCount = await fields.count();
-          
-          if (fieldCount > 0) {
-            for (let i = 0; i < fieldCount; i++) {
-              const field = fields.nth(i);
-              if (await field.isVisible()) {
-                await expect(field).toBeVisible();
-                
-                const tagName = await field.evaluate(el => el.tagName.toLowerCase());
-                if (tagName === 'input' || tagName === 'textarea') {
-                  const inputType = await field.getAttribute('type');
-                  if (inputType !== 'submit' && inputType !== 'button' && inputType !== 'file') {
-                    await field.fill('test content');
-                    await expect(field).toHaveValue('test content');
-                    await field.clear();
-                  }
-                }
-              }
-            }
-          }
+          await testAllFormFields(page);
         }
       }
     });
@@ -822,17 +743,7 @@ test.describe('Groups Detailed Pages', () => {
           await analyticsLink.click();
           await page.waitForLoadState('networkidle');
           
-          const buttons = page.locator('button');
-          const buttonCount = await buttons.count();
-          
-          if (buttonCount > 0) {
-            for (let i = 0; i < Math.min(buttonCount, 50); i++) {
-              const button = buttons.nth(i);
-              if (await button.isVisible()) {
-                await expect(button).toBeVisible();
-              }
-            }
-          }
+          await testAllButtons(page, 50);
         }
       }
     });
@@ -906,17 +817,7 @@ test.describe('Groups Detailed Pages', () => {
           await moderationLink.click();
           await page.waitForLoadState('networkidle');
           
-          const buttons = page.locator('button');
-          const buttonCount = await buttons.count();
-          
-          if (buttonCount > 0) {
-            for (let i = 0; i < Math.min(buttonCount, 50); i++) {
-              const button = buttons.nth(i);
-              if (await button.isVisible()) {
-                await expect(button).toBeVisible();
-              }
-            }
-          }
+          await testAllButtons(page, 50);
         }
       }
     });

@@ -1,4 +1,5 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
+import { testAllButtons, testAllLinks, testAllFormFields, testAllInputFields } from './test-helpers';
 
 test.describe('Login Page', () => {
   test.beforeEach(async ({ page }) => {
@@ -155,61 +156,19 @@ test.describe('Login Page', () => {
   });
 
   test('should test all buttons on page', async ({ page }) => {
-    const buttons = page.locator('button');
-    const count = await buttons.count();
-    
-    expect(count).toBeGreaterThan(0);
-
-    for (let i = 0; i < count; i++) {
-      const button = buttons.nth(i);
-      if (await button.isVisible()) {
-        await expect(button).toBeVisible();
-        
-        // Check if button is enabled
-        const isDisabled = await button.isDisabled();
-        // Most buttons should be visible, some may be disabled
-        expect(isDisabled === true || isDisabled === false).toBeTruthy();
-      }
-    }
+    await testAllButtons(page, 50);
   });
 
   test('should test all input fields comprehensively', async ({ page }) => {
-    const inputFields = page.locator('input');
-    const count = await inputFields.count();
-    
-    expect(count).toBeGreaterThan(0);
+    await testAllInputFields(page);
+  });
 
-    for (let i = 0; i < count; i++) {
-      const field = inputFields.nth(i);
-      if (await field.isVisible()) {
-        await expect(field).toBeVisible();
-        
-        const inputType = await field.getAttribute('type');
-        const fieldId = await field.getAttribute('id');
-        const placeholder = await field.getAttribute('placeholder');
-        const required = await field.getAttribute('required');
-        
-        // Verify field has proper attributes
-        expect(inputType !== null || inputType === 'text').toBeTruthy();
-      }
-    }
+  test('should test all form fields on page', async ({ page }) => {
+    await testAllFormFields(page);
   });
 
   test('should test all links on page', async ({ page }) => {
-    const links = page.locator('a[href]');
-    const count = await links.count();
-    
-    if (count > 0) {
-      for (let i = 0; i < Math.min(count, 20); i++) {
-        const link = links.nth(i);
-        if (await link.isVisible()) {
-          await expect(link).toBeVisible();
-          
-          const href = await link.getAttribute('href');
-          expect(href).toBeTruthy();
-        }
-      }
-    }
+    await testAllLinks(page, 50);
   });
 });
 

@@ -1,4 +1,5 @@
 import { test, expect } from './fixtures';
+import { testAllButtons, testAllLinks, testAllFormFields, testAllInputFields, testAllTextareaFields, testAllSelectFields } from './test-helpers';
 
 test.describe('Places Pages Detailed', () => {
   test.describe('Places Detail Functionality', () => {
@@ -28,17 +29,7 @@ test.describe('Places Pages Detailed', () => {
         await placeLinks.first().click();
         await page.waitForLoadState('networkidle');
         
-        const buttons = page.locator('button');
-        const buttonCount = await buttons.count();
-        
-        if (buttonCount > 0) {
-          for (let i = 0; i < Math.min(buttonCount, 50); i++) {
-            const button = buttons.nth(i);
-            if (await button.isVisible()) {
-              await expect(button).toBeVisible();
-            }
-          }
-        }
+        await testAllButtons(page, 50);
       }
     });
 
@@ -53,17 +44,7 @@ test.describe('Places Pages Detailed', () => {
         await placeLinks.first().click();
         await page.waitForLoadState('networkidle');
         
-        const links = page.locator('a[href]');
-        const linkCount = await links.count();
-        
-        if (linkCount > 0) {
-          for (let i = 0; i < Math.min(linkCount, 50); i++) {
-            const link = links.nth(i);
-            if (await link.isVisible()) {
-              await expect(link).toBeVisible();
-            }
-          }
-        }
+        await testAllLinks(page, 50);
       }
     });
 
@@ -115,17 +96,7 @@ test.describe('Places Pages Detailed', () => {
       await page.goto('/places');
       await page.waitForLoadState('networkidle');
       
-      const fields = page.locator('input, select, button[role="combobox"]');
-      const count = await fields.count();
-      
-      if (count > 0) {
-        for (let i = 0; i < count; i++) {
-          const field = fields.nth(i);
-          if (await field.isVisible()) {
-            await expect(field).toBeVisible();
-          }
-        }
-      }
+      await testAllFormFields(page);
     });
 
     test('should test filter toggle buttons', async ({ authenticatedPage: page }) => {
