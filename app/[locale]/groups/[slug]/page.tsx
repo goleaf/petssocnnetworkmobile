@@ -5,7 +5,7 @@ import { useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { GroupHeader } from "@/components/groups/GroupHeader"
 import { PinnedRules } from "@/components/groups/PinnedRules"
@@ -41,6 +41,7 @@ import {
   Shield,
   FileText,
   Plus,
+  Info,
 } from "lucide-react"
 import Link from "next/link"
 import { BulkEventExportButton } from "@/components/groups/EventExportButton"
