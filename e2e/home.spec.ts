@@ -49,7 +49,7 @@ test.describe('Home Page', () => {
   });
 
   test('should display demo credentials card', async ({ page }) => {
-    const demoCard = page.locator('text=Demo Credentials').or(page.locator('text=Username:').first());
+    const demoCard = page.locator('text=Demo Credentials').first();
     await expect(demoCard).toBeVisible();
   });
 

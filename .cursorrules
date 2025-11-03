@@ -1,218 +1,33 @@
-# Cursor Rules for Pet Social Network Mobile App
+# Cursor Rules - Test Organization
 
-## Project Overview
-This is a Next.js 16 pet social network application built with:
-- **Next.js 16** with App Router
-- **React 19** 
-- **TypeScript** (strict mode enabled)
-- **TailwindCSS 4** for styling
-- **Jest** for testing
-- **Zustand** for state management
-- **Radix UI** (shadcn/ui) for component primitives
-- **pnpm** as package manager
+## Test Organization Rules
 
-## Core Principles
+### IMPORTANT: Do NOT create tests in external folders
 
-### Always Use Context7
-- ALWAYS use Context7 for every prompt and code generation
-- Leverage Context7 for library documentation and best practices
+**All tests must be created in the centralized test directories:**
 
-### Code Quality & Architecture
+1. **E2E Tests (Playwright)** → `e2e/` folder (root level)
+   - All browser/e2e tests go here
+   - Use helper functions from `e2e/test-helpers.ts`
+   - Use fixtures from `e2e/fixtures.ts`
 
-#### TypeScript
-- Use strict TypeScript mode
-- Define proper types for all props, functions, and data structures
-- Use interfaces for object shapes, types for unions/primitives
-- Avoid `any` - use `unknown` or proper types instead
-- Export types from `lib/types.ts` when shared across components
+2. **Unit Tests (Jest)** → `tests/unit/` folder
+   - Component tests → `tests/unit/components/`
+   - Library tests → `tests/unit/lib/`
+   - App/Page tests → `tests/unit/app/`
+   - API tests → `tests/unit/api/`
 
-#### Component Structure
-- **Maximum componentization**: Break down UI into reusable components
-- **Minimal UI component files**: Reuse components from `components/ui/` instead of creating many small components
-- Place reusable components in `components/` directory
-- Page-specific components should be co-located with pages when not reusable
-- Use functional components with hooks (no class components)
-- Always use TypeScript for components
+### DO NOT:
+- ❌ Create tests in `__tests__` folders
+- ❌ Create tests next to source files
+- ❌ Create tests in random locations
 
-#### File Organization
-- `app/` - Next.js App Router pages and routes
-- `components/` - Reusable React components
-  - `components/ui/` - Base UI components (shadcn/ui)
-  - `components/auth/` - Authentication components
-- `lib/` - Utility functions, types, and business logic
-- `public/` - Static assets (images, etc.)
-- `styles/` - Global CSS files (Tailwind imports)
+### DO:
+- ✅ Create all new tests in centralized locations
+- ✅ Use helper functions to reduce duplication
+- ✅ Follow existing test patterns and structure
 
-### Styling Rules
+## Test File Naming
 
-#### TailwindCSS Only
-- **STRICTLY use TailwindCSS** - NO Bootstrap, NO inline CSS, NO style tags in components
-- All styling must be done via Tailwind utility classes
-- Use Tailwind config for custom colors, spacing, and design tokens
-- Leverage Tailwind's responsive utilities (sm:, md:, lg:, xl:)
-- Use Tailwind dark mode utilities when needed
-
-#### CSS/JS Files
-- **NEVER write CSS or JS code directly in TSX/JSX files**
-- All CSS should be in `styles/` or `app/globals.css`
-- All JavaScript logic should be in separate files in `lib/` or component files
-- Use Tailwind's `@apply` directive sparingly and only in CSS files
-- After any CSS/JS changes, always run `npm run build` or `pnpm build`
-
-#### Assets & Dependencies
-- **NO CDN servers** - All JS and CSS must come from npm packages
-- Use local npm packages for all dependencies
-- Images should be in `public/` directory
-- Import assets using Next.js Image component for optimization
-
-### Testing
-
-#### Test Structure
-- Create tests for all components in `__tests__/` folders
-- Use Jest and React Testing Library
-- Test files should be co-located: `ComponentName.test.tsx` next to `ComponentName.tsx`
-- Run tests with: `pnpm test`, `pnpm test:watch`, `pnpm test:coverage`
-- Aim for comprehensive test coverage for all features
-
-### Next.js Specific Rules
-
-#### App Router
-- Use App Router conventions (not Pages Router)
-- Use Server Components by default, add `"use client"` only when needed
-- Use `loading.tsx` for loading states
-- Use proper error boundaries and error handling
-- Leverage Next.js Image component for images
-- Use Next.js Link component for internal navigation
-
-#### API & Data
-- Use Server Actions for mutations when needed
-- Client-side state management with Zustand
-- Data persistence via `lib/storage.ts` (localStorage)
-- Always handle async operations with proper error handling
-
-### Code Style & Best Practices
-
-#### React Patterns
-- Use functional components exclusively
-- Prefer composition over inheritance
-- Use custom hooks for reusable logic (in `lib/` or component files)
-- Properly manage component lifecycle with useEffect
-- Use React.memo() for expensive renders when needed
-- Follow React 19 best practices
-
-#### State Management
-- Use Zustand for global state (see `lib/auth.ts` for patterns)
-- Use local useState for component-specific state
-- Keep state as close to usage as possible (avoid prop drilling)
-
-#### Performance
-- Use Next.js Image component for optimized images
-- Implement proper loading states
-- Use Suspense boundaries where appropriate
-- Lazy load heavy components when beneficial
-- Optimize re-renders with React.memo and useMemo when needed
-
-### Naming Conventions
-
-#### Files & Components
-- Components: `PascalCase.tsx` (e.g., `PetCard.tsx`)
-- Utilities: `camelCase.ts` (e.g., `formatDate.ts`)
-- Types: `types.ts` in `lib/` directory
-- Pages: Follow Next.js App Router naming (lowercase with hyphens in folders)
-
-#### Code
-- Components: PascalCase
-- Functions/variables: camelCase
-- Constants: UPPER_SNAKE_CASE
-- Types/Interfaces: PascalCase
-
-### Git & Development Workflow
-
-#### Before Committing
-- Run `pnpm test` to ensure all tests pass
-- Run `pnpm build` to verify production build works
-- Check for TypeScript errors
-- Ensure no console errors or warnings
-
-#### Version Control
-- `.cursorrules` should be version controlled
-- Don't commit `.next/`, `node_modules/`, or build artifacts
-- Keep commit messages clear and descriptive
-
-### Prohibited Practices
-
-#### NEVER Do:
-- ❌ Use Bootstrap CSS framework
-- ❌ Write inline CSS or style tags in components
-- ❌ Use CDN links for CSS/JS libraries
-- ❌ Create many small UI component files (reuse from `components/ui/`)
-- ❌ Use class components
-- ❌ Use `any` type in TypeScript
-- ❌ Write CSS/JS code directly in TSX files
-- ❌ Skip running `pnpm build` after CSS/JS changes
-- ❌ Commit without running tests
-- ❌ Use user authentication system or user-related features (remove if exists)
-
-### Required Practices
-
-#### ALWAYS Do:
-- ✅ Use TailwindCSS for all styling
-- ✅ Use TypeScript with proper types
-- ✅ Write tests for components and utilities
-- ✅ Use components from `components/ui/` for base UI
-- ✅ Keep components reusable and composable
-- ✅ Use Context7 for documentation and best practices
-- ✅ Run `pnpm build` after CSS/JS changes
-- ✅ Use local npm packages (no CDN)
-- ✅ Follow Next.js App Router conventions
-- ✅ Use functional components and hooks
-- ✅ Maintain proper file organization
-
-### Package Management
-
-- Use `pnpm` as the primary package manager
-- Run `pnpm install` to install dependencies
-- Use `pnpm add <package>` to add new packages
-- Keep `pnpm-lock.yaml` committed to version control
-
-### Environment & Configuration
-
-- Never run `npm run serve` or `php artisan serve` with port/host params
-- Use environment variables for configuration (`.env.local`)
-- Keep sensitive data out of version control
-- Use Next.js environment variable conventions
-
-## Context-Specific Guidelines
-
-### When Creating New Components
-1. Check if similar component exists in `components/ui/`
-2. Create in appropriate directory (`components/` for reusable, co-locate for page-specific)
-3. Add proper TypeScript types
-4. Style with TailwindCSS only
-5. Write tests in `__tests__/` folder
-6. Export properly for reusability
-
-### When Modifying Existing Code
-1. Maintain existing patterns and conventions
-2. Update types if data structures change
-3. Update tests to reflect changes
-4. Ensure TailwindCSS classes remain consistent
-5. Run tests before committing
-
-### When Adding New Features
-1. Plan component structure first
-2. Create types in `lib/types.ts` if needed
-3. Build reusable components
-4. Write comprehensive tests
-5. Update documentation if needed
-6. Ensure mobile responsiveness
-
-## Project-Specific Notes
-
-- This is a pet social network mobile app
-- Focus on pet profiles, blog posts, social interactions
-- Wiki section for pet care information
-- User authentication with Zustand state management
-- Local storage-based data persistence
-- Mobile-first responsive design
-
+- E2E tests: `*.spec.ts` (e.g., `home.spec.ts`)
+- Unit tests: `*.test.ts` or `*.test.tsx` (e.g., `button.test.tsx`)

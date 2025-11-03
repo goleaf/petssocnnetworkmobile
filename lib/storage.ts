@@ -969,12 +969,12 @@ function normalizeWikiArticle(article: WikiArticle, index: number): WikiArticle 
 
   const normalizedLikes = Array.isArray(article.likes)
     ? Array.from(
-        new Set(
-          article.likes.filter(
-            (id): id is string => typeof id === "string" && id.trim().length > 0,
-          ),
+      new Set(
+        article.likes.filter(
+          (id): id is string => typeof id === "string" && id.trim().length > 0,
         ),
-      )
+      ),
+    )
     : []
 
   return {
@@ -1470,13 +1470,13 @@ function removeMutualInteractions(userId: string, otherUserId: string) {
 
       if (post.reactions) {
         const reactions = { ...post.reactions }
-        ;(Object.keys(reactions) as ReactionType[]).forEach((key) => {
-          const beforeLength = reactions[key]?.length ?? 0
-          reactions[key] = (reactions[key] ?? []).filter((id) => id !== targetId)
-          if (!changed && reactions[key].length !== beforeLength) {
-            changed = true
-          }
-        })
+          ; (Object.keys(reactions) as ReactionType[]).forEach((key) => {
+            const beforeLength = reactions[key]?.length ?? 0
+            reactions[key] = (reactions[key] ?? []).filter((id) => id !== targetId)
+            if (!changed && reactions[key].length !== beforeLength) {
+              changed = true
+            }
+          })
         if (changed) {
           post.reactions = reactions
         }
@@ -1553,13 +1553,13 @@ function removeMutualInteractions(userId: string, otherUserId: string) {
     if (comment.reactions) {
       const reactions = { ...comment.reactions }
       let reactionChanged = false
-      ;(Object.keys(reactions) as ReactionType[]).forEach((key) => {
-        const beforeLength = reactions[key]?.length ?? 0
-        reactions[key] = (reactions[key] ?? []).filter((id) => id !== userId && id !== otherUserId)
-        if (reactions[key].length !== beforeLength) {
-          reactionChanged = true
-        }
-      })
+        ; (Object.keys(reactions) as ReactionType[]).forEach((key) => {
+          const beforeLength = reactions[key]?.length ?? 0
+          reactions[key] = (reactions[key] ?? []).filter((id) => id !== userId && id !== otherUserId)
+          if (reactions[key].length !== beforeLength) {
+            reactionChanged = true
+          }
+        })
       if (reactionChanged) {
         commentsModified = true
         return normalizeComment({ ...comment, reactions })
@@ -2147,7 +2147,7 @@ function normalizeReactions(
     return normalized
   }
 
-  ;(Object.keys(normalized) as ReactionType[]).forEach((reaction) => {
+  ; (Object.keys(normalized) as ReactionType[]).forEach((reaction) => {
     const entries = reactions[reaction]
     normalized[reaction] = Array.isArray(entries) ? entries : []
   })
@@ -2268,7 +2268,7 @@ export function getPetByUsernameAndSlug(username: string, slug: string): Pet | u
   const users = getUsers()
   const owner = users.find((u) => u.username === username)
   if (!owner) return undefined
-  
+
   const pets = getPets()
   return pets.find((p) => p.ownerId === owner.id && (p.slug === slug || !p.slug && p.id === slug))
 }
@@ -2450,15 +2450,15 @@ export function updateBlogPost(post: BlogPost) {
   if (index !== -1) {
     const oldPost = posts[index]
     const updatedPost = normalizeBlogPost({ ...posts[index], ...post })
-    
+
     // If disclosure is missing, mark post for moderation review
     if (updatedPost.brandAffiliation?.disclosureMissing) {
       // The status can be checked by moderators via the brandAffiliation.disclosureMissing flag
     }
-    
+
     posts[index] = updatedPost
     localStorage.setItem(STORAGE_KEYS.BLOG_POSTS, JSON.stringify(posts))
-    
+
     // Notify watchers of the update
     const user = getUserById(post.authorId)
     const authorName = user?.fullName || "Unknown Author"
@@ -2496,7 +2496,7 @@ export function togglePostReaction(postId: string, userId: string, reactionType:
     const reactions = posts[index].reactions!
     const reactionArray = reactions[reactionType as keyof typeof reactions] || []
     const hasReacted = reactionArray.includes(userId)
-    
+
     if (hasReacted) {
       // Remove reaction
       reactions[reactionType as keyof typeof reactions] = reactionArray.filter((id) => id !== userId)
@@ -2867,23 +2867,23 @@ export function canUserComment(groupId: string, userId: string): boolean {
 function normalizeGroupTopic(topic: GroupTopic): GroupTopic {
   const normalizedTags = Array.isArray(topic.tags)
     ? Array.from(
-        topic.tags
-          .reduce((map, tag) => {
-            if (typeof tag !== "string") {
-              return map
-            }
-            const trimmed = tag.trim()
-            if (!trimmed) {
-              return map
-            }
-            const key = trimmed.toLowerCase()
-            if (!map.has(key)) {
-              map.set(key, trimmed)
-            }
+      topic.tags
+        .reduce((map, tag) => {
+          if (typeof tag !== "string") {
             return map
-          }, new Map<string, string>())
-          .values(),
-      )
+          }
+          const trimmed = tag.trim()
+          if (!trimmed) {
+            return map
+          }
+          const key = trimmed.toLowerCase()
+          if (!map.has(key)) {
+            map.set(key, trimmed)
+          }
+          return map
+        }, new Map<string, string>())
+        .values(),
+    )
     : []
 
   const status: GroupTopicStatus =
@@ -3682,7 +3682,7 @@ export function toggleCommentReaction(commentId: string, userId: string, reactio
     const reactions = normalized.reactions!
     const reactionArray = reactions[reactionType as keyof typeof reactions] || []
     const hasReacted = reactionArray.includes(userId)
-    
+
     if (hasReacted) {
       // Remove reaction
       reactions[reactionType as keyof typeof reactions] = reactionArray.filter((id) => id !== userId)
@@ -3709,7 +3709,7 @@ export function togglePhotoReaction(petId: string, photoIndex: number, userId: s
   const photoKey = `${petId}:${photoIndex}`
   const pet = getPetById(petId)
   if (!pet) return
-  
+
   // Check if user is blocked
   if (areUsersBlocked(userId, pet.ownerId)) {
     return
@@ -3720,7 +3720,7 @@ export function togglePhotoReaction(petId: string, photoIndex: number, userId: s
   const reactions = allReactions[photoKey] || { ...DEFAULT_REACTIONS }
   const reactionArray = reactions[reactionType] || []
   const hasReacted = reactionArray.includes(userId)
-  
+
   if (hasReacted) {
     // Remove reaction
     reactions[reactionType] = reactionArray.filter((id) => id !== userId)
@@ -3747,12 +3747,12 @@ export function getPhotoReactions(
   const photoKey = `${petId}:${photoIndex}`
   const storageKey = "pet_social_photo_reactions"
   const allReactions = readData<Record<string, Record<ReactionType, string[]>>>(storageKey, {})
-  
+
   // Ensure the photo key exists with default reactions
   if (!allReactions[photoKey]) {
     allReactions[photoKey] = { ...DEFAULT_REACTIONS }
   }
-  
+
   // Return format expected by component: { [photoKey]: reactions }
   return { [photoKey]: allReactions[photoKey] }
 }
@@ -3850,7 +3850,7 @@ export function getEditorialDiscussionsByArticleId(articleId: string): Editorial
   if (typeof window === "undefined") return []
   const data = localStorage.getItem(STORAGE_KEYS.EDITORIAL_DISCUSSIONS)
   const discussions: EditorialDiscussion[] = data ? JSON.parse(data) : []
-  return discussions.filter((d) => d.articleId === articleId).sort((a, b) => 
+  return discussions.filter((d) => d.articleId === articleId).sort((a, b) =>
     new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
   )
 }
@@ -3991,7 +3991,7 @@ export function updateWikiArticle(article: WikiArticle) {
   if (index !== -1) {
     articles[index] = normalizeWikiArticle(article, index)
     localStorage.setItem(STORAGE_KEYS.WIKI_ARTICLES, JSON.stringify(articles))
-    
+
     // Invalidate cache when breed article is updated
     if (article.category === "breeds") {
       invalidateCache()
@@ -4333,7 +4333,7 @@ export function deletePlace(id: string): void {
   const places = getPlaces()
   const filtered = places.filter((place) => place.id !== id)
   writeData(STORAGE_KEYS.PLACES, filtered)
-  
+
   // Also delete associated photos
   const photos = getPlacePhotos()
   const filteredPhotos = photos.filter((photo) => photo.placeId !== id)
@@ -4421,12 +4421,12 @@ export function getVerifiedExpertProfiles(): ExpertProfile[] {
 export function isExpertVerified(userId: string): boolean {
   const profile = getExpertProfileByUserId(userId)
   if (!profile || !profile.verifiedAt) return false
-  
+
   // Check if expired
   if (profile.status === "expired" || profile.status === "revoked") {
     return false
   }
-  
+
   // Check expiry date
   if (profile.expiresAt) {
     const now = new Date()
@@ -4435,7 +4435,7 @@ export function isExpertVerified(userId: string): boolean {
       return false
     }
   }
-  
+
   return profile.status === "verified"
 }
 
@@ -4458,10 +4458,10 @@ export function updateExpertProfile(userId: string, updates: Partial<ExpertProfi
 export function canPublishStableHealthRevision(userId: string): boolean {
   const user = getUserById(userId)
   if (!user) return false
-  
+
   // Check if user has vet badge (from policy.ts)
   if (user.badge === "vet") return true
-  
+
   // Check if user has verified expert profile
   return isExpertVerified(userId)
 }
@@ -4496,9 +4496,9 @@ export function markRevisionAsStable(
   // For health articles, require expert status
   if (article.category === "health") {
     if (!canPublishStableHealthRevision(userId)) {
-      return { 
-        success: false, 
-        error: "Only verified experts can publish stable health revisions" 
+      return {
+        success: false,
+        error: "Only verified experts can publish stable health revisions"
       }
     }
   }
@@ -4554,13 +4554,13 @@ export function createExpertVerificationRequest(
   region?: string
 ): ExpertVerificationRequest {
   const requests = getExpertVerificationRequests()
-  
+
   // Check if user already has a pending request
   const existingRequest = requests.find((req) => req.userId === userId && req.status === "pending")
   if (existingRequest) {
     throw new Error("You already have a pending verification request")
   }
-  
+
   // Check if user is already verified
   if (isExpertVerified(userId)) {
     throw new Error("You are already verified as an expert")
@@ -4590,7 +4590,7 @@ export function updateExpertVerificationRequest(
 ): ExpertVerificationRequest | null {
   const requests = getExpertVerificationRequests()
   const index = requests.findIndex((req) => req.id === requestId)
-  
+
   if (index === -1) {
     return null
   }
@@ -4702,7 +4702,7 @@ export function addEditRequest(request: EditRequest): void {
   const requests = getEditRequests()
   requests.push(request)
   writeData(STORAGE_KEYS.EDIT_REQUESTS, requests)
-  
+
   // Create audit log entry
   addEditRequestAuditLog({
     id: `audit_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -4720,7 +4720,7 @@ export function updateEditRequest(id: string, updates: Partial<EditRequest>): vo
     const oldRequest = requests[index]
     requests[index] = { ...oldRequest, ...updates }
     writeData(STORAGE_KEYS.EDIT_REQUESTS, requests)
-    
+
     // Create audit log for status changes
     if (updates.status) {
       const action = updates.status === "approved" ? "approved" : "rejected"
@@ -4733,7 +4733,7 @@ export function updateEditRequest(id: string, updates: Partial<EditRequest>): vo
         reason: updates.reason,
       })
     }
-    
+
     // Create audit log for priority changes
     if (updates.priority && updates.priority !== oldRequest.priority) {
       addEditRequestAuditLog({
@@ -4899,7 +4899,7 @@ export function addFlaggedRevision(flaggedRevision: FlaggedRevision): void {
   const flagged = getFlaggedRevisions()
   flagged.push(flaggedRevision)
   writeData(STORAGE_KEYS.FLAGGED_REVISIONS, flagged)
-  
+
   // Create audit log entry
   addFlaggedRevisionAuditLog({
     id: `audit_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -4920,7 +4920,7 @@ export function updateFlaggedRevision(id: string, updates: Partial<FlaggedRevisi
     const updatedAt = new Date().toISOString()
     flagged[index] = { ...oldFlagged, ...updates, updatedAt }
     writeData(STORAGE_KEYS.FLAGGED_REVISIONS, flagged)
-    
+
     // Create audit log for status changes
     if (updates.status && updates.status !== oldFlagged.status) {
       addFlaggedRevisionAuditLog({
@@ -4934,7 +4934,7 @@ export function updateFlaggedRevision(id: string, updates: Partial<FlaggedRevisi
         newStatus: updates.status,
       })
     }
-    
+
     // Create audit log for priority changes
     if (updates.priority && updates.priority !== oldFlagged.priority) {
       addFlaggedRevisionAuditLog({
@@ -4947,7 +4947,7 @@ export function updateFlaggedRevision(id: string, updates: Partial<FlaggedRevisi
         newPriority: updates.priority,
       })
     }
-    
+
     // Create audit log for note additions
     if (updates.notes && updates.notes !== oldFlagged.notes) {
       addFlaggedRevisionAuditLog({
@@ -5032,7 +5032,7 @@ export function removeWatchEntry(id: string): void {
 
 export function toggleWatch(userId: string, targetId: string, targetType: "post" | "wiki", watchEvents: string[]): WatchEntry {
   const existing = getWatchEntryByTarget(userId, targetId, targetType)
-  
+
   if (existing) {
     // Toggle enabled state
     updateWatchEntry(existing.id, { enabled: !existing.enabled })
@@ -5070,16 +5070,16 @@ export function notifyWatchers(
   eventData?: Record<string, unknown>
 ): void {
   if (typeof window === "undefined") return
-  
+
   const watchers = getWatchEntriesForTarget(targetId, targetType)
-  
+
   watchers.forEach((watch) => {
     // Skip if the watcher is the actor
     if (watch.userId === actorId) return
-    
+
     // Check if this event type is being watched
     if (!watch.watchEvents.includes(eventType)) return
-    
+
     // Create notification for this watcher
     addNotification({
       id: `notif_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -5091,8 +5091,8 @@ export function notifyWatchers(
       message: eventType === "update"
         ? `${actorName} updated ${targetTitle}`
         : eventType === "comment"
-        ? `${actorName} commented on ${targetTitle}`
-        : `${actorName} reacted to ${targetTitle}`,
+          ? `${actorName} commented on ${targetTitle}`
+          : `${actorName} reacted to ${targetTitle}`,
       read: false,
       createdAt: new Date().toISOString(),
       category: targetType === "post" ? "community" : "reminders",
@@ -5361,7 +5361,7 @@ export function createMagicLinkToken(
   deviceInfo?: { ip?: string; userAgent?: string }
 ): MagicLinkToken {
   const tokens = getMagicLinkTokens()
-  
+
   // Generate secure random token
   const randomBytes = new Uint8Array(32)
   if (typeof window !== "undefined" && window.crypto) {
@@ -5378,7 +5378,7 @@ export function createMagicLinkToken(
     .toString("base64")
     .replace(/[+/=]/g, (c) => ({ "+": "-", "/": "_", "=": "" }[c] || c))
     .substring(0, 48)
-  
+
   const magicLink: MagicLinkToken = {
     token,
     email: email.toLowerCase().trim(),
@@ -5387,27 +5387,27 @@ export function createMagicLinkToken(
     createdAt: Date.now(),
     deviceInfo,
   }
-  
+
   tokens.push(magicLink)
   storage.write(STORAGE_KEYS.MAGIC_LINK_TOKENS, tokens)
-  
+
   // Clean up expired tokens (older than 24 hours)
   const validTokens = tokens.filter(
     (t) => !t.used && (t.expiresAt > Date.now() || t.createdAt > Date.now() - 24 * 60 * 60 * 1000)
   )
   storage.write(STORAGE_KEYS.MAGIC_LINK_TOKENS, validTokens)
-  
+
   return magicLink
 }
 
 export function markMagicLinkTokenAsUsed(token: string): boolean {
   const tokens = getMagicLinkTokens()
   const tokenIndex = tokens.findIndex((t) => t.token === token)
-  
+
   if (tokenIndex === -1) {
     return false
   }
-  
+
   tokens[tokenIndex].used = true
   storage.write(STORAGE_KEYS.MAGIC_LINK_TOKENS, tokens)
   return true
@@ -5435,17 +5435,17 @@ export function createSessionDevice(
   }
 ): SessionDevice {
   const allDevices = storage.read<SessionDevice[]>(STORAGE_KEYS.SESSION_DEVICES, [])
-  
+
   // Mark all existing devices for this user as not current
   allDevices.forEach((d) => {
     if (d.userId === userId) {
       d.isCurrent = false
     }
   })
-  
+
   const deviceId = `${userId}-${Date.now()}-${Math.random().toString(36).substring(7)}`
   const now = new Date().toISOString()
-  
+
   const device: SessionDevice = {
     deviceId,
     userId,
@@ -5458,17 +5458,17 @@ export function createSessionDevice(
     createdAt: now,
     isCurrent: true,
   }
-  
+
   allDevices.push(device)
   storage.write(STORAGE_KEYS.SESSION_DEVICES, allDevices)
-  
+
   return device
 }
 
 export function updateSessionDeviceActivity(deviceId: string): void {
   const allDevices = storage.read<SessionDevice[]>(STORAGE_KEYS.SESSION_DEVICES, [])
   const device = allDevices.find((d) => d.deviceId === deviceId)
-  
+
   if (device) {
     device.lastActivity = new Date().toISOString()
     storage.write(STORAGE_KEYS.SESSION_DEVICES, allDevices)
@@ -5480,11 +5480,11 @@ export function revokeSessionDevice(deviceId: string, userId: string): boolean {
   const deviceIndex = allDevices.findIndex(
     (d) => d.deviceId === deviceId && d.userId === userId
   )
-  
+
   if (deviceIndex === -1) {
     return false
   }
-  
+
   allDevices.splice(deviceIndex, 1)
   storage.write(STORAGE_KEYS.SESSION_DEVICES, allDevices)
   return true
@@ -5493,11 +5493,11 @@ export function revokeSessionDevice(deviceId: string, userId: string): boolean {
 export function revokeAllSessionDevices(userId: string, exceptDeviceId?: string): number {
   const allDevices = storage.read<SessionDevice[]>(STORAGE_KEYS.SESSION_DEVICES, [])
   const initialLength = allDevices.length
-  
+
   const filtered = allDevices.filter(
     (d) => d.userId !== userId || (exceptDeviceId && d.deviceId === exceptDeviceId)
   )
-  
+
   storage.write(STORAGE_KEYS.SESSION_DEVICES, filtered)
   return initialLength - filtered.length
 }
@@ -5514,20 +5514,20 @@ export function getAnnouncementById(id: string): Announcement | undefined {
 export function getActiveAnnouncements(userId?: string): Announcement[] {
   const now = new Date().toISOString()
   const announcements = getAnnouncements()
-  
+
   return announcements
     .filter((announcement) => {
       // Filter by status
       if (announcement.status !== "active") return false
-      
+
       // Filter by date range
       if (announcement.startDate && announcement.startDate > now) return false
       if (announcement.endDate && announcement.endDate < now) return false
-      
+
       // Filter by target audience
       if (announcement.targetAudience === "logged-in" && !userId) return false
       if (announcement.targetAudience === "logged-out" && userId) return false
-      
+
       return true
     })
     .sort((a, b) => {
@@ -5545,32 +5545,32 @@ export function getActiveAnnouncements(userId?: string): Announcement[] {
 export function addAnnouncement(announcement: Omit<Announcement, "id" | "createdAt" | "updatedAt">): Announcement {
   const announcements = getAnnouncements()
   const now = new Date().toISOString()
-  
+
   const newAnnouncement: Announcement = {
     ...announcement,
     id: generateStorageId("announcement"),
     createdAt: now,
     updatedAt: now,
   }
-  
+
   announcements.push(newAnnouncement)
   writeData(STORAGE_KEYS.ANNOUNCEMENTS, announcements)
-  
+
   return newAnnouncement
 }
 
 export function updateAnnouncement(id: string, updates: Partial<Announcement>): Announcement | null {
   const announcements = getAnnouncements()
   const index = announcements.findIndex((a) => a.id === id)
-  
+
   if (index === -1) return null
-  
+
   announcements[index] = {
     ...announcements[index],
     ...updates,
     updatedAt: new Date().toISOString(),
   }
-  
+
   writeData(STORAGE_KEYS.ANNOUNCEMENTS, announcements)
   return announcements[index]
 }
@@ -5578,9 +5578,9 @@ export function updateAnnouncement(id: string, updates: Partial<Announcement>): 
 export function deleteAnnouncement(id: string): boolean {
   const announcements = getAnnouncements()
   const filtered = announcements.filter((a) => a.id !== id)
-  
+
   if (filtered.length === announcements.length) return false
-  
+
   writeData(STORAGE_KEYS.ANNOUNCEMENTS, filtered)
   return true
 }
@@ -5589,15 +5589,15 @@ export function deleteAnnouncement(id: string): boolean {
 export function getAnnouncementDismissals(userId?: string): AnnouncementDismissal[] {
   const dismissals = readData<AnnouncementDismissal[]>(STORAGE_KEYS.ANNOUNCEMENT_DISMISSALS, [])
   const now = new Date().toISOString()
-  
+
   // Filter by user and active dismissals (not expired)
   return dismissals.filter((d) => {
     if (userId && d.userId !== userId) return false
     if (!userId && d.userId !== undefined) return false // Session-based dismissals for anonymous users
-    
+
     // Check if temporary dismissal has expired
     if (d.expiresAt && d.expiresAt < now) return false
-    
+
     return true
   })
 }
@@ -5614,12 +5614,12 @@ export function dismissAnnouncement(
 ): void {
   const dismissals = readData<AnnouncementDismissal[]>(STORAGE_KEYS.ANNOUNCEMENT_DISMISSALS, [])
   const now = new Date().toISOString()
-  
+
   // Remove existing dismissal for this announcement and user
   const filtered = dismissals.filter(
     (d) => !(d.announcementId === announcementId && d.userId === userId)
   )
-  
+
   // Calculate expiration based on dismissal policy
   let expiresAt: string | undefined
   if (dismissalPolicy === "temporary") {
@@ -5632,14 +5632,14 @@ export function dismissAnnouncement(
     // For now, we'll set a short expiry (handled by component clearing on refresh)
     expiresAt = undefined
   }
-  
+
   const dismissal: AnnouncementDismissal = {
     announcementId,
     userId,
     dismissedAt: now,
     expiresAt,
   }
-  
+
   filtered.push(dismissal)
   writeData(STORAGE_KEYS.ANNOUNCEMENT_DISMISSALS, filtered)
 }
@@ -5647,12 +5647,12 @@ export function dismissAnnouncement(
 export function clearExpiredDismissals(): void {
   const dismissals = readData<AnnouncementDismissal[]>(STORAGE_KEYS.ANNOUNCEMENT_DISMISSALS, [])
   const now = new Date().toISOString()
-  
+
   const active = dismissals.filter((d) => {
     if (!d.expiresAt) return true // Permanent dismissals
     return d.expiresAt >= now
   })
-  
+
   writeData(STORAGE_KEYS.ANNOUNCEMENT_DISMISSALS, active)
 }
 
@@ -5834,14 +5834,14 @@ export function createApiKey(
   expiresAt?: string
 ): { success: boolean; error?: string; apiKey?: ApiKey } {
   const settings = getIntegrationSettings()
-  
+
   // Generate API key (32 random bytes as hex string = 64 characters)
   const keyBytes = new Uint8Array(32)
   crypto.getRandomValues(keyBytes)
   const key = Array.from(keyBytes)
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("")
-  
+
   const newApiKey: ApiKey = {
     id: `ak_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`,
     name,
@@ -5852,10 +5852,10 @@ export function createApiKey(
     expiresAt,
     isActive: true,
   }
-  
+
   settings.apiKeys.push(newApiKey)
   saveIntegrationSettings(settings)
-  
+
   return { success: true, apiKey: newApiKey }
 }
 
@@ -5905,7 +5905,7 @@ export function addPinnedItem(
   metadata?: { title?: string; description?: string; image?: string }
 ): { success: boolean; error?: string } {
   const items = getPinnedItems()
-  
+
   // Check if already pinned
   if (isItemPinned(type, itemId)) {
     return { success: false, error: "Item is already pinned" }
@@ -5927,7 +5927,7 @@ export function addPinnedItem(
 export function removePinnedItem(type: PinnedItemType, itemId: string): { success: boolean; error?: string } {
   const items = getPinnedItems()
   const filtered = items.filter((item) => !(item.type === type && item.itemId === itemId))
-  
+
   if (filtered.length === items.length) {
     return { success: false, error: "Item is not pinned" }
   }
@@ -5942,7 +5942,7 @@ export function togglePinnedItem(
   metadata?: { title?: string; description?: string; image?: string }
 ): { success: boolean; error?: string; isPinned: boolean } {
   const isPinned = isItemPinned(type, itemId)
-  
+
   if (isPinned) {
     const result = removePinnedItem(type, itemId)
     return { ...result, isPinned: false }
@@ -5999,11 +5999,11 @@ export function incrementCareGuideViews(slug: string): void {
 export function toggleCareGuideLike(slug: string, userId: string): { success: boolean; isLiked: boolean } {
   const guides = getCareGuides()
   const guide = guides.find((g) => g.slug === slug)
-  
+
   if (!guide) {
     return { success: false, isLiked: false }
   }
-  
+
   const index = guide.likes.indexOf(userId)
   if (index > -1) {
     guide.likes.splice(index, 1)

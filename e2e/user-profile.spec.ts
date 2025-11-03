@@ -1,4 +1,5 @@
 import { test, expect } from './fixtures';
+import { testAllButtons, testAllLinks, testAllFormFields, testAllInputFields, testAllTextareaFields, testAllSelectFields } from './test-helpers';
 
 test.describe('User Profile Pages', () => {
   test.describe('User Profile View Page', () => {
@@ -11,35 +12,19 @@ test.describe('User Profile Pages', () => {
     test('should test all buttons on user profile page', async ({ authenticatedPage: page }) => {
       await page.goto('/user/sarahpaws');
       await page.waitForLoadState('networkidle');
-      
-      const buttons = page.locator('button');
-      const count = await buttons.count();
-      
-      if (count > 0) {
-        for (let i = 0; i < Math.min(count, 50); i++) {
-          const button = buttons.nth(i);
-          if (await button.isVisible()) {
-            await expect(button).toBeVisible();
-          }
-        }
-      }
+      await testAllButtons(page, 50);
     });
 
     test('should test all links on user profile page', async ({ authenticatedPage: page }) => {
       await page.goto('/user/sarahpaws');
       await page.waitForLoadState('networkidle');
-      
-      const links = page.locator('a[href]');
-      const count = await links.count();
-      
-      if (count > 0) {
-        for (let i = 0; i < Math.min(count, 50); i++) {
-          const link = links.nth(i);
-          if (await link.isVisible()) {
-            await expect(link).toBeVisible();
-          }
-        }
-      }
+      await testAllLinks(page, 50);
+    });
+
+    test('should test all form fields on user profile page', async ({ authenticatedPage: page }) => {
+      await page.goto('/user/sarahpaws');
+      await page.waitForLoadState('networkidle');
+      await testAllFormFields(page);
     });
 
     test('should test tab navigation', async ({ authenticatedPage: page }) => {
@@ -72,45 +57,25 @@ test.describe('User Profile Pages', () => {
     test('should test all form fields on user edit page', async ({ authenticatedPage: page }) => {
       await page.goto('/user/sarahpaws/edit');
       await page.waitForLoadState('networkidle');
-      
-      const fields = page.locator('input, textarea, select');
-      const count = await fields.count();
-      
-      if (count > 0) {
-        for (let i = 0; i < count; i++) {
-          const field = fields.nth(i);
-          if (await field.isVisible()) {
-            await expect(field).toBeVisible();
-            
-            const tagName = await field.evaluate(el => el.tagName.toLowerCase());
-            if (tagName === 'input' || tagName === 'textarea') {
-              const inputType = await field.getAttribute('type');
-              if (inputType !== 'submit' && inputType !== 'button' && inputType !== 'file') {
-                await field.fill('test content');
-                await expect(field).toHaveValue('test content');
-                await field.clear();
-              }
-            }
-          }
-        }
-      }
+      await testAllFormFields(page);
     });
 
     test('should test all buttons on user edit page', async ({ authenticatedPage: page }) => {
       await page.goto('/user/sarahpaws/edit');
       await page.waitForLoadState('networkidle');
-      
-      const buttons = page.locator('button');
-      const count = await buttons.count();
-      
-      if (count > 0) {
-        for (let i = 0; i < count; i++) {
-          const button = buttons.nth(i);
-          if (await button.isVisible()) {
-            await expect(button).toBeVisible();
-          }
-        }
-      }
+      await testAllButtons(page, 50);
+    });
+
+    test('should test all input fields on user edit page', async ({ authenticatedPage: page }) => {
+      await page.goto('/user/sarahpaws/edit');
+      await page.waitForLoadState('networkidle');
+      await testAllInputFields(page);
+    });
+
+    test('should test all textarea fields on user edit page', async ({ authenticatedPage: page }) => {
+      await page.goto('/user/sarahpaws/edit');
+      await page.waitForLoadState('networkidle');
+      await testAllTextareaFields(page);
     });
   });
 
@@ -124,35 +89,19 @@ test.describe('User Profile Pages', () => {
     test('should test all buttons on user followers page', async ({ authenticatedPage: page }) => {
       await page.goto('/user/sarahpaws/followers');
       await page.waitForLoadState('networkidle');
-      
-      const buttons = page.locator('button');
-      const count = await buttons.count();
-      
-      if (count > 0) {
-        for (let i = 0; i < Math.min(count, 30); i++) {
-          const button = buttons.nth(i);
-          if (await button.isVisible()) {
-            await expect(button).toBeVisible();
-          }
-        }
-      }
+      await testAllButtons(page, 50);
     });
 
     test('should test all links on user followers page', async ({ authenticatedPage: page }) => {
       await page.goto('/user/sarahpaws/followers');
       await page.waitForLoadState('networkidle');
-      
-      const links = page.locator('a[href]');
-      const count = await links.count();
-      
-      if (count > 0) {
-        for (let i = 0; i < Math.min(count, 30); i++) {
-          const link = links.nth(i);
-          if (await link.isVisible()) {
-            await expect(link).toBeVisible();
-          }
-        }
-      }
+      await testAllLinks(page, 50);
+    });
+
+    test('should test all form fields on user followers page', async ({ authenticatedPage: page }) => {
+      await page.goto('/user/sarahpaws/followers');
+      await page.waitForLoadState('networkidle');
+      await testAllFormFields(page);
     });
   });
 
@@ -166,18 +115,19 @@ test.describe('User Profile Pages', () => {
     test('should test all buttons on user following page', async ({ authenticatedPage: page }) => {
       await page.goto('/user/sarahpaws/following');
       await page.waitForLoadState('networkidle');
-      
-      const buttons = page.locator('button');
-      const count = await buttons.count();
-      
-      if (count > 0) {
-        for (let i = 0; i < Math.min(count, 30); i++) {
-          const button = buttons.nth(i);
-          if (await button.isVisible()) {
-            await expect(button).toBeVisible();
-          }
-        }
-      }
+      await testAllButtons(page, 50);
+    });
+
+    test('should test all links on user following page', async ({ authenticatedPage: page }) => {
+      await page.goto('/user/sarahpaws/following');
+      await page.waitForLoadState('networkidle');
+      await testAllLinks(page, 50);
+    });
+
+    test('should test all form fields on user following page', async ({ authenticatedPage: page }) => {
+      await page.goto('/user/sarahpaws/following');
+      await page.waitForLoadState('networkidle');
+      await testAllFormFields(page);
     });
   });
 
@@ -191,35 +141,19 @@ test.describe('User Profile Pages', () => {
     test('should test all buttons on user posts page', async ({ authenticatedPage: page }) => {
       await page.goto('/user/sarahpaws/posts');
       await page.waitForLoadState('networkidle');
-      
-      const buttons = page.locator('button');
-      const count = await buttons.count();
-      
-      if (count > 0) {
-        for (let i = 0; i < Math.min(count, 40); i++) {
-          const button = buttons.nth(i);
-          if (await button.isVisible()) {
-            await expect(button).toBeVisible();
-          }
-        }
-      }
+      await testAllButtons(page, 50);
     });
 
     test('should test all links on user posts page', async ({ authenticatedPage: page }) => {
       await page.goto('/user/sarahpaws/posts');
       await page.waitForLoadState('networkidle');
-      
-      const links = page.locator('a[href]');
-      const count = await links.count();
-      
-      if (count > 0) {
-        for (let i = 0; i < Math.min(count, 40); i++) {
-          const link = links.nth(i);
-          if (await link.isVisible()) {
-            await expect(link).toBeVisible();
-          }
-        }
-      }
+      await testAllLinks(page, 50);
+    });
+
+    test('should test all form fields on user posts page', async ({ authenticatedPage: page }) => {
+      await page.goto('/user/sarahpaws/posts');
+      await page.waitForLoadState('networkidle');
+      await testAllFormFields(page);
     });
   });
 
@@ -233,18 +167,19 @@ test.describe('User Profile Pages', () => {
     test('should test all buttons on profile view page', async ({ authenticatedPage: page }) => {
       await page.goto('/profile/sarahpaws');
       await page.waitForLoadState('networkidle');
-      
-      const buttons = page.locator('button');
-      const count = await buttons.count();
-      
-      if (count > 0) {
-        for (let i = 0; i < Math.min(count, 50); i++) {
-          const button = buttons.nth(i);
-          if (await button.isVisible()) {
-            await expect(button).toBeVisible();
-          }
-        }
-      }
+      await testAllButtons(page, 50);
+    });
+
+    test('should test all links on profile view page', async ({ authenticatedPage: page }) => {
+      await page.goto('/profile/sarahpaws');
+      await page.waitForLoadState('networkidle');
+      await testAllLinks(page, 50);
+    });
+
+    test('should test all form fields on profile view page', async ({ authenticatedPage: page }) => {
+      await page.goto('/profile/sarahpaws');
+      await page.waitForLoadState('networkidle');
+      await testAllFormFields(page);
     });
 
     test('should test tab navigation on profile view', async ({ authenticatedPage: page }) => {
