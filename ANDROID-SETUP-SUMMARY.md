@@ -166,3 +166,4 @@ Your PawSocial app is now:
 
 Just deploy your Next.js app to hosting, and users can install it directly from their Android browser!
 
+

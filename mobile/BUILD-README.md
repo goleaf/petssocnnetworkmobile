@@ -141,3 +141,4 @@ cd mobile/android
 npx cap open android
 ```
 
+
