@@ -18,13 +18,17 @@ import {
   getGroupEventsByGroupId,
   getGroupResourcesByGroupId,
   getGroupActivitiesByGroupId,
+  getGroupMembersByGroupId,
   canUserViewGroup,
   isUserMemberOfGroup,
   canUserModerate,
   canUserViewGroupContent,
+  canUserManageMembers,
+  updateGroupMember,
+  removeGroupMember,
 } from "@/lib/storage"
 import { getLostFoundTemplate } from "@/lib/lost-found-templates"
-import type { Group } from "@/lib/types"
+import type { Group, GroupMember } from "@/lib/types"
 import { useAuth } from "@/lib/auth"
 import {
   MessageSquare,
@@ -40,6 +44,7 @@ import {
 import Link from "next/link"
 import { BulkEventExportButton } from "@/components/groups/EventExportButton"
 import { AnalyticsDashboard } from "@/components/groups/AnalyticsDashboard"
+import { MemberList } from "@/components/groups/MemberList"
 
 const GROUP_TAB_VALUES = new Set([
   "feed",
@@ -124,6 +129,24 @@ export default function GroupPage({ params }: { params: Promise<{ slug: string }
   const events = getGroupEventsByGroupId(group.id)
   const resources = getGroupResourcesByGroupId(group.id)
   const activities = getGroupActivitiesByGroupId(group.id)
+  const members = getGroupMembersByGroupId(group.id)
+  const canManage = isAuthenticated && user ? canUserManageMembers(group.id, user.id) : false
+
+  const handleRoleChange = (memberId: string, newRole: GroupMember["role"]) => {
+    if (!canManage || !user) return
+    const member = members.find((m) => m.id === memberId)
+    if (!member) return
+    updateGroupMember(memberId, { role: newRole })
+  }
+
+  const handleRemoveMember = (memberId: string) => {
+    if (!canManage || !user) return
+    const member = members.find((m) => m.id === memberId)
+    if (!member) return
+    if (confirm(`Are you sure you want to remove this member from the group?`)) {
+      removeGroupMember(group.id, member.userId)
+    }
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -681,10 +704,34 @@ export default function GroupPage({ params }: { params: Promise<{ slug: string }
           </TabsContent>
 
           {/* Members Tab */}
-          <TabsContent value="members">
-            <Link href={`/groups/${group.slug}/members`}>
-              <Button variant="outline">View All Members</Button>
-            </Link>
+          <TabsContent value="members" className="space-y-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-2xl font-bold">Members ({members.length})</h2>
+              <Link href={`/groups/${group.slug}/members`}>
+                <Button variant="outline" size="sm">
+                  View All Members
+                </Button>
+              </Link>
+            </div>
+            {members.length === 0 ? (
+              <Card>
+                <CardContent className="p-8 text-center">
+                  <Users className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                  <h3 className="text-lg font-semibold mb-2">No members yet</h3>
+                  <p className="text-muted-foreground">
+                    Be the first to join this group!
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              <MemberList
+                members={members}
+                currentUserId={user?.id || ""}
+                canManageMembers={canManage}
+                onRoleChange={handleRoleChange}
+                onRemoveMember={handleRemoveMember}
+              />
+            )}
           </TabsContent>
 
           {/* Analytics Tab */}
