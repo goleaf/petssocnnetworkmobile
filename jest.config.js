@@ -13,7 +13,15 @@ const customJestConfig = {
   automock: false,
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1',
+    // Map Next.js internal paths to our mock
+    '^next/dist/server/web/exports/next-response$': '<rootDir>/__mocks__/next/server.js',
+    '^next/server$': '<rootDir>/__mocks__/next/server.js',
   },
+  // Ensure Jest doesn't transform next/server
+  transformIgnorePatterns: [
+    '/node_modules/(?!(next)/)',
+    '^.+\\.module\\.(css|sass|scss)$',
+  ],
   collectCoverageFrom: [
     'app/**/*.{js,jsx,ts,tsx}',
     'components/**/*.{js,jsx,ts,tsx}',

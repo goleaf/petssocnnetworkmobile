@@ -2,45 +2,7 @@
  * Tests for Admin Moderation Reports Bulk Action API
  */
 
-// Polyfill Request/Response for Node.js test environment
-if (typeof global.Request === 'undefined') {
-  // @ts-ignore
-  global.Request = class Request {
-    url: string
-    method: string
-    headers: Headers
-    body: any
-    
-    constructor(url: string, init?: RequestInit) {
-      this.url = url
-      this.method = init?.method || 'GET'
-      this.headers = new Headers(init?.headers)
-      this.body = init?.body
-    }
-    
-    async json() {
-      return this.body ? JSON.parse(this.body) : {}
-    }
-    
-    async text() {
-      return this.body || ''
-    }
-  }
-}
-
-// Mock Next.js server modules before importing routes
-jest.mock('next/server', () => ({
-  NextResponse: {
-    json: jest.fn((data, init) => ({
-      json: () => Promise.resolve(data),
-      status: init?.status || 200,
-    })),
-  },
-}))
-
-import { POST } from '@/app/api/admin/moderation/reports/bulk-action/route'
-
-// Mock dependencies
+// Mock dependencies first
 jest.mock('@/lib/db', () => ({
   prisma: {
     moderationReport: {
@@ -65,6 +27,9 @@ jest.mock('@/lib/audit', () => ({
 import { prisma } from '@/lib/db'
 import { getCurrentUser, hasRole } from '@/lib/auth/session'
 import { writeAudit } from '@/lib/audit'
+
+// Import route handlers after mocks are set up
+import { POST } from '@/app/api/admin/moderation/reports/bulk-action/route'
 
 const mockPrisma = prisma as jest.Mocked<typeof prisma>
 const mockGetCurrentUser = getCurrentUser as jest.MockedFunction<typeof getCurrentUser>

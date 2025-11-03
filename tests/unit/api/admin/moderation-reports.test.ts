@@ -2,49 +2,16 @@
  * Tests for Admin Moderation Reports API
  */
 
-// Polyfill Request/Response for Node.js test environment
-if (typeof global.Request === 'undefined') {
-  // @ts-ignore
-  global.Request = class Request {
-    url: string
-    method: string
-    headers: Headers
-    body: any
-    
-    constructor(url: string, init?: RequestInit) {
-      this.url = url
-      this.method = init?.method || 'GET'
-      this.headers = new Headers(init?.headers)
-      this.body = init?.body
-    }
-    
-    async json() {
-      return this.body ? JSON.parse(this.body) : {}
-    }
-    
-    async text() {
-      return this.body || ''
-    }
-  }
-}
+// Note: next/server is mocked via __mocks__/next/server.js and jest.config.js moduleNameMapper
 
-// Mock Next.js server modules before importing routes
-jest.mock('next/server', () => ({
-  NextResponse: {
-    json: jest.fn((data, init) => ({
-      json: () => Promise.resolve(data),
-      status: init?.status || 200,
-    })),
-  },
-}))
-
-// Mock dependencies first
+// Mock dependencies
 jest.mock('@/lib/db', () => ({
   prisma: {
     moderationReport: {
       findMany: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
+      findUnique: jest.fn(),
     },
     moderationAction: {
       create: jest.fn(),

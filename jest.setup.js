@@ -1,46 +1,14 @@
 // Learn more: https://github.com/testing-library/jest-dom
 
-// Fix React 19 compatibility - use manual mock
-// React 19 moved act from react-dom/test-utils to react
-// The testing library checks React.act first, then falls back to react-dom/test-utils.act
-jest.mock('react', () => {
-  const originalReact = jest.requireActual('react')
-  const { act } = originalReact
-  
-  // Create React object with act attached
-  const React = {
-    ...originalReact,
-    act,
-  }
-  
-  // Ensure all named exports are available
-  Object.keys(originalReact).forEach((key) => {
-    if (!React[key]) {
-      React[key] = originalReact[key]
-    }
-  })
-  
-  // Also ensure default export has act
-  if (React.default) {
-    React.default = {
-      ...React.default,
-      act,
-    }
-  } else {
-    React.default = React
-  }
-  
-  return React
-})
-
-// Patch react-dom/test-utils.act as fallback
+// Fix React 19 compatibility - MUST be before @testing-library/jest-dom import
+const React = require('react')
 const ReactDOMTestUtils = require('react-dom/test-utils')
-const { act } = require('react')
-if (ReactDOMTestUtils && !ReactDOMTestUtils.act) {
-  ReactDOMTestUtils.act = act
+
+// Ensure react-dom/test-utils has the act function as fallback
+if (React && React.act && ReactDOMTestUtils && !ReactDOMTestUtils.act) {
+  ReactDOMTestUtils.act = React.act
 }
 
-// Now import testing library after React is mocked
 import '@testing-library/jest-dom'
 
 // Polyfill TextEncoder/TextDecoder for Node.js environments
@@ -105,6 +73,8 @@ jest.mock('next/navigation', () => ({
     return new URLSearchParams()
   },
 }))
+
+// Note: next/server is mocked via __mocks__/next/server.js manual mock
 
 // Mock localStorage
 const createLocalStorageMock = () => {
