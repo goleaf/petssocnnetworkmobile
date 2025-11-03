@@ -2222,6 +2222,7 @@ function normalizeBlogPost(post: Partial<BlogPost>): BlogPost {
   const legacyCategory = (post as Record<string, unknown>)?.category
 
   return {
+    ...post, // Preserve all fields first
     id: post.id ?? (typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : String(Date.now())),
     petId: post.petId ?? "",
     authorId: post.authorId ?? "",
@@ -2242,6 +2243,8 @@ function normalizeBlogPost(post: Partial<BlogPost>): BlogPost {
     promotionStatus: post.promotionStatus,
     promotionBudget: post.promotionBudget,
     media: normalizeMedia(post.media),
+    reports: Array.isArray(post.reports) ? post.reports : (post.reports || []),
+    coiFlags: Array.isArray(post.coiFlags) ? post.coiFlags : (post.coiFlags || []),
   }
 }
 

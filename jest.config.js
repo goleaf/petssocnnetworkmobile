@@ -9,6 +9,8 @@ const createJestConfig = nextJest({
 const customJestConfig = {
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
   testEnvironment: 'jest-environment-jsdom',
+  // Enable React mock
+  automock: false,
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1',
   },
@@ -21,6 +23,9 @@ const customJestConfig = {
     '!**/.next/**',
   ],
   testMatch: [
+    // New centralized test location (preferred)
+    'tests/unit/**/*.{test,spec}.{js,jsx,ts,tsx}',
+    // Legacy locations (for backward compatibility during migration)
     '**/__tests__/**/*.{js,jsx,ts,tsx}',
     '**/*.{test,spec}.{js,jsx,ts,tsx}',
   ],

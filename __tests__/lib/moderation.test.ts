@@ -208,6 +208,8 @@ describe("Moderation Utilities", () => {
     })
 
     it("should reject requests exceeding daily limit", () => {
+      // Create 51 requests spaced 28 minutes apart (all within 24 hours)
+      // 51 requests * 28 minutes = 1428 minutes = ~23.8 hours
       const recentRequests: EditRequest[] = Array(51).fill(null).map((_, i) => ({
         id: `req${i}`,
         type: "blog",
@@ -217,7 +219,7 @@ describe("Moderation Utilities", () => {
         originalData: {},
         editedData: {},
         changesSummary: "Test",
-        createdAt: new Date(Date.now() - i * 30 * 60 * 1000).toISOString(), // Within last day
+        createdAt: new Date(Date.now() - i * 28 * 60 * 1000).toISOString(), // Within last day
       }))
       ;(getEditRequestsByAuthor as jest.Mock).mockReturnValue(recentRequests)
 
