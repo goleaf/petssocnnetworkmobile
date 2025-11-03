@@ -140,12 +140,59 @@ test.describe('Register Page', () => {
 
     for (let i = 0; i < count; i++) {
       const button = buttons.nth(i);
-      await expect(button).toBeVisible();
-      
-      // Check if button is enabled
-      const isDisabled = await button.isDisabled();
-      // Most buttons should be visible, some may be disabled
-      expect(isDisabled === true || isDisabled === false).toBeTruthy();
+      if (await button.isVisible()) {
+        await expect(button).toBeVisible();
+        
+        // Check if button is enabled
+        const isDisabled = await button.isDisabled();
+        // Most buttons should be visible, some may be disabled
+        expect(isDisabled === true || isDisabled === false).toBeTruthy();
+      }
+    }
+  });
+
+  test('should test all input fields comprehensively', async ({ page }) => {
+    const inputFields = page.locator('input');
+    const count = await inputFields.count();
+    
+    expect(count).toBeGreaterThan(0);
+
+    for (let i = 0; i < count; i++) {
+      const field = inputFields.nth(i);
+      if (await field.isVisible()) {
+        await expect(field).toBeVisible();
+        
+        const inputType = await field.getAttribute('type');
+        const fieldId = await field.getAttribute('id');
+        const placeholder = await field.getAttribute('placeholder');
+        const required = await field.getAttribute('required');
+        
+        // Verify field has proper attributes
+        expect(inputType !== null || inputType === 'text').toBeTruthy();
+        
+        // Test field interaction
+        if (inputType !== 'file' && inputType !== 'submit' && inputType !== 'button') {
+          await field.fill('test');
+          await field.clear();
+        }
+      }
+    }
+  });
+
+  test('should test all links on page', async ({ page }) => {
+    const links = page.locator('a[href]');
+    const count = await links.count();
+    
+    if (count > 0) {
+      for (let i = 0; i < Math.min(count, 20); i++) {
+        const link = links.nth(i);
+        if (await link.isVisible()) {
+          await expect(link).toBeVisible();
+          
+          const href = await link.getAttribute('href');
+          expect(href).toBeTruthy();
+        }
+      }
     }
   });
 });

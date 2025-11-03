@@ -521,6 +521,20 @@ export const mockUsers: User[] = [
     followers: [],
     following: [],
   },
+  {
+    id: "41",
+    email: "admin@example.com",
+    username: "admin",
+    password: "password123",
+    fullName: "Admin User",
+    role: "admin",
+    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Admin",
+    bio: "Administrator of the pet social network platform.",
+    location: "San Francisco, CA",
+    joinedAt: "2024-01-01",
+    followers: [],
+    following: [],
+  },
 ]
 
 export const mockPets: Pet[] = [
@@ -2661,7 +2675,7 @@ export const mockBlogPosts: BlogPost[] = [
     const authorId = allAuthors[i % allAuthors.length]
     const date = new Date(2024, 11, 15 - i)
     const dateStr = date.toISOString().split("T")[0]
-    
+
     const postTemplates = [
       { title: "Morning Walk Adventures", content: "Started our day with an amazing walk through the park. The fresh air and exercise really energized us both!", tags: ["adventure", "walk", "outdoor"], category: "adventure" },
       { title: "Teaching New Commands", content: "Spent the afternoon working on new tricks. Progress is slow but steady, and patience is key!", tags: ["training", "tricks", "learning"], category: "training" },
@@ -2674,11 +2688,11 @@ export const mockBlogPosts: BlogPost[] = [
       { title: "Toy Collection Update", content: "Added some new interactive toys to the collection. They're already favorites!", tags: ["toys", "play", "fun"], category: "playtime" },
       { title: "Adorable Sleeping Pose", content: "Caught them in the most adorable sleeping position. Too cute not to share!", tags: ["funny", "cute", "adorable"], category: "funny" },
     ]
-    
+
     const template = postTemplates[i % postTemplates.length]
     const categoryLabel = template.category.replace(/\b\w/g, (char) => char.toUpperCase())
     const likes = Array.from({ length: Math.floor(Math.random() * 5) }, (_, j) => String((j % 4) + 1))
-    
+
     return {
       id: String(postId),
       petId,
@@ -2692,7 +2706,7 @@ export const mockBlogPosts: BlogPost[] = [
       updatedAt: dateStr,
     }
   }),
-  
+
   // Generate articles with subcategories - 20 articles per subcategory
   // Define subcategories for each main category
   (() => {
@@ -2716,7 +2730,7 @@ export const mockBlogPosts: BlogPost[] = [
           const authorId = authors[articleId % authors.length]
           const date = new Date(2024, 10, 25 - articleId)
           const dateStr = date.toISOString().split("T")[0]
-          
+
           const subcategoryTitles: Record<string, string[]> = {
             "daily-care": ["Morning Routine Guide", "Evening Routine Tips", "Weekly Care Schedule", "Monthly Care Checklist"],
             "grooming": ["Brushing Techniques", "Bathing Basics", "Nail Trimming Guide", "Dental Care Essentials"],
@@ -2749,9 +2763,9 @@ export const mockBlogPosts: BlogPost[] = [
           const articleNumber = i + 1
 
           const content = `# ${title}\n\n## Introduction\n\nThis comprehensive guide covers essential information about ${subcategory.replace(/-/g, " ")} for your pet.\n\n## Key Concepts\n\nUnderstanding the fundamentals is crucial for proper pet care. This guide provides detailed information and practical tips.\n\n## Best Practices\n\nFollow these recommendations for optimal results:\n- Regular monitoring and assessment\n- Consistent routines\n- Professional guidance when needed\n- Proper documentation\n\n## Common Questions\n\nMany pet owners ask about:\n- When to implement these strategies\n- How often to perform tasks\n- What signs to watch for\n- When to seek professional help\n\n## Conclusion\n\nProper ${subcategory.replace(/-/g, " ")} is essential for your pet's wellbeing. With consistent effort and attention to detail, you can provide excellent care.`
-          
+
           const likes = Array.from({ length: Math.floor(Math.random() * 5) }, (_, j) => String((j % 4) + 1))
-          
+
           additionalArticles.push({
             id: String(articleId),
             title: `${title} - Part ${articleNumber}`,
@@ -2766,7 +2780,7 @@ export const mockBlogPosts: BlogPost[] = [
             createdAt: dateStr,
             updatedAt: dateStr,
           })
-          
+
           articleId++
         }
       })
@@ -3156,7 +3170,7 @@ Consider professional training if you're struggling with aggression, severe anxi
           const authorId = authors[articleId % authors.length]
           const date = new Date(2024, 10, 25 - articleId)
           const dateStr = date.toISOString().split("T")[0]
-          
+
           const subcategoryTitles: Record<string, string[]> = {
             "daily-care": ["Morning Routine Guide", "Evening Routine Tips", "Weekly Care Schedule", "Monthly Care Checklist"],
             "grooming": ["Brushing Techniques", "Bathing Basics", "Nail Trimming Guide", "Dental Care Essentials"],
@@ -3189,9 +3203,9 @@ Consider professional training if you're struggling with aggression, severe anxi
           const articleNumber = i + 1
 
           const content = `# ${title}\n\n## Introduction\n\nThis comprehensive guide covers essential information about ${subcategory.replace(/-/g, " ")} for your pet.\n\n## Key Concepts\n\nUnderstanding the fundamentals is crucial for proper pet care. This guide provides detailed information and practical tips.\n\n## Best Practices\n\nFollow these recommendations for optimal results:\n- Regular monitoring and assessment\n- Consistent routines\n- Professional guidance when needed\n- Proper documentation\n\n## Common Questions\n\nMany pet owners ask about:\n- When to implement these strategies\n- How often to perform tasks\n- What signs to watch for\n- When to seek professional help\n\n## Conclusion\n\nProper ${subcategory.replace(/-/g, " ")} is essential for your pet's wellbeing. With consistent effort and attention to detail, you can provide excellent care.`
-          
+
           const likes = Array.from({ length: Math.floor(Math.random() * 5) }, (_, j) => String((j % 4) + 1))
-          
+
           const imagePool =
             WIKI_CATEGORY_IMAGE_POOLS[category as keyof typeof WIKI_CATEGORY_IMAGE_POOLS] ||
             WIKI_CATEGORY_IMAGE_POOLS.default
@@ -3213,7 +3227,7 @@ Consider professional training if you're struggling with aggression, severe anxi
             updatedAt: dateStr,
             coverImage,
           })
-          
+
           articleId++
         }
       })

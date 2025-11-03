@@ -40,6 +40,7 @@ export default function LoginPage() {
             <div className="space-y-1.5 text-xs text-muted-foreground pl-4.5">
               <p className="break-words">
                 <strong className="text-foreground font-semibold">Username:</strong>{" "}
+                <span className="font-mono bg-muted px-1 py-0.5 rounded">admin</span>,{" "}
                 <span className="font-mono bg-muted px-1 py-0.5 rounded">sarahpaws</span>,{" "}
                 <span className="font-mono bg-muted px-1 py-0.5 rounded">mikecatlover</span>,{" "}
                 <span className="font-mono bg-muted px-1 py-0.5 rounded">emmabirds</span>,{" "}

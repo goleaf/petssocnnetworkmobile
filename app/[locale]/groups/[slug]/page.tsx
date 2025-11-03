@@ -367,7 +367,13 @@ export default function GroupPage({ params }: { params: Promise<{ slug: string }
 
                 {/* Group Info Card */}
                 <Card>
-                  <CardContent className="p-4">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <Info className="h-5 w-5 text-primary" />
+                      Group Info
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-0">
                     <div className="space-y-3 text-sm">
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Members</span>

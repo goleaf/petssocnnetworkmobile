@@ -99,6 +99,8 @@ export function TopicCreator({
     const newErrors: Record<string, string> = {}
     Object.keys(formData).forEach((key) => {
       if (key === "tags") return
+      // Skip title validation for replies
+      if (isReply && key === "title") return
       const error = validateField(key, formData[key as keyof typeof formData])
       if (error) {
         newErrors[key] = error
@@ -117,11 +119,14 @@ export function TopicCreator({
         new Set(formData.tags.map((tag) => tag.trim()).filter((tag) => tag.length > 0)),
       )
 
+      // For replies, use "Re: " prefix for title
+      const title = isReply ? `Re: ${formData.title || "Reply"}` : formData.title.trim()
+
       onSubmit({
         groupId,
         parentTopicId,
         authorId: initialData?.authorId || "",
-        title: formData.title.trim(),
+        title,
         content: formData.content.trim(),
         isPinned: formData.isPinned,
         isLocked: formData.isLocked,

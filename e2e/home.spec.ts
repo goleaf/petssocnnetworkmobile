@@ -106,5 +106,101 @@ test.describe('Home Page', () => {
       await expect(privacyButton).toBeVisible();
     }
   });
+
+  test('should test all input fields on home page comprehensively', async ({ page }) => {
+    // First login
+    await page.goto('/login');
+    await page.fill('input[id="username"]', 'sarahpaws');
+    await page.fill('input[id="password"]', 'password123');
+    await page.click('button[type="submit"]');
+    await page.waitForURL('/', { timeout: 10000 });
+
+    const inputFields = page.locator('input');
+    const count = await inputFields.count();
+    
+    if (count > 0) {
+      for (let i = 0; i < count; i++) {
+        const field = inputFields.nth(i);
+        if (await field.isVisible()) {
+          await expect(field).toBeVisible();
+          
+          const inputType = await field.getAttribute('type');
+          if (inputType !== 'file' && inputType !== 'submit' && inputType !== 'button') {
+            await field.fill('test');
+            await field.clear();
+          }
+        }
+      }
+    }
+  });
+
+  test('should test all textarea fields on home page', async ({ page }) => {
+    // First login
+    await page.goto('/login');
+    await page.fill('input[id="username"]', 'sarahpaws');
+    await page.fill('input[id="password"]', 'password123');
+    await page.click('button[type="submit"]');
+    await page.waitForURL('/', { timeout: 10000 });
+
+    const textareaFields = page.locator('textarea');
+    const count = await textareaFields.count();
+    
+    if (count > 0) {
+      for (let i = 0; i < count; i++) {
+        const field = textareaFields.nth(i);
+        if (await field.isVisible()) {
+          await expect(field).toBeVisible();
+          await field.fill('test content');
+          await expect(field).toHaveValue('test content');
+          await field.clear();
+        }
+      }
+    }
+  });
+
+  test('should test all select fields on home page', async ({ page }) => {
+    // First login
+    await page.goto('/login');
+    await page.fill('input[id="username"]', 'sarahpaws');
+    await page.fill('input[id="password"]', 'password123');
+    await page.click('button[type="submit"]');
+    await page.waitForURL('/', { timeout: 10000 });
+
+    const selectFields = page.locator('select');
+    const count = await selectFields.count();
+    
+    if (count > 0) {
+      for (let i = 0; i < count; i++) {
+        const field = selectFields.nth(i);
+        if (await field.isVisible()) {
+          await expect(field).toBeVisible();
+        }
+      }
+    }
+  });
+
+  test('should test all links on home page', async ({ page }) => {
+    // First login
+    await page.goto('/login');
+    await page.fill('input[id="username"]', 'sarahpaws');
+    await page.fill('input[id="password"]', 'password123');
+    await page.click('button[type="submit"]');
+    await page.waitForURL('/', { timeout: 10000 });
+
+    const links = page.locator('a[href]');
+    const count = await links.count();
+    
+    if (count > 0) {
+      for (let i = 0; i < Math.min(count, 30); i++) {
+        const link = links.nth(i);
+        if (await link.isVisible()) {
+          await expect(link).toBeVisible();
+          
+          const href = await link.getAttribute('href');
+          expect(href).toBeTruthy();
+        }
+      }
+    }
+  });
 });
 

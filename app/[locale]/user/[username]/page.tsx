@@ -96,6 +96,7 @@ import { useStorageListener } from "@/lib/hooks/use-storage-listener"
 import { PostContent } from "@/components/post/post-content"
 import { CompactStatBlock, ProfileStats } from "@/components/profile-stats"
 import { getProfileOverview } from "@/lib/utils/profile-overview"
+import { usePinnedItems } from "@/lib/pinned-items"
 
 const STORAGE_KEYS_TO_WATCH = ["pet_social_users", "pet_social_pets", "pet_social_blog_posts"]
 
@@ -294,6 +295,21 @@ export default function UserProfilePage() {
     loadProfile()
   }
 
+  // Calculate mutual followers - must be before early return
+  const mutualFollowersCount = useMemo(() => {
+    if (!currentUser || !user || currentUser.id === user.id) return 0
+    const currentUserFollowing = currentUser.following || []
+    const profileUserFollowers = user.followers || []
+    const mutual = currentUserFollowing.filter((id) => profileUserFollowers.includes(id))
+    return mutual.length
+  }, [currentUser, user])
+
+  // Get profile overview for badges and highlights - must be before early return
+  const profileOverview = useMemo(() => {
+    if (!user) return null
+    return getProfileOverview(user.id)
+  }, [user?.id])
+
   if (!user) return null
 
   const isOwnProfile = currentUser?.id === user.id
@@ -317,15 +333,6 @@ export default function UserProfilePage() {
       canRequestAccess: canFollow,
     })
 
-  // Calculate mutual followers
-  const mutualFollowersCount = useMemo(() => {
-    if (!currentUser || isOwnProfile) return 0
-    const currentUserFollowing = currentUser.following || []
-    const profileUserFollowers = user.followers || []
-    const mutual = currentUserFollowing.filter((id) => profileUserFollowers.includes(id))
-    return mutual.length
-  }, [currentUser, user, isOwnProfile])
-
   const stats = [
     { label: "Pets", value: canViewPets ? pets.length : 0, icon: PawPrint, canView: canViewPets },
     { label: "Feed Posts", value: canViewPosts ? feedPosts.length : 0, icon: MessageCircle, canView: canViewPosts },
@@ -334,8 +341,6 @@ export default function UserProfilePage() {
     { label: "Following", value: canViewFollowingList ? user.following.length : 0, icon: Heart, canView: canViewFollowingList },
   ]
 
-  // Get profile overview for badges and highlights
-  const profileOverview = useMemo(() => getProfileOverview(user.id), [user.id])
   const badges = profileOverview?.badges
   const highlights = profileOverview?.highlights
 
