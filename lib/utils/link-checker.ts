@@ -18,6 +18,11 @@ export async function checkLink(url: string): Promise<LinkValidationResult> {
       throw new Error(`Failed to check link: ${response.statusText}`)
     }
 
+    const contentType = response.headers.get("content-type")
+    if (!contentType || !contentType.includes("application/json")) {
+      throw new Error("Invalid response format")
+    }
+
     return await response.json()
   } catch (error) {
     return {
@@ -48,6 +53,11 @@ export async function checkLinks(urls: string[]): Promise<LinkValidationResult[]
 
     if (!response.ok) {
       throw new Error(`Failed to check links: ${response.statusText}`)
+    }
+
+    const contentType = response.headers.get("content-type")
+    if (!contentType || !contentType.includes("application/json")) {
+      throw new Error("Invalid response format")
     }
 
     const data = await response.json()

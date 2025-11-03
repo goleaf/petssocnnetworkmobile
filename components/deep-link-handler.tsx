@@ -2,7 +2,6 @@
 
 import { useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { App, URLOpenListenerEvent } from "@capacitor/app"
 
 /**
  * Deep Link Handler Component
@@ -23,37 +22,53 @@ export function DeepLinkHandler() {
       return
     }
 
-    // Listen for deep link opens
-    const listener = App.addListener("appUrlOpen", (event: URLOpenListenerEvent) => {
-      try {
-        // Parse the URL
-        // Example: mypets://wiki/dog-care-guide
-        const url = new URL(event.url)
+    let listenerPromise: Promise<{ remove: () => void }> | null = null
 
-        // Handle mypets://wiki/:slug deep links
-        if (url.protocol === "mypets:" && url.hostname === "wiki") {
-          // Extract slug from pathname (e.g., "/dog-care-guide" -> "dog-care-guide")
-          const slug = url.pathname.replace(/^\//, "") // Remove leading slash
+    // Dynamically import Capacitor App to avoid SSR issues
+    import("@capacitor/app")
+      .then(({ App }) => {
+        // Listen for deep link opens
+        listenerPromise = App.addListener("appUrlOpen", (event: { url: string }) => {
+          try {
+            // Parse the URL
+            // Example: mypets://wiki/dog-care-guide
+            const url = new URL(event.url)
 
-          if (slug) {
-            // Navigate to the wiki article page
-            router.push(`/wiki/${slug}`)
-          } else {
-            // No slug provided, go to wiki index
-            router.push("/wiki")
+            // Handle mypets://wiki/:slug deep links
+            if (url.protocol === "mypets:" && url.hostname === "wiki") {
+              // Extract slug from pathname (e.g., "/dog-care-guide" -> "dog-care-guide")
+              const slug = url.pathname.replace(/^\//, "") // Remove leading slash
+
+              if (slug) {
+                // Navigate to the wiki article page
+                router.push(`/wiki/${slug}`)
+              } else {
+                // No slug provided, go to wiki index
+                router.push("/wiki")
+              }
+            } else {
+              // For other deep link patterns, log for debugging
+              console.log("Unhandled deep link:", event.url)
+            }
+          } catch (error) {
+            console.error("Error handling deep link:", error)
           }
-        } else {
-          // For other deep link patterns, log for debugging
-          console.log("Unhandled deep link:", event.url)
+        })
+      })
+      .catch((error) => {
+        // Capacitor not available, silently fail
+        if (process.env.NODE_ENV === "development") {
+          console.log("Capacitor App plugin not available:", error)
         }
-      } catch (error) {
-        console.error("Error handling deep link:", error)
-      }
-    })
+      })
 
     // Cleanup listener on unmount
     return () => {
-      listener.then((handle) => handle.remove())
+      if (listenerPromise) {
+        listenerPromise.then((handle) => handle.remove()).catch(() => {
+          // Ignore cleanup errors
+        })
+      }
     }
   }, [router])
 

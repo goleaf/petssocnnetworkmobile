@@ -7,10 +7,10 @@ import { Button } from "@/components/ui/button"
 
 export default function NotFound() {
   useEffect(() => {
-    // Auto-refresh every second
+    // Auto-refresh every 10 seconds
     const interval = setInterval(() => {
       window.location.reload()
-    }, 1000)
+    }, 10000)
 
     // Cleanup interval on unmount
     return () => clearInterval(interval)

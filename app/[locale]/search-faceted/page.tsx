@@ -138,6 +138,16 @@ export default function FacetedSearchPage() {
       }
 
       const response = await fetch(`/api/search?${params.toString()}`)
+      
+      if (!response.ok) {
+        throw new Error(`Search failed: ${response.statusText}`)
+      }
+      
+      const contentType = response.headers.get("content-type")
+      if (!contentType || !contentType.includes("application/json")) {
+        throw new Error("Invalid response format")
+      }
+      
       const data: SearchResponse = await response.json()
 
       setResults(data.results)

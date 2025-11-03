@@ -75,8 +75,17 @@ export async function createPost(params: CreatePostParams): Promise<CreatePostRe
   })
 
   if (!response.ok) {
-    const error = await response.json()
-    throw new Error(error.error || "Failed to create post")
+    const contentType = response.headers.get("content-type")
+    if (contentType && contentType.includes("application/json")) {
+      const error = await response.json()
+      throw new Error(error.error || "Failed to create post")
+    }
+    throw new Error(`Failed to create post: ${response.statusText}`)
+  }
+
+  const contentType = response.headers.get("content-type")
+  if (!contentType || !contentType.includes("application/json")) {
+    throw new Error("Invalid response format")
   }
 
   return response.json()
@@ -99,8 +108,17 @@ export async function getFeed(params: GetFeedParams): Promise<GetFeedResponse> {
   const response = await fetch(`/api/posts/feed?${searchParams.toString()}`)
 
   if (!response.ok) {
-    const error = await response.json()
-    throw new Error(error.error || "Failed to get feed")
+    const contentType = response.headers.get("content-type")
+    if (contentType && contentType.includes("application/json")) {
+      const error = await response.json()
+      throw new Error(error.error || "Failed to get feed")
+    }
+    throw new Error(`Failed to get feed: ${response.statusText}`)
+  }
+
+  const contentType = response.headers.get("content-type")
+  if (!contentType || !contentType.includes("application/json")) {
+    throw new Error("Invalid response format")
   }
 
   return response.json()

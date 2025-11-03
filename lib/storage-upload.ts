@@ -56,6 +56,11 @@ export async function getSignedUploadUrl(
     throw new Error(error.message || "Failed to get signed upload URL")
   }
 
+  const contentType = response.headers.get("content-type")
+  if (!contentType || !contentType.includes("application/json")) {
+    throw new Error("Invalid response format")
+  }
+
   return response.json()
 }
 
@@ -310,6 +315,11 @@ export async function getSignedDownloadUrl(fileUrl: string): Promise<string> {
   if (!response.ok) {
     const error = await response.json().catch(() => ({ message: "Failed to get download URL" }))
     throw new Error(error.message || "Failed to get signed download URL")
+  }
+
+  const contentType = response.headers.get("content-type")
+  if (!contentType || !contentType.includes("application/json")) {
+    throw new Error("Invalid response format")
   }
 
   const data = await response.json()

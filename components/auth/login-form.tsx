@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { useAuth } from "@/lib/auth"
-import { Loader2, Eye, EyeOff, User, UserPlus } from "lucide-react"
+import { Loader2, Eye, EyeOff, User, UserPlus, Lock } from "lucide-react"
 
 interface LoginFormProps {
   onSuccess?: () => void
@@ -73,26 +73,30 @@ export function LoginForm({ onSuccess, onSwitchToRegister }: LoginFormProps) {
         <CardContent className="space-y-4 p-4 sm:p-6">
           <div className="space-y-2">
             <Label htmlFor="username" className="text-sm sm:text-base">Username</Label>
-            <Input
-              id="username"
-              type="text"
-              placeholder="Enter your username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              className="h-10 sm:h-11 w-full text-sm sm:text-base"
-              required
-            />
+            <div className="relative">
+              <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                id="username"
+                type="text"
+                placeholder="Enter your username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                className="h-10 sm:h-11 w-full pl-10 text-sm sm:text-base"
+                required
+              />
+            </div>
           </div>
           <div className="space-y-2">
             <Label htmlFor="password" className="text-sm sm:text-base">Password</Label>
             <div className="relative">
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 id="password"
                 type={showPassword ? "text" : "password"}
                 placeholder="Enter your password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="h-10 sm:h-11 w-full pr-10 text-sm sm:text-base"
+                className="h-10 sm:h-11 w-full pl-10 pr-10 text-sm sm:text-base"
                 required
               />
               <button

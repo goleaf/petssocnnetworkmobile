@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -9,8 +9,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
-import { X, Pin, Lock, Save, Loader2, AlertCircle, Reply } from "lucide-react"
-import { Input as TagInput } from "@/components/ui/input"
+import { X, Pin, Lock, Save, Loader2, AlertCircle, Reply, FileText, Type, Tag, MessageSquare } from "lucide-react"
+import { TagInput } from "@/components/ui/tag-input"
 import type { GroupTopic } from "@/lib/types"
 
 interface TopicCreatorProps {
@@ -42,9 +42,24 @@ export function TopicCreator({
     tags: initialData?.tags || [],
   })
 
-  const [newTag, setNewTag] = useState("")
+  const [tagInputValue, setTagInputValue] = useState("")
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  // Sync tagInputValue when formData.tags changes
+  useEffect(() => {
+    setTagInputValue(formData.tags.join(", "))
+  }, [formData.tags])
+
+  // Handle tag input changes
+  const handleTagChange = (value: string) => {
+    setTagInputValue(value)
+    const tagArray = value
+      .split(",")
+      .map((tag) => tag.trim())
+      .filter((tag) => tag)
+    setFormData((prev) => ({ ...prev, tags: tagArray }))
+  }
 
   const validateField = (name: string, value: any): string | undefined => {
     switch (name) {
@@ -75,22 +90,6 @@ export function TopicCreator({
     setFormData((prev) => ({ ...prev, [name]: value }))
     const error = validateField(name, value)
     setErrors((prev) => ({ ...prev, [name]: error }))
-  }
-
-  const handleAddTag = () => {
-    const normalized = newTag.trim()
-    if (!normalized) return
-    const exists = formData.tags.some((tag) => tag.toLowerCase() === normalized.toLowerCase())
-    if (exists) return
-    setFormData((prev) => ({ ...prev, tags: [...prev.tags, normalized] }))
-    setNewTag("")
-  }
-
-  const handleRemoveTag = (tag: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      tags: prev.tags.filter((t) => t !== tag),
-    }))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -244,39 +243,11 @@ export function TopicCreator({
           {/* Tags */}
           <div className="space-y-2">
             <Label htmlFor="tags">Tags (optional)</Label>
-            <div className="flex gap-2">
-              <TagInput
-                id="tags"
-                value={newTag}
-                onChange={(e) => setNewTag(e.target.value)}
-                placeholder="Enter a tag"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault()
-                    handleAddTag()
-                  }
-                }}
-              />
-              <Button type="button" onClick={handleAddTag} variant="outline">
-                Add
-              </Button>
-            </div>
-            {formData.tags.length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-2">
-                {formData.tags.map((tag) => (
-                  <Badge key={tag} variant="secondary" className="gap-1">
-                    #{tag}
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveTag(tag)}
-                      className="ml-1 hover:text-destructive"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </Badge>
-                ))}
-              </div>
-            )}
+            <TagInput
+              value={tagInputValue}
+              onChange={handleTagChange}
+              placeholder="Add tags (press Enter or comma to add)"
+            />
           </div>
 
           {/* Options */}

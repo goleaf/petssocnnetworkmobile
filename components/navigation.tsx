@@ -22,6 +22,7 @@ import {
   Menu,
   LogOut,
   User,
+  UserPlus,
   Users,
   MessageCircle,
   PenSquare,
@@ -51,13 +52,13 @@ export function Navigation() {
       ? [
           { href: "/", label: "Feed", icon: Home },
           { href: "/messages", label: "Messages", icon: MessageCircle },
+          { href: "/blog", label: "Blogs", icon: FileText },
+          { href: "/groups", label: "Groups", icon: UsersRound },
+          { href: "/wiki", label: "Wiki", icon: BookOpen },
+          { href: "/shelters", label: "Shelters", icon: Heart },
+          { href: "/search", label: "Search", icon: Search },
         ]
       : []),
-    { href: "/blog", label: "Blogs", icon: FileText },
-    { href: "/groups", label: "Groups", icon: UsersRound },
-    { href: "/wiki", label: "Wiki", icon: BookOpen },
-    { href: "/shelters", label: "Shelters", icon: Heart },
-    { href: "/search", label: "Search", icon: Search },
   ]
 
   const handleLogout = () => {
@@ -207,12 +208,20 @@ export function Navigation() {
                 </DropdownMenu>
               </>
             ) : (
-              <Link href="/">
-                <Button>
-                  <User className="h-4 w-4 mr-2" />
-                  Sign In
-                </Button>
-              </Link>
+              <div className="flex items-center gap-2">
+                <Link href="/login">
+                  <Button variant="ghost">
+                    <User className="h-4 w-4 mr-2" />
+                    Login
+                  </Button>
+                </Link>
+                <Link href="/register">
+                  <Button>
+                    <UserPlus className="h-4 w-4 mr-2" />
+                    Sign Up
+                  </Button>
+                </Link>
+              </div>
             )}
           </div>
 
@@ -270,12 +279,20 @@ export function Navigation() {
                       </Button>
                     </>
                   ) : (
-                    <Link href="/" onClick={() => setIsOpen(false)}>
-                      <Button className="w-full">
-                        <User className="h-4 w-4 mr-2" />
-                        Sign In
-                      </Button>
-                    </Link>
+                    <>
+                      <Link href="/login" onClick={() => setIsOpen(false)}>
+                        <Button variant="ghost" className="w-full">
+                          <User className="h-4 w-4 mr-2" />
+                          Login
+                        </Button>
+                      </Link>
+                      <Link href="/register" onClick={() => setIsOpen(false)}>
+                        <Button className="w-full">
+                          <UserPlus className="h-4 w-4 mr-2" />
+                          Sign Up
+                        </Button>
+                      </Link>
+                    </>
                   )}
                 </div>
               </SheetContent>

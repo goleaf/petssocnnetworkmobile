@@ -34,6 +34,16 @@ export const useAuth = create<AuthState>((set, get) => ({
       set({ isLoading: true })
       // Fetch session from server
       const response = await fetch("/api/auth/session")
+      
+      if (!response.ok) {
+        throw new Error(`Session fetch failed: ${response.statusText}`)
+      }
+      
+      const contentType = response.headers.get("content-type")
+      if (!contentType || !contentType.includes("application/json")) {
+        throw new Error("Invalid response format")
+      }
+      
       const data = await response.json()
       
       if (data.user) {

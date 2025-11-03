@@ -38,38 +38,59 @@ const protectedRoutes: Record<string, RouteConfig> = {
   "/groups/create": { requireAuth: true },
   "/wiki/create": { requireAuth: true },
   
+  // Protected routes (require authentication)
+  "/blog": { requireAuth: true },
+  "/groups": { requireAuth: true },
+  "/wiki": { requireAuth: true },
+  "/shelters": { requireAuth: true },
+  "/search": { requireAuth: true },
+  
   // Admin routes
   "/admin": { requireAuth: true, allowedRoles: ["admin", "moderator"] },
   "/admin/moderation": { requireAuth: true, allowedRoles: ["admin", "moderator"] },
   
   // Public routes (no auth required)
   "/": { requireAuth: false },
+  "/login": { requireAuth: false },
+  "/register": { requireAuth: false },
   "/feed": { requireAuth: false },
-  "/blog": { requireAuth: false },
   "/explore": { requireAuth: false },
-  "/wiki": { requireAuth: false },
-  "/search": { requireAuth: false },
 }
 
 /**
  * Check if a path matches a protected route pattern
  */
 function getRouteConfig(pathname: string): RouteConfig | null {
+  // Normalize pathname - remove locale prefix if present (e.g., /en/blog -> /blog, /en -> /)
+  let normalizedPath = pathname.replace(/^\/[a-z]{2}(\/|$)/, (match, slash) => {
+    return slash === '/' ? '/' : '/'
+  })
+  
+  // Remove trailing slash except for root
+  if (normalizedPath !== '/' && normalizedPath.endsWith('/')) {
+    normalizedPath = normalizedPath.slice(0, -1)
+  }
+  
+  // Ensure root path is exactly "/"
+  if (normalizedPath === '' || normalizedPath === '/en' || normalizedPath === '/en/') {
+    normalizedPath = '/'
+  }
+  
   // Check for admin base routes first
   for (const adminBase of ADMIN_BASE_ROUTES) {
-    if (pathname === `/${adminBase}` || pathname.startsWith(`/${adminBase}/`)) {
+    if (normalizedPath === `/${adminBase}` || normalizedPath.startsWith(`/${adminBase}/`)) {
       return { requireAuth: true, allowedRoles: ["admin", "moderator"] }
     }
   }
   
   // Exact match
-  if (protectedRoutes[pathname]) {
-    return protectedRoutes[pathname]
+  if (protectedRoutes[normalizedPath]) {
+    return protectedRoutes[normalizedPath]
   }
   
   // Prefix match for nested routes
   for (const [route, config] of Object.entries(protectedRoutes)) {
-    if (pathname.startsWith(route + "/")) {
+    if (normalizedPath.startsWith(route + "/")) {
       return config
     }
   }
@@ -94,11 +115,6 @@ export async function proxy(request: NextRequest) {
   // First, handle i18n routing
   const intlResponse = intlMiddleware(request)
   
-  // If i18n middleware returns a response (redirect/rewrite), return it
-  if (intlResponse && intlResponse.status !== 200) {
-    return intlResponse
-  }
-  
   // Get the pathname after i18n processing
   // If i18n rewrote the URL, use the rewritten path
   const rewrittenPath = intlResponse?.headers.get('x-middleware-rewrite')
@@ -106,26 +122,26 @@ export async function proxy(request: NextRequest) {
     ? new URL(rewrittenPath, request.url).pathname
     : request.nextUrl.pathname
   
-  // Skip proxy for static files and API routes (except auth)
+  // Skip proxy for static files and API routes
   if (
     pathname.startsWith("/_next") ||
-    pathname.startsWith("/api/auth") ||
+    pathname.startsWith("/api/") ||
     pathname.startsWith("/static") ||
     pathname.match(/\.(ico|png|jpg|jpeg|svg|gif|css|js|woff|woff2|ttf)$/)
   ) {
-    return NextResponse.next()
+    return intlResponse || NextResponse.next()
   }
 
   const routeConfig = getRouteConfig(pathname)
   
   // If route is not in protected routes config, allow access
   if (!routeConfig) {
-    return NextResponse.next()
+    return intlResponse || NextResponse.next()
   }
 
   // If route doesn't require auth, allow access
   if (!routeConfig.requireAuth) {
-    return NextResponse.next()
+    return intlResponse || NextResponse.next()
   }
 
   // Get session from cookie
@@ -191,7 +207,7 @@ export async function proxy(request: NextRequest) {
   }
 
   // All checks passed, allow request
-  return NextResponse.next()
+  return intlResponse || NextResponse.next()
 }
 
 /**

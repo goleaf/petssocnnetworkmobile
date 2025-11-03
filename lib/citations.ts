@@ -140,6 +140,12 @@ export async function validateSources(sources: Source[]): Promise<Source[]> {
       return sources
     }
 
+    const contentType = response.headers.get("content-type")
+    if (!contentType || !contentType.includes("application/json")) {
+      console.error("Invalid response format for URL validation")
+      return sources
+    }
+
     const { results } = await response.json()
 
     // Update sources with validation results

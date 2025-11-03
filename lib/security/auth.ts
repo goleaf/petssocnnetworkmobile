@@ -127,6 +127,11 @@ export async function exchangeSSOCode(code: string): Promise<{
       throw new Error(`SSO token exchange failed: ${response.statusText}`);
     }
 
+    const contentType = response.headers.get("content-type")
+    if (!contentType || !contentType.includes("application/json")) {
+      throw new Error("Invalid response format")
+    }
+
     const data = await response.json();
 
     // Fetch user info
@@ -135,6 +140,15 @@ export async function exchangeSSOCode(code: string): Promise<{
         Authorization: `Bearer ${data.access_token}`,
       },
     });
+
+    if (!userInfoResponse.ok) {
+      throw new Error(`Failed to fetch user info: ${userInfoResponse.statusText}`);
+    }
+
+    const userInfoContentType = userInfoResponse.headers.get("content-type")
+    if (!userInfoContentType || !userInfoContentType.includes("application/json")) {
+      throw new Error("Invalid user info response format")
+    }
 
     const userInfo = await userInfoResponse.json();
 
@@ -200,6 +214,11 @@ export async function exchangeOAuthCode(
 
     if (!response.ok) {
       throw new Error(`OAuth token exchange failed: ${response.statusText}`);
+    }
+
+    const contentType = response.headers.get("content-type")
+    if (!contentType || !contentType.includes("application/json")) {
+      throw new Error("Invalid response format")
     }
 
     const data = await response.json();

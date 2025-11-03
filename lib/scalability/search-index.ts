@@ -195,6 +195,11 @@ class ElasticsearchAdapter implements SearchAdapter {
         throw new Error(`Elasticsearch search failed: ${response.statusText}`);
       }
 
+      const contentType = response.headers.get("content-type")
+      if (!contentType || !contentType.includes("application/json")) {
+        throw new Error("Invalid response format")
+      }
+
       const data = await response.json();
       return data.hits.hits.map((hit: any) => ({
         id: hit._id,

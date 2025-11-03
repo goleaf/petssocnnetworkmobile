@@ -27,6 +27,8 @@ const nextConfig = {
   // Performance optimizations
   compress: true,
   poweredByHeader: false,
+  // Allow cross-origin requests from local network IPs during development
+  allowedDevOrigins: ['192.168.1.120'],
   // Enable experimental features for better performance
   experimental: {
     optimizePackageImports: ['lucide-react', '@radix-ui/react-icons'],
