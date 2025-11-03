@@ -224,32 +224,39 @@ export function CompactStatBlock({
   const content = (
     <Card
       className={cn(
-        "hover:shadow-md transition-all duration-200 hover:border-primary/50 cursor-pointer group h-full",
-        isLocked && "opacity-50 cursor-not-allowed",
+        "hover:shadow-lg transition-all duration-200 hover:border-primary/50 cursor-pointer group h-full border bg-card/50 backdrop-blur-sm",
+        isLocked && "opacity-60 cursor-not-allowed",
         className
       )}
     >
-      <CardContent className="p-2 text-center">
-        <div className="flex flex-col items-center justify-center space-y-1">
-          <div className={cn("p-1 rounded-full", isLocked ? "bg-muted" : "bg-primary/10 group-hover:bg-primary/20 transition-colors")}>
+      <CardContent className="p-4 sm:p-5 text-center">
+        <div className="flex flex-col items-center justify-center space-y-3">
+          <div className={cn(
+            "p-2.5 sm:p-3 rounded-full transition-all duration-200",
+            isLocked 
+              ? "bg-muted/50" 
+              : "bg-primary/10 group-hover:bg-primary/20 group-hover:scale-110"
+          )}>
             {isLocked ? (
-              <Lock className="h-3 w-3 text-muted-foreground" />
+              <Lock className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
             ) : (
-              <Icon className="h-3 w-3 text-primary group-hover:scale-110 transition-transform" />
+              <Icon className="h-4 w-4 sm:h-5 sm:w-5 text-primary transition-transform group-hover:scale-110" />
             )}
           </div>
-          <div>
+          <div className="space-y-1">
             <p
               className={cn(
-                "text-base font-bold transition-colors",
+                "text-xl sm:text-2xl font-bold transition-colors",
                 isLocked ? "text-muted-foreground" : "text-foreground group-hover:text-primary"
               )}
             >
               {value}
             </p>
-            <p className="text-[10px] font-medium text-muted-foreground">{label}</p>
+            <p className="text-xs sm:text-sm font-medium text-muted-foreground">{label}</p>
             {isLocked && lockedMessage && (
-              <p className="text-[9px] leading-tight text-muted-foreground mt-1">{lockedMessage}</p>
+              <p className="text-[10px] leading-tight text-muted-foreground mt-1.5 max-w-[120px] mx-auto">
+                {lockedMessage}
+              </p>
             )}
           </div>
         </div>

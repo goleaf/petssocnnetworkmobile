@@ -1,4 +1,5 @@
 import { test, expect } from './fixtures';
+import { testAllButtons, testAllLinks, testAllFormFields, testAllInputFields, testAllTextareaFields, testAllSelectFields } from './test-helpers';
 
 test.describe('Pet Pages', () => {
   test.describe('Pet Profile Page', () => {
@@ -11,35 +12,19 @@ test.describe('Pet Pages', () => {
     test('should test all buttons on pet profile page', async ({ authenticatedPage: page }) => {
       await page.goto('/user/sarahpaws/pet/golden-buddy');
       await page.waitForLoadState('networkidle');
-      
-      const buttons = page.locator('button');
-      const count = await buttons.count();
-      
-      if (count > 0) {
-        for (let i = 0; i < Math.min(count, 40); i++) {
-          const button = buttons.nth(i);
-          if (await button.isVisible()) {
-            await expect(button).toBeVisible();
-          }
-        }
-      }
+      await testAllButtons(page, 50);
     });
 
     test('should test all links on pet profile page', async ({ authenticatedPage: page }) => {
       await page.goto('/user/sarahpaws/pet/golden-buddy');
       await page.waitForLoadState('networkidle');
-      
-      const links = page.locator('a[href]');
-      const count = await links.count();
-      
-      if (count > 0) {
-        for (let i = 0; i < Math.min(count, 40); i++) {
-          const link = links.nth(i);
-          if (await link.isVisible()) {
-            await expect(link).toBeVisible();
-          }
-        }
-      }
+      await testAllLinks(page, 50);
+    });
+
+    test('should test all form fields on pet profile page', async ({ authenticatedPage: page }) => {
+      await page.goto('/user/sarahpaws/pet/golden-buddy');
+      await page.waitForLoadState('networkidle');
+      await testAllFormFields(page);
     });
 
     test('should test all tab buttons', async ({ authenticatedPage: page }) => {

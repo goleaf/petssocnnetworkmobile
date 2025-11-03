@@ -1,4 +1,5 @@
 import { test, expect } from './fixtures';
+import { testAllButtons, testAllLinks, testAllFormFields, testAllInputFields, testAllTextareaFields, testAllSelectFields } from './test-helpers';
 
 test.describe('Admin Pages', () => {
   test.describe('Admin Dashboard', () => {
@@ -10,35 +11,19 @@ test.describe('Admin Pages', () => {
     test('should test all buttons on admin dashboard', async ({ authenticatedPage: page }) => {
       await page.goto('/admin/dashboard');
       await page.waitForLoadState('networkidle');
-      
-      const buttons = page.locator('button');
-      const count = await buttons.count();
-      
-      if (count > 0) {
-        for (let i = 0; i < Math.min(count, 30); i++) {
-          const button = buttons.nth(i);
-          if (await button.isVisible()) {
-            await expect(button).toBeVisible();
-          }
-        }
-      }
+      await testAllButtons(page, 50);
     });
 
     test('should test all links on admin dashboard', async ({ authenticatedPage: page }) => {
       await page.goto('/admin/dashboard');
       await page.waitForLoadState('networkidle');
-      
-      const links = page.locator('a[href]');
-      const count = await links.count();
-      
-      if (count > 0) {
-        for (let i = 0; i < Math.min(count, 30); i++) {
-          const link = links.nth(i);
-          if (await link.isVisible()) {
-            await expect(link).toBeVisible();
-          }
-        }
-      }
+      await testAllLinks(page, 50);
+    });
+
+    test('should test all form fields on admin dashboard', async ({ authenticatedPage: page }) => {
+      await page.goto('/admin/dashboard');
+      await page.waitForLoadState('networkidle');
+      await testAllFormFields(page);
     });
   });
 
@@ -52,35 +37,31 @@ test.describe('Admin Pages', () => {
     test('should test all buttons on moderation page', async ({ authenticatedPage: page }) => {
       await page.goto('/admin/moderation');
       await page.waitForLoadState('networkidle');
-      
-      const buttons = page.locator('button');
-      const count = await buttons.count();
-      
-      if (count > 0) {
-        for (let i = 0; i < Math.min(count, 30); i++) {
-          const button = buttons.nth(i);
-          if (await button.isVisible()) {
-            await expect(button).toBeVisible();
-          }
-        }
-      }
+      await testAllButtons(page, 50);
+    });
+
+    test('should test all links on moderation page', async ({ authenticatedPage: page }) => {
+      await page.goto('/admin/moderation');
+      await page.waitForLoadState('networkidle');
+      await testAllLinks(page, 50);
     });
 
     test('should test all form fields on moderation page', async ({ authenticatedPage: page }) => {
       await page.goto('/admin/moderation');
       await page.waitForLoadState('networkidle');
-      
-      const fields = page.locator('input, textarea, select');
-      const count = await fields.count();
-      
-      if (count > 0) {
-        for (let i = 0; i < count; i++) {
-          const field = fields.nth(i);
-          if (await field.isVisible()) {
-            await expect(field).toBeVisible();
-          }
-        }
-      }
+      await testAllFormFields(page);
+    });
+
+    test('should test all input fields on moderation page', async ({ authenticatedPage: page }) => {
+      await page.goto('/admin/moderation');
+      await page.waitForLoadState('networkidle');
+      await testAllInputFields(page);
+    });
+
+    test('should test all textarea fields on moderation page', async ({ authenticatedPage: page }) => {
+      await page.goto('/admin/moderation');
+      await page.waitForLoadState('networkidle');
+      await testAllTextareaFields(page);
     });
   });
 
@@ -94,18 +75,19 @@ test.describe('Admin Pages', () => {
     test('should test all buttons on analytics page', async ({ authenticatedPage: page }) => {
       await page.goto('/admin/analytics');
       await page.waitForLoadState('networkidle');
-      
-      const buttons = page.locator('button');
-      const count = await buttons.count();
-      
-      if (count > 0) {
-        for (let i = 0; i < Math.min(count, 30); i++) {
-          const button = buttons.nth(i);
-          if (await button.isVisible()) {
-            await expect(button).toBeVisible();
-          }
-        }
-      }
+      await testAllButtons(page, 50);
+    });
+
+    test('should test all links on analytics page', async ({ authenticatedPage: page }) => {
+      await page.goto('/admin/analytics');
+      await page.waitForLoadState('networkidle');
+      await testAllLinks(page, 50);
+    });
+
+    test('should test all form fields on analytics page', async ({ authenticatedPage: page }) => {
+      await page.goto('/admin/analytics');
+      await page.waitForLoadState('networkidle');
+      await testAllFormFields(page);
     });
   });
 });

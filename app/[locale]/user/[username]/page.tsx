@@ -345,31 +345,38 @@ export default function UserProfilePage() {
   const highlights = profileOverview?.highlights
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background via-background to-muted/30">
-      <div className="container mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 md:py-8 max-w-7xl">
+    <div className="min-h-screen bg-background">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-10 max-w-6xl">
         {/* Profile Header */}
-        <Card className="mb-4 sm:mb-6 shadow-lg border-0 bg-card/50 backdrop-blur-sm">
-          <CardContent className="p-4 sm:p-6 md:p-8">
-            <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 items-start sm:items-center">
-              <div className="flex flex-col items-center gap-3 w-full sm:w-auto">
-                <Avatar className="h-24 w-24 sm:h-28 sm:w-28 md:h-32 md:w-32 border-4 border-background shadow-xl ring-4 ring-primary/10">
+        <Card className="mb-6 shadow-sm border bg-card">
+          <CardContent className="p-6 sm:p-8 lg:p-10">
+            <div className="flex flex-col sm:flex-row gap-6 sm:gap-8">
+              {/* Profile Picture */}
+              <div className="flex justify-center sm:justify-start">
+                <Avatar className="h-28 w-28 sm:h-32 sm:w-32 lg:h-36 lg:w-36 border-4 border-background shadow-lg ring-2 ring-primary/20">
                   <AvatarImage src={user.avatar || "/placeholder.svg"} alt={user.fullName} />
-                  <AvatarFallback className="text-2xl sm:text-3xl md:text-4xl">{user.fullName.charAt(0)}</AvatarFallback>
+                  <AvatarFallback className="text-3xl sm:text-4xl lg:text-5xl bg-primary/10 text-primary">
+                    {user.fullName.charAt(0)}
+                  </AvatarFallback>
                 </Avatar>
               </div>
 
-              <div className="flex-1 space-y-3 sm:space-y-4 w-full">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
-                  <div className="w-full sm:w-auto">
+              {/* Profile Info */}
+              <div className="flex-1 space-y-4 min-w-0">
+                {/* Name, Username, and Action Buttons */}
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                  <div className="flex-1 min-w-0 space-y-2">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold">{user.fullName}</h1>
+                      <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground truncate">
+                        {user.fullName}
+                      </h1>
                       <BadgeDisplay user={user} size="lg" />
                       <RoleBadge role={user.role} size="md" />
                       <TierBadge user={user} size="md" showPoints={isOwnProfile} />
                     </div>
                     <p className="text-muted-foreground text-sm sm:text-base">@{user.username}</p>
                     {mutualFollowersCount > 0 && !isOwnProfile && (
-                      <Badge variant="secondary" className="mt-1 w-fit">
+                      <Badge variant="secondary" className="w-fit mt-1">
                         {mutualFollowersCount} mutual follower{mutualFollowersCount !== 1 ? "s" : ""}
                       </Badge>
                     )}
@@ -380,21 +387,20 @@ export default function UserProfilePage() {
                     )}
                   </div>
 
-                  <div className="flex gap-2 w-full sm:w-auto items-center">
+                  {/* Action Buttons */}
+                  <div className="flex gap-2 items-center flex-shrink-0">
                     {isOwnProfile ? (
-                      <EditButton onClick={() => router.push(`/user/${user.username}/edit`)} className="w-full sm:w-auto">
+                      <EditButton onClick={() => router.push(`/user/${user.username}/edit`)}>
+                        <Edit2 className="h-4 w-4 mr-2" />
                         Edit Profile
                       </EditButton>
                     ) : (
                       isAuthenticated && (
                         <>
                           {isInteractionBlocked ? (
-                            <Badge
-                              variant="secondary"
-                              className="w-full sm:w-auto flex items-center justify-center gap-2 px-3 py-2 text-sm"
-                            >
+                            <Badge variant="secondary" className="flex items-center gap-2 px-3 py-2">
                               <Ban className="h-4 w-4" />
-                              <span>Blocked</span>
+                              Blocked
                             </Badge>
                           ) : (
                             <>
@@ -402,7 +408,6 @@ export default function UserProfilePage() {
                                 <Button
                                   onClick={handleFollow}
                                   variant="outline"
-                                  className="w-full sm:w-auto"
                                   disabled={blockActionPending}
                                 >
                                   <UserMinus className="h-4 w-4 mr-2" />
@@ -412,7 +417,6 @@ export default function UserProfilePage() {
                                 <Button
                                   onClick={handleFollow}
                                   variant="default"
-                                  className="w-full sm:w-auto"
                                   disabled={blockActionPending}
                                 >
                                   <UserPlus className="h-4 w-4 mr-2" />
@@ -423,7 +427,7 @@ export default function UserProfilePage() {
                           )}
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="outline" size="icon" className="h-10 w-10">
+                              <Button variant="outline" size="icon">
                                 <MoreHorizontal className="h-4 w-4" />
                                 <span className="sr-only">Profile actions</span>
                               </Button>
@@ -445,7 +449,12 @@ export default function UserProfilePage() {
                   </div>
                 </div>
 
-                {user.bio && <p className="text-muted-foreground text-sm sm:text-base leading-relaxed">{user.bio}</p>}
+                {/* Bio */}
+                {user.bio && (
+                  <p className="text-muted-foreground text-sm sm:text-base leading-relaxed max-w-2xl">
+                    {user.bio}
+                  </p>
+                )}
 
                 {/* Favorite Animals */}
                 {user.favoriteAnimals && user.favoriteAnimals.length > 0 && (
@@ -465,55 +474,95 @@ export default function UserProfilePage() {
                   </div>
                 )}
 
+                {/* Shelter Sponsorship */}
                 {user.shelterSponsorship && (
-                  <div className="flex items-center gap-2 text-xs sm:text-sm text-pink-600 dark:text-pink-400 bg-pink-50 dark:bg-pink-950 px-3 py-2 rounded-lg">
+                  <div className="flex items-center gap-2 text-xs sm:text-sm text-pink-600 dark:text-pink-400 bg-pink-50 dark:bg-pink-950 px-3 py-2 rounded-lg w-fit">
                     <Heart className="h-4 w-4" />
                     <span>Supporting animal shelters</span>
                   </div>
                 )}
 
-                <div className="space-y-4">
-                  {/* Pets, Feed Posts, Blog Posts stats */}
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3 md:gap-4">
-                    <CompactStatBlock
-                      label="Pets"
-                      value={stats.find((s) => s.label === "Pets")?.value || 0}
-                      icon={PawPrint}
-                      href={canViewPets ? `/user/${user.username}/pets` : undefined}
-                      isLocked={!canViewPets}
-                      lockedMessage={!canViewPets ? getPrivacyMessage("pets") : undefined}
-                    />
-                    <CompactStatBlock
-                      label="Feed Posts"
-                      value={stats.find((s) => s.label === "Feed Posts")?.value || 0}
-                      icon={MessageCircle}
-                      href={canViewPosts ? `#feed` : undefined}
-                      isLocked={!canViewPosts}
-                      lockedMessage={!canViewPosts ? getPrivacyMessage("posts") : undefined}
-                    />
-                    <CompactStatBlock
-                      label="Blog Posts"
-                      value={stats.find((s) => s.label === "Blog Posts")?.value || 0}
-                      icon={BookOpen}
-                      href={canViewPosts ? `#blog` : undefined}
-                      isLocked={!canViewPosts}
-                      lockedMessage={!canViewPosts ? getPrivacyMessage("posts") : undefined}
-                    />
-                  </div>
-                  {/* Followers/Following stats with badges and highlights */}
-                  <ProfileStats
-                    followers={user.followers.length}
-                    following={user.following.length}
-                    followersHref={canViewFollowersList ? `/user/${user.username}/followers` : undefined}
-                    followingHref={canViewFollowingList ? `/user/${user.username}/following` : undefined}
-                    canViewFollowers={canViewFollowersList}
-                    canViewFollowing={canViewFollowingList}
-                    followersLockedMessage={!canViewFollowersList ? getPrivacyMessage("followers") : undefined}
-                    followingLockedMessage={!canViewFollowingList ? getPrivacyMessage("following") : undefined}
-                    badges={badges}
-                    highlights={highlights}
+                {/* Stats Grid */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 pt-2">
+                  <CompactStatBlock
+                    label="Pets"
+                    value={stats.find((s) => s.label === "Pets")?.value || 0}
+                    icon={PawPrint}
+                    href={canViewPets ? `/user/${user.username}/pets` : undefined}
+                    isLocked={!canViewPets}
+                    lockedMessage={!canViewPets ? getPrivacyMessage("pets") : undefined}
+                  />
+                  <CompactStatBlock
+                    label="Feed Posts"
+                    value={stats.find((s) => s.label === "Feed Posts")?.value || 0}
+                    icon={MessageCircle}
+                    href={canViewPosts ? `#feed` : undefined}
+                    isLocked={!canViewPosts}
+                    lockedMessage={!canViewPosts ? getPrivacyMessage("posts") : undefined}
+                  />
+                  <CompactStatBlock
+                    label="Blog Posts"
+                    value={stats.find((s) => s.label === "Blog Posts")?.value || 0}
+                    icon={BookOpen}
+                    href={canViewPosts ? `#blog` : undefined}
+                    isLocked={!canViewPosts}
+                    lockedMessage={!canViewPosts ? getPrivacyMessage("posts") : undefined}
+                  />
+                  <CompactStatBlock
+                    label={user.followers.length === 1 ? "Follower" : "Followers"}
+                    value={canViewFollowersList ? user.followers.length : "—"}
+                    icon={Users}
+                    href={canViewFollowersList ? `/user/${user.username}/followers` : undefined}
+                    isLocked={!canViewFollowersList}
+                    lockedMessage={!canViewFollowersList ? getPrivacyMessage("followers") : undefined}
+                  />
+                  <CompactStatBlock
+                    label="Following"
+                    value={canViewFollowingList ? user.following.length : "—"}
+                    icon={Heart}
+                    href={canViewFollowingList ? `/user/${user.username}/following` : undefined}
+                    isLocked={!canViewFollowingList}
+                    lockedMessage={!canViewFollowingList ? getPrivacyMessage("following") : undefined}
                   />
                 </div>
+                
+                {/* Badges and Highlights */}
+                {(badges || highlights) && (
+                  <div className="pt-2 space-y-2">
+                    {badges && (badges.verified || badges.pro || badges.shelter || badges.vet) && (
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {badges.verified && (
+                          <Badge variant="default" className="flex items-center gap-1">
+                            <ShieldCheck className="h-3 w-3" />
+                            Verified
+                          </Badge>
+                        )}
+                        {badges.pro && (
+                          <Badge variant="secondary" className="flex items-center gap-1">
+                            <Zap className="h-3 w-3" />
+                            Pro
+                          </Badge>
+                        )}
+                        {badges.shelter && (
+                          <Badge variant="outline" className="flex items-center gap-1">
+                            Shelter
+                          </Badge>
+                        )}
+                        {badges.vet && (
+                          <Badge variant="outline" className="flex items-center gap-1">
+                            Veterinarian
+                          </Badge>
+                        )}
+                      </div>
+                    )}
+                    {highlights?.highEngagement && (
+                      <div className="flex items-center gap-2 text-xs text-primary bg-primary/10 rounded-md p-2 w-fit">
+                        <Activity className="h-4 w-4" />
+                        <span className="font-medium">High engagement profile</span>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </CardContent>

@@ -1,4 +1,5 @@
 import { test, expect } from './fixtures';
+import { testAllButtons, testAllLinks, testAllFormFields, testAllInputFields, testAllTextareaFields, testAllSelectFields } from './test-helpers';
 
 test.describe('Search Pages', () => {
   test.describe('Search Page', () => {
@@ -25,44 +26,31 @@ test.describe('Search Pages', () => {
     test('should test all buttons on search page', async ({ authenticatedPage: page }) => {
       await page.goto('/search');
       await page.waitForLoadState('networkidle');
-      
-      const buttons = page.locator('button');
-      const count = await buttons.count();
-      
-      if (count > 0) {
-        for (let i = 0; i < Math.min(count, 30); i++) {
-          const button = buttons.nth(i);
-          if (await button.isVisible()) {
-            await expect(button).toBeVisible();
-          }
-        }
-      }
+      await testAllButtons(page, 50);
+    });
+
+    test('should test all links on search page', async ({ authenticatedPage: page }) => {
+      await page.goto('/search');
+      await page.waitForLoadState('networkidle');
+      await testAllLinks(page, 50);
     });
 
     test('should test all form fields on search page', async ({ authenticatedPage: page }) => {
       await page.goto('/search');
       await page.waitForLoadState('networkidle');
-      
-      const fields = page.locator('input, select');
-      const count = await fields.count();
-      
-      if (count > 0) {
-        for (let i = 0; i < count; i++) {
-          const field = fields.nth(i);
-          if (await field.isVisible()) {
-            await expect(field).toBeVisible();
-            
-            const tagName = await field.evaluate(el => el.tagName.toLowerCase());
-            if (tagName === 'input') {
-              const inputType = await field.getAttribute('type');
-              if (inputType !== 'submit' && inputType !== 'button' && inputType !== 'file') {
-                await field.fill('test');
-                await field.clear();
-              }
-            }
-          }
-        }
-      }
+      await testAllFormFields(page);
+    });
+
+    test('should test all input fields on search page', async ({ authenticatedPage: page }) => {
+      await page.goto('/search');
+      await page.waitForLoadState('networkidle');
+      await testAllInputFields(page);
+    });
+
+    test('should test all select fields on search page', async ({ authenticatedPage: page }) => {
+      await page.goto('/search');
+      await page.waitForLoadState('networkidle');
+      await testAllSelectFields(page);
     });
   });
 
@@ -75,35 +63,31 @@ test.describe('Search Pages', () => {
     test('should test all buttons on faceted search page', async ({ authenticatedPage: page }) => {
       await page.goto('/search-faceted');
       await page.waitForLoadState('networkidle');
-      
-      const buttons = page.locator('button');
-      const count = await buttons.count();
-      
-      if (count > 0) {
-        for (let i = 0; i < Math.min(count, 30); i++) {
-          const button = buttons.nth(i);
-          if (await button.isVisible()) {
-            await expect(button).toBeVisible();
-          }
-        }
-      }
+      await testAllButtons(page, 50);
+    });
+
+    test('should test all links on faceted search page', async ({ authenticatedPage: page }) => {
+      await page.goto('/search-faceted');
+      await page.waitForLoadState('networkidle');
+      await testAllLinks(page, 50);
     });
 
     test('should test all filter fields on faceted search page', async ({ authenticatedPage: page }) => {
       await page.goto('/search-faceted');
       await page.waitForLoadState('networkidle');
-      
-      const fields = page.locator('input, select');
-      const count = await fields.count();
-      
-      if (count > 0) {
-        for (let i = 0; i < count; i++) {
-          const field = fields.nth(i);
-          if (await field.isVisible()) {
-            await expect(field).toBeVisible();
-          }
-        }
-      }
+      await testAllFormFields(page);
+    });
+
+    test('should test all input fields on faceted search page', async ({ authenticatedPage: page }) => {
+      await page.goto('/search-faceted');
+      await page.waitForLoadState('networkidle');
+      await testAllInputFields(page);
+    });
+
+    test('should test all select fields on faceted search page', async ({ authenticatedPage: page }) => {
+      await page.goto('/search-faceted');
+      await page.waitForLoadState('networkidle');
+      await testAllSelectFields(page);
     });
   });
 });

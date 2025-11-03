@@ -1,4 +1,5 @@
 import { test, expect } from './fixtures';
+import { testAllButtons, testAllLinks, testAllFormFields, testAllInputFields, testAllTextareaFields, testAllSelectFields } from './test-helpers';
 
 test.describe('Wiki Pages', () => {
   test.describe('Wiki List Page', () => {
@@ -10,35 +11,19 @@ test.describe('Wiki Pages', () => {
     test('should test all buttons on wiki list page', async ({ authenticatedPage: page }) => {
       await page.goto('/wiki');
       await page.waitForLoadState('networkidle');
-      
-      const buttons = page.locator('button');
-      const count = await buttons.count();
-      
-      if (count > 0) {
-        for (let i = 0; i < Math.min(count, 30); i++) {
-          const button = buttons.nth(i);
-          if (await button.isVisible()) {
-            await expect(button).toBeVisible();
-          }
-        }
-      }
+      await testAllButtons(page, 50);
     });
 
     test('should test all links on wiki list page', async ({ authenticatedPage: page }) => {
       await page.goto('/wiki');
       await page.waitForLoadState('networkidle');
-      
-      const links = page.locator('a[href]');
-      const count = await links.count();
-      
-      if (count > 0) {
-        for (let i = 0; i < Math.min(count, 30); i++) {
-          const link = links.nth(i);
-          if (await link.isVisible()) {
-            await expect(link).toBeVisible();
-          }
-        }
-      }
+      await testAllLinks(page, 50);
+    });
+
+    test('should test all form fields on wiki list page', async ({ authenticatedPage: page }) => {
+      await page.goto('/wiki');
+      await page.waitForLoadState('networkidle');
+      await testAllFormFields(page);
     });
 
     test('should navigate to create wiki page', async ({ authenticatedPage: page }) => {
@@ -65,44 +50,31 @@ test.describe('Wiki Pages', () => {
     test('should test all form fields on create page', async ({ authenticatedPage: page }) => {
       await page.goto('/wiki/create');
       await page.waitForLoadState('networkidle');
-      
-      const fields = page.locator('input, textarea, select');
-      const count = await fields.count();
-      
-      if (count > 0) {
-        for (let i = 0; i < count; i++) {
-          const field = fields.nth(i);
-          if (await field.isVisible()) {
-            await expect(field).toBeVisible();
-            
-            const tagName = await field.evaluate(el => el.tagName.toLowerCase());
-            if (tagName === 'input' || tagName === 'textarea') {
-              const inputType = await field.getAttribute('type');
-              if (inputType !== 'submit' && inputType !== 'button' && inputType !== 'file') {
-                await field.fill('test content');
-                await field.clear();
-              }
-            }
-          }
-        }
-      }
+      await testAllFormFields(page);
     });
 
     test('should test all buttons on create page', async ({ authenticatedPage: page }) => {
       await page.goto('/wiki/create');
       await page.waitForLoadState('networkidle');
-      
-      const buttons = page.locator('button');
-      const count = await buttons.count();
-      
-      if (count > 0) {
-        for (let i = 0; i < count; i++) {
-          const button = buttons.nth(i);
-          if (await button.isVisible()) {
-            await expect(button).toBeVisible();
-          }
-        }
-      }
+      await testAllButtons(page, 50);
+    });
+
+    test('should test all input fields on create page', async ({ authenticatedPage: page }) => {
+      await page.goto('/wiki/create');
+      await page.waitForLoadState('networkidle');
+      await testAllInputFields(page);
+    });
+
+    test('should test all textarea fields on create page', async ({ authenticatedPage: page }) => {
+      await page.goto('/wiki/create');
+      await page.waitForLoadState('networkidle');
+      await testAllTextareaFields(page);
+    });
+
+    test('should test all select fields on create page', async ({ authenticatedPage: page }) => {
+      await page.goto('/wiki/create');
+      await page.waitForLoadState('networkidle');
+      await testAllSelectFields(page);
     });
   });
 
@@ -129,27 +101,35 @@ test.describe('Wiki Pages', () => {
       await page.goto('/wiki');
       await page.waitForLoadState('networkidle');
       
-      const wikiLink = page.locator('a[href*="/wiki/"]').filter({ hasNot: page.locator('text=create') }).first();
+      const wikiLink = page.locator('a[href*="/wiki/"]').filter({ hasNot: page.locator('text=/create|Create/') }).first();
       if (await wikiLink.count() > 0) {
-        const href = await wikiLink.getAttribute('href');
-        if (href && !href.includes('/create')) {
-          await wikiLink.click();
-          await page.waitForLoadState('networkidle');
-          
-          const buttons = page.locator('button');
-          const count = await buttons.count();
-          
-          if (count > 0) {
-            for (let i = 0; i < Math.min(count, 30); i++) {
-              const button = buttons.nth(i);
-              if (await button.isVisible()) {
-                await expect(button).toBeVisible();
-              }
-            }
-          }
-        }
-      } else {
-        test.skip();
+        await wikiLink.click();
+        await page.waitForLoadState('networkidle');
+        await testAllButtons(page, 50);
+      }
+    });
+
+    test('should test all form fields on wiki detail page', async ({ authenticatedPage: page }) => {
+      await page.goto('/wiki');
+      await page.waitForLoadState('networkidle');
+      
+      const wikiLink = page.locator('a[href*="/wiki/"]').filter({ hasNot: page.locator('text=/create|Create/') }).first();
+      if (await wikiLink.count() > 0) {
+        await wikiLink.click();
+        await page.waitForLoadState('networkidle');
+        await testAllFormFields(page);
+      }
+    });
+
+    test('should test all links on wiki detail page', async ({ authenticatedPage: page }) => {
+      await page.goto('/wiki');
+      await page.waitForLoadState('networkidle');
+      
+      const wikiLink = page.locator('a[href*="/wiki/"]').filter({ hasNot: page.locator('text=/create|Create/') }).first();
+      if (await wikiLink.count() > 0) {
+        await wikiLink.click();
+        await page.waitForLoadState('networkidle');
+        await testAllLinks(page, 50);
       }
     });
   });

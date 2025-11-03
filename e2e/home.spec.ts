@@ -1,4 +1,5 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
+import { testAllButtons, testAllLinks, testAllFormFields, testAllInputFields, testAllTextareaFields, testAllSelectFields } from './test-helpers';
 
 test.describe('Home Page', () => {
   test.beforeEach(async ({ page }) => {
@@ -52,155 +53,40 @@ test.describe('Home Page', () => {
     await expect(demoCard).toBeVisible();
   });
 
-  test('should test all buttons in authenticated view', async ({ page }) => {
-    // First login
-    await page.goto('/login');
-    await page.fill('input[id="username"]', 'sarahpaws');
-    await page.fill('input[id="password"]', 'password123');
-    await page.click('button[type="submit"]');
-    await page.waitForURL('/', { timeout: 10000 });
-
-    // Check all buttons on home page
-    const buttons = [
-      'All Posts',
-      'Following',
-      'Post',
-      'Browse All Blogs',
-      'Pet Care Wiki',
-      'My Profile',
-    ];
-
-    for (const buttonText of buttons) {
-      const button = page.locator(`button:has-text("${buttonText}")`).or(page.locator(`a:has-text("${buttonText}")`));
-      await expect(button.first()).toBeVisible();
-    }
+  test('should test all buttons in authenticated view', async ({ authenticatedPage: page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+    await testAllButtons(page, 50);
   });
 
-  test('should test create post form fields', async ({ page }) => {
-    // First login
-    await page.goto('/login');
-    await page.fill('input[id="username"]', 'sarahpaws');
-    await page.fill('input[id="password"]', 'password123');
-    await page.click('button[type="submit"]');
-    await page.waitForURL('/', { timeout: 10000 });
-
-    // Check for create post textarea
-    const textarea = page.locator('textarea[placeholder*="pet\'s mind"]').or(page.locator('textarea[placeholder*="mind"]'));
-    if (await textarea.count() > 0) {
-      await expect(textarea.first()).toBeVisible();
-      
-      // Test textarea interaction
-      await textarea.first().fill('Test post content');
-      await expect(textarea.first()).toHaveValue('Test post content');
-    }
-
-    // Check for pet selector
-    const petSelect = page.locator('select').or(page.locator('[role="combobox"]'));
-    if (await petSelect.count() > 0) {
-      await expect(petSelect.first()).toBeVisible();
-    }
-
-    // Check for privacy selector
-    const privacyButton = page.locator('button').filter({ hasText: /public|private|followers/i }).first();
-    if (await privacyButton.count() > 0) {
-      await expect(privacyButton).toBeVisible();
-    }
+  test('should test all form fields on home page (authenticated)', async ({ authenticatedPage: page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+    await testAllFormFields(page);
   });
 
-  test('should test all input fields on home page comprehensively', async ({ page }) => {
-    // First login
-    await page.goto('/login');
-    await page.fill('input[id="username"]', 'sarahpaws');
-    await page.fill('input[id="password"]', 'password123');
-    await page.click('button[type="submit"]');
-    await page.waitForURL('/', { timeout: 10000 });
-
-    const inputFields = page.locator('input');
-    const count = await inputFields.count();
-    
-    if (count > 0) {
-      for (let i = 0; i < count; i++) {
-        const field = inputFields.nth(i);
-        if (await field.isVisible()) {
-          await expect(field).toBeVisible();
-          
-          const inputType = await field.getAttribute('type');
-          if (inputType !== 'file' && inputType !== 'submit' && inputType !== 'button') {
-            await field.fill('test');
-            await field.clear();
-          }
-        }
-      }
-    }
+  test('should test all input fields on home page (authenticated)', async ({ authenticatedPage: page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+    await testAllInputFields(page);
   });
 
-  test('should test all textarea fields on home page', async ({ page }) => {
-    // First login
-    await page.goto('/login');
-    await page.fill('input[id="username"]', 'sarahpaws');
-    await page.fill('input[id="password"]', 'password123');
-    await page.click('button[type="submit"]');
-    await page.waitForURL('/', { timeout: 10000 });
-
-    const textareaFields = page.locator('textarea');
-    const count = await textareaFields.count();
-    
-    if (count > 0) {
-      for (let i = 0; i < count; i++) {
-        const field = textareaFields.nth(i);
-        if (await field.isVisible()) {
-          await expect(field).toBeVisible();
-          await field.fill('test content');
-          await expect(field).toHaveValue('test content');
-          await field.clear();
-        }
-      }
-    }
+  test('should test all textarea fields on home page (authenticated)', async ({ authenticatedPage: page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+    await testAllTextareaFields(page);
   });
 
-  test('should test all select fields on home page', async ({ page }) => {
-    // First login
-    await page.goto('/login');
-    await page.fill('input[id="username"]', 'sarahpaws');
-    await page.fill('input[id="password"]', 'password123');
-    await page.click('button[type="submit"]');
-    await page.waitForURL('/', { timeout: 10000 });
-
-    const selectFields = page.locator('select');
-    const count = await selectFields.count();
-    
-    if (count > 0) {
-      for (let i = 0; i < count; i++) {
-        const field = selectFields.nth(i);
-        if (await field.isVisible()) {
-          await expect(field).toBeVisible();
-        }
-      }
-    }
+  test('should test all select fields on home page (authenticated)', async ({ authenticatedPage: page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+    await testAllSelectFields(page);
   });
 
-  test('should test all links on home page', async ({ page }) => {
-    // First login
-    await page.goto('/login');
-    await page.fill('input[id="username"]', 'sarahpaws');
-    await page.fill('input[id="password"]', 'password123');
-    await page.click('button[type="submit"]');
-    await page.waitForURL('/', { timeout: 10000 });
-
-    const links = page.locator('a[href]');
-    const count = await links.count();
-    
-    if (count > 0) {
-      for (let i = 0; i < Math.min(count, 30); i++) {
-        const link = links.nth(i);
-        if (await link.isVisible()) {
-          await expect(link).toBeVisible();
-          
-          const href = await link.getAttribute('href');
-          expect(href).toBeTruthy();
-        }
-      }
-    }
+  test('should test all links on home page (authenticated)', async ({ authenticatedPage: page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+    await testAllLinks(page, 50);
   });
 });
 

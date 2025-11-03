@@ -1,4 +1,5 @@
 import { test, expect } from './fixtures';
+import { testAllButtons, testAllLinks, testAllFormFields, testAllInputFields, testAllTextareaFields, testAllSelectFields } from './test-helpers';
 
 test.describe('Admin Detailed Pages', () => {
   test.describe('Admin Users Page', () => {
@@ -11,61 +12,37 @@ test.describe('Admin Detailed Pages', () => {
     test('should test all buttons on admin users page', async ({ authenticatedPage: page }) => {
       await page.goto('/admin/users');
       await page.waitForLoadState('networkidle');
-      
-      const buttons = page.locator('button');
-      const count = await buttons.count();
-      
-      if (count > 0) {
-        for (let i = 0; i < Math.min(count, 50); i++) {
-          const button = buttons.nth(i);
-          if (await button.isVisible()) {
-            await expect(button).toBeVisible();
-          }
-        }
-      }
+      await testAllButtons(page, 50);
     });
 
     test('should test all form fields on admin users page', async ({ authenticatedPage: page }) => {
       await page.goto('/admin/users');
       await page.waitForLoadState('networkidle');
-      
-      const fields = page.locator('input, textarea, select, button[role="combobox"]');
-      const count = await fields.count();
-      
-      if (count > 0) {
-        for (let i = 0; i < count; i++) {
-          const field = fields.nth(i);
-          if (await field.isVisible()) {
-            await expect(field).toBeVisible();
-            
-            const tagName = await field.evaluate(el => el.tagName.toLowerCase());
-            if (tagName === 'input' || tagName === 'textarea') {
-              const inputType = await field.getAttribute('type');
-              if (inputType !== 'submit' && inputType !== 'button' && inputType !== 'file') {
-                await field.fill('test content');
-                await field.clear();
-              }
-            }
-          }
-        }
-      }
+      await testAllFormFields(page);
     });
 
     test('should test all links on admin users page', async ({ authenticatedPage: page }) => {
       await page.goto('/admin/users');
       await page.waitForLoadState('networkidle');
-      
-      const links = page.locator('a[href]');
-      const count = await links.count();
-      
-      if (count > 0) {
-        for (let i = 0; i < Math.min(count, 30); i++) {
-          const link = links.nth(i);
-          if (await link.isVisible()) {
-            await expect(link).toBeVisible();
-          }
-        }
-      }
+      await testAllLinks(page, 50);
+    });
+
+    test('should test all input fields on admin users page', async ({ authenticatedPage: page }) => {
+      await page.goto('/admin/users');
+      await page.waitForLoadState('networkidle');
+      await testAllInputFields(page);
+    });
+
+    test('should test all textarea fields on admin users page', async ({ authenticatedPage: page }) => {
+      await page.goto('/admin/users');
+      await page.waitForLoadState('networkidle');
+      await testAllTextareaFields(page);
+    });
+
+    test('should test all select fields on admin users page', async ({ authenticatedPage: page }) => {
+      await page.goto('/admin/users');
+      await page.waitForLoadState('networkidle');
+      await testAllSelectFields(page);
     });
   });
 
@@ -79,35 +56,19 @@ test.describe('Admin Detailed Pages', () => {
     test('should test all buttons on admin wiki revisions page', async ({ authenticatedPage: page }) => {
       await page.goto('/admin/wiki/revisions');
       await page.waitForLoadState('networkidle');
-      
-      const buttons = page.locator('button');
-      const count = await buttons.count();
-      
-      if (count > 0) {
-        for (let i = 0; i < Math.min(count, 50); i++) {
-          const button = buttons.nth(i);
-          if (await button.isVisible()) {
-            await expect(button).toBeVisible();
-          }
-        }
-      }
+      await testAllButtons(page, 50);
+    });
+
+    test('should test all links on admin wiki revisions page', async ({ authenticatedPage: page }) => {
+      await page.goto('/admin/wiki/revisions');
+      await page.waitForLoadState('networkidle');
+      await testAllLinks(page, 50);
     });
 
     test('should test all form fields on admin wiki revisions page', async ({ authenticatedPage: page }) => {
       await page.goto('/admin/wiki/revisions');
       await page.waitForLoadState('networkidle');
-      
-      const fields = page.locator('input, textarea, select, button[role="combobox"]');
-      const count = await fields.count();
-      
-      if (count > 0) {
-        for (let i = 0; i < count; i++) {
-          const field = fields.nth(i);
-          if (await field.isVisible()) {
-            await expect(field).toBeVisible();
-          }
-        }
-      }
+      await testAllFormFields(page);
     });
   });
 
@@ -122,34 +83,19 @@ test.describe('Admin Detailed Pages', () => {
       await page.goto('/admin/wiki/quality');
       await page.waitForLoadState('networkidle');
       
-      const buttons = page.locator('button');
-      const count = await buttons.count();
-      
-      if (count > 0) {
-        for (let i = 0; i < Math.min(count, 50); i++) {
-          const button = buttons.nth(i);
-          if (await button.isVisible()) {
-            await expect(button).toBeVisible();
-          }
-        }
-      }
+      await testAllButtons(page, 50);
+    });
+
+    test('should test all links on admin wiki quality page', async ({ authenticatedPage: page }) => {
+      await page.goto('/admin/wiki/quality');
+      await page.waitForLoadState('networkidle');
+      await testAllLinks(page, 50);
     });
 
     test('should test all form fields on admin wiki quality page', async ({ authenticatedPage: page }) => {
       await page.goto('/admin/wiki/quality');
       await page.waitForLoadState('networkidle');
-      
-      const fields = page.locator('input, textarea, select, button[role="combobox"]');
-      const count = await fields.count();
-      
-      if (count > 0) {
-        for (let i = 0; i < count; i++) {
-          const field = fields.nth(i);
-          if (await field.isVisible()) {
-            await expect(field).toBeVisible();
-          }
-        }
-      }
+      await testAllFormFields(page);
     });
   });
 
@@ -163,35 +109,19 @@ test.describe('Admin Detailed Pages', () => {
     test('should test all buttons on admin wiki experts page', async ({ authenticatedPage: page }) => {
       await page.goto('/admin/wiki/experts');
       await page.waitForLoadState('networkidle');
-      
-      const buttons = page.locator('button');
-      const count = await buttons.count();
-      
-      if (count > 0) {
-        for (let i = 0; i < Math.min(count, 50); i++) {
-          const button = buttons.nth(i);
-          if (await button.isVisible()) {
-            await expect(button).toBeVisible();
-          }
-        }
-      }
+      await testAllButtons(page, 50);
+    });
+
+    test('should test all links on admin wiki experts page', async ({ authenticatedPage: page }) => {
+      await page.goto('/admin/wiki/experts');
+      await page.waitForLoadState('networkidle');
+      await testAllLinks(page, 50);
     });
 
     test('should test all form fields on admin wiki experts page', async ({ authenticatedPage: page }) => {
       await page.goto('/admin/wiki/experts');
       await page.waitForLoadState('networkidle');
-      
-      const fields = page.locator('input, textarea, select, button[role="combobox"]');
-      const count = await fields.count();
-      
-      if (count > 0) {
-        for (let i = 0; i < count; i++) {
-          const field = fields.nth(i);
-          if (await field.isVisible()) {
-            await expect(field).toBeVisible();
-          }
-        }
-      }
+      await testAllFormFields(page);
     });
   });
 
@@ -205,35 +135,19 @@ test.describe('Admin Detailed Pages', () => {
     test('should test all buttons on admin moderation reports page', async ({ authenticatedPage: page }) => {
       await page.goto('/admin/moderation/reports');
       await page.waitForLoadState('networkidle');
-      
-      const buttons = page.locator('button');
-      const count = await buttons.count();
-      
-      if (count > 0) {
-        for (let i = 0; i < Math.min(count, 50); i++) {
-          const button = buttons.nth(i);
-          if (await button.isVisible()) {
-            await expect(button).toBeVisible();
-          }
-        }
-      }
+      await testAllButtons(page, 50);
+    });
+
+    test('should test all links on admin moderation reports page', async ({ authenticatedPage: page }) => {
+      await page.goto('/admin/moderation/reports');
+      await page.waitForLoadState('networkidle');
+      await testAllLinks(page, 50);
     });
 
     test('should test all form fields on admin moderation reports page', async ({ authenticatedPage: page }) => {
       await page.goto('/admin/moderation/reports');
       await page.waitForLoadState('networkidle');
-      
-      const fields = page.locator('input, textarea, select, button[role="combobox"]');
-      const count = await fields.count();
-      
-      if (count > 0) {
-        for (let i = 0; i < count; i++) {
-          const field = fields.nth(i);
-          if (await field.isVisible()) {
-            await expect(field).toBeVisible();
-          }
-        }
-      }
+      await testAllFormFields(page);
     });
   });
 
@@ -247,35 +161,19 @@ test.describe('Admin Detailed Pages', () => {
     test('should test all buttons on admin moderation queue page', async ({ authenticatedPage: page }) => {
       await page.goto('/admin/moderation-queue');
       await page.waitForLoadState('networkidle');
-      
-      const buttons = page.locator('button');
-      const count = await buttons.count();
-      
-      if (count > 0) {
-        for (let i = 0; i < Math.min(count, 50); i++) {
-          const button = buttons.nth(i);
-          if (await button.isVisible()) {
-            await expect(button).toBeVisible();
-          }
-        }
-      }
+      await testAllButtons(page, 50);
+    });
+
+    test('should test all links on admin moderation queue page', async ({ authenticatedPage: page }) => {
+      await page.goto('/admin/moderation-queue');
+      await page.waitForLoadState('networkidle');
+      await testAllLinks(page, 50);
     });
 
     test('should test all form fields on admin moderation queue page', async ({ authenticatedPage: page }) => {
       await page.goto('/admin/moderation-queue');
       await page.waitForLoadState('networkidle');
-      
-      const fields = page.locator('input, textarea, select, button[role="combobox"]');
-      const count = await fields.count();
-      
-      if (count > 0) {
-        for (let i = 0; i < count; i++) {
-          const field = fields.nth(i);
-          if (await field.isVisible()) {
-            await expect(field).toBeVisible();
-          }
-        }
-      }
+      await testAllFormFields(page);
     });
   });
 
@@ -289,35 +187,19 @@ test.describe('Admin Detailed Pages', () => {
     test('should test all buttons on admin products page', async ({ authenticatedPage: page }) => {
       await page.goto('/admin/products');
       await page.waitForLoadState('networkidle');
-      
-      const buttons = page.locator('button');
-      const count = await buttons.count();
-      
-      if (count > 0) {
-        for (let i = 0; i < Math.min(count, 50); i++) {
-          const button = buttons.nth(i);
-          if (await button.isVisible()) {
-            await expect(button).toBeVisible();
-          }
-        }
-      }
+      await testAllButtons(page, 50);
+    });
+
+    test('should test all links on admin products page', async ({ authenticatedPage: page }) => {
+      await page.goto('/admin/products');
+      await page.waitForLoadState('networkidle');
+      await testAllLinks(page, 50);
     });
 
     test('should test all form fields on admin products page', async ({ authenticatedPage: page }) => {
       await page.goto('/admin/products');
       await page.waitForLoadState('networkidle');
-      
-      const fields = page.locator('input, textarea, select, button[role="combobox"]');
-      const count = await fields.count();
-      
-      if (count > 0) {
-        for (let i = 0; i < count; i++) {
-          const field = fields.nth(i);
-          if (await field.isVisible()) {
-            await expect(field).toBeVisible();
-          }
-        }
-      }
+      await testAllFormFields(page);
     });
   });
 
@@ -328,48 +210,22 @@ test.describe('Admin Detailed Pages', () => {
       await expect(page).toHaveURL(/.*\/admin\/products\/create/);
     });
 
-    test('should test all form fields on admin products create page', async ({ authenticatedPage: page }) => {
-      await page.goto('/admin/products/create');
-      await page.waitForLoadState('networkidle');
-      
-      const fields = page.locator('input, textarea, select, button[role="combobox"]');
-      const count = await fields.count();
-      
-      if (count > 0) {
-        for (let i = 0; i < count; i++) {
-          const field = fields.nth(i);
-          if (await field.isVisible()) {
-            await expect(field).toBeVisible();
-            
-            const tagName = await field.evaluate(el => el.tagName.toLowerCase());
-            if (tagName === 'input' || tagName === 'textarea') {
-              const inputType = await field.getAttribute('type');
-              if (inputType !== 'submit' && inputType !== 'button' && inputType !== 'file') {
-                await field.fill('test content');
-                await expect(field).toHaveValue('test content');
-                await field.clear();
-              }
-            }
-          }
-        }
-      }
-    });
-
     test('should test all buttons on admin products create page', async ({ authenticatedPage: page }) => {
       await page.goto('/admin/products/create');
       await page.waitForLoadState('networkidle');
-      
-      const buttons = page.locator('button');
-      const count = await buttons.count();
-      
-      if (count > 0) {
-        for (let i = 0; i < count; i++) {
-          const button = buttons.nth(i);
-          if (await button.isVisible()) {
-            await expect(button).toBeVisible();
-          }
-        }
-      }
+      await testAllButtons(page, 50);
+    });
+
+    test('should test all links on admin products create page', async ({ authenticatedPage: page }) => {
+      await page.goto('/admin/products/create');
+      await page.waitForLoadState('networkidle');
+      await testAllLinks(page, 50);
+    });
+
+    test('should test all form fields on admin products create page', async ({ authenticatedPage: page }) => {
+      await page.goto('/admin/products/create');
+      await page.waitForLoadState('networkidle');
+      await testAllFormFields(page);
     });
   });
 
@@ -383,35 +239,19 @@ test.describe('Admin Detailed Pages', () => {
     test('should test all buttons on admin groups page', async ({ authenticatedPage: page }) => {
       await page.goto('/admin/groups');
       await page.waitForLoadState('networkidle');
-      
-      const buttons = page.locator('button');
-      const count = await buttons.count();
-      
-      if (count > 0) {
-        for (let i = 0; i < Math.min(count, 50); i++) {
-          const button = buttons.nth(i);
-          if (await button.isVisible()) {
-            await expect(button).toBeVisible();
-          }
-        }
-      }
+      await testAllButtons(page, 50);
+    });
+
+    test('should test all links on admin groups page', async ({ authenticatedPage: page }) => {
+      await page.goto('/admin/groups');
+      await page.waitForLoadState('networkidle');
+      await testAllLinks(page, 50);
     });
 
     test('should test all form fields on admin groups page', async ({ authenticatedPage: page }) => {
       await page.goto('/admin/groups');
       await page.waitForLoadState('networkidle');
-      
-      const fields = page.locator('input, textarea, select, button[role="combobox"]');
-      const count = await fields.count();
-      
-      if (count > 0) {
-        for (let i = 0; i < count; i++) {
-          const field = fields.nth(i);
-          if (await field.isVisible()) {
-            await expect(field).toBeVisible();
-          }
-        }
-      }
+      await testAllFormFields(page);
     });
   });
 
@@ -425,35 +265,19 @@ test.describe('Admin Detailed Pages', () => {
     test('should test all buttons on admin privacy page', async ({ authenticatedPage: page }) => {
       await page.goto('/admin/privacy');
       await page.waitForLoadState('networkidle');
-      
-      const buttons = page.locator('button');
-      const count = await buttons.count();
-      
-      if (count > 0) {
-        for (let i = 0; i < Math.min(count, 50); i++) {
-          const button = buttons.nth(i);
-          if (await button.isVisible()) {
-            await expect(button).toBeVisible();
-          }
-        }
-      }
+      await testAllButtons(page, 50);
+    });
+
+    test('should test all links on admin privacy page', async ({ authenticatedPage: page }) => {
+      await page.goto('/admin/privacy');
+      await page.waitForLoadState('networkidle');
+      await testAllLinks(page, 50);
     });
 
     test('should test all form fields on admin privacy page', async ({ authenticatedPage: page }) => {
       await page.goto('/admin/privacy');
       await page.waitForLoadState('networkidle');
-      
-      const fields = page.locator('input, textarea, select, button[role="combobox"]');
-      const count = await fields.count();
-      
-      if (count > 0) {
-        for (let i = 0; i < count; i++) {
-          const field = fields.nth(i);
-          if (await field.isVisible()) {
-            await expect(field).toBeVisible();
-          }
-        }
-      }
+      await testAllFormFields(page);
     });
   });
 
@@ -467,35 +291,19 @@ test.describe('Admin Detailed Pages', () => {
     test('should test all buttons on admin organizations page', async ({ authenticatedPage: page }) => {
       await page.goto('/admin/orgs');
       await page.waitForLoadState('networkidle');
-      
-      const buttons = page.locator('button');
-      const count = await buttons.count();
-      
-      if (count > 0) {
-        for (let i = 0; i < Math.min(count, 50); i++) {
-          const button = buttons.nth(i);
-          if (await button.isVisible()) {
-            await expect(button).toBeVisible();
-          }
-        }
-      }
+      await testAllButtons(page, 50);
+    });
+
+    test('should test all links on admin organizations page', async ({ authenticatedPage: page }) => {
+      await page.goto('/admin/orgs');
+      await page.waitForLoadState('networkidle');
+      await testAllLinks(page, 50);
     });
 
     test('should test all form fields on admin organizations page', async ({ authenticatedPage: page }) => {
       await page.goto('/admin/orgs');
       await page.waitForLoadState('networkidle');
-      
-      const fields = page.locator('input, textarea, select, button[role="combobox"]');
-      const count = await fields.count();
-      
-      if (count > 0) {
-        for (let i = 0; i < count; i++) {
-          const field = fields.nth(i);
-          if (await field.isVisible()) {
-            await expect(field).toBeVisible();
-          }
-        }
-      }
+      await testAllFormFields(page);
     });
   });
 
@@ -509,35 +317,19 @@ test.describe('Admin Detailed Pages', () => {
     test('should test all buttons on admin notifications page', async ({ authenticatedPage: page }) => {
       await page.goto('/admin/notifications');
       await page.waitForLoadState('networkidle');
-      
-      const buttons = page.locator('button');
-      const count = await buttons.count();
-      
-      if (count > 0) {
-        for (let i = 0; i < Math.min(count, 50); i++) {
-          const button = buttons.nth(i);
-          if (await button.isVisible()) {
-            await expect(button).toBeVisible();
-          }
-        }
-      }
+      await testAllButtons(page, 50);
+    });
+
+    test('should test all links on admin notifications page', async ({ authenticatedPage: page }) => {
+      await page.goto('/admin/notifications');
+      await page.waitForLoadState('networkidle');
+      await testAllLinks(page, 50);
     });
 
     test('should test all form fields on admin notifications page', async ({ authenticatedPage: page }) => {
       await page.goto('/admin/notifications');
       await page.waitForLoadState('networkidle');
-      
-      const fields = page.locator('input, textarea, select, button[role="combobox"]');
-      const count = await fields.count();
-      
-      if (count > 0) {
-        for (let i = 0; i < count; i++) {
-          const field = fields.nth(i);
-          if (await field.isVisible()) {
-            await expect(field).toBeVisible();
-          }
-        }
-      }
+      await testAllFormFields(page);
     });
   });
 
@@ -551,35 +343,19 @@ test.describe('Admin Detailed Pages', () => {
     test('should test all buttons on admin search page', async ({ authenticatedPage: page }) => {
       await page.goto('/admin/search');
       await page.waitForLoadState('networkidle');
-      
-      const buttons = page.locator('button');
-      const count = await buttons.count();
-      
-      if (count > 0) {
-        for (let i = 0; i < Math.min(count, 50); i++) {
-          const button = buttons.nth(i);
-          if (await button.isVisible()) {
-            await expect(button).toBeVisible();
-          }
-        }
-      }
+      await testAllButtons(page, 50);
+    });
+
+    test('should test all links on admin search page', async ({ authenticatedPage: page }) => {
+      await page.goto('/admin/search');
+      await page.waitForLoadState('networkidle');
+      await testAllLinks(page, 50);
     });
 
     test('should test all form fields on admin search page', async ({ authenticatedPage: page }) => {
       await page.goto('/admin/search');
       await page.waitForLoadState('networkidle');
-      
-      const fields = page.locator('input, textarea, select, button[role="combobox"]');
-      const count = await fields.count();
-      
-      if (count > 0) {
-        for (let i = 0; i < count; i++) {
-          const field = fields.nth(i);
-          if (await field.isVisible()) {
-            await expect(field).toBeVisible();
-          }
-        }
-      }
+      await testAllFormFields(page);
     });
   });
 
@@ -593,35 +369,19 @@ test.describe('Admin Detailed Pages', () => {
     test('should test all buttons on admin queue page', async ({ authenticatedPage: page }) => {
       await page.goto('/admin/queue');
       await page.waitForLoadState('networkidle');
-      
-      const buttons = page.locator('button');
-      const count = await buttons.count();
-      
-      if (count > 0) {
-        for (let i = 0; i < Math.min(count, 50); i++) {
-          const button = buttons.nth(i);
-          if (await button.isVisible()) {
-            await expect(button).toBeVisible();
-          }
-        }
-      }
+      await testAllButtons(page, 50);
+    });
+
+    test('should test all links on admin queue page', async ({ authenticatedPage: page }) => {
+      await page.goto('/admin/queue');
+      await page.waitForLoadState('networkidle');
+      await testAllLinks(page, 50);
     });
 
     test('should test all form fields on admin queue page', async ({ authenticatedPage: page }) => {
       await page.goto('/admin/queue');
       await page.waitForLoadState('networkidle');
-      
-      const fields = page.locator('input, textarea, select, button[role="combobox"]');
-      const count = await fields.count();
-      
-      if (count > 0) {
-        for (let i = 0; i < count; i++) {
-          const field = fields.nth(i);
-          if (await field.isVisible()) {
-            await expect(field).toBeVisible();
-          }
-        }
-      }
+      await testAllFormFields(page);
     });
   });
 
@@ -635,35 +395,19 @@ test.describe('Admin Detailed Pages', () => {
     test('should test all buttons on admin revisions page', async ({ authenticatedPage: page }) => {
       await page.goto('/admin/revisions');
       await page.waitForLoadState('networkidle');
-      
-      const buttons = page.locator('button');
-      const count = await buttons.count();
-      
-      if (count > 0) {
-        for (let i = 0; i < Math.min(count, 50); i++) {
-          const button = buttons.nth(i);
-          if (await button.isVisible()) {
-            await expect(button).toBeVisible();
-          }
-        }
-      }
+      await testAllButtons(page, 50);
+    });
+
+    test('should test all links on admin revisions page', async ({ authenticatedPage: page }) => {
+      await page.goto('/admin/revisions');
+      await page.waitForLoadState('networkidle');
+      await testAllLinks(page, 50);
     });
 
     test('should test all form fields on admin revisions page', async ({ authenticatedPage: page }) => {
       await page.goto('/admin/revisions');
       await page.waitForLoadState('networkidle');
-      
-      const fields = page.locator('input, textarea, select, button[role="combobox"]');
-      const count = await fields.count();
-      
-      if (count > 0) {
-        for (let i = 0; i < count; i++) {
-          const field = fields.nth(i);
-          if (await field.isVisible()) {
-            await expect(field).toBeVisible();
-          }
-        }
-      }
+      await testAllFormFields(page);
     });
   });
 
@@ -677,35 +421,19 @@ test.describe('Admin Detailed Pages', () => {
     test('should test all buttons on admin announcements page', async ({ authenticatedPage: page }) => {
       await page.goto('/admin/announcements');
       await page.waitForLoadState('networkidle');
-      
-      const buttons = page.locator('button');
-      const count = await buttons.count();
-      
-      if (count > 0) {
-        for (let i = 0; i < Math.min(count, 50); i++) {
-          const button = buttons.nth(i);
-          if (await button.isVisible()) {
-            await expect(button).toBeVisible();
-          }
-        }
-      }
+      await testAllButtons(page, 50);
+    });
+
+    test('should test all links on admin announcements page', async ({ authenticatedPage: page }) => {
+      await page.goto('/admin/announcements');
+      await page.waitForLoadState('networkidle');
+      await testAllLinks(page, 50);
     });
 
     test('should test all form fields on admin announcements page', async ({ authenticatedPage: page }) => {
       await page.goto('/admin/announcements');
       await page.waitForLoadState('networkidle');
-      
-      const fields = page.locator('input, textarea, select, button[role="combobox"]');
-      const count = await fields.count();
-      
-      if (count > 0) {
-        for (let i = 0; i < count; i++) {
-          const field = fields.nth(i);
-          if (await field.isVisible()) {
-            await expect(field).toBeVisible();
-          }
-        }
-      }
+      await testAllFormFields(page);
     });
   });
 });
