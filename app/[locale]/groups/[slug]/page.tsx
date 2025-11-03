@@ -24,6 +24,7 @@ import {
   canUserModerate,
   canUserViewGroupContent,
   canUserManageMembers,
+  canUserManageSettings,
   updateGroupMember,
   removeGroupMember,
 } from "@/lib/storage"
@@ -45,6 +46,7 @@ import Link from "next/link"
 import { BulkEventExportButton } from "@/components/groups/EventExportButton"
 import { AnalyticsDashboard } from "@/components/groups/AnalyticsDashboard"
 import { MemberList } from "@/components/groups/MemberList"
+import { GroupSettings } from "@/components/groups/GroupSettings"
 
 const GROUP_TAB_VALUES = new Set([
   "feed",
@@ -131,6 +133,7 @@ export default function GroupPage({ params }: { params: Promise<{ slug: string }
   const activities = getGroupActivitiesByGroupId(group.id)
   const members = getGroupMembersByGroupId(group.id)
   const canManage = isAuthenticated && user ? canUserManageMembers(group.id, user.id) : false
+  const canManageSettings = isAuthenticated && user ? canUserManageSettings(group.id, user.id) : false
 
   const handleRoleChange = (memberId: string, newRole: GroupMember["role"]) => {
     if (!canManage || !user) return
@@ -146,6 +149,15 @@ export default function GroupPage({ params }: { params: Promise<{ slug: string }
     if (confirm(`Are you sure you want to remove this member from the group?`)) {
       removeGroupMember(group.id, member.userId)
     }
+  }
+
+  const handleSettingsSave = (updatedGroup: Group) => {
+    setGroup(updatedGroup)
+    router.push(`/groups/${updatedGroup.slug}`)
+  }
+
+  const handleSettingsCancel = () => {
+    // Do nothing, just stay on the page
   }
 
   return (
@@ -742,10 +754,24 @@ export default function GroupPage({ params }: { params: Promise<{ slug: string }
           )}
 
           {/* Settings Tab */}
-          <TabsContent value="settings">
-            <Link href={`/groups/${group.slug}/settings`}>
-              <Button variant="outline">Go to Settings</Button>
-            </Link>
+          <TabsContent value="settings" className="space-y-6">
+            {!canManageSettings ? (
+              <Card>
+                <CardContent className="p-8 text-center">
+                  <Shield className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                  <h3 className="text-lg font-semibold mb-2">Permission Denied</h3>
+                  <p className="text-muted-foreground">
+                    Only group owners and administrators can manage group settings.
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              <GroupSettings
+                group={group}
+                onSave={handleSettingsSave}
+                onCancel={handleSettingsCancel}
+              />
+            )}
           </TabsContent>
         </Tabs>
       </div>
