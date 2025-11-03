@@ -166,12 +166,16 @@ export function TopicCreator({
               className={errors.content ? "border-destructive" : ""}
             />
             {errors.content && (
-              <p className="text-sm text-destructive">{errors.content}</p>
+              <p className="text-sm text-destructive flex items-center gap-1">
+                <AlertCircle className="h-3 w-3" />
+                {errors.content}
+              </p>
             )}
           </div>
 
           <div className="flex items-center justify-end gap-2">
             <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>
+              <X className="h-4 w-4 mr-2" />
               Cancel
             </Button>
             <Button type="submit" disabled={isSubmitting}>
@@ -207,7 +211,8 @@ export function TopicCreator({
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="title">
+            <Label htmlFor="title" className="flex items-center gap-2">
+              <Type className="h-4 w-4" />
               Title <span className="text-destructive">*</span>
             </Label>
             <Input
@@ -219,12 +224,16 @@ export function TopicCreator({
               disabled={!!parentTopicId}
             />
             {errors.title && (
-              <p className="text-sm text-destructive">{errors.title}</p>
+              <p className="text-sm text-destructive flex items-center gap-1">
+                <AlertCircle className="h-3 w-3" />
+                {errors.title}
+              </p>
             )}
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="content">
+            <Label htmlFor="content" className="flex items-center gap-2">
+              <MessageSquare className="h-4 w-4" />
               Content <span className="text-destructive">*</span>
             </Label>
             <Textarea
@@ -236,13 +245,19 @@ export function TopicCreator({
               className={errors.content ? "border-destructive" : ""}
             />
             {errors.content && (
-              <p className="text-sm text-destructive">{errors.content}</p>
+              <p className="text-sm text-destructive flex items-center gap-1">
+                <AlertCircle className="h-3 w-3" />
+                {errors.content}
+              </p>
             )}
           </div>
 
           {/* Tags */}
           <div className="space-y-2">
-            <Label htmlFor="tags">Tags (optional)</Label>
+            <Label htmlFor="tags" className="flex items-center gap-2">
+              <Tag className="h-4 w-4" />
+              Tags (optional)
+            </Label>
             <TagInput
               value={tagInputValue}
               onChange={handleTagChange}
@@ -293,6 +308,7 @@ export function TopicCreator({
           {/* Actions */}
           <div className="flex items-center justify-end gap-4 pt-4 border-t">
             <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>
+              <X className="h-4 w-4 mr-2" />
               Cancel
             </Button>
             <Button type="submit" disabled={isSubmitting}>

@@ -7,21 +7,20 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { BackButton } from "@/components/ui/back-button"
-import { TopicCreator } from "@/components/groups/TopicCreator"
+import { EventCreator } from "@/components/groups/EventCreator"
 import {
   getGroupBySlug,
   canUserViewGroup,
-  canUserCreateTopic,
-  addGroupTopic,
+  addGroupEvent,
   isUserMemberOfGroup,
   canUserModerate,
 } from "@/lib/storage"
-import type { Group, GroupTopic } from "@/lib/types"
+import type { Group, GroupEvent } from "@/lib/types"
 import { useAuth } from "@/lib/auth"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { AlertCircle, Shield } from "lucide-react"
 
-export default function CreateTopicPage({
+export default function CreateEventPage({
   params,
 }: {
   params: Promise<{ slug: string }>
@@ -50,28 +49,31 @@ export default function CreateTopicPage({
         return
       }
     } else {
-      setIsLoading(false)
-      router.push("/groups")
-      return
+      if (foundGroup.type === "secret") {
+        setIsLoading(false)
+        router.push("/groups")
+        return
+      }
     }
 
     setGroup(foundGroup)
     setIsLoading(false)
   }, [slug, user, isAuthenticated, router])
 
-  const handleSubmit = (data: Omit<GroupTopic, "id" | "createdAt" | "updatedAt">) => {
+  const handleSubmit = (data: Omit<GroupEvent, "id" | "createdAt" | "updatedAt">) => {
     if (!user || !group) return
 
-    const newTopic: GroupTopic = {
+    const newEvent: GroupEvent = {
       ...data,
-      id: `topic-${Date.now()}`,
+      id: `event-${Date.now()}`,
       authorId: user.id,
+      attendeeCount: 0,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     }
 
-    addGroupTopic(newTopic)
-    router.push(`/groups/${group.slug}/topics/${newTopic.id}`)
+    addGroupEvent(newEvent)
+    router.push(`/groups/${group.slug}/events/${newEvent.id}`)
   }
 
   if (isLoading) {
@@ -96,7 +98,7 @@ export default function CreateTopicPage({
             <AlertCircle className="h-4 w-4" />
             <AlertTitle>Access Denied</AlertTitle>
             <AlertDescription>
-              You must be logged in to create topics.
+              You must be logged in to create events.
             </AlertDescription>
           </Alert>
         </div>
@@ -105,25 +107,21 @@ export default function CreateTopicPage({
   }
 
   const isMember = isUserMemberOfGroup(group.id, user.id)
-  const canCreate = isMember && canUserCreateTopic(group.id, user.id)
-  const canModerate = canUserModerate(group.id, user.id)
 
-  if (!canCreate) {
+  if (!isMember) {
     return (
       <div className="min-h-screen bg-background">
         <div className="container mx-auto px-4 py-8 max-w-4xl">
           <div className="mb-6">
-            <BackButton href={`/groups/${group.slug}?tab=topics`}>
-              Back to Topics
+            <BackButton href={`/groups/${group.slug}?tab=events`}>
+              Back to Events
             </BackButton>
           </div>
           <Alert>
             <Shield className="h-4 w-4" />
             <AlertTitle>Permission Denied</AlertTitle>
             <AlertDescription>
-              {!isMember
-                ? "You must be a member of this group to create topics."
-                : "You don't have permission to create topics in this group."}
+              You must be a member of this group to create events.
             </AlertDescription>
           </Alert>
         </div>
@@ -132,20 +130,18 @@ export default function CreateTopicPage({
   }
 
   return (
-      <div className="min-h-screen bg-background">
-        <div className="container mx-auto px-4 py-8 max-w-4xl">
-          <div className="mb-6">
-            <BackButton href={`/groups/${group.slug}?tab=topics`}>
-              Back to Topics
-            </BackButton>
-          </div>
+    <div className="min-h-screen bg-background">
+      <div className="container mx-auto px-4 py-8 max-w-4xl">
+        <div className="mb-6">
+          <BackButton href={`/groups/${group.slug}?tab=events`}>
+            Back to Events
+          </BackButton>
+        </div>
 
-        <TopicCreator
+        <EventCreator
           groupId={group.id}
           onSubmit={handleSubmit}
-          onCancel={() => router.push(`/groups/${group.slug}?tab=topics`)}
-          canPin={canModerate}
-          canLock={canModerate}
+          onCancel={() => router.push(`/groups/${group.slug}?tab=events`)}
         />
       </div>
     </div>

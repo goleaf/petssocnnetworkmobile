@@ -190,7 +190,7 @@ export function ResourceCreator({ initialValues, onSubmit, onCancel }: ResourceC
                 }}
               >
                 <SelectTrigger id="resource-type" className="w-full">
-                  <SelectValue placeholder={t("typePlaceholder")}>{typeOptions.find((option) => option.value === values.type)?.label}</SelectValue>
+                  <SelectValue placeholder={t("typePlaceholder")} />
                 </SelectTrigger>
                 <SelectContent>
                   {typeOptions.map((option) => (
