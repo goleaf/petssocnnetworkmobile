@@ -1,5 +1,5 @@
 import { test, expect } from './fixtures';
-import { testAllButtons, testAllLinks, testAllFormFields, testAllInputFields, testAllTextareaFields, testAllSelectFields } from './test-helpers';
+import { testAllButtons, testAllLinks, testAllFormFields, testAllInputFields, testAllTextareaFields, testAllSelectFields, takeInitialScreenshot, takeScreenshot } from './test-helpers';
 
 /**
  * Comprehensive tests for pages that might not have dedicated test files
@@ -10,6 +10,7 @@ test.describe('Missing Pages Coverage', () => {
   test.describe('Group Sub-Pages', () => {
     test('should test group topics list page', async ({ authenticatedPage: page }) => {
       await page.goto('/groups');
+      await takeInitialScreenshot(page, 'group-topics-list');
       await page.waitForLoadState('networkidle');
       
       const groupLink = page.locator('a[href*="/groups/"]').filter({ hasNot: page.locator('text=/create|Create/') }).first();
@@ -21,8 +22,9 @@ test.describe('Missing Pages Coverage', () => {
         if (await topicsTab.count() > 0) {
           await topicsTab.click();
           await page.waitForTimeout(500);
-          await testAllButtons(page, 50);
-          await testAllFormFields(page);
+          await testAllButtons(page, 50, 'group-topics-list');
+          await testAllFormFields(page, 'group-topics-list');
+          await takeScreenshot(page, 'group-topics-list-final');
         }
       }
     });

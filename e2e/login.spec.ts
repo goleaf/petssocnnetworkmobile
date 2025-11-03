@@ -1,5 +1,5 @@
 import { test, expect } from './fixtures';
-import { testAllButtons, testAllLinks, testAllFormFields, testAllInputFields } from './test-helpers';
+import { testAllButtons, testAllLinks, testAllFormFields, testAllInputFields, takeInitialScreenshot, takeScreenshot } from './test-helpers';
 
 test.describe('Login Page', () => {
   test.beforeEach(async ({ page }) => {
@@ -156,19 +156,23 @@ test.describe('Login Page', () => {
   });
 
   test('should test all buttons on page', async ({ page }) => {
-    await testAllButtons(page, 50);
+    await takeInitialScreenshot(page, 'login-buttons');
+    await testAllButtons(page, 50, 'login');
   });
 
   test('should test all input fields comprehensively', async ({ page }) => {
-    await testAllInputFields(page);
+    await takeInitialScreenshot(page, 'login-inputs');
+    await testAllInputFields(page, 'login');
   });
 
   test('should test all form fields on page', async ({ page }) => {
-    await testAllFormFields(page);
+    await takeInitialScreenshot(page, 'login-form-fields');
+    await testAllFormFields(page, 'login');
   });
 
   test('should test all links on page', async ({ page }) => {
-    await testAllLinks(page, 50);
+    await takeInitialScreenshot(page, 'login-links');
+    await testAllLinks(page, 50, 'login');
   });
 });
 

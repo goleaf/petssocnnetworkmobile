@@ -11,8 +11,8 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   /* Retry on CI only */
   retries: process.env.CI ? 2 : 0,
-  /* Opt out of parallel tests on CI. */
-  workers: process.env.CI ? 1 : 10,
+  /* Use 1 worker for sequential execution */
+  workers: 1,
   /* Test timeout */
   timeout: 60000,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
@@ -23,8 +23,8 @@ export default defineConfig({
     baseURL: process.env.BASE_URL || 'http://localhost:3000',
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
-    /* Take screenshot on failure */
-    screenshot: 'only-on-failure',
+    /* Take screenshot for all tests */
+    screenshot: 'on',
   },
 
   /* Configure projects for major browsers */
@@ -61,6 +61,9 @@ export default defineConfig({
     url: 'http://localhost:3000',
     reuseExistingServer: !process.env.CI,
     timeout: 120 * 1000,
+    env: {
+      TURBOPACK: '0',
+    },
   },
 });
 

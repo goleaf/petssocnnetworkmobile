@@ -1,5 +1,5 @@
 import { test, expect } from './fixtures';
-import { testAllButtons, testAllLinks, testAllFormFields, testAllInputFields, testAllTextareaFields, testAllSelectFields } from './test-helpers';
+import { testAllButtons, testAllLinks, testAllFormFields, testAllInputFields, testAllTextareaFields, testAllSelectFields, takeInitialScreenshot, takeScreenshot } from './test-helpers';
 
 test.describe('Home Page', () => {
   test.beforeEach(async ({ page }) => {
@@ -7,7 +7,9 @@ test.describe('Home Page', () => {
   });
 
   test('should load home page', async ({ page }) => {
+    await takeInitialScreenshot(page, 'home-load');
     await expect(page).toHaveTitle(/Pet Social Network|My Pet Social Network/i);
+    await takeScreenshot(page, 'home-loaded');
   });
 
   test('should display hero section for unauthenticated users', async ({ page }) => {
@@ -55,38 +57,44 @@ test.describe('Home Page', () => {
 
   test('should test all buttons in authenticated view', async ({ authenticatedPage: page }) => {
     await page.goto('/');
+    await takeInitialScreenshot(page, 'home-buttons');
     await page.waitForLoadState('networkidle');
-    await testAllButtons(page, 50);
+    await testAllButtons(page, 50, 'home');
   });
 
   test('should test all form fields on home page (authenticated)', async ({ authenticatedPage: page }) => {
     await page.goto('/');
+    await takeInitialScreenshot(page, 'home-form-fields');
     await page.waitForLoadState('networkidle');
-    await testAllFormFields(page);
+    await testAllFormFields(page, 'home');
   });
 
   test('should test all input fields on home page (authenticated)', async ({ authenticatedPage: page }) => {
     await page.goto('/');
+    await takeInitialScreenshot(page, 'home-inputs');
     await page.waitForLoadState('networkidle');
-    await testAllInputFields(page);
+    await testAllInputFields(page, 'home');
   });
 
   test('should test all textarea fields on home page (authenticated)', async ({ authenticatedPage: page }) => {
     await page.goto('/');
+    await takeInitialScreenshot(page, 'home-textareas');
     await page.waitForLoadState('networkidle');
-    await testAllTextareaFields(page);
+    await testAllTextareaFields(page, 'home');
   });
 
   test('should test all select fields on home page (authenticated)', async ({ authenticatedPage: page }) => {
     await page.goto('/');
+    await takeInitialScreenshot(page, 'home-selects');
     await page.waitForLoadState('networkidle');
-    await testAllSelectFields(page);
+    await testAllSelectFields(page, 'home');
   });
 
   test('should test all links on home page (authenticated)', async ({ authenticatedPage: page }) => {
     await page.goto('/');
+    await takeInitialScreenshot(page, 'home-links');
     await page.waitForLoadState('networkidle');
-    await testAllLinks(page, 50);
+    await testAllLinks(page, 50, 'home');
   });
 });
 

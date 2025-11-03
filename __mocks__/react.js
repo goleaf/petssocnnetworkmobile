@@ -19,3 +19,4 @@ React.act = act
 module.exports = React
 module.exports.act = act
 
+

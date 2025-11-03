@@ -48,6 +48,43 @@ import { TextEncoder, TextDecoder } from 'util'
 global.TextEncoder = TextEncoder
 global.TextDecoder = TextDecoder
 
+// Polyfill Request/Response for Node.js test environment
+if (typeof global.Request === 'undefined') {
+  global.Request = class Request {
+    constructor(url, init) {
+      this.url = url
+      this.method = init?.method || 'GET'
+      this.headers = new Headers(init?.headers)
+      this.body = init?.body
+    }
+    
+    async json() {
+      return this.body ? JSON.parse(this.body) : {}
+    }
+    
+    async text() {
+      return this.body || ''
+    }
+  }
+  
+  global.Response = class Response {
+    constructor(body, init) {
+      this.body = body
+      this.status = init?.status || 200
+      this.statusText = init?.statusText || 'OK'
+      this.headers = new Headers(init?.headers)
+    }
+    
+    async json() {
+      return typeof this.body === 'string' ? JSON.parse(this.body) : this.body
+    }
+    
+    async text() {
+      return typeof this.body === 'string' ? this.body : JSON.stringify(this.body)
+    }
+  }
+}
+
 // Mock next/navigation
 jest.mock('next/navigation', () => ({
   useRouter() {
