@@ -1,3 +1,11 @@
+# PR Merge codex/run-tests-and-fix-errors
+
+## Priority 0: Merge Tasks
+- [ ] Review commit `test: stabilize jest command`
+- [ ] Merge `codex/run-tests-and-fix-errors` into `main`
+- [ ] Run repository tests to confirm stability
+- [ ] Delete remote branch and close associated PR
+
 # Groups Page Hydration Fix
 
 ## Priority 0: Immediate Stabilization
