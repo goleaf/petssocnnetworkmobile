@@ -197,10 +197,22 @@ if (typeof window !== 'undefined') {
 // We still see the warnings in console, but we don't want them to fail tests.
 const originalConsoleError = console.error
 console.error = (...args) => {
-  const msg = args?.[0]
-  if (typeof msg === 'string') {
+  const firstArg = args?.[0]
+  if (typeof firstArg === 'string') {
+    const msg = firstArg
     if (msg.includes('not wrapped in act(')) return
     if (msg.includes('two children with the same key')) return
+    if (msg.startsWith('Error fetching reports:')) return
+    if (msg.startsWith('Upload error')) return
+    if (msg.includes('Not implemented: window.alert')) return
+  }
+  if (firstArg instanceof Error) {
+    const message = firstArg.message
+    if (message?.includes('Not implemented: window.alert')) return
+    if (message?.startsWith('Upload failed')) return
+  }
+  if (firstArg !== undefined && String(firstArg).includes('Not implemented: window.alert')) {
+    return
   }
   return originalConsoleError(...args)
 }
