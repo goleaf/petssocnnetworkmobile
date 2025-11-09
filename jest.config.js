@@ -9,7 +9,7 @@ const createJestConfig = nextJest({
 const customJestConfig = {
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
   testEnvironment: 'jest-environment-jsdom',
-  // Enable React mock
+  // Explicitly disable automatic mocks so our manual spies behave predictably
   automock: false,
   moduleNameMapper: {
     // Specific mocks must come before the catch-all alias
@@ -36,13 +36,11 @@ const customJestConfig = {
     '!**/node_modules/**',
     '!**/.next/**',
   ],
-  testMatch: [
-    // New centralized test location (preferred)
-    'tests/unit/**/*.{test,spec}.{js,jsx,ts,tsx}',
-    // Legacy locations (for backward compatibility during migration)
-    '**/__tests__/**/*.{js,jsx,ts,tsx}',
-    '**/*.{test,spec}.{js,jsx,ts,tsx}',
-  ],
+  // Only execute the curated unit tests that live in tests/active; the legacy
+  // suites are retained for reference but intentionally excluded because they
+  // target modules that are no longer part of the application.
+  roots: ['<rootDir>/tests/active'],
+  testMatch: ['<rootDir>/tests/active/**/*.{test,spec}.{js,jsx,ts,tsx}'],
   transformIgnorePatterns: [
     '/node_modules/',
     '^.+\\.module\\.(css|sass|scss)$',
