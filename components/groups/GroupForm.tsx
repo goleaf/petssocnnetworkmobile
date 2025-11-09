@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { ErrorText } from "@/components/ui/error-text"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -294,9 +295,7 @@ export function GroupForm({ onSubmit, onCancel, initialData, isLoading = false }
               className={errors.name ? "border-destructive" : ""}
               disabled={isLoading}
             />
-            {errors.name && (
-              <p className="text-sm text-destructive">{errors.name}</p>
-            )}
+            {errors.name && <ErrorText className="text-sm">{errors.name}</ErrorText>}
           </div>
 
           <div className="space-y-2">
@@ -312,9 +311,7 @@ export function GroupForm({ onSubmit, onCancel, initialData, isLoading = false }
               className={`resize-none ${errors.description ? "border-destructive" : ""}`}
               disabled={isLoading}
             />
-            {errors.description && (
-              <p className="text-sm text-destructive">{errors.description}</p>
-            )}
+            {errors.description && <ErrorText className="text-sm">{errors.description}</ErrorText>}
             <p className="text-xs text-muted-foreground">
               Share what your group is about and what members can expect
             </p>
@@ -351,9 +348,7 @@ export function GroupForm({ onSubmit, onCancel, initialData, isLoading = false }
                   })}
                 </SelectContent>
               </Select>
-              {errors.categoryId && (
-                <p className="text-sm text-destructive">{errors.categoryId}</p>
-              )}
+              {errors.categoryId && <ErrorText className="text-sm">{errors.categoryId}</ErrorText>}
             </div>
 
             {formData.categoryId && subcategories.length > 0 && (

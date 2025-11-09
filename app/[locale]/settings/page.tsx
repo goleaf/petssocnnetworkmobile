@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { ErrorText } from "@/components/ui/error-text"
 import { SettingsHeader } from "@/components/settings/SettingsHeader"
 import { useAuth } from "@/components/auth/auth-provider"
 import { PrivacySelector } from "@/components/privacy-selector"
@@ -580,7 +581,7 @@ export default function SettingsPage() {
                 </div>
               </div>
             </div>
-            {passwordError && <p className="text-sm text-destructive">{passwordError}</p>}
+            {passwordError && <ErrorText className="text-sm">{passwordError}</ErrorText>}
             <div className="flex flex-wrap justify-end gap-3">
               <Button variant="outline" onClick={handleLogoutAll} type="button">
                 <LogOut className="h-4 w-4" /> Log out from all devices
@@ -1311,7 +1312,7 @@ export default function SettingsPage() {
               <Checkbox checked={sendVerification} onCheckedChange={(v) => setSendVerification(Boolean(v))} />
               <span>Send verification email to new address</span>
             </label>
-            {emailError && <p className="text-sm text-destructive">{emailError}</p>}
+            {emailError && <ErrorText className="text-sm">{emailError}</ErrorText>}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEmailDialogOpen(false)} disabled={emailSubmitting}>Cancel</Button>
@@ -1473,7 +1474,7 @@ export default function SettingsPage() {
               </div>
             )}
 
-            {deleteError && <p className="text-sm text-destructive">{deleteError}</p>}
+            {deleteError && <ErrorText className="text-sm">{deleteError}</ErrorText>}
           </div>
           <DialogFooter>
             {deleteStep > 1 && (

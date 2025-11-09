@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { TagInput } from "@/components/ui/tag-input"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { ErrorText } from "@/components/ui/error-text"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import type { User } from "@/lib/types"
 import {
@@ -205,9 +206,7 @@ export function UserProfileForm({
                     placeholder="https://example.com/avatar.jpg"
                     className={errors.avatar ? "border-destructive" : ""}
                   />
-                  {errors.avatar && (
-                    <p className="text-sm text-destructive">{errors.avatar}</p>
-                  )}
+                  {errors.avatar && <ErrorText className="text-sm">{errors.avatar}</ErrorText>}
                   <p className="text-xs text-muted-foreground">
                     Enter a URL to your profile picture
                   </p>
@@ -228,9 +227,7 @@ export function UserProfileForm({
                 required
                 className={errors.fullName ? "border-destructive" : ""}
               />
-              {errors.fullName && (
-                <p className="text-sm text-destructive">{errors.fullName}</p>
-              )}
+              {errors.fullName && <ErrorText className="text-sm">{errors.fullName}</ErrorText>}
             </div>
 
             <div className="space-y-2">
@@ -299,9 +296,7 @@ export function UserProfileForm({
                 placeholder="https://yourwebsite.com"
                 className={errors.website ? "border-destructive" : ""}
               />
-              {errors.website && (
-                <p className="text-sm text-destructive">{errors.website}</p>
-              )}
+              {errors.website && <ErrorText className="text-sm">{errors.website}</ErrorText>}
             </div>
 
             <div className="space-y-2">
@@ -394,4 +389,3 @@ export function UserProfileForm({
     </form>
   )
 }
-

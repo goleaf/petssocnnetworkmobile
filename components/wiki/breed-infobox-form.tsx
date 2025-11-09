@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { ErrorText } from "@/components/ui/error-text"
 import {
   Tooltip,
   TooltipContent,
@@ -99,7 +100,7 @@ function ArrayTagInput({
           className="flex-1 min-w-[120px] border-0 outline-none bg-transparent text-sm placeholder:text-muted-foreground"
         />
       </div>
-      {error && <p className="text-xs text-destructive">{error}</p>}
+      {error && <ErrorText>{error}</ErrorText>}
     </div>
   )
 }
@@ -215,7 +216,7 @@ export function BreedInfoboxForm({ initialData, onChange, errors }: BreedInfobox
                 <SelectItem value="other">Other</SelectItem>
               </SelectContent>
             </Select>
-            {displayErrors.species && <p className="text-xs text-destructive">{displayErrors.species}</p>}
+            {displayErrors.species && <ErrorText>{displayErrors.species}</ErrorText>}
           </div>
 
           {/* Official Name */}
@@ -230,7 +231,7 @@ export function BreedInfoboxForm({ initialData, onChange, errors }: BreedInfobox
               placeholder="e.g., Golden Retriever"
               className={`h-10 ${displayErrors.officialName ? "border-destructive" : ""}`}
             />
-            {displayErrors.officialName && <p className="text-xs text-destructive">{displayErrors.officialName}</p>}
+            {displayErrors.officialName && <ErrorText>{displayErrors.officialName}</ErrorText>}
           </div>
 
           {/* Aliases */}
@@ -304,7 +305,7 @@ export function BreedInfoboxForm({ initialData, onChange, errors }: BreedInfobox
                 placeholder="e.g., 32"
                 className="h-10"
               />
-              {displayErrors.maleAvgWeightKg && <p className="text-xs text-destructive">{displayErrors.maleAvgWeightKg}</p>}
+              {displayErrors.maleAvgWeightKg && <ErrorText>{displayErrors.maleAvgWeightKg}</ErrorText>}
             </div>
 
             <div className="space-y-2">
@@ -320,7 +321,7 @@ export function BreedInfoboxForm({ initialData, onChange, errors }: BreedInfobox
                 placeholder="e.g., 28"
                 className="h-10"
               />
-              {displayErrors.femaleAvgWeightKg && <p className="text-xs text-destructive">{displayErrors.femaleAvgWeightKg}</p>}
+              {displayErrors.femaleAvgWeightKg && <ErrorText>{displayErrors.femaleAvgWeightKg}</ErrorText>}
             </div>
           </div>
 
@@ -545,11 +546,10 @@ export function BreedInfoboxForm({ initialData, onChange, errors }: BreedInfobox
               placeholder="https://example.com/image.jpg"
               error={displayErrors.images}
             />
-            {displayErrors.images && <p className="text-xs text-destructive">{displayErrors.images}</p>}
+            {displayErrors.images && <ErrorText>{displayErrors.images}</ErrorText>}
           </div>
         </CardContent>
       </Card>
     </TooltipProvider>
   )
 }
-

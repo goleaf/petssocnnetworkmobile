@@ -51,19 +51,18 @@ export function Navigation() {
   // Listen for profile photo updates (SSE/BroadcastChannel) and patch auth store/local cache
   useApplyProfilePhotoUpdates()
 
-  const navItems = [
-    ...(isAuthenticated
-      ? [
-          { href: "/", label: "Feed", icon: Home },
-          { href: "/messages", label: "Messages", icon: MessageCircle },
-          { href: "/blog", label: "Blogs", icon: FileText },
-          { href: "/groups", label: "Groups", icon: UsersRound },
-          { href: "/wiki", label: "Wiki", icon: BookOpen },
-          { href: "/shelters", label: "Shelters", icon: Heart },
-          { href: "/search", label: "Search", icon: Search },
-        ]
-      : []),
+  const baseItems = [
+    { href: "/blog", label: "Blogs", icon: FileText },
+    { href: "/groups", label: "Groups", icon: UsersRound },
+    { href: "/wiki", label: "Wiki", icon: BookOpen },
+    { href: "/shelters", label: "Shelters", icon: Heart },
+    { href: "/search", label: "Search", icon: Search },
   ]
+  const authedItems = [
+    { href: "/", label: "Feed", icon: Home },
+    { href: "/messages", label: "Messages", icon: MessageCircle },
+  ]
+  const navItems = isAuthenticated ? [...authedItems, ...baseItems] : baseItems
 
   const handleLogout = () => {
     logout()
@@ -216,7 +215,7 @@ export function Navigation() {
                 <Link href="/login">
                   <Button variant="ghost">
                     <User className="h-4 w-4 mr-2" />
-                    Login
+                    Sign In
                   </Button>
                 </Link>
                 <Link href="/register">
@@ -287,7 +286,7 @@ export function Navigation() {
                       <Link href="/login" onClick={() => setIsOpen(false)}>
                         <Button variant="ghost" className="w-full">
                           <User className="h-4 w-4 mr-2" />
-                          Login
+                          Sign In
                         </Button>
                       </Link>
                       <Link href="/register" onClick={() => setIsOpen(false)}>

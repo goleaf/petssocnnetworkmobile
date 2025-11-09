@@ -10,6 +10,7 @@ import { Switch } from "@/components/ui/switch"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Save, Loader2, AlertCircle, Calendar, MapPin, Users, Image } from "lucide-react"
+import { ErrorText } from "@/components/ui/error-text"
 import type { GroupEvent } from "@/lib/types"
 
 interface EventCreatorProps {
@@ -170,9 +171,7 @@ export function EventCreator({
               placeholder="Event title"
               className={errors.title ? "border-destructive" : ""}
             />
-            {errors.title && (
-              <p className="text-sm text-destructive">{errors.title}</p>
-            )}
+            {errors.title && <ErrorText className="text-sm">{errors.title}</ErrorText>}
           </div>
 
           <div className="space-y-2">
@@ -187,9 +186,7 @@ export function EventCreator({
               rows={6}
               className={errors.description ? "border-destructive" : ""}
             />
-            {errors.description && (
-              <p className="text-sm text-destructive">{errors.description}</p>
-            )}
+            {errors.description && <ErrorText className="text-sm">{errors.description}</ErrorText>}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -204,9 +201,7 @@ export function EventCreator({
                 onChange={(e) => handleFieldChange("startDate", e.target.value)}
                 className={errors.startDate ? "border-destructive" : ""}
               />
-              {errors.startDate && (
-                <p className="text-sm text-destructive">{errors.startDate}</p>
-              )}
+              {errors.startDate && <ErrorText className="text-sm">{errors.startDate}</ErrorText>}
             </div>
 
             <div className="space-y-2">
@@ -218,9 +213,7 @@ export function EventCreator({
                 onChange={(e) => handleFieldChange("endDate", e.target.value)}
                 className={errors.endDate ? "border-destructive" : ""}
               />
-              {errors.endDate && (
-                <p className="text-sm text-destructive">{errors.endDate}</p>
-              )}
+              {errors.endDate && <ErrorText className="text-sm">{errors.endDate}</ErrorText>}
             </div>
           </div>
 
@@ -309,11 +302,7 @@ export function EventCreator({
                   placeholder="Leave empty for unlimited"
                   className={errors.maxAttendees ? "border-destructive" : ""}
                 />
-                {errors.maxAttendees && (
-                  <p className="text-sm text-destructive">
-                    {errors.maxAttendees}
-                  </p>
-                )}
+                {errors.maxAttendees && <ErrorText className="text-sm">{errors.maxAttendees}</ErrorText>}
               </div>
             )}
           </div>

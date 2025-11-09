@@ -142,6 +142,7 @@ export function CommentEditor({
             value={value}
             onChange={(event) => onChange(event.target.value)}
             placeholder={placeholder}
+            aria-keyshortcuts="Control+Enter Meta+Enter"
             onKeyDown={handleKeyDown}
             className="min-h-[120px] w-full border-0 bg-background focus-visible:ring-0"
           />

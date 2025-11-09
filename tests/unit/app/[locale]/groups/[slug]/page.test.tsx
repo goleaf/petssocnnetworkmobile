@@ -1,7 +1,7 @@
 import React from 'react'
 import { render, screen, waitFor, act, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import GroupPage from '../page'
+import GroupPage from '@/app/[locale]/groups/[slug]/page'
 import * as storage from '@/lib/storage'
 import * as auth from '@/lib/auth'
 
@@ -19,6 +19,8 @@ jest.mock('next/navigation', () => ({
     replace: jest.fn(),
   }),
   useParams: () => ({ slug: 'golden-retriever-owners' }),
+  useSearchParams: () => new URLSearchParams(),
+  usePathname: () => '/',
 }))
 
 const renderGroupPage = async (slug: string = 'golden-retriever-owners') => {
@@ -155,6 +157,10 @@ describe('GroupPage', () => {
     ;(storage.getGroupEventsByGroupId as jest.Mock).mockReturnValue(mockEvents)
     ;(storage.getGroupResourcesByGroupId as jest.Mock).mockReturnValue(mockResources)
     ;(storage.getGroupActivitiesByGroupId as jest.Mock).mockReturnValue(mockActivities)
+    ;(storage.getGroupMembersByGroupId as jest.Mock).mockReturnValue([])
+    ;(storage.getGroupCategories as jest.Mock).mockReturnValue([
+      { id: 'cat-dogs', name: 'Dog Communities', slug: 'dog-communities', description: '', color: '#000', subcategories: [] },
+    ])
     ;(storage.canUserViewGroup as jest.Mock).mockReturnValue(true)
     ;(storage.canUserViewGroupContent as jest.Mock).mockReturnValue(true)
     ;(storage.isUserMemberOfGroup as jest.Mock).mockReturnValue(false)
@@ -189,13 +195,13 @@ describe('GroupPage', () => {
     await renderGroupPage()
     
     await waitFor(() => {
-      expect(screen.getByText('Feed')).toBeInTheDocument()
-      expect(screen.getByText('Topics')).toBeInTheDocument()
-      expect(screen.getByText('Polls')).toBeInTheDocument()
-      expect(screen.getByText('Events')).toBeInTheDocument()
-      expect(screen.getByText('Resources')).toBeInTheDocument()
-      expect(screen.getByText('Members')).toBeInTheDocument()
-      expect(screen.getByText('Settings')).toBeInTheDocument()
+      expect(screen.getAllByText('Feed').length).toBeGreaterThan(0)
+      expect(screen.getAllByText('Topics').length).toBeGreaterThan(0)
+      expect(screen.getAllByText('Polls').length).toBeGreaterThan(0)
+      expect(screen.getAllByText('Events').length).toBeGreaterThan(0)
+      expect(screen.getAllByText('Resources').length).toBeGreaterThan(0)
+      expect(screen.getAllByText('Members').length).toBeGreaterThan(0)
+      expect(screen.getAllByText('Settings').length).toBeGreaterThan(0)
     }, { timeout: 3000 })
   })
 
@@ -393,7 +399,7 @@ describe('GroupPage', () => {
     await renderGroupPage()
     
     await waitFor(() => {
-      const topicsTab = screen.getByText('Topics')
+      const topicsTab = screen.getAllByRole('tab', { name: /topics/i })[0]
       userEvent.click(topicsTab)
     }, { timeout: 3000 })
     
@@ -407,7 +413,7 @@ describe('GroupPage', () => {
     await renderGroupPage()
     
     await waitFor(() => {
-      const topicsTab = screen.getByText('Topics')
+      const topicsTab = screen.getAllByRole('tab', { name: /topics/i })[0]
       userEvent.click(topicsTab)
     }, { timeout: 3000 })
     
@@ -458,26 +464,32 @@ describe('GroupPage', () => {
   })
 
   it('should navigate to settings page from settings tab', async () => {
+    ;(storage.canUserManageSettings as jest.Mock).mockReturnValue(true)
+    ;(auth.useAuth as jest.Mock).mockReturnValue({
+      user: { id: '1', username: 'user1' },
+      isAuthenticated: true,
+    })
     await renderGroupPage()
-    
+
     await waitFor(() => {
       const settingsTab = screen.getAllByRole('tab', { name: /settings/i })[0]
       userEvent.click(settingsTab)
     }, { timeout: 3000 })
-    
+
     await waitFor(() => {
-      const settingsLink = screen.getByText(/go to settings/i).closest('a')
-      expect(settingsLink).toHaveAttribute('href', '/groups/golden-retriever-owners/settings')
+      // Group settings form should render
+      expect(screen.getByText('Basic Information')).toBeInTheDocument()
     }, { timeout: 3000 })
   })
 
   it('should show no activity message when group has no activities', async () => {
     ;(storage.getGroupActivitiesByGroupId as jest.Mock).mockReturnValue([])
+    ;(storage.getGroupTopicsByGroupId as jest.Mock).mockReturnValue([])
     
     await renderGroupPage()
     
     await waitFor(() => {
-      expect(screen.getByText(/no activity yet/i)).toBeInTheDocument()
+      expect(screen.getByText(/no posts yet/i)).toBeInTheDocument()
     }, { timeout: 3000 })
   })
 

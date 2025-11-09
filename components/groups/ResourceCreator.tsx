@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { ErrorText } from "@/components/ui/error-text"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -176,7 +177,7 @@ export function ResourceCreator({ initialValues, onSubmit, onCancel }: ResourceC
               placeholder={t("titlePlaceholder")}
               className={errors.title ? "border-destructive" : ""}
             />
-            {errors.title && <p className="text-sm text-destructive">{errors.title}</p>}
+            {errors.title && <ErrorText className="text-sm">{errors.title}</ErrorText>}
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
@@ -223,7 +224,7 @@ export function ResourceCreator({ initialValues, onSubmit, onCancel }: ResourceC
                   inputMode="url"
                   autoComplete="url"
                 />
-                {errors.url && <p className="text-sm text-destructive">{errors.url}</p>}
+                {errors.url && <ErrorText className="text-sm">{errors.url}</ErrorText>}
               </div>
             )}
           </div>
@@ -265,7 +266,7 @@ export function ResourceCreator({ initialValues, onSubmit, onCancel }: ResourceC
                 {t("addTag")}
               </Button>
             </div>
-            {errors.tags && <p className="text-sm text-destructive">{errors.tags}</p>}
+            {errors.tags && <ErrorText className="text-sm">{errors.tags}</ErrorText>}
             {values.tags.length > 0 && (
               <div className="flex flex-wrap gap-2">
                 {values.tags.map((tag) => (
@@ -305,5 +306,4 @@ export function ResourceCreator({ initialValues, onSubmit, onCancel }: ResourceC
     </form>
   )
 }
-
 

@@ -146,7 +146,7 @@ function ArrayTagInput({
           className="flex-1 min-w-[120px] border-0 outline-none bg-transparent text-sm placeholder:text-muted-foreground"
         />
       </div>
-      {error && <p className="text-xs text-destructive">{error}</p>}
+      {error && <ErrorText>{error}</ErrorText>}
     </div>
   )
 }
@@ -903,7 +903,7 @@ export function WikiForm({ mode, initialData, onSubmit, onCancel }: WikiFormProp
                 className={`min-h-[80px] ${errors.reasonForChange ? "border-destructive" : ""}`}
                 required
               />
-              {errors.reasonForChange && <p className="text-xs text-destructive">{errors.reasonForChange}</p>}
+              {errors.reasonForChange && <ErrorText>{errors.reasonForChange}</ErrorText>}
               <p className="text-xs text-muted-foreground">
                 {(formData.reasonForChange || "").length}/500 characters
               </p>

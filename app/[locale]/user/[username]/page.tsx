@@ -104,6 +104,7 @@ import { useProfileUpdates } from "@/lib/profile-updates"
 import { recordProfileView, classifyReferrer, recordMediaView, recordLinkClick } from "@/lib/profile-analytics"
 import { ProfileInsights } from "@/components/profile/profile-insights"
 import { AudienceInsights } from "@/components/profile/audience-insights"
+import ProfileHeader from "@/components/profile/ProfileHeader"
 
 const STORAGE_KEYS_TO_WATCH = ["pet_social_users", "pet_social_pets", "pet_social_blog_posts"]
 
@@ -401,134 +402,12 @@ export default function UserProfilePage() {
             This user recently changed their username from @{new URLSearchParams(window.location.search).get('renamed_from')} to @{user.username}.
           </div>
         )}
-        {/* Profile Header */}
+        {/* New unified profile header */}
+        <ProfileHeader user={user} isOwnProfile={isOwnProfile} postsCount={blogPosts.length} />
+
+        {/* Profile Summary */}
         <Card className="mb-6 shadow-sm border bg-card">
           <CardContent className="p-6 sm:p-8 lg:p-10">
-            <div className="flex flex-col sm:flex-row gap-6 sm:gap-8">
-              {/* Profile Picture */}
-              <div className="flex justify-center sm:justify-start" ref={avatarRef}>
-                <Avatar className="h-28 w-28 sm:h-32 sm:w-32 lg:h-36 lg:w-36 border-4 border-background shadow-lg ring-2 ring-primary/20">
-                  <AvatarImage src={user.avatar || "/placeholder.svg"} alt={user.fullName} />
-                  <AvatarFallback className="text-3xl sm:text-4xl lg:text-5xl bg-primary/10 text-primary">
-                    {user.fullName.charAt(0)}
-                  </AvatarFallback>
-                </Avatar>
-              </div>
-
-              {/* Profile Info */}
-              <div className="flex-1 space-y-4 min-w-0">
-                {/* Name, Username, and Action Buttons */}
-                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-                  <div className="flex-1 min-w-0 space-y-2">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground truncate">
-                        {user.fullName}
-                      </h1>
-                      <BadgeDisplay user={user} size="lg" />
-                      <RoleBadge role={user.role} size="md" />
-                      <TierBadge user={user} size="md" showPoints={isOwnProfile} />
-                    </div>
-                    <p className="text-muted-foreground text-sm sm:text-base flex items-center gap-2">
-                      @{user.username}
-                      {isVerified && (
-                        <span className="inline-flex items-center justify-center h-5 w-5" title="Verified account">
-                          <CheckCircle2 className="h-4 w-4 text-sky-500" />
-                        </span>
-                      )}
-                      {(() => {
-                        const pct = profileOverview?.completionPercent ?? 0
-                        const tier = pct <= 30 ? "Bronze" : pct <= 60 ? "Silver" : pct <= 85 ? "Gold" : "Platinum"
-                        const color = tier === "Bronze" ? "text-amber-600" : tier === "Silver" ? "text-slate-400" : tier === "Gold" ? "text-yellow-500" : "text-indigo-500"
-                        return (
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-muted/60" aria-label={`Profile strength: ${tier}`}>
-                                  <Award className={`h-3.5 w-3.5 ${color}`} />
-                                </span>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p>Profile strength: {tier}. This user has a complete, verified profile.</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        )
-                      })()}
-                    </p>
-                    {mutualFollowersCount > 0 && !isOwnProfile && (
-                      <Badge variant="secondary" className="w-fit mt-1">
-                        {mutualFollowersCount} mutual follower{mutualFollowersCount !== 1 ? "s" : ""}
-                      </Badge>
-                    )}
-                    {user.isPro && user.proExpiresAt && (
-                      <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
-                        Pro member until {formatDate(user.proExpiresAt)}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Action Buttons */}
-                  <div className="flex gap-2 items-center flex-shrink-0">
-                    {isOwnProfile ? (
-                      <EditButton onClick={() => router.push(`/user/${user.username}/edit`)}>
-                        <Edit2 className="h-4 w-4 mr-2" />
-                        Edit Profile
-                      </EditButton>
-                    ) : (
-                      isAuthenticated && (
-                        <>
-                          {isInteractionBlocked ? (
-                            <Badge variant="secondary" className="flex items-center gap-2 px-3 py-2">
-                              <Ban className="h-4 w-4" />
-                              Blocked
-                            </Badge>
-                          ) : (
-                            <>
-                              {isFollowing ? (
-                                <Button
-                                  onClick={handleFollow}
-                                  variant="outline"
-                                  disabled={blockActionPending}
-                                >
-                                  <UserMinus className="h-4 w-4 mr-2" />
-                                  Unfollow
-                                </Button>
-                              ) : canFollow ? (
-                                <Button
-                                  onClick={handleFollow}
-                                  variant="default"
-                                  disabled={blockActionPending}
-                                >
-                                  <UserPlus className="h-4 w-4 mr-2" />
-                                  Follow
-                                </Button>
-                              ) : null}
-                            </>
-                          )}
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="outline" size="icon">
-                                <MoreHorizontal className="h-4 w-4" />
-                                <span className="sr-only">Profile actions</span>
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem
-                                onClick={blockMenuAction}
-                                disabled={blockActionPending}
-                                className={`flex items-center gap-2 ${viewerHasBlocked ? "" : "text-destructive focus:text-destructive"}`}
-                              >
-                                <Ban className="h-4 w-4" />
-                                {blockMenuLabel}
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </>
-                      )
-                    )}
-                  </div>
-                </div>
-
                 {/* Bio */}
                 {user.bio && (
                   <p className="text-muted-foreground text-sm sm:text-base leading-relaxed max-w-2xl">
@@ -663,8 +542,6 @@ export default function UserProfilePage() {
                     <AudienceInsights profileId={user.id} />
                   </div>
                 )}
-              </div>
-            </div>
           </CardContent>
         </Card>
 

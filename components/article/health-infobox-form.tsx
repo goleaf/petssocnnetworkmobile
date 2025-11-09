@@ -14,6 +14,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { HelpCircle, X, Stethoscope } from "lucide-react"
+import { ErrorText } from "@/components/ui/error-text"
 import { healthInfoboxSchema, type HealthInfoboxInput } from "@/lib/schemas/health-infobox"
 import { ZodIssue } from "zod"
 
@@ -95,7 +96,7 @@ function ArrayTagInput({
           className="flex-1 min-w-[120px] border-0 outline-none bg-transparent text-sm placeholder:text-muted-foreground"
         />
       </div>
-      {error && <p className="text-xs text-destructive">{error}</p>}
+      {error && <ErrorText>{error}</ErrorText>}
     </div>
   )
 }
@@ -186,7 +187,7 @@ export function HealthInfoboxForm({ initialData, onChange, errors }: HealthInfob
               placeholder="e.g., Canine Parvovirus"
               className={`h-10 ${displayErrors.conditionName ? "border-destructive" : ""}`}
             />
-            {displayErrors.conditionName && <p className="text-xs text-destructive">{displayErrors.conditionName}</p>}
+            {displayErrors.conditionName && <ErrorText>{displayErrors.conditionName}</ErrorText>}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -319,4 +320,3 @@ export function HealthInfoboxForm({ initialData, onChange, errors }: HealthInfob
     </TooltipProvider>
   )
 }
-

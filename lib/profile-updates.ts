@@ -45,16 +45,19 @@ export function useProfileUpdates(onEvent: (evt: ProfileUpdateEvent) => void) {
     }
 
     // Server-Sent Events (server -> clients)
-    const ev = new EventSource('/api/events')
-    ev.onmessage = (e) => {
-      try {
-        const data = JSON.parse(e.data) as ProfileUpdateEvent
-        if (data?.type === 'profilePhotoUpdated') onEvent(data)
-      } catch {}
+    let ev: EventSource | null = null
+    if (typeof window !== 'undefined' && typeof (window as any).EventSource !== 'undefined') {
+      ev = new (window as any).EventSource('/api/events')
+      ev.onmessage = (e: MessageEvent) => {
+        try {
+          const data = JSON.parse((e as any).data) as ProfileUpdateEvent
+          if (data?.type === 'profilePhotoUpdated') onEvent(data)
+        } catch {}
+      }
     }
 
     return () => {
-      try { ev.close() } catch {}
+      try { ev?.close() } catch {}
       if (bc) {
         try { bc.close() } catch {}
       }

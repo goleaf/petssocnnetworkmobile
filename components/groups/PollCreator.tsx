@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { ErrorText } from "@/components/ui/error-text"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -163,9 +164,7 @@ export function PollCreator({
               placeholder="What would you like to ask?"
               className={errors.question ? "border-destructive" : ""}
             />
-            {errors.question && (
-              <p className="text-sm text-destructive">{errors.question}</p>
-            )}
+            {errors.question && <ErrorText className="text-sm">{errors.question}</ErrorText>}
           </div>
 
           <div className="space-y-2">
@@ -194,9 +193,7 @@ export function PollCreator({
                 </div>
               ))}
             </div>
-            {errors.options && (
-              <p className="text-sm text-destructive">{errors.options}</p>
-            )}
+            {errors.options && <ErrorText className="text-sm">{errors.options}</ErrorText>}
             {formData.options.length < 10 && (
               <Button
                 type="button"
@@ -265,4 +262,3 @@ export function PollCreator({
     </form>
   )
 }
-

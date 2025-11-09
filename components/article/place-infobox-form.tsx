@@ -15,6 +15,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { HelpCircle, X, MapPin } from "lucide-react"
+import { ErrorText } from "@/components/ui/error-text"
 import { placeInfoboxSchema, type PlaceInfoboxInput } from "@/lib/schemas/place-infobox"
 import { ZodIssue } from "zod"
 
@@ -96,7 +97,7 @@ function ArrayTagInput({
           className="flex-1 min-w-[120px] border-0 outline-none bg-transparent text-sm placeholder:text-muted-foreground"
         />
       </div>
-      {error && <p className="text-xs text-destructive">{error}</p>}
+      {error && <ErrorText>{error}</ErrorText>}
     </div>
   )
 }
@@ -197,7 +198,7 @@ export function PlaceInfoboxForm({ initialData, onChange, errors }: PlaceInfobox
               placeholder="e.g., Central Park Dog Run"
               className={`h-10 ${displayErrors.placeName ? "border-destructive" : ""}`}
             />
-            {displayErrors.placeName && <p className="text-xs text-destructive">{displayErrors.placeName}</p>}
+            {displayErrors.placeName && <ErrorText>{displayErrors.placeName}</ErrorText>}
           </div>
 
           <div className="space-y-2">
@@ -211,7 +212,7 @@ export function PlaceInfoboxForm({ initialData, onChange, errors }: PlaceInfobox
               placeholder="e.g., 123 Main Street"
               className={`h-10 ${displayErrors.address ? "border-destructive" : ""}`}
             />
-            {displayErrors.address && <p className="text-xs text-destructive">{displayErrors.address}</p>}
+            {displayErrors.address && <ErrorText>{displayErrors.address}</ErrorText>}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -225,7 +226,7 @@ export function PlaceInfoboxForm({ initialData, onChange, errors }: PlaceInfobox
                 onChange={(e) => handleFieldChange("city", e.target.value)}
                 className={`h-10 ${displayErrors.city ? "border-destructive" : ""}`}
               />
-              {displayErrors.city && <p className="text-xs text-destructive">{displayErrors.city}</p>}
+              {displayErrors.city && <ErrorText>{displayErrors.city}</ErrorText>}
             </div>
 
             <div className="space-y-2">
@@ -250,7 +251,7 @@ export function PlaceInfoboxForm({ initialData, onChange, errors }: PlaceInfobox
                 onChange={(e) => handleFieldChange("country", e.target.value)}
                 className={`h-10 ${displayErrors.country ? "border-destructive" : ""}`}
               />
-              {displayErrors.country && <p className="text-xs text-destructive">{displayErrors.country}</p>}
+              {displayErrors.country && <ErrorText>{displayErrors.country}</ErrorText>}
             </div>
           </div>
 
@@ -267,7 +268,7 @@ export function PlaceInfoboxForm({ initialData, onChange, errors }: PlaceInfobox
                 onChange={(e) => handleNumberChange("latitude", e.target.value)}
                 className={`h-10 ${displayErrors.latitude ? "border-destructive" : ""}`}
               />
-              {displayErrors.latitude && <p className="text-xs text-destructive">{displayErrors.latitude}</p>}
+              {displayErrors.latitude && <ErrorText>{displayErrors.latitude}</ErrorText>}
             </div>
 
             <div className="space-y-2">
@@ -282,7 +283,7 @@ export function PlaceInfoboxForm({ initialData, onChange, errors }: PlaceInfobox
                 onChange={(e) => handleNumberChange("longitude", e.target.value)}
                 className={`h-10 ${displayErrors.longitude ? "border-destructive" : ""}`}
               />
-              {displayErrors.longitude && <p className="text-xs text-destructive">{displayErrors.longitude}</p>}
+              {displayErrors.longitude && <ErrorText>{displayErrors.longitude}</ErrorText>}
             </div>
           </div>
 
@@ -396,4 +397,3 @@ export function PlaceInfoboxForm({ initialData, onChange, errors }: PlaceInfobox
     </TooltipProvider>
   )
 }
-

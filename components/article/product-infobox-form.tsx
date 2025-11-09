@@ -15,6 +15,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { HelpCircle, X, Package } from "lucide-react"
+import { ErrorText } from "@/components/ui/error-text"
 import { productInfoboxSchema, type ProductInfoboxInput } from "@/lib/schemas/product-infobox"
 import { ZodIssue } from "zod"
 
@@ -96,7 +97,7 @@ function ArrayTagInput({
           className="flex-1 min-w-[120px] border-0 outline-none bg-transparent text-sm placeholder:text-muted-foreground"
         />
       </div>
-      {error && <p className="text-xs text-destructive">{error}</p>}
+      {error && <ErrorText>{error}</ErrorText>}
     </div>
   )
 }
@@ -197,7 +198,7 @@ export function ProductInfoboxForm({ initialData, onChange, errors }: ProductInf
               placeholder="e.g., Interactive Puzzle Toy"
               className={`h-10 ${displayErrors.productName ? "border-destructive" : ""}`}
             />
-            {displayErrors.productName && <p className="text-xs text-destructive">{displayErrors.productName}</p>}
+            {displayErrors.productName && <ErrorText>{displayErrors.productName}</ErrorText>}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -424,4 +425,3 @@ export function ProductInfoboxForm({ initialData, onChange, errors }: ProductInf
     </TooltipProvider>
   )
 }
-

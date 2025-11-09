@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { ErrorText } from "@/components/ui/error-text"
 import { Checkbox } from "@/components/ui/checkbox"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/auth"
@@ -369,7 +370,7 @@ export function RegisterForm({ onSuccess, onSwitchToLogin }: RegisterFormProps) 
                 required
               />
             </div>
-            {emailError && <p className="text-xs text-destructive">{emailError}</p>}
+            {emailError && <ErrorText>{emailError}</ErrorText>}
           </div>
           <div className="space-y-2">
             <Label htmlFor="password" className="text-sm sm:text-base">Password</Label>
@@ -414,7 +415,7 @@ export function RegisterForm({ onSuccess, onSwitchToLogin }: RegisterFormProps) 
                 />
               </div>
             </div>
-            {passwordError && <p className="text-xs text-destructive">{passwordError}</p>}
+            {passwordError && <ErrorText>{passwordError}</ErrorText>}
           </div>
           <div className="space-y-2">
             <Label htmlFor="confirmPassword" className="text-sm sm:text-base">Confirm Password</Label>
@@ -443,7 +444,7 @@ export function RegisterForm({ onSuccess, onSwitchToLogin }: RegisterFormProps) 
               </button>
             </div>
           </div>
-          {passwordMatchError && <p className="text-xs text-destructive">{passwordMatchError}</p>}
+          {passwordMatchError && <ErrorText>{passwordMatchError}</ErrorText>}
           <div className="space-y-2">
             <Label htmlFor="dateOfBirth" className="text-sm sm:text-base">Date of Birth</Label>
             <div className="relative">
@@ -458,7 +459,7 @@ export function RegisterForm({ onSuccess, onSwitchToLogin }: RegisterFormProps) 
                 required
               />
             </div>
-            {dateOfBirthError && <p className="text-xs text-destructive">{dateOfBirthError}</p>}
+            {dateOfBirthError && <ErrorText>{dateOfBirthError}</ErrorText>}
           </div>
           <div className="flex items-start gap-3 rounded-md border border-dashed border-muted p-3">
             <Checkbox
@@ -482,7 +483,7 @@ export function RegisterForm({ onSuccess, onSwitchToLogin }: RegisterFormProps) 
               <p className="text-xs text-muted-foreground">
                 You must accept these policies to create an account.
               </p>
-              {termsError && <p className="text-xs text-destructive">{termsError}</p>}
+              {termsError && <ErrorText>{termsError}</ErrorText>}
             </div>
           </div>
           {error && <p className="text-xs sm:text-sm text-destructive">{error}</p>}

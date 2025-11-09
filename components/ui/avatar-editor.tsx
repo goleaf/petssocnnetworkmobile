@@ -126,6 +126,7 @@ export function AvatarEditor({
             tabIndex={0}
             role="region"
             aria-label="Avatar cropping area"
+            aria-keyshortcuts="ArrowLeft ArrowRight ArrowUp ArrowDown Shift+ArrowLeft Shift+ArrowRight Shift+ArrowUp Shift+ArrowDown + - [ ] Enter"
             aria-describedby={instructionsId}
             onKeyDown={(e) => {
               const NUDGE = e.shiftKey ? 10 : 5

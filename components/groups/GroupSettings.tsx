@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { ErrorText } from "@/components/ui/error-text"
 import { Badge } from "@/components/ui/badge"
 import { FormActions } from "@/components/ui/form-actions"
 import { X, Lock, Eye, EyeOff, Save, Loader2, AlertCircle, CheckCircle2, GraduationCap, Heart, HeartHandshake, UtensilsCrossed } from "lucide-react"
@@ -272,9 +273,7 @@ export function GroupSettings({ group, onSave, onCancel }: GroupSettingsProps) {
               placeholder="Enter group name"
               className={errors.name ? "border-destructive" : ""}
             />
-            {errors.name && (
-              <p className="text-sm text-destructive">{errors.name}</p>
-            )}
+            {errors.name && <ErrorText className="text-sm">{errors.name}</ErrorText>}
           </div>
 
           <div className="space-y-2">
@@ -289,9 +288,7 @@ export function GroupSettings({ group, onSave, onCancel }: GroupSettingsProps) {
               rows={4}
               className={errors.description ? "border-destructive" : ""}
             />
-            {errors.description && (
-              <p className="text-sm text-destructive">{errors.description}</p>
-            )}
+            {errors.description && <ErrorText className="text-sm">{errors.description}</ErrorText>}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -324,9 +321,7 @@ export function GroupSettings({ group, onSave, onCancel }: GroupSettingsProps) {
                   })}
                 </SelectContent>
               </Select>
-              {errors.categoryId && (
-                <p className="text-sm text-destructive">{errors.categoryId}</p>
-              )}
+              {errors.categoryId && <ErrorText className="text-sm">{errors.categoryId}</ErrorText>}
             </div>
 
             <div className="space-y-2">

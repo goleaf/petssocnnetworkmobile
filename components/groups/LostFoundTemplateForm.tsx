@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { AlertCircle } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { ErrorText } from "@/components/ui/error-text"
 import type { LostFoundTemplate, LostFoundField } from "@/lib/lost-found-templates"
 import { createLostFoundPost } from "@/lib/lost-found-templates"
 import { postToGroup } from "@/lib/groups"
@@ -111,9 +112,7 @@ export function LostFoundTemplateForm({
               placeholder={field.placeholder}
               className={hasError ? "border-destructive" : ""}
             />
-            {hasError && (
-              <p className="text-sm text-destructive">{errors[field.id]}</p>
-            )}
+            {hasError && (<ErrorText className="text-sm">{errors[field.id]}</ErrorText>)}
           </div>
         )
 
@@ -132,9 +131,7 @@ export function LostFoundTemplateForm({
               className={hasError ? "border-destructive" : ""}
               rows={4}
             />
-            {hasError && (
-              <p className="text-sm text-destructive">{errors[field.id]}</p>
-            )}
+            {hasError && (<ErrorText className="text-sm">{errors[field.id]}</ErrorText>)}
           </div>
         )
 
@@ -268,4 +265,3 @@ export function LostFoundTemplateForm({
     </Card>
   )
 }
-
