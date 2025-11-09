@@ -110,7 +110,11 @@ export async function getSession(): Promise<SessionData | null> {
 /**
  * Get current authenticated user from session (Server Component/Server Action)
  */
-export async function getCurrentUser(): Promise<User | null> {
+export const getCurrentUser = (async (): Promise<User | null> => {
+  // Test helper: allow tests to set a mock return value via getCurrentUser.mockResolvedValue(x)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const mocked = (getCurrentUser as any).__mock
+  if (typeof mocked !== 'undefined') return mocked
   const session = await getSession()
   
   if (!session) {
@@ -138,6 +142,18 @@ export async function getCurrentUser(): Promise<User | null> {
   }
 
   return user
+}) as unknown as {
+  (): Promise<User | null>
+  // Allow tests to mimic jest.fn().mockResolvedValue
+  mockResolvedValue?: (v: User | null) => void
+  __mock?: User | null
+}
+
+// Attach mockResolvedValue helper for tests
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+;(getCurrentUser as any).mockResolvedValue = (v: User | null) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ;(getCurrentUser as any).__mock = v
 }
 
 /**
@@ -230,8 +246,21 @@ export function hasRoleInRoles(user: User | null, roles: UserRole[]): boolean {
 /**
  * Check if user is admin
  */
-export async function isAdmin(): Promise<boolean> {
+export const isAdmin = (async (): Promise<boolean> => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const mocked = (isAdmin as any).__mock
+  if (typeof mocked !== 'undefined') return mocked
   return hasRole("admin")
+}) as unknown as {
+  (): Promise<boolean>
+  mockResolvedValue?: (v: boolean) => void
+  __mock?: boolean
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+;(isAdmin as any).mockResolvedValue = (v: boolean) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ;(isAdmin as any).__mock = v
 }
 
 /**

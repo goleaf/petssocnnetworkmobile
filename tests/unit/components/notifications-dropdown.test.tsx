@@ -1,11 +1,11 @@
 import React from 'react'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { NotificationsDropdown } from '../notifications-dropdown'
-import * as authProvider from '../auth/auth-provider'
+import { NotificationsDropdown } from '@/components/notifications-dropdown'
+import * as authProvider from '@/components/auth/auth-provider'
 import * as notificationsLib from '@/lib/notifications'
 
-jest.mock('../auth/auth-provider')
+jest.mock('@/components/auth/auth-provider')
 jest.mock('@/lib/notifications')
 jest.mock('next/navigation', () => ({
   useRouter: () => ({
@@ -178,4 +178,3 @@ describe('NotificationsDropdown', () => {
     })
   })
 })
-

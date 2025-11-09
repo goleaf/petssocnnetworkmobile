@@ -786,7 +786,11 @@ export default function NotificationsPage() {
                         onClick={() => handleNotificationClick(notification)}
                         className="text-left w-full"
                       >
-                        <p className="text-sm font-medium leading-6">{notification.message}</p>
+                        <p className="text-sm font-medium leading-6">
+                          {settings?.previewContent === false
+                            ? (notification.type === 'message' ? 'New message' : 'New notification')
+                            : notification.message}
+                        </p>
                         {typeof notification.metadata?.targetTitle === "string" && (
                           <p className="text-xs text-muted-foreground">
                             {(notification.metadata?.targetTypeLabel as string | undefined) ?? "Item"}: {notification.metadata.targetTitle}

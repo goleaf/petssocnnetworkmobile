@@ -217,6 +217,8 @@ export function createDefaultNotificationSettings(userId: string): NotificationS
       categories: [...DEFAULT_DIGEST_PREFERENCES.categories],
     },
     mutedCategories: [...DEFAULT_MUTED_CATEGORIES],
+    previewContent: true,
+    showOnLockScreen: true,
     quietHours: {
       enabled: false,
       start: "22:00",

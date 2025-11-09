@@ -6,6 +6,7 @@ import { CardHeaderWithIcon } from "@/components/ui/card-header-with-icon"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { ErrorText } from "@/components/ui/error-text"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
@@ -58,8 +59,9 @@ interface LabelWithTooltipProps {
 }
 
 function LabelWithTooltip({ htmlFor, tooltip, required, icon, children }: LabelWithTooltipProps & { icon?: any }) {
+  const labelId = htmlFor ? `${htmlFor}-label` : undefined
   const labelContent = (
-    <Label htmlFor={htmlFor} required={required} className="flex items-center gap-1.5">
+    <Label id={labelId} htmlFor={htmlFor} required={required} className="flex items-center gap-1.5">
       {icon && <span className="flex items-center">{icon}</span>}
       {children}
       {tooltip && (
@@ -377,7 +379,7 @@ export function BlogForm({
                   value={formData.petId} 
                   onValueChange={(value) => handleFieldChange("petId", value)}
                 >
-                  <SelectTrigger className={`h-10 w-full ${errors.petId ? "border-destructive" : ""}`}>
+                  <SelectTrigger className={`h-10 w-full ${errors.petId ? "border-destructive" : ""}`} aria-labelledby="petId-label">
                     <SelectValue placeholder="Select a pet">
                       {selectedPet ? (
                         <div className="flex items-center gap-2">
@@ -404,7 +406,7 @@ export function BlogForm({
                     ))}
                   </SelectContent>
                 </Select>
-                {errors.petId && <p className="text-xs text-destructive">{errors.petId}</p>}
+                {errors.petId && <ErrorText>{errors.petId}</ErrorText>}
               </div>
 
               <div className="space-y-2">
@@ -455,7 +457,7 @@ export function BlogForm({
                 className={`h-10 ${errors.title ? "border-destructive" : ""}`}
                 required
               />
-              {errors.title && <p className="text-xs text-destructive">{errors.title}</p>}
+              {errors.title && <ErrorText>{errors.title}</ErrorText>}
               <p className="text-xs text-muted-foreground">
                 {formData.title.length}/200 characters
               </p>
@@ -501,7 +503,7 @@ export function BlogForm({
                   placeholder="Share your story... Use markdown for formatting. Add hashtags with #tag"
                 />
               </div>
-              {errors.content && <p className="text-xs text-destructive">{errors.content}</p>}
+              {errors.content && <ErrorText>{errors.content}</ErrorText>}
               <p className="text-xs text-muted-foreground">
                 {formData.content.length} characters {formData.content.length < 50 && `(minimum 50 required)`}
               </p>

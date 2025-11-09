@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useState, useRef } from "react"
+import { ErrorText } from "@/components/ui/error-text"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { CardHeaderWithIcon } from "@/components/ui/card-header-with-icon"
 import { Button } from "@/components/ui/button"
@@ -444,7 +445,7 @@ export function WikiForm({ mode, initialData, onSubmit, onCancel }: WikiFormProp
                 className={`h-10 ${errors.title ? "border-destructive" : ""}`}
                 required
               />
-              {errors.title && <p className="text-xs text-destructive">{errors.title}</p>}
+              {errors.title && <ErrorText>{errors.title}</ErrorText>}
               <p className="text-xs text-muted-foreground">
                 {formData.title.length}/200 characters
               </p>
@@ -523,7 +524,7 @@ export function WikiForm({ mode, initialData, onSubmit, onCancel }: WikiFormProp
                     </SelectItem>
                   </SelectContent>
                 </Select>
-                {errors.category && <p className="text-xs text-destructive">{errors.category}</p>}
+                {errors.category && <ErrorText>{errors.category}</ErrorText>}
               </div>
 
               {availableSubcategories.length > 0 && (
@@ -860,7 +861,7 @@ export function WikiForm({ mode, initialData, onSubmit, onCancel }: WikiFormProp
                   placeholder="Write your article content here... You can use Markdown formatting."
                 />
               </div>
-              {errors.content && <p className="text-xs text-destructive">{errors.content}</p>}
+              {errors.content && <ErrorText>{errors.content}</ErrorText>}
               <p className="text-xs text-muted-foreground">
                 {formData.content.length} characters {formData.content.length < 50 && `(minimum 50 required)`}
               </p>
@@ -925,4 +926,3 @@ export function WikiForm({ mode, initialData, onSubmit, onCancel }: WikiFormProp
     </TooltipProvider>
   )
 }
-

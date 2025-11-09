@@ -223,7 +223,7 @@ function buildNotificationUrl(notification: AppNotification): string {
   return "/notifications"
 }
 
-function getNotificationTitle(notification: AppNotification): string {
+export function getNotificationTitle(notification: AppNotification): string {
   switch (notification.type) {
     case "follow":
       return "New Follower"
@@ -256,17 +256,26 @@ export async function maybeTriggerPushNotification(notification: AppNotification
   if (!allowsPushNotification(notification)) return false
   if (Notification.permission !== "granted") return false
 
+  const settings = getNotificationSettingsForUser(notification.userId)
   const title = getNotificationTitle(notification)
+  // Mask preview content if user disabled previews
+  const previewAllowed = settings?.previewContent !== false
+  const maskedBody = previewAllowed ? notification.message : title
+
   const options: NotificationOptions = {
-    body: notification.message,
+    body: maskedBody,
     tag: notification.id,
     data: {
       url: buildNotificationUrl(notification),
       notificationId: notification.id,
+      // Stub: enforcement hint for native layers to hide on lock screen
+      lockScreenPolicy: settings?.showOnLockScreen === false ? "hide" : "show",
     },
     icon: "/icon-192x192.png",
     badge: "/icon-192x192.png",
     renotify: false,
+    // Stub: silence sounds if previews are hidden on lock screen or quiet hours in effect (extend later)
+    silent: settings?.showOnLockScreen === false,
   }
 
   try {

@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useState, useEffect, useRef } from "react"
+import { ErrorText } from "@/components/ui/error-text"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -181,7 +182,7 @@ function ArrayTagInput({
           className="flex-1 min-w-[120px] border-0 outline-none bg-transparent text-sm placeholder:text-muted-foreground"
         />
       </div>
-      {error && <p className="text-xs text-destructive">{error}</p>}
+      {error && <ErrorText>{error}</ErrorText>}
     </div>
   )
 }
@@ -696,7 +697,7 @@ export function PetForm({ mode, initialData, onSubmit, onCancel, petName }: PetF
                     className={`h-10 ${errors.name ? "border-destructive" : ""}`}
                     required
                   />
-                  {errors.name && <p className="text-xs text-destructive">{errors.name}</p>}
+                  {errors.name && <ErrorText>{errors.name}</ErrorText>}
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -828,7 +829,7 @@ export function PetForm({ mode, initialData, onSubmit, onCancel, petName }: PetF
                         Age updates automatically from the selected birthday.
                       </p>
                     )}
-                    {errors.age && <p className="text-xs text-destructive">{errors.age}</p>}
+                    {errors.age && <ErrorText>{errors.age}</ErrorText>}
                   </div>
 
                   <div className="space-y-2">
@@ -913,7 +914,7 @@ export function PetForm({ mode, initialData, onSubmit, onCancel, petName }: PetF
                       placeholder="Enter microchip ID if available"
                       className={`h-10 ${errors.microchipId ? "border-destructive" : ""}`}
                     />
-                    {errors.microchipId && <p className="text-xs text-destructive">{errors.microchipId}</p>}
+                    {errors.microchipId && <ErrorText>{errors.microchipId}</ErrorText>}
                   </div>
 
                   <div className="space-y-2">
@@ -999,7 +1000,7 @@ export function PetForm({ mode, initialData, onSubmit, onCancel, petName }: PetF
                     rows={4}
                     className={`resize-none ${errors.bio ? "border-destructive" : ""}`}
                   />
-                  {errors.bio && <p className="text-xs text-destructive">{errors.bio}</p>}
+                  {errors.bio && <ErrorText>{errors.bio}</ErrorText>}
               <p className="text-xs text-muted-foreground">
                 {formData.bio.length}/1000 characters
               </p>

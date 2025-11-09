@@ -1,4 +1,4 @@
-import { GET } from "../feed/route"
+import { GET } from "@/app/api/posts/feed/route"
 import { NextRequest } from "next/server"
 import { initializeStorage, toggleFollow } from "@/lib/storage"
 import type { User, Pet, BlogPost } from "@/lib/types"
@@ -458,4 +458,3 @@ describe("GET /api/posts/feed", () => {
     expect(response.status).toBe(404)
   })
 })
-

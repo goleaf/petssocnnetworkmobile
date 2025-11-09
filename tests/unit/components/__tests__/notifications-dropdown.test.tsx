@@ -1,11 +1,11 @@
 import React from 'react'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { NotificationsDropdown } from '../notifications-dropdown'
-import * as authProvider from '../auth/auth-provider'
+import { NotificationsDropdown } from '@/components/notifications-dropdown'
+import * as authProvider from '@/components/auth/auth-provider'
 import * as notificationsLib from '@/lib/notifications'
 
-jest.mock('../auth/auth-provider')
+jest.mock('@/components/auth/auth-provider')
 jest.mock('@/lib/notifications')
 jest.mock('next/navigation', () => ({
   useRouter: () => ({
@@ -177,5 +177,33 @@ describe('NotificationsDropdown', () => {
       expect(screen.getByText(/view all notifications/i)).toBeInTheDocument()
     })
   })
-})
 
+  it('should mask preview content when previews are disabled', async () => {
+    ;(notificationsLib.getNotificationSettings as jest.Mock).mockReturnValue({ previewContent: false })
+    ;(notificationsLib.getNotificationsByUserId as jest.Mock).mockReturnValue([
+      {
+        id: 'm1',
+        userId: '1',
+        actorId: '2',
+        targetType: 'user' as const,
+        targetId: '2',
+        type: 'message' as const,
+        message: 'Secret DM content',
+        read: false,
+        createdAt: new Date().toISOString(),
+      },
+    ])
+
+    render(<NotificationsDropdown />)
+
+    const button = screen.getByRole('button')
+    await userEvent.click(button)
+
+    await waitFor(() => {
+      expect(screen.getByText('Notifications')).toBeInTheDocument()
+      // Masked preview should be shown instead of the message body
+      expect(screen.getByText('New message')).toBeInTheDocument()
+      expect(screen.queryByText('Secret DM content')).not.toBeInTheDocument()
+    })
+  })
+})

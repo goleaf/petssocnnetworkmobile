@@ -6,8 +6,8 @@
 /* eslint-disable @typescript-eslint/no-floating-promises */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 
-import {expect} from 'vitest'
-import * as matchers from '../../matchers'
+import { expect } from '@jest/globals'
+import * as matchers from '@testing-library/jest-dom/matchers'
 
 expect.extend(matchers)
 

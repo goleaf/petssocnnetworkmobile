@@ -18,8 +18,9 @@ export async function GET(request: NextRequest) {
     const params = {
       viewerId: searchParams.get("viewerId"),
       scope: searchParams.get("scope") || "all",
-      afterCursor: searchParams.get("afterCursor"),
-      limit: searchParams.get("limit"),
+      afterCursor: searchParams.get("afterCursor") ?? undefined,
+      // Use undefined when not provided so zod .default applies
+      limit: (searchParams.get("limit") ?? undefined) as unknown as string | undefined,
     }
 
     const validation = getFeedSchema.safeParse(params)
@@ -130,4 +131,3 @@ export async function GET(request: NextRequest) {
     )
   }
 }
-

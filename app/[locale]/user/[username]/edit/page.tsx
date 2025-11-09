@@ -998,7 +998,7 @@ export default function EditProfilePage({ params }: { params: Promise<{ username
                       )}
                     </div>
 
-                    <div className="w-full space-y-4">
+                    <div className="w-full space-y-4" aria-busy={isUploading ? 'true' : undefined}>
                       <div className="space-y-2">
                         <FormLabel htmlFor="avatar-upload" icon={ImageIcon} className="text-base font-medium">
                           Profile Picture
@@ -1010,6 +1010,7 @@ export default function EditProfilePage({ params }: { params: Promise<{ username
                             onClick={() => fileInputRef.current?.click()}
                             className="flex-1"
                             disabled={isUploading}
+                            aria-label="Upload profile photo"
                           >
                             <Upload className="h-4 w-4 mr-2" />
                             Choose File
@@ -1024,6 +1025,7 @@ export default function EditProfilePage({ params }: { params: Promise<{ username
                               }}
                               className="flex-1"
                               disabled={isUploading}
+                              aria-label="Edit profile photo"
                             >
                               <ZoomIn className="h-4 w-4 mr-2" />
                               Edit & Crop
@@ -1031,10 +1033,10 @@ export default function EditProfilePage({ params }: { params: Promise<{ username
                           )}
                         </div>
                         {isUploading && (
-                          <div className="space-y-2">
+                          <div className="space-y-2" aria-busy="true">
                             <div className="flex items-center justify-between text-xs text-muted-foreground">
                               <span>Uploading...</span>
-                              <span>{uploadProgress}%</span>
+                              <span aria-live="polite">{uploadProgress}%</span>
                             </div>
                             <Progress value={uploadProgress} />
                           </div>
@@ -1341,16 +1343,16 @@ export default function EditProfilePage({ params }: { params: Promise<{ username
                     <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/10 to-black/40 pointer-events-none" />
                   </div>
 
-                  <div className="space-y-2">
+                  <div className="space-y-2" aria-busy={isCoverUploading ? 'true' : undefined}>
                     <FormLabel htmlFor="cover-upload" icon={ImageIcon} className="text-base font-medium">
                       Cover Photo
                     </FormLabel>
                     <div className="flex flex-col sm:flex-row gap-3">
-                      <Button type="button" variant="outline" className="flex-1" onClick={() => coverFileRef.current?.click()} disabled={isCoverUploading}>
+                      <Button type="button" variant="outline" className="flex-1" onClick={() => coverFileRef.current?.click()} disabled={isCoverUploading} aria-label="Upload cover photo">
                         <Upload className="h-4 w-4 mr-2" /> Choose File
                       </Button>
                       {coverPreview && (
-                        <Button type="button" variant="outline" className="flex-1" onClick={() => { setTempCoverSrc(coverPreview); setIsCoverEditorOpen(true) }} disabled={isCoverUploading}>
+                        <Button type="button" variant="outline" className="flex-1" onClick={() => { setTempCoverSrc(coverPreview); setIsCoverEditorOpen(true) }} disabled={isCoverUploading} aria-label="Edit cover photo">
                           <ZoomIn className="h-4 w-4 mr-2" /> Edit & Crop
                         </Button>
                       )}
@@ -1360,8 +1362,8 @@ export default function EditProfilePage({ params }: { params: Promise<{ username
 
                     {coverUploadError && <p className="text-sm text-destructive">{coverUploadError}</p>}
                     {isCoverUploading && (
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between text-xs text-muted-foreground"><span>Uploading cover…</span><span>{coverUploadProgress}%</span></div>
+                      <div className="space-y-2" aria-busy="true">
+                        <div className="flex items-center justify-between text-xs text-muted-foreground"><span>Uploading cover…</span><span aria-live="polite">{coverUploadProgress}%</span></div>
                         <Progress value={coverUploadProgress} />
                       </div>
                     )}

@@ -1,7 +1,7 @@
 import React from "react"
 import { render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { PrivacyCircleSelector } from "../privacy-circle-selector"
+import { PrivacyCircleSelector } from "@/components/privacy-circle-selector"
 import * as privacyCircleModule from "@/lib/privacy-circle"
 
 // Create a mock implementation
@@ -104,4 +104,3 @@ describe("PrivacyCircleSelector", () => {
     expect(screen.getByText("Close Friends")).toBeInTheDocument()
   })
 })
-

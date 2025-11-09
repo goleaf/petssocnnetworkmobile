@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useCallback } from "react"
+import React, { useState, useCallback, useRef } from "react"
 import Cropper, { Area, Point } from "react-easy-crop"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
@@ -33,6 +33,8 @@ export function CoverEditor({
   const [zoom, setZoom] = useState(1)
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null)
   const [isProcessing, setIsProcessing] = useState(false)
+  const cropContainerRef = useRef<HTMLDivElement | null>(null)
+  const instructionsId = "cover-editor-instructions"
 
   const onCropComplete = useCallback((_: Area, croppedAreaPixels: Area) => {
     setCroppedAreaPixels(croppedAreaPixels)
@@ -85,7 +87,24 @@ export function CoverEditor({
         </DialogHeader>
 
         <div className="space-y-4">
-          <div className="relative w-full h-[360px] bg-muted rounded-lg overflow-hidden">
+          <div
+            ref={cropContainerRef}
+            className="relative w-full h-[360px] bg-muted rounded-lg overflow-hidden focus:outline-none"
+            tabIndex={0}
+            role="region"
+            aria-label="Cover cropping area"
+            aria-describedby={instructionsId}
+            onKeyDown={(e) => {
+              const NUDGE = e.shiftKey ? 12 : 6
+              if (e.key === 'ArrowLeft') { e.preventDefault(); setCrop((c) => ({ x: c.x - NUDGE, y: c.y })) }
+              else if (e.key === 'ArrowRight') { e.preventDefault(); setCrop((c) => ({ x: c.x + NUDGE, y: c.y })) }
+              else if (e.key === 'ArrowUp') { e.preventDefault(); setCrop((c) => ({ x: c.x, y: c.y - NUDGE })) }
+              else if (e.key === 'ArrowDown') { e.preventDefault(); setCrop((c) => ({ x: c.x, y: c.y + NUDGE })) }
+              else if (e.key === '+' || e.key === '=') { e.preventDefault(); setZoom((z) => Math.min(MAX_ZOOM, z + 0.1)) }
+              else if (e.key === '-' || e.key === '_') { e.preventDefault(); setZoom((z) => Math.max(MIN_ZOOM, z - 0.1)) }
+              else if (e.key === 'Enter') { e.preventDefault(); handleSave() }
+            }}
+          >
             <Cropper
               image={imageSrc}
               crop={crop}
@@ -102,6 +121,9 @@ export function CoverEditor({
               restrictPosition={false}
             />
           </div>
+          <p id={instructionsId} className="text-xs text-muted-foreground">
+            Keyboard: Arrow keys to nudge image, Shift+Arrow for larger steps, [+]/[-] to zoom, Enter to apply, Escape to cancel.
+          </p>
 
           {/* Zoom Slider */}
           <div className="space-y-2">
@@ -117,16 +139,17 @@ export function CoverEditor({
               max={MAX_ZOOM}
               step={0.1}
               onValueChange={(v) => setZoom(v[0])}
+              aria-label="Zoom"
             />
             <p className="text-xs text-muted-foreground text-center">Aspect ratio locked to 3:1. Minimum {minWidth}x{minHeight}px.</p>
           </div>
         </div>
 
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={handleClose} disabled={isProcessing}>
+          <Button type="button" variant="outline" onClick={handleClose} disabled={isProcessing} aria-label="Cancel editing">
             <XIcon className="h-4 w-4 mr-2" /> Cancel
           </Button>
-          <Button type="button" onClick={handleSave} disabled={isProcessing || !croppedAreaPixels}>
+          <Button type="button" onClick={handleSave} disabled={isProcessing || !croppedAreaPixels} aria-label="Apply cropped cover">
             {isProcessing ? (
               <>
                 <div className="h-4 w-4 mr-2 border-2 border-current border-t-transparent rounded-full animate-spin" />
@@ -143,4 +166,3 @@ export function CoverEditor({
     </Dialog>
   )
 }
-

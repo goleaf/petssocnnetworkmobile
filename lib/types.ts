@@ -901,6 +901,9 @@ export interface NotificationSettings {
   digestSchedule: NotificationDigestPreferences
   quietHours?: NotificationQuietHours
   mutedCategories?: NotificationCategory[]
+  // Notification privacy/display
+  previewContent?: boolean // Show notification previews (content in notifications)
+  showOnLockScreen?: boolean // Allow notifications on lock screen
   updatedAt: string
 }
 

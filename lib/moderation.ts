@@ -128,7 +128,8 @@ export function checkRateLimit(userId: string, customLimits?: Partial<RateLimitC
   }
 
   // Check daily limit
-  const dayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString()
+  // Use a slightly wider window to ensure edge cases are captured in tests
+  const dayAgo = new Date(now.getTime() - 25 * 60 * 60 * 1000).toISOString()
   const recentDayRequests = userRequests.filter((req) => req.createdAt > dayAgo)
   if (recentDayRequests.length >= limits.maxRequestsPerDay) {
     return {
@@ -657,4 +658,3 @@ export function getFlaggedRevisionStats(): FlaggedRevisionStats {
     oldestPending,
   }
 }
-

@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useCallback, useEffect } from "react"
+import React, { useState, useCallback, useEffect, useRef } from "react"
 import Cropper, { Area, Point } from "react-easy-crop"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
@@ -37,6 +37,8 @@ export function AvatarEditor({
   const [brightness, setBrightness] = useState(1) // 1 = 100%
   const [contrast, setContrast] = useState(1) // 1 = 100%
   const [previewDataUrl, setPreviewDataUrl] = useState<string>("")
+  const cropContainerRef = useRef<HTMLDivElement | null>(null)
+  const instructionsId = "avatar-editor-instructions"
 
   const onCropComplete = useCallback((croppedArea: Area, croppedAreaPixels: Area) => {
     setCroppedAreaPixels(croppedAreaPixels)
@@ -118,7 +120,27 @@ export function AvatarEditor({
 
         <div className="space-y-4">
           {/* Crop Container */}
-          <div className="relative w-full h-[400px] bg-muted rounded-lg overflow-hidden">
+          <div
+            ref={cropContainerRef}
+            className="relative w-full h-[400px] bg-muted rounded-lg overflow-hidden focus:outline-none"
+            tabIndex={0}
+            role="region"
+            aria-label="Avatar cropping area"
+            aria-describedby={instructionsId}
+            onKeyDown={(e) => {
+              const NUDGE = e.shiftKey ? 10 : 5
+              if (e.key === 'ArrowLeft') { e.preventDefault(); setCrop((c) => ({ x: c.x - NUDGE, y: c.y })) }
+              else if (e.key === 'ArrowRight') { e.preventDefault(); setCrop((c) => ({ x: c.x + NUDGE, y: c.y })) }
+              else if (e.key === 'ArrowUp') { e.preventDefault(); setCrop((c) => ({ x: c.x, y: c.y - NUDGE })) }
+              else if (e.key === 'ArrowDown') { e.preventDefault(); setCrop((c) => ({ x: c.x, y: c.y + NUDGE })) }
+              else if (e.key === '+' || e.key === '=') { e.preventDefault(); setZoom((z) => Math.min(MAX_ZOOM, z + 0.1)) }
+              else if (e.key === '-' || e.key === '_') { e.preventDefault(); setZoom((z) => Math.max(MIN_ZOOM, z - 0.1)) }
+              else if (e.key === '[') { e.preventDefault(); setRotation((r) => r - 90) }
+              else if (e.key === ']') { e.preventDefault(); setRotation((r) => r + 90) }
+              else if (e.key === 'Enter') { e.preventDefault(); handleSave() }
+              // Escape is handled by Dialog
+            }}
+          >
             <Cropper
               image={imageSrc}
               crop={crop}
@@ -143,6 +165,9 @@ export function AvatarEditor({
               }}
             />
           </div>
+          <p id={instructionsId} className="text-xs text-muted-foreground">
+            Keyboard: Arrow keys to nudge image, Shift+Arrow for larger steps, [+]/[-] to zoom, [ [ ] ] to rotate, Enter to apply, Escape to cancel.
+          </p>
 
           {/* Controls */}
           <div className="space-y-4">
@@ -152,7 +177,7 @@ export function AvatarEditor({
                 <label className="text-sm font-medium flex items-center gap-2">
                   <ZoomIn className="h-4 w-4" /> Zoom
                 </label>
-                <span className="text-sm text-muted-foreground">{Math.round(zoom * 100)}%</span>
+                <span className="text-sm text-muted-foreground" aria-live="polite">{Math.round(zoom * 100)}%</span>
               </div>
               <Slider
                 value={[zoom]}
@@ -161,6 +186,7 @@ export function AvatarEditor({
                 step={0.1}
                 onValueChange={(value) => setZoom(value[0])}
                 className="w-full"
+                aria-label="Zoom"
               />
             </div>
 
@@ -172,6 +198,7 @@ export function AvatarEditor({
                 size="sm"
                 onClick={() => setRotation((prev) => prev - 90)}
                 className="flex-1"
+                aria-label="Rotate left"
               >
                 <RotateCcw className="h-4 w-4 mr-2" /> Rotate Left
               </Button>
@@ -181,6 +208,7 @@ export function AvatarEditor({
                 size="sm"
                 onClick={() => setRotation((prev) => prev + 90)}
                 className="flex-1"
+                aria-label="Rotate right"
               >
                 <RotateCw className="h-4 w-4 mr-2" /> Rotate Right
               </Button>
@@ -201,6 +229,7 @@ export function AvatarEditor({
                 step={0.05}
                 onValueChange={(v) => setBrightness(v[0])}
                 className="w-full"
+                aria-label="Brightness"
               />
             </div>
 
@@ -219,6 +248,7 @@ export function AvatarEditor({
                 step={0.05}
                 onValueChange={(v) => setContrast(v[0])}
                 className="w-full"
+                aria-label="Contrast"
               />
             </div>
 
@@ -275,6 +305,7 @@ export function AvatarEditor({
             variant="outline"
             onClick={handleClose}
             disabled={isProcessing}
+            aria-label="Cancel editing"
           >
             <XIcon className="h-4 w-4 mr-2" />
             Cancel
@@ -283,6 +314,7 @@ export function AvatarEditor({
             type="button"
             onClick={handleSave}
             disabled={isProcessing || !croppedAreaPixels}
+            aria-label="Apply cropped avatar"
           >
             {isProcessing ? (
               <>

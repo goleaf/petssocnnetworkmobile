@@ -147,6 +147,34 @@ if (typeof window !== 'undefined') {
   }
 }
 
+// Provide default mocks for auth-server helpers used in API tests
+jest.mock('@/lib/auth-server', () => {
+  return {
+    getCurrentUser: jest.fn(async () => null),
+    isAdmin: jest.fn(async () => false),
+    requireAdmin: jest.fn(),
+    hasRole: jest.fn(),
+    getSession: jest.fn(),
+    validateSession: jest.fn(),
+    createSession: jest.fn(),
+    setSessionCookie: jest.fn(),
+    clearSession: jest.fn(),
+    fetchSession: jest.fn(),
+    isModerator: jest.fn(),
+    requireAuth: jest.fn(),
+    requireModerator: jest.fn(),
+    SESSION_COOKIE_NAME: 'pet-social-session',
+  }
+})
+
+jest.mock('@/lib/storage-server', () => {
+  return {
+    getServerUserById: jest.fn(),
+    updateServerUser: jest.fn(),
+    getServerUsers: jest.fn(),
+  }
+})
+
 // Clear localStorage before each test (only in jsdom environment)
 if (typeof window !== 'undefined') {
   beforeEach(() => {

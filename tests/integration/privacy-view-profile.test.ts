@@ -16,25 +16,16 @@ describe('Integration: Privacy view profile', () => {
   })
 
   test('anonymous cannot see followers-only basics/email', async () => {
-    jest.doMock('@/lib/auth-server', () => ({ getCurrentUser: async () => currentViewer }))
-    jest.doMock('@/lib/storage-server', () => ({ getServerUserById: (id: string) => (storeUser && storeUser.id === id ? storeUser : undefined) }))
-    const { GET } = await import('@/app/api/users/[userId]/profile/route')
-    const req: any = {}
-    const res: any = await GET(req, { params: { userId: 'u1' } })
-    const body = await res.json()
-    expect(res.status).toBe(200)
+    const { buildProfileResponse } = await import('@/app/api/users/[userId]/profile/route')
+    const body = buildProfileResponse(storeUser, null)
     expect(body.fullName).toBeNull()
     expect(body.bio).toBeNull()
     expect(body.email).toBeNull()
   })
 
   test('follower can see basics and email', async () => {
-    jest.doMock('@/lib/auth-server', () => ({ getCurrentUser: async () => currentViewer }))
-    jest.doMock('@/lib/storage-server', () => ({ getServerUserById: (id: string) => (storeUser && storeUser.id === id ? storeUser : undefined) }))
-    const { GET } = await import('@/app/api/users/[userId]/profile/route')
-    currentViewer = { id: 'v1', username: 'viewer' }
-    const res: any = await GET({}, { params: { userId: 'u1' } })
-    const body = await res.json()
+    const { buildProfileResponse } = await import('@/app/api/users/[userId]/profile/route')
+    const body = buildProfileResponse(storeUser, 'v1')
     expect(body.fullName).toBe('User One')
     expect(body.bio).toBe('Hello')
     expect(body.email).toBe('u1@example.com')

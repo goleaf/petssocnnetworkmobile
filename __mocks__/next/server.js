@@ -31,8 +31,24 @@ class NextResponse extends Response {
 
 // Create an object that has NextResponse as a property
 // and also supports default export pattern
+class NextRequest {
+  constructor(url, init) {
+    this.url = url
+    this.method = init?.method || 'GET'
+    this.headers = new Headers(init?.headers)
+    this.body = init?.body
+  }
+  async json() {
+    return this.body ? JSON.parse(this.body) : {}
+  }
+  async text() {
+    return this.body || ''
+  }
+}
+
 const mockModule = {
   NextResponse,
+  NextRequest,
 }
 
 // Add default property that points to an object with json static method
@@ -42,4 +58,4 @@ mockModule.default = NextResponse
 module.exports = mockModule
 module.exports.NextResponse = NextResponse
 module.exports.default = NextResponse
-
+module.exports.NextRequest = NextRequest

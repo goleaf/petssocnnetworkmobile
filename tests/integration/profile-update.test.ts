@@ -8,19 +8,6 @@ let cacheSetCalls: Array<{ key: string; value: any; ttl?: number }> = []
 let cacheDeleteCalls: string[] = []
 let currentViewer: any = null
 
-jest.mock('@/lib/auth-server', () => ({
-  getCurrentUser: async () => currentViewer,
-}))
-
-jest.mock('@/lib/storage-server', () => ({
-  getServerUserById: (id: string) => (storeUser && storeUser.id === id ? storeUser : undefined),
-  getServerUsers: () => (storeUser ? [storeUser] : []),
-  updateServerUser: (id: string, updates: any) => {
-    if (!storeUser || storeUser.id !== id) return
-    storeUser = { ...storeUser, ...updates }
-  },
-}))
-
 jest.mock('@/lib/server/sse', () => ({ broadcastEvent: () => {} }))
 
 jest.mock('@/lib/scalability/cache-layer', () => ({
@@ -34,6 +21,21 @@ describe('Integration: Profile update flow', () => {
     cacheSetCalls = []
     cacheDeleteCalls = []
     currentViewer = { id: 'u1', username: 'user1', role: 'user' }
+    // Mock cookie-based session to avoid Next.js cookies error and return viewer
+    jest.doMock('next/headers', () => ({
+      cookies: async () => ({
+        get: () => ({ value: Buffer.from(JSON.stringify({ userId: 'u1', username: 'user1', role: 'user', expiresAt: Date.now() + 100000, issuedAt: Date.now() })).toString('base64') }),
+        set: () => {},
+        delete: () => {},
+      }),
+    }))
+    jest.doMock('@/lib/session-store', () => ({ isSessionRevoked: () => false, updateSessionActivity: () => {} }))
+    jest.doMock('@/lib/auth-server', () => ({ getCurrentUser: async () => currentViewer }))
+    jest.doMock('@/lib/storage-server', () => ({
+      getServerUserById: (id: string) => (storeUser && storeUser.id === id ? storeUser : undefined),
+      getServerUsers: () => (storeUser ? [storeUser] : []),
+      updateServerUser: (id: string, updates: any) => { if (storeUser && storeUser.id === id) storeUser = { ...storeUser, ...updates } },
+    }))
     storeUser = {
       id: 'u1',
       email: 'user1@example.com',
@@ -96,4 +98,3 @@ describe('Integration: Profile update flow', () => {
     expect(cacheDeleteCalls).toContain('profile:u1')
   })
 })
-

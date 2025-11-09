@@ -102,7 +102,7 @@ function computeCompletion(user: any, petsCount: number = 0): number {
   return computeProfileCompletionForServer(user as User, petsCount)
 }
 
-function buildProfileResponse(user: User, viewerId: string | null): any {
+export function buildProfileResponse(user: User, viewerId: string | null): any {
   const isOwner = viewerId === user.id
   const basicsVisible = canViewProfileSection('basics', user, viewerId)
   const emailPrivacy = user.privacy?.email as PrivacyLevel | undefined

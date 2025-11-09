@@ -11,7 +11,7 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
 import { useAuth } from "@/components/auth/auth-provider"
-import { getNotificationsByUserId, getUnreadCount, markAsRead, markAllAsRead } from "@/lib/notifications"
+import { getNotificationsByUserId, getUnreadCount, markAsRead, markAllAsRead, getNotificationSettings } from "@/lib/notifications"
 import type { Notification as AppNotification, NotificationChannel, NotificationPriority } from "@/lib/types"
 import { useRouter } from "next/navigation"
 import { formatDistanceToNow } from "date-fns"
@@ -49,6 +49,7 @@ export function NotificationsDropdown() {
   const router = useRouter()
   const [notifications, setNotifications] = useState<AppNotification[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
+  const [previewAllowed, setPreviewAllowed] = useState(true)
 
   const loadNotifications = useCallback(() => {
     if (!user) return
@@ -61,6 +62,11 @@ export function NotificationsDropdown() {
     if (!user) return
 
     loadNotifications()
+    // Load preview setting
+    try {
+      const s = getNotificationSettings(user.id)
+      setPreviewAllowed(s.previewContent !== false)
+    } catch {}
 
     const handleNotificationsUpdated = (event: Event) => {
       const detail = (event as CustomEvent<{ userId: string }>).detail
@@ -176,7 +182,9 @@ export function NotificationsDropdown() {
                         })}
                       </div>
                     </div>
-                    <p className="text-sm leading-snug line-clamp-2">{notification.message}</p>
+                    <p className="text-sm leading-snug line-clamp-2">
+                      {previewAllowed ? notification.message : (notification.type === 'message' ? 'New message' : 'New notification')}
+                    </p>
                     <p className="text-xs text-muted-foreground">
                       {formatDistanceToNow(new Date(notification.updatedAt ?? notification.createdAt), {
                         addSuffix: true,

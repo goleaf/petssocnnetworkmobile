@@ -6,8 +6,7 @@
 /* eslint-disable @typescript-eslint/no-floating-promises */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 
-import {expect} from 'vitest'
-import '../../vitest'
+import { expect } from '@jest/globals'
 
 const element: HTMLElement = document.body
 

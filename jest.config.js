@@ -13,6 +13,10 @@ const customJestConfig = {
   automock: false,
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1',
+    // Map legacy relative mocks used by older tests
+    '^\.\./auth/auth-provider$': '<rootDir>/tests/unit/auth/auth-provider.ts',
+    '^\.\./notifications-dropdown$': '<rootDir>/tests/unit/notifications-dropdown.tsx',
+    '^@/components/auth/auth-provider$': '<rootDir>/tests/unit/auth/auth-provider.ts',
     // Map Next.js internal paths to our mock
     '^next/dist/server/web/exports/next-response$': '<rootDir>/__mocks__/next/server.js',
     '^next/server$': '<rootDir>/__mocks__/next/server.js',
@@ -53,4 +57,3 @@ const customJestConfig = {
 
 // createJestConfig is exported this way to ensure that next/jest can load the Next.js config which is async
 module.exports = createJestConfig(customJestConfig)
-

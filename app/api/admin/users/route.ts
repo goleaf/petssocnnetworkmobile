@@ -19,7 +19,8 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const searchParams = request.nextUrl.searchParams
+    const url = new URL((request as any).url || 'http://localhost')
+    const searchParams = (request as any).nextUrl?.searchParams || url.searchParams
     const search = searchParams.get("search") || ""
     const role = searchParams.get("role") || ""
     const status = searchParams.get("status") || ""
@@ -155,4 +156,3 @@ export async function GET(request: NextRequest) {
     )
   }
 }
-

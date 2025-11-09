@@ -8,7 +8,7 @@ let getRateLimitKey: any
 
 beforeEach(() => {
   jest.resetModules()
-  const rateLimitModule = require('../rate-limit')
+  const rateLimitModule = require('./rate-limit')
   checkRateLimit = rateLimitModule.checkRateLimit
   RATE_LIMITS = rateLimitModule.RATE_LIMITS
   getRateLimitKey = rateLimitModule.getRateLimitKey
@@ -196,4 +196,3 @@ describe('getRateLimitKey', () => {
     expect(key1).not.toBe(key2)
   })
 })
-

@@ -437,6 +437,36 @@ export default function NotificationSettingsPage() {
     <div className="container mx-auto px-4 py-8 max-w-7xl space-y-6">
       <SettingsHeader description="Choose how and when you’re notified." />
 
+      {/* Notification Preview & Lock Screen */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg">Notification display</CardTitle>
+          <CardDescription>Control how notifications appear on your devices.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <Label>Show notification previews</Label>
+              <p className="text-xs text-muted-foreground">When off, notifications show generic text like “New message”</p>
+            </div>
+            <Switch
+              checked={settings.previewContent !== false}
+              onCheckedChange={(checked) => setSettings((prev) => ({ ...prev, previewContent: Boolean(checked) }))}
+            />
+          </div>
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <Label>Show on lock screen</Label>
+              <p className="text-xs text-muted-foreground">Hide sensitive notifications on the lock screen</p>
+            </div>
+            <Switch
+              checked={settings.showOnLockScreen !== false}
+              onCheckedChange={(checked) => setSettings((prev) => ({ ...prev, showOnLockScreen: Boolean(checked) }))}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Do Not Disturb Schedule */}
       <Card>
         <CardHeader className="pb-3">
