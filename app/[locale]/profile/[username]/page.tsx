@@ -3,13 +3,13 @@
 import { use } from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { getUsers, getPets, getBlogPosts, getActivities, updateUser } from "@/lib/storage"
 import type { Activity as UserActivity, PrivacyLevel } from "@/lib/types"
 import { useAuth } from "@/lib/auth"
-import { MapPin, Calendar, Users, Heart, PawPrint, FileText, Lock, Activity as ActivityIcon } from "lucide-react"
+import { MapPin, Calendar, Users, Heart, PawPrint, FileText, Lock, Activity as ActivityIcon, Camera, CheckCircle2 } from "lucide-react"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import Link from "next/link"
 import { useCallback, useEffect, useState } from "react"
@@ -41,6 +41,7 @@ export default function ProfilePage({ params }: { params: Promise<{ username: st
   const [user, setUser] = useState<any>(null)
   const [pets, setPets] = useState<any[]>([])
   const [posts, setPosts] = useState<any[]>([])
+  const [postCount, setPostCount] = useState(0)
   const [activities, setActivities] = useState<UserActivity[]>([])
   const [isFollowing, setIsFollowing] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
@@ -56,6 +57,7 @@ export default function ProfilePage({ params }: { params: Promise<{ username: st
       setUser(null)
       setPets([])
       setPosts([])
+      setPostCount(0)
       setActivities([])
       setIsFollowing(false)
       setIsLoading(false)
@@ -75,12 +77,13 @@ export default function ProfilePage({ params }: { params: Promise<{ username: st
     }
 
     if (canViewUserPosts(foundUser, viewerId)) {
-      const visiblePosts = getBlogPosts()
+      const userPosts = getBlogPosts()
         .filter((p) => p.authorId === foundUser.id)
         .filter((p) => canViewPost(p, foundUser, viewerId))
-        .slice(0, 6)
-      setPosts(visiblePosts)
+      setPostCount(userPosts.length)
+      setPosts(userPosts.slice(0, 6))
     } else {
+      setPostCount(0)
       setPosts([])
     }
 
@@ -178,12 +181,12 @@ export default function ProfilePage({ params }: { params: Promise<{ username: st
   const highlights = profileOverview?.highlights
 
   const getPrivacyMessage = (scope: "pets" | "posts" | "followers" | "following") =>
-  getPrivacyNotice({
-    profileUser: user,
-    scope,
-    viewerId,
-    canRequestAccess: canFollow,
-  })
+    getPrivacyNotice({
+      profileUser: user,
+      scope,
+      viewerId,
+      canRequestAccess: canFollow,
+    })
 
   const privacyLabelMap: Record<PrivacyLevel, string> = {
     public: "Public",
@@ -230,122 +233,202 @@ export default function ProfilePage({ params }: { params: Promise<{ username: st
     }
   }
 
+  const isOwnProfile = currentUser?.id === user.id
+  const coverPhoto = user.coverPhoto || "/golden-retriever-beach.png"
+  const memberSinceLabel = (() => {
+    const parsedDate = new Date(user.joinedAt)
+    if (Number.isNaN(parsedDate.getTime())) {
+      return formatDate(user.joinedAt)
+    }
+    return parsedDate.toLocaleDateString(undefined, { month: "long", year: "numeric" })
+  })()
+  const isVerified = Boolean(badges?.verified || user.badge === "verified")
+  const statItems = [
+    {
+      key: "followers",
+      label: user.followers.length === 1 ? "Follower" : "Followers",
+      value: canViewFollowersList ? user.followers.length : "—",
+      href: canViewFollowersList ? `/user/${user.username}/followers` : undefined,
+      lockedMessage: !canViewFollowersList ? getPrivacyMessage("followers") : undefined,
+    },
+    {
+      key: "following",
+      label: "Following",
+      value: canViewFollowingList ? user.following.length : "—",
+      href: canViewFollowingList ? `/user/${user.username}/following` : undefined,
+      lockedMessage: !canViewFollowingList ? getPrivacyMessage("following") : undefined,
+    },
+    {
+      key: "posts",
+      label: postCount === 1 ? "Post" : "Posts",
+      value: canViewPosts ? postCount : "—",
+      href: canViewPosts ? `/profile/${user.username}/posts` : undefined,
+      lockedMessage: !canViewPosts ? getPrivacyMessage("posts") : undefined,
+    },
+  ]
+
   return (
       <div className="container mx-auto px-4 py-8 max-w-7xl">
-      <Card>
-        <CardHeader className="pb-4">
-          <div className="flex flex-col md:flex-row gap-6 items-start">
-            <Avatar className="h-24 w-24">
-              {canViewBasics ? (
-                <>
-                  <AvatarImage src={user.avatar || "/placeholder.svg"} alt={user.fullName} />
-                  <AvatarFallback>{user.fullName.charAt(0)}</AvatarFallback>
-                </>
-              ) : (
-                <AvatarFallback className="bg-muted">
-                  <Lock className="h-5 w-5 text-muted-foreground" />
-                </AvatarFallback>
-              )}
-            </Avatar>
-            <div className="flex-1 space-y-3">
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                <div className="space-y-1">
-                  {canViewBasics ? (
-                    <>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h1 className="text-3xl font-bold">{user.fullName}</h1>
-                        <BadgeDisplay user={user} size="lg" variant="icon" />
-                      </div>
-                      <p className="text-muted-foreground">@{user.username}</p>
-                    </>
-                  ) : (
-                    <>
-                      <h2 className="text-xl font-semibold text-foreground">Profile basics are private</h2>
-                      <p className="text-sm text-muted-foreground">
-                        Follow to request access to @{user.username}{"'"}s profile details.
-                      </p>
-                    </>
-                  )}
-                </div>
-                {currentUser && currentUser.id !== user.id && (
-                  <>
-                    {isFollowing ? (
-                      <Button onClick={handleFollow} variant="outline">
-                        Unfollow
-                      </Button>
-                    ) : canFollow ? (
-                      <Button onClick={handleFollow} variant="default">
-                        Follow
-                      </Button>
-                    ) : null}
-                  </>
-                )}
-              </div>
-              {canViewBasics && user.bio && <p className="text-foreground">{user.bio}</p>}
-              {canViewBasics ? (
-                <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-                  {user.location && canViewProfileField("location", user, viewerId) && (
-                    <div className="flex items-center gap-1">
-                      <MapPin className="h-4 w-4" />
-                      {user.location}
+      <section className="rounded-3xl border border-border/60 bg-card shadow-sm overflow-hidden">
+        <div className="relative h-[220px] sm:h-[260px] lg:h-[400px] w-full group">
+          <img
+            src={coverPhoto}
+            alt={`${user.fullName}'s cover`}
+            className="h-full w-full object-cover"
+          />
+          {isOwnProfile && (
+            <div className="absolute inset-0 flex items-center justify-center gap-2 text-white text-sm font-semibold uppercase tracking-wide bg-black/30 opacity-0 transition-opacity group-hover:opacity-100">
+              <Camera className="h-5 w-5" />
+              Change Cover
+            </div>
+          )}
+        </div>
+        <div className="px-6 pb-6 sm:px-8 sm:pb-8">
+          <div className="-mt-20 sm:-mt-24 flex flex-col gap-6">
+            <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
+              <div className="flex flex-col gap-6 sm:flex-row">
+                <div className="relative group self-start">
+                  <Avatar className="h-[200px] w-[200px] border-4 border-background shadow-2xl">
+                    {canViewBasics ? (
+                      <>
+                        <AvatarImage src={user.avatar || "/placeholder.svg"} alt={user.fullName} />
+                        <AvatarFallback className="text-4xl">{user.fullName.charAt(0)}</AvatarFallback>
+                      </>
+                    ) : (
+                      <AvatarFallback className="bg-muted">
+                        <Lock className="h-5 w-5 text-muted-foreground" />
+                      </AvatarFallback>
+                    )}
+                  </Avatar>
+                  {isOwnProfile && canViewBasics && (
+                    <div className="absolute inset-0 rounded-full bg-black/40 text-white opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1 text-sm font-medium">
+                      <Camera className="h-5 w-5" />
+                      Change Photo
                     </div>
                   )}
-                  <div className="flex items-center gap-1">
-                    <Calendar className="h-4 w-4" />
-                    Joined {formatDate(user.joinedAt)}
+                </div>
+                <div className="flex-1 min-w-[250px] space-y-4">
+                  {canViewBasics ? (
+                    <>
+                      <div className="space-y-2">
+                        <div className="flex flex-wrap items-center gap-3">
+                          <h1 className="text-4xl font-bold tracking-tight">{user.fullName}</h1>
+                          <BadgeDisplay user={user} size="lg" variant="icon" />
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2 text-lg text-muted-foreground">
+                          <span>@{user.username}</span>
+                          {isVerified && (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-primary text-sm font-semibold">
+                              <CheckCircle2 className="h-4 w-4" />
+                              Verified
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      {user.bio && <p className="text-base text-foreground">{user.bio}</p>}
+                      <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+                        {user.location && canViewProfileField("location", user, viewerId) && (
+                          <div className="flex items-center gap-1">
+                            <MapPin className="h-4 w-4" />
+                            {user.location}
+                          </div>
+                        )}
+                        <div className="flex items-center gap-1">
+                          <Calendar className="h-4 w-4" />
+                          Member since {memberSinceLabel}
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="rounded-xl border border-dashed border-muted-foreground/40 bg-muted/30 p-4 text-sm text-muted-foreground space-y-1">
+                      <p className="font-semibold text-foreground">Profile basics are private</p>
+                      <p>Follow to request access to @{user.username}{"'"}s profile details.</p>
+                    </div>
+                  )}
+                  <div className="flex flex-wrap gap-8 pt-2">
+                    {statItems.map((stat) => {
+                      const content = (
+                        <div className="flex flex-col" title={stat.lockedMessage}>
+                          <span className="text-3xl font-bold leading-tight">{stat.value}</span>
+                          <span className="mt-1 text-sm font-medium text-muted-foreground flex items-center gap-1">
+                            {stat.label}
+                            {!stat.href && stat.lockedMessage && <Lock className="h-3 w-3" />}
+                          </span>
+                        </div>
+                      )
+                      return stat.href ? (
+                        <Link
+                          key={stat.key}
+                          href={stat.href}
+                          className="transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 rounded-lg"
+                        >
+                          {content}
+                        </Link>
+                      ) : (
+                        <div key={stat.key} className="opacity-80" title={stat.lockedMessage}>
+                          {content}
+                        </div>
+                      )
+                    })}
                   </div>
+                  {canViewStatistics ? (
+                    <div className="mt-2 space-y-4">
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <CompactStatBlock
+                          label={pets.length === 1 ? "Pet" : "Pets"}
+                          value={canViewPets ? pets.length : "—"}
+                          icon={PawPrint}
+                          href={canViewPets ? `/profile/${user.username}/pets` : undefined}
+                          isLocked={!canViewPets}
+                          lockedMessage={!canViewPets ? getPrivacyMessage("pets") : undefined}
+                        />
+                        <CompactStatBlock
+                          label="Posts"
+                          value={canViewPosts ? postCount : "—"}
+                          icon={FileText}
+                          href={canViewPosts ? `/profile/${user.username}/posts` : undefined}
+                          isLocked={!canViewPosts}
+                          lockedMessage={!canViewPosts ? getPrivacyMessage("posts") : undefined}
+                        />
+                      </div>
+                      <ProfileStats
+                        followers={user.followers.length}
+                        following={user.following.length}
+                        followersHref={canViewFollowersList ? `/user/${user.username}/followers` : undefined}
+                        followingHref={canViewFollowingList ? `/user/${user.username}/following` : undefined}
+                        canViewFollowers={canViewFollowersList}
+                        canViewFollowing={canViewFollowingList}
+                        followersLockedMessage={!canViewFollowersList ? getPrivacyMessage("followers") : undefined}
+                        followingLockedMessage={!canViewFollowingList ? getPrivacyMessage("following") : undefined}
+                        badges={badges}
+                        highlights={highlights}
+                      />
+                    </div>
+                  ) : (
+                    <div className="mt-2 flex items-center gap-2 rounded-lg border border-dashed border-muted-foreground/40 bg-muted/30 p-4 text-sm text-muted-foreground">
+                      <Lock className="h-4 w-4" />
+                      <span>Profile statistics are hidden by the owner's privacy settings.</span>
+                    </div>
+                  )}
                 </div>
-              ) : (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Lock className="h-4 w-4" />
-                  <span>Basic profile details are hidden by the owner's privacy settings.</span>
-                </div>
-              )}
-              {canViewStatistics ? (
-                <div className="mt-4 space-y-4">
-                  {/* Pets and Posts stats */}
-                  <div className="grid grid-cols-2 gap-2">
-                    <CompactStatBlock
-                      label={pets.length === 1 ? "Pet" : "Pets"}
-                      value={canViewPets ? pets.length : "—"}
-                      icon={PawPrint}
-                      href={canViewPets ? `/profile/${user.username}/pets` : undefined}
-                      isLocked={!canViewPets}
-                      lockedMessage={!canViewPets ? getPrivacyMessage("pets") : undefined}
-                    />
-                    <CompactStatBlock
-                      label="Posts"
-                      value={canViewPosts ? posts.length : "—"}
-                      icon={FileText}
-                      href={canViewPosts ? `/profile/${user.username}/posts` : undefined}
-                      isLocked={!canViewPosts}
-                      lockedMessage={!canViewPosts ? getPrivacyMessage("posts") : undefined}
-                    />
-                  </div>
-                  {/* Followers/Following stats with badges and highlights */}
-                  <ProfileStats
-                    followers={user.followers.length}
-                    following={user.following.length}
-                    followersHref={canViewFollowersList ? `/user/${user.username}/followers` : undefined}
-                    followingHref={canViewFollowingList ? `/user/${user.username}/following` : undefined}
-                    canViewFollowers={canViewFollowersList}
-                    canViewFollowing={canViewFollowingList}
-                    followersLockedMessage={!canViewFollowersList ? getPrivacyMessage("followers") : undefined}
-                    followingLockedMessage={!canViewFollowingList ? getPrivacyMessage("following") : undefined}
-                    badges={badges}
-                    highlights={highlights}
-                  />
-                </div>
-              ) : (
-                <div className="mt-4 flex items-center gap-2 rounded-lg border border-dashed border-muted-foreground/40 bg-muted/30 p-4 text-sm text-muted-foreground">
-                  <Lock className="h-4 w-4" />
-                  <span>Profile statistics are hidden by the owner's privacy settings.</span>
+              </div>
+              {currentUser && currentUser.id !== user.id && (
+                <div className="flex items-start justify-end">
+                  {isFollowing ? (
+                    <Button onClick={handleFollow} variant="outline">
+                      Unfollow
+                    </Button>
+                  ) : canFollow ? (
+                    <Button onClick={handleFollow} variant="default">
+                      Follow
+                    </Button>
+                  ) : null}
                 </div>
               )}
             </div>
           </div>
-        </CardHeader>
-      </Card>
+        </div>
+      </section>
 
       <Tabs defaultValue="pets" className="mt-6">
         <TabsList className="grid w-full grid-cols-3">

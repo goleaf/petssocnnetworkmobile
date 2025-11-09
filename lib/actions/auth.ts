@@ -12,6 +12,7 @@
 
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
+import { headers } from "next/headers"
 import {
   getServerUsers,
   getServerUserByUsername,
@@ -28,10 +29,16 @@ import {
   getCurrentUser as getServerUser,
 } from "../auth-server"
 import type { User, UserRole } from "../types"
+import { validateEmailAddress, describeCorporateEmail } from "../registration-policy"
+import { createEmailVerificationRecord, consumeEmailVerificationToken } from "../email-verification-store"
+import { incrementRegistrationAttempts } from "../server-rate-limit"
 
 export interface AuthResult {
   success: boolean
   error?: string
+  requiresVerification?: boolean
+  verificationExpiresAt?: string
+  sessionCreated?: boolean
 }
 
 export interface LoginInput {
@@ -44,12 +51,55 @@ export interface RegisterInput {
   password: string
   username: string
   fullName: string
+  dateOfBirth: string
+  acceptedPolicies: boolean
   role?: UserRole
+}
+
+const USERNAME_REGEX = /^[a-zA-Z0-9_-]{3,20}$/
+const PASSWORD_COMPLEXITY_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*])[A-Za-z\d!@#$%^&*]{8,}$/
+
+function calculateAge(dateOfBirth: string): number | null {
+  if (!dateOfBirth) {
+    return null
+  }
+  const parsed = new Date(dateOfBirth)
+  if (Number.isNaN(parsed.getTime())) {
+    return null
+  }
+  const now = new Date()
+  let age = now.getFullYear() - parsed.getFullYear()
+  const monthDiff = now.getMonth() - parsed.getMonth()
+  if (monthDiff < 0 || (monthDiff === 0 && now.getDate() < parsed.getDate())) {
+    age--
+  }
+  return age
 }
 
 /**
  * Login server action
  */
+function getClientIp(): string {
+  try {
+    const requestHeaders = headers()
+    const forwardedFor = requestHeaders.get("x-forwarded-for")
+    if (forwardedFor) {
+      return forwardedFor.split(",")[0]?.trim() || "unknown"
+    }
+    const realIp = requestHeaders.get("x-real-ip")
+    return realIp || "unknown"
+  } catch {
+    return "unknown"
+  }
+}
+
+function logVerificationEmail(email: string, token: string) {
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
+  const normalizedBase = baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl
+  const verificationUrl = `${normalizedBase}/verify-email?token=${token}`
+  console.info(`[auth] Verification link for ${email}: ${verificationUrl}`)
+}
+
 export async function loginAction(input: LoginInput): Promise<AuthResult> {
   // Validate input
   if (!input.username || input.username.trim() === "") {
@@ -65,6 +115,13 @@ export async function loginAction(input: LoginInput): Promise<AuthResult> {
 
   if (!user) {
     return { success: false, error: "Invalid username or password" }
+  }
+
+  if (user.emailVerified === false) {
+    return {
+      success: false,
+      error: "Please verify your email before logging in.",
+    }
   }
 
   // If user doesn't have a password set, set it from the provided password
@@ -86,7 +143,7 @@ export async function loginAction(input: LoginInput): Promise<AuthResult> {
   // Revalidate pages that depend on auth
   revalidatePath("/")
   
-  return { success: true }
+  return { success: true, sessionCreated: true }
 }
 
 /**
@@ -118,19 +175,48 @@ export async function registerAction(input: RegisterInput): Promise<AuthResult> 
   if (!input.fullName || input.fullName.trim() === "") {
     return { success: false, error: "Full name is required" }
   }
-  
-  if (input.username.trim().length < 3) {
-    return { success: false, error: "Username must be at least 3 characters" }
+  const trimmedFullName = input.fullName.trim()
+  if (trimmedFullName.length < 2 || trimmedFullName.length > 50) {
+    return { success: false, error: "Full name must be between 2 and 50 characters" }
   }
   
-  if (input.password.length < 6) {
-    return { success: false, error: "Password must be at least 6 characters" }
+  const normalizedUsername = input.username.trim()
+  if (!USERNAME_REGEX.test(normalizedUsername)) {
+    return { success: false, error: "Username must be 3-20 characters and can include letters, numbers, underscores, or hyphens" }
+  }
+  
+  const passwordComplexityError = validatePasswordComplexity(input.password)
+  if (passwordComplexityError) {
+    return { success: false, error: passwordComplexityError }
+  }
+  
+  if (!input.dateOfBirth) {
+    return { success: false, error: "Date of birth is required" }
+  }
+  const age = calculateAge(input.dateOfBirth)
+  if (age === null) {
+    return { success: false, error: "Invalid date of birth" }
+  }
+  if (age < 13) {
+    return { success: false, error: "You must be at least 13 years old to register" }
+  }
+  
+  if (!input.acceptedPolicies) {
+    return { success: false, error: "You must accept the Terms of Service and Privacy Policy" }
   }
 
-  // Email validation
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-  if (!emailRegex.test(input.email.trim())) {
-    return { success: false, error: "Invalid email format" }
+  const rateLimitResult = incrementRegistrationAttempts(getClientIp())
+  if (!rateLimitResult.allowed) {
+    const retryMinutes = Math.max(1, Math.ceil(rateLimitResult.retryAfterMs / 60000))
+    return {
+      success: false,
+      error: `Too many registration attempts. Try again in ${retryMinutes} minute(s).`,
+    }
+  }
+
+  const emailValidation = validateEmailAddress(input.email.trim())
+  if (!emailValidation.valid) {
+    return { success: false, error: emailValidation.reason || "Invalid email format" }
   }
 
   // Check if email or username already exists using server-safe storage
@@ -138,35 +224,47 @@ export async function registerAction(input: RegisterInput): Promise<AuthResult> 
     return { success: false, error: "Email already exists" }
   }
   
-  if (serverUsernameExists(input.username.trim())) {
+  if (serverUsernameExists(normalizedUsername)) {
     return { success: false, error: "Username already taken" }
   }
 
   // Create new user
+  const userId = String(Date.now())
+  const verificationRecord = createEmailVerificationRecord(userId, input.email.trim())
+
   const newUser: User = {
-    id: String(Date.now()),
+    id: userId,
     email: input.email.trim(),
-    username: input.username.trim(),
+    username: normalizedUsername,
     password: input.password,
-    fullName: input.fullName.trim(),
+    fullName: trimmedFullName,
     role: input.role || "user",
     joinedAt: new Date().toISOString().split("T")[0],
     followers: [],
     following: [],
     followingPets: [],
+    dateOfBirth: input.dateOfBirth,
+    acceptedPoliciesAt: new Date().toISOString(),
+    emailVerified: false,
+    emailVerification: {
+      status: "pending",
+      token: verificationRecord.token,
+      requestedAt: new Date(verificationRecord.createdAt).toISOString(),
+      expiresAt: new Date(verificationRecord.expiresAt).toISOString(),
+    },
+    corporateEmail: emailValidation.corporate || describeCorporateEmail(input.email.trim()),
   }
 
   // Save user using server-safe storage (in production, insert into database)
   addServerUser(newUser)
 
-  // Create session and log user in
-  const sessionToken = createSession(newUser)
-  await setSessionCookie(sessionToken)
-
-  // Revalidate pages that depend on auth
-  revalidatePath("/")
+  logVerificationEmail(newUser.email, verificationRecord.token)
   
-  return { success: true }
+  return {
+    success: true,
+    requiresVerification: true,
+    verificationExpiresAt: newUser.emailVerification.expiresAt,
+  }
 }
 
 /**
@@ -174,6 +272,35 @@ export async function registerAction(input: RegisterInput): Promise<AuthResult> 
  */
 export async function getCurrentUserAction(): Promise<User | null> {
   return getServerUser()
+}
+
+export async function verifyEmailAction(token: string): Promise<AuthResult> {
+  if (!token || token.trim() === "") {
+    return { success: false, error: "Missing verification token" }
+  }
+
+  const record = consumeEmailVerificationToken(token.trim())
+  if (!record) {
+    return { success: false, error: "Invalid or expired verification token" }
+  }
+
+  const user = getServerUserById(record.userId)
+  if (!user) {
+    return { success: false, error: "User not found" }
+  }
+
+  updateServerUser(user.id, {
+    emailVerified: true,
+    emailVerification: {
+      ...(user.emailVerification || {}),
+      status: "verified",
+      verifiedAt: new Date().toISOString(),
+      token: undefined,
+    },
+  })
+
+  revalidatePath("/")
+  return { success: true }
 }
 
 /**
@@ -421,4 +548,9 @@ function getBrowser(userAgent?: string): string {
   if (ua.includes("Opera")) return "Opera"
   return "Unknown"
 }
-
+function validatePasswordComplexity(password: string): string | null {
+  if (!PASSWORD_COMPLEXITY_REGEX.test(password)) {
+    return "Password must be at least 8 characters and include uppercase, lowercase, number, and special character (!@#$%^&*)"
+  }
+  return null
+}

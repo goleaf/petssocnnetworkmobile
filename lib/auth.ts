@@ -15,6 +15,8 @@ interface AuthState {
     password: string
     username: string
     fullName: string
+    dateOfBirth: string
+    acceptedPolicies: boolean
     role?: UserRole
   }) => Promise<{ success: boolean; error?: string }>
   initialize: () => Promise<void>
@@ -81,7 +83,7 @@ export const useAuth = create<AuthState>((set, get) => ({
   register: async (data) => {
     const result = await registerAction(data)
     
-    if (result.success) {
+    if (result.success && result.sessionCreated) {
       // Refresh session after successful registration
       await get().refresh()
     }

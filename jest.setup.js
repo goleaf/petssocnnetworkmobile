@@ -116,6 +116,16 @@ if (typeof window !== 'undefined') {
       dispatchEvent: jest.fn(),
     })),
   })
+
+  if (typeof window.ResizeObserver === 'undefined') {
+    class ResizeObserver {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    }
+    window.ResizeObserver = ResizeObserver
+    global.ResizeObserver = ResizeObserver
+  }
 }
 
 // Clear localStorage before each test (only in jsdom environment)
@@ -135,4 +145,3 @@ if (typeof window !== 'undefined') {
     }
   })
 }
-

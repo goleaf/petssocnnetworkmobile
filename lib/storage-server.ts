@@ -19,10 +19,40 @@ import {
   deleteTranslationGlossary as deleteClientTranslationGlossary,
   getTranslationGlossaryById as getClientTranslationGlossaryById,
 } from "./storage"
+import { describeCorporateEmail } from "./registration-policy"
 
 // In-memory cache for server-side operations
 // In production, this should be replaced with database queries
 let serverUsersCache: User[] | null = null
+
+function applyUserDefaults(user: User): User {
+  const normalized: User = { ...user }
+
+  if (typeof normalized.emailVerified === "undefined") {
+    normalized.emailVerified = true
+  }
+
+  if (!normalized.corporateEmail && normalized.email) {
+    normalized.corporateEmail = describeCorporateEmail(normalized.email)
+  }
+
+  if (!normalized.emailVerification) {
+    if (normalized.emailVerified) {
+      normalized.emailVerification = {
+        status: "verified",
+        requestedAt: normalized.joinedAt,
+        verifiedAt: normalized.joinedAt,
+      }
+    } else {
+      normalized.emailVerification = {
+        status: "pending",
+        requestedAt: new Date().toISOString(),
+      }
+    }
+  }
+
+  return normalized
+}
 
 /**
  * Get users from server-safe storage
@@ -38,7 +68,7 @@ export function getServerUsers(): User[] {
   
   // Initialize with mock data
   // In production, this would query a database
-  serverUsersCache = [...mockUsers]
+  serverUsersCache = mockUsers.map((user) => applyUserDefaults(user))
   
   return serverUsersCache
 }
@@ -69,7 +99,7 @@ export function updateServerUser(userId: string, updates: Partial<User>): void {
   const index = users.findIndex((u) => u.id === userId)
   
   if (index !== -1) {
-    users[index] = { ...users[index], ...updates }
+    users[index] = applyUserDefaults({ ...users[index], ...updates })
     serverUsersCache = users
     // In production, this would update the database
   }
@@ -82,7 +112,7 @@ export function updateServerUser(userId: string, updates: Partial<User>): void {
  */
 export function addServerUser(user: User): void {
   const users = getServerUsers()
-  users.push(user)
+  users.push(applyUserDefaults(user))
   serverUsersCache = users
   // In production, this would insert into database
 }
@@ -203,4 +233,3 @@ export function deleteTranslationGlossary(id: string): void {
     console.error("Error deleting glossary entry:", error)
   }
 }
-

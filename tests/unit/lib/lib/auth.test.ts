@@ -165,6 +165,8 @@ describe('useAuth', () => {
         username: 'newuser',
         password: 'password123',
         fullName: 'New User',
+        dateOfBirth: '2000-01-01',
+        acceptedPolicies: true,
       }
 
       let registerResult: { success: boolean; error?: string }
@@ -187,6 +189,8 @@ describe('useAuth', () => {
         username: 'newuser',
         password: 'password123',
         fullName: 'New User',
+        dateOfBirth: '2000-01-01',
+        acceptedPolicies: true,
       }
 
       let registerResult: { success: boolean; error?: string }
@@ -207,6 +211,8 @@ describe('useAuth', () => {
         username: 'testuser',
         password: 'password123',
         fullName: 'New User',
+        dateOfBirth: '2000-01-01',
+        acceptedPolicies: true,
       }
 
       let registerResult: { success: boolean; error?: string }
@@ -330,4 +336,3 @@ describe('useAuth', () => {
     })
   })
 })
-

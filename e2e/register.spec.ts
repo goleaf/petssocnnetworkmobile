@@ -18,6 +18,8 @@ test.describe('Register Page', () => {
     await expect(page.locator('input[id="email"]')).toBeVisible();
     await expect(page.locator('input[id="password"]')).toBeVisible();
     await expect(page.locator('input[id="confirmPassword"]')).toBeVisible();
+    await expect(page.locator('input[id="dateOfBirth"]')).toBeVisible();
+    await expect(page.locator('label:has-text("Terms of Service")')).toBeVisible();
   });
 
   test('should test all input fields', async ({ page }) => {
@@ -149,4 +151,3 @@ test.describe('Register Page', () => {
     await testAllLinks(page, 50);
   });
 });
-

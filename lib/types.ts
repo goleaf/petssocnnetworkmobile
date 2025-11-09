@@ -2,6 +2,23 @@ export type UserRole = "user" | "admin" | "moderator"
 
 export type UserStatus = "active" | "muted" | "suspended" | "banned"
 
+export interface EmailVerificationState {
+  status: "pending" | "verified" | "expired"
+  token?: string
+  requestedAt?: string
+  expiresAt?: string
+  verifiedAt?: string
+}
+
+export interface CorporateEmailMetadata {
+  domain: string
+  isCorporate: boolean
+  verified: boolean
+  organization?: string
+  requiresManualReview?: boolean
+  reason?: string
+}
+
 export interface User {
   id: string
   email: string
@@ -9,6 +26,8 @@ export interface User {
   handle?: string // User handle/display name
   password?: string
   fullName: string
+  dateOfBirth?: string
+  acceptedPoliciesAt?: string
   role?: UserRole
   roles?: UserRole[] // Array of roles for multiple role support
   reputation?: number // User reputation score
@@ -25,6 +44,7 @@ export interface User {
   followers: string[]
   following: string[]
   followingPets?: string[]
+  coverPhoto?: string
   privacy?: {
     profile: "public" | "private" | "followers-only"
     email: "public" | "private" | "followers-only"
@@ -52,6 +72,9 @@ export interface User {
   proExpiresAt?: string
   shelterSponsorship?: ShelterSponsorship
   moderationCaseId?: string // Link to moderation case for appeal tracker
+  emailVerified?: boolean
+  emailVerification?: EmailVerificationState
+  corporateEmail?: CorporateEmailMetadata
 }
 
 export interface Pet {

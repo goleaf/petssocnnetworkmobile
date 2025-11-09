@@ -23,9 +23,10 @@ import { FormActions } from "@/components/ui/form-actions"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { getUserByUsername, updateUser } from "@/lib/storage"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
-import type { User } from "@/lib/types"
+import type { User, PrivacyLevel } from "@/lib/types"
 import { cn } from "@/lib/utils"
 import { getAnimalOptions } from "@/lib/animal-types"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   Save,
   X,
@@ -108,6 +109,8 @@ import {
   Zap,
 } from "lucide-react"
 
+type TabKey = "basic" | "about" | "contact" | "preferences" | "privacy"
+
 export default function EditProfilePage({ params }: { params: Promise<{ username: string }> }) {
   const { username } = use(params)
   const { user, isInitialized } = useAuth()
@@ -186,6 +189,19 @@ export default function EditProfilePage({ params }: { params: Promise<{ username
     yardAccess: "",
     livingSpace: "",
     timeAtHome: "",
+    privacy: {
+      profile: "public" as PrivacyLevel,
+      email: "followers-only" as PrivacyLevel,
+      location: "followers-only" as PrivacyLevel,
+      pets: "public" as PrivacyLevel,
+      posts: "public" as PrivacyLevel,
+      followers: "public" as PrivacyLevel,
+      following: "public" as PrivacyLevel,
+      searchable: true,
+      allowFollowRequests: "public" as "public" | "followers-only",
+      allowTagging: "public" as "public" | "followers-only" | "private",
+      secureMessages: true,
+    },
   })
 
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -195,6 +211,8 @@ export default function EditProfilePage({ params }: { params: Promise<{ username
   const [tempImageSrc, setTempImageSrc] = useState<string>("")
   const fileInputRef = useRef<HTMLInputElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const [activeTab, setActiveTab] = useState<TabKey>("basic")
+  const [loadedTabs, setLoadedTabs] = useState<Set<TabKey>>(() => new Set(["basic"]))
 
   // Animal options with Lucide icons and colors (from shared config)
   const animalOptions = getAnimalOptions()
@@ -202,6 +220,27 @@ export default function EditProfilePage({ params }: { params: Promise<{ username
   // Minimum image dimensions for avatar
   const MIN_IMAGE_WIDTH = 200
   const MIN_IMAGE_HEIGHT = 200
+
+  const handleTabChange = (value: string) => {
+    const tab = value as TabKey
+    setActiveTab(tab)
+    setLoadedTabs((prev) => {
+      if (prev.has(tab)) {
+        return prev
+      }
+      const next = new Set(prev)
+      next.add(tab)
+      return next
+    })
+  }
+
+  const renderTabSkeleton = () => (
+    <Card>
+      <CardContent className="py-16 flex items-center justify-center">
+        <LoadingSpinner />
+      </CardContent>
+    </Card>
+  )
 
   useEffect(() => {
     // Wait for auth to initialize before checking user
@@ -300,6 +339,19 @@ export default function EditProfilePage({ params }: { params: Promise<{ username
       yardAccess: "",
       livingSpace: "",
       timeAtHome: "",
+      privacy: {
+        profile: fetchedUser.privacy?.profile ?? "public",
+        email: fetchedUser.privacy?.email ?? "followers-only",
+        location: fetchedUser.privacy?.location ?? "followers-only",
+        pets: fetchedUser.privacy?.pets ?? "public",
+        posts: fetchedUser.privacy?.posts ?? "public",
+        followers: fetchedUser.privacy?.followers ?? "public",
+        following: fetchedUser.privacy?.following ?? "public",
+        searchable: fetchedUser.privacy?.searchable ?? true,
+        allowFollowRequests: fetchedUser.privacy?.allowFollowRequests ?? "public",
+        allowTagging: fetchedUser.privacy?.allowTagging ?? "public",
+        secureMessages: fetchedUser.privacy?.secureMessages ?? true,
+      },
     })
     setImagePreview(fetchedUser.avatar || "")
     setIsLoading(false)
@@ -541,6 +593,10 @@ export default function EditProfilePage({ params }: { params: Promise<{ username
         playStylePreference: formData.playStylePreference,
         feedingSchedulePreference: formData.feedingSchedulePreference,
         socializationPreference: formData.socializationPreference,
+        privacy: {
+          ...profileUser.privacy,
+          ...formData.privacy,
+        },
       })
 
       setMessage({ type: "success", text: "Profile updated successfully!" })
