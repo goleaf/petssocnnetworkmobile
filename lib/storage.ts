@@ -83,6 +83,7 @@ import { generateGroupsForAnimal } from "./generate-groups"
 
 const STORAGE_KEYS = {
   USERS: "pet_social_users",
+  USERNAME_HISTORY: "pet_social_username_history",
   PETS: "pet_social_pets",
   BLOG_POSTS: "pet_social_blog_posts",
   COMMENTS: "pet_social_comments",
@@ -189,6 +190,89 @@ export function generateStorageId(prefix: string): string {
   }
   const randomPart = Math.random().toString(16).slice(2)
   return `${prefix}_${Date.now()}_${randomPart}`
+}
+
+// Username history
+export interface UsernameChangeRecord {
+  userId: string
+  previousUsername: string
+  newUsername: string
+  changedAt: string
+}
+
+export function getUsernameHistory(): UsernameChangeRecord[] {
+  if (typeof window === "undefined") return []
+  const json = localStorage.getItem(STORAGE_KEYS.USERNAME_HISTORY)
+  return json ? (JSON.parse(json) as UsernameChangeRecord[]) : []
+}
+
+function setUsernameHistory(records: UsernameChangeRecord[]) {
+  if (typeof window === "undefined") return
+  localStorage.setItem(STORAGE_KEYS.USERNAME_HISTORY, JSON.stringify(records))
+}
+
+export function addUsernameHistory(record: UsernameChangeRecord) {
+  const all = getUsernameHistory()
+  all.push(record)
+  setUsernameHistory(all)
+}
+
+export function isUsernameAvailable(candidate: string, currentUserId?: string): boolean {
+  const name = candidate.trim()
+  if (!name) return false
+  // Current usernames
+  const taken = getUsers().some((u) => u.username.toLowerCase() === name.toLowerCase() && u.id !== currentUserId)
+  if (taken) return false
+  // Reserved previous usernames by others
+  const history = getUsernameHistory()
+  const reservedByOther = history.some((rec) => rec.previousUsername.toLowerCase() === name.toLowerCase() && rec.userId !== currentUserId)
+  if (reservedByOther) return false
+  return true
+}
+
+export function getUsernameCooldown(user: User): { canChange: boolean; daysLeft: number } {
+  const last = user.lastUsernameChangeAt ? new Date(user.lastUsernameChangeAt).getTime() : 0
+  if (!last) return { canChange: true, daysLeft: 0 }
+  const now = Date.now()
+  const elapsedMs = now - last
+  const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000
+  if (elapsedMs >= THIRTY_DAYS_MS) return { canChange: true, daysLeft: 0 }
+  const daysLeft = Math.ceil((THIRTY_DAYS_MS - elapsedMs) / (24 * 60 * 60 * 1000))
+  return { canChange: false, daysLeft }
+}
+
+export function changeUsername(userId: string, newUsername: string): { success: true; username: string } | { success: false; error: string; daysLeft?: number } {
+  if (typeof window === "undefined") return { success: false, error: "Unavailable in server context" }
+  const users = getUsers()
+  const idx = users.findIndex((u) => u.id === userId)
+  if (idx === -1) return { success: false, error: "User not found" }
+  const user = users[idx]
+  const { canChange, daysLeft } = getUsernameCooldown(user)
+  if (!canChange) return { success: false, error: `You can change username again in ${daysLeft} days`, daysLeft }
+
+  const pattern = /^[a-zA-Z0-9_\.]{3,20}$/
+  const name = newUsername.trim()
+  if (!pattern.test(name)) {
+    return { success: false, error: "Username must be 3-20 characters and contain only letters, numbers, underscores, or dots." }
+  }
+  if (!isUsernameAvailable(name, userId)) {
+    return { success: false, error: "Username is taken or reserved" }
+  }
+  const prev = user.username
+  const changedAt = new Date().toISOString()
+  const record: UsernameChangeRecord = { userId, previousUsername: prev, newUsername: name, changedAt }
+  // Update user
+  const updated: User = {
+    ...(user as User),
+    username: name,
+    lastUsernameChangeAt: changedAt,
+    usernameHistory: [...(user.usernameHistory ?? []), record],
+  }
+  users[idx] = normalizeUser(updated)
+  localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users))
+  // Global history
+  addUsernameHistory(record)
+  return { success: true, username: name }
 }
 
 // Helper function to generate slug from pet name
@@ -1170,6 +1254,11 @@ export function toggleFollow(followerId: string, followingId: string) {
     // Follow
     follower.following.push(followingId)
     following.followers.push(followerId)
+    try {
+      // Record follower gained (client analytics)
+      const { recordFollowEvent } = require('./profile-analytics')
+      recordFollowEvent(followingId, followerId, 'follow')
+    } catch {}
   }
 
   users[followerIndex] = follower
@@ -1306,6 +1395,38 @@ export function unblockUser(userId: string, unblockUserId: string) {
 
   users[userIndex] = normalizeUser(user)
   localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users))
+}
+
+export function restrictUser(userId: string, restrictUserId: string) {
+  if (typeof window === "undefined") return
+  const users = getUsers()
+  const userIndex = users.findIndex((u) => u.id === userId)
+  if (userIndex === -1) return
+  const user = users[userIndex]
+  if (!user.restrictedUsers) user.restrictedUsers = []
+  if (!user.restrictedUsers.includes(restrictUserId)) {
+    user.restrictedUsers.push(restrictUserId)
+  }
+  users[userIndex] = normalizeUser(user)
+  localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users))
+}
+
+export function unrestrictUser(userId: string, targetUserId: string) {
+  if (typeof window === "undefined") return
+  const users = getUsers()
+  const userIndex = users.findIndex((u) => u.id === userId)
+  if (userIndex === -1) return
+  const user = users[userIndex]
+  if (!user.restrictedUsers) user.restrictedUsers = []
+  user.restrictedUsers = user.restrictedUsers.filter((id) => id !== targetUserId)
+  users[userIndex] = normalizeUser(user)
+  localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users))
+}
+
+export function isUserRestrictedBy(ownerId: string | null | undefined, actorId: string | null | undefined): boolean {
+  if (!ownerId || !actorId || ownerId === actorId) return false
+  const owner = getUserById(ownerId)
+  return Boolean(owner?.restrictedUsers?.includes(actorId))
 }
 
 export function muteUser(userId: string, muteUserId: string) {

@@ -247,8 +247,9 @@ export function CitationsDrawer({
                   ))
                 )}
               </div>
-            </ScrollArea>
+            
           </div>
+        </div>
         </div>
       </SheetContent>
     </Sheet>
@@ -353,4 +354,3 @@ function AddSourceDialog({ onSourceAdded }: { onSourceAdded: (source: Source) =>
     </Dialog>
   )
 }
-

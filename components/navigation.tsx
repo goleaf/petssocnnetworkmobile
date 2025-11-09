@@ -36,6 +36,7 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { NotificationsDropdown } from "@/components/notifications-dropdown"
+import { useApplyProfilePhotoUpdates } from "@/lib/profile-updates"
 
 export function Navigation() {
   const { user, isAuthenticated, logout, isAdmin, isModerator } = useAuth()
@@ -46,6 +47,9 @@ export function Navigation() {
   useEffect(() => {
     setMounted(true)
   }, [])
+
+  // Listen for profile photo updates (SSE/BroadcastChannel) and patch auth store/local cache
+  useApplyProfilePhotoUpdates()
 
   const navItems = [
     ...(isAuthenticated

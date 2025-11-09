@@ -7,9 +7,12 @@ import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { BackButton } from "@/components/ui/back-button"
+import { SettingsHeader } from "@/components/settings/SettingsHeader"
 import { useAuth } from "@/components/auth/auth-provider"
 import { PrivacySelector } from "@/components/privacy-selector"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import * as RadioGroup from "@radix-ui/react-radio-group"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import {
   updateUser,
   getUsers,
@@ -19,6 +22,7 @@ import {
   updateBlogPost,
   blockUser,
   unblockUser,
+  unrestrictUser,
 } from "@/lib/storage"
 import type { PrivacyLevel, Pet } from "@/lib/types"
 import { formatDate } from "@/lib/utils/date"
@@ -34,6 +38,10 @@ import {
   LayoutGrid,
   ShieldCheck,
   PawPrint,
+  Globe,
+  Lock,
+  Sliders,
+  Loader2,
 } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import Link from "next/link"
@@ -88,12 +96,27 @@ export default function PrivacySettingsPage() {
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
   const [settings, setSettings] = useState({
     profile: "public" as PrivacyLevel,
-    email: "private" as PrivacyLevel,
+    // Contact & identity
+    avatarVisibility: "public" as PrivacyLevel,
+    coverPhotoVisibility: "public" as PrivacyLevel,
+    email: "private" as PrivacyLevel | "never",
+    phone: "private" as PrivacyLevel | "never",
+    birthdayVisibility: "private" as "public_show_year" | "public_hide_year" | PrivacyLevel,
+    ageVisibility: "private" as PrivacyLevel,
     location: "followers-only" as PrivacyLevel,
+    locationGranularity: "exact" as "exact" | "region" | "country" | "hidden",
+    joinDateVisibility: "public" as PrivacyLevel,
+    lastActiveVisibility: "followers-only" as PrivacyLevel | "hidden",
+    messagePermissions: "public" as any,
+    likesVisibility: "followers-only" as PrivacyLevel,
+
+    // Content & lists
     pets: "public" as PrivacyLevel,
     posts: "public" as PrivacyLevel,
     followers: "public" as PrivacyLevel,
     following: "public" as PrivacyLevel,
+
+    // Controls
     searchable: true,
     allowFollowRequests: "public" as PrivacyLevel,
     allowTagging: "public" as PrivacyLevel,
@@ -107,8 +130,27 @@ export default function PrivacySettingsPage() {
     },
   })
   const [blockedUsers, setBlockedUsers] = useState<any[]>([])
+  const [restrictedUsers, setRestrictedUsers] = useState<any[]>([])
   const [petControls, setPetControls] = useState<PetControl[]>([])
   const [postControls, setPostControls] = useState<PostControl[]>([])
+  const [isCustomOpen, setIsCustomOpen] = useState(false)
+  const [saving, setSaving] = useState<Record<string, boolean>>({})
+  const [saved, setSaved] = useState<Record<string, boolean>>({})
+
+  const savePrivacyField = async (field: string, value: any) => {
+    if (!user) return
+    setSaving((prev) => ({ ...prev, [field]: true }))
+    setSaved((prev) => ({ ...prev, [field]: false }))
+    setSettings((prev) => ({ ...prev, [field]: value }))
+    // Persist client-side
+    updateUser(user.id, { privacy: { ...(user.privacy || {}), [field]: value } } as any)
+    try {
+      await fetch('/api/user/privacy', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ field, value }) })
+    } catch {}
+    setSaving((prev) => ({ ...prev, [field]: false }))
+    setSaved((prev) => ({ ...prev, [field]: true }))
+    setTimeout(() => setSaved((prev) => ({ ...prev, [field]: false })), 1200)
+  }
 
   const audiencePresets: { value: PrivacyLevel; label: string }[] = [
     { value: "public", label: "Public" },
@@ -136,6 +178,15 @@ export default function PrivacySettingsPage() {
     settings.location === preset &&
     settings.sections.basics === preset &&
     settings.sections.statistics === preset
+
+  const profileVisibilitySelection: "public" | "followers-only" | "private" | "custom" =
+    isProfilePresetActive("public")
+      ? "public"
+      : isProfilePresetActive("followers-only")
+        ? "followers-only"
+        : isProfilePresetActive("private")
+          ? "private"
+          : "custom"
 
   const applyContentPreset = (preset: PrivacyLevel) => {
     setSettings((prev) => ({
@@ -204,8 +255,16 @@ export default function PrivacySettingsPage() {
     if (user.privacy) {
       setSettings({
         profile: user.privacy.profile || "public",
-        email: user.privacy.email || "private",
+        avatarVisibility: user.privacy.avatarVisibility || "public",
+        coverPhotoVisibility: user.privacy.coverPhotoVisibility || "public",
+        email: (user.privacy.email as any) || "private",
+        phone: user.privacy.phone || "private",
+        birthdayVisibility: (user.privacy.birthdayVisibility as any) || "private",
+        ageVisibility: user.privacy.ageVisibility || "private",
         location: user.privacy.location || "followers-only",
+        locationGranularity: user.privacy.locationGranularity || "exact",
+        joinDateVisibility: user.privacy.joinDateVisibility || "public",
+        lastActiveVisibility: user.privacy.lastActiveVisibility || "followers-only",
         pets: user.privacy.pets || "public",
         posts: user.privacy.posts || "public",
         followers: user.privacy.followers || "public",
@@ -214,6 +273,8 @@ export default function PrivacySettingsPage() {
         allowFollowRequests: user.privacy.allowFollowRequests || "public",
         allowTagging: user.privacy.allowTagging || "public",
         secureMessages: user.privacy.secureMessages !== false,
+        messagePermissions: (user.privacy as any).messagePermissions || "public",
+        likesVisibility: (user.privacy as any).likesVisibility || "followers-only",
         sections: {
           basics: user.privacy.sections?.basics || user.privacy.profile || "public",
           statistics: user.privacy.sections?.statistics || user.privacy.profile || "public",
@@ -267,6 +328,13 @@ export default function PrivacySettingsPage() {
       setBlockedUsers(blocked)
     } else {
       setBlockedUsers([])
+    }
+    if ((user as any).restrictedUsers && (user as any).restrictedUsers.length > 0) {
+      const allUsers = getUsers()
+      const restricted = allUsers.filter((u) => (user as any).restrictedUsers!.includes(u.id))
+      setRestrictedUsers(restricted)
+    } else {
+      setRestrictedUsers([])
     }
   }, [user])
 
@@ -337,13 +405,19 @@ export default function PrivacySettingsPage() {
     setBlockedUsers(blockedUsers.filter((u) => u.id !== unblockUserId))
   }
 
+  const handleUnrestrict = (targetUserId: string) => {
+    if (!user) return
+    unrestrictUser(user.id, targetUserId)
+    setRestrictedUsers(restrictedUsers.filter((u) => u.id !== targetUserId))
+  }
+
   if (!user) {
     return null
   }
 
   return (
     <div className="container mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6 md:py-8 max-w-7xl">
-      <BackButton onClick={() => router.back()} label="Back" />
+      <SettingsHeader description="Control who can see your information and content." />
 
       <div className="space-y-4 sm:space-y-6">
         {/* Success/Error Message */}
@@ -367,6 +441,130 @@ export default function PrivacySettingsPage() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
+          {/* Contact & Interactions */}
+          <Card>
+            <CardHeader className="space-y-3">
+              <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-lg bg-teal-500/10 flex items-center justify-center flex-shrink-0">
+                  <LayoutGrid className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-teal-500" />
+                </div>
+                Contact & Interactions
+              </CardTitle>
+              <CardDescription className="text-xs sm:text-sm">Manage who can reach out and interact with you</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4 sm:space-y-6">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <Label>Who can send me messages</Label>
+                    <p className="text-sm text-muted-foreground">Disables DMs when set to No one</p>
+                  </div>
+                  {saving['messagePermissions'] ? (
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  ) : saved['messagePermissions'] ? (
+                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  ) : null}
+                </div>
+                <Select
+                  value={(settings as any).messagePermissions || 'public'}
+                  onValueChange={(v) => savePrivacyField('messagePermissions', v)}
+                >
+                  <SelectTrigger className="w-full sm:w-72">
+                    <SelectValue placeholder="Select who can message you" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="public">Everyone</SelectItem>
+                    <SelectItem value="friends">Friends</SelectItem>
+                    <SelectItem value="friends-of-friends">Friends of Friends</SelectItem>
+                    <SelectItem value="following">Only people I follow</SelectItem>
+                    <SelectItem value="none">No one</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <Label>Who can tag me in posts</Label>
+                    <p className="text-sm text-muted-foreground">Only Me requires approval; No one disables tags</p>
+                  </div>
+                  {saving['allowTagging'] ? (
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  ) : saved['allowTagging'] ? (
+                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  ) : null}
+                </div>
+                <Select
+                  value={settings.allowTagging as string}
+                  onValueChange={(v) => savePrivacyField('allowTagging', v)}
+                >
+                  <SelectTrigger className="w-full sm:w-72">
+                    <SelectValue placeholder="Select tagging permission" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="public">Everyone</SelectItem>
+                    <SelectItem value="followers-only">Friends</SelectItem>
+                    <SelectItem value="private">Only Me (requires approval)</SelectItem>
+                    <SelectItem value="none">No one</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <Label>Who can see my friends/followers list</Label>
+                    <p className="text-sm text-muted-foreground">Controls visibility of your followers</p>
+                  </div>
+                  {saving['followers'] ? (
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  ) : saved['followers'] ? (
+                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  ) : null}
+                </div>
+                <PrivacySelector
+                  value={settings.followers}
+                  onChange={(v) => savePrivacyField('followers', v)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <Label>Who can see who I'm following</Label>
+                    <p className="text-sm text-muted-foreground">Controls visibility of your following list</p>
+                  </div>
+                  {saving['following'] ? (
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  ) : saved['following'] ? (
+                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  ) : null}
+                </div>
+                <PrivacySelector
+                  value={settings.following}
+                  onChange={(v) => savePrivacyField('following', v)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <Label>Who can see my liked posts</Label>
+                    <p className="text-sm text-muted-foreground">Likes may still be visible to authors depending on post privacy</p>
+                  </div>
+                  {saving['likesVisibility'] ? (
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  ) : saved['likesVisibility'] ? (
+                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  ) : null}
+                </div>
+                <PrivacySelector
+                  value={(settings as any).likesVisibility || 'followers-only'}
+                  onChange={(v) => savePrivacyField('likesVisibility', v)}
+                />
+              </div>
+            </CardContent>
+          </Card>
           {/* Profile Privacy */}
           <Card>
             <CardHeader className="space-y-3">
@@ -394,30 +592,214 @@ export default function PrivacySettingsPage() {
             </CardHeader>
             <CardContent className="space-y-4 sm:space-y-6">
               <div className="space-y-2">
+                <Label>Who can see my joined date</Label>
+                <p className="text-sm text-muted-foreground mb-2">Controls visibility of your member since date</p>
+                <PrivacySelector
+                  value={settings.joinDateVisibility as PrivacyLevel}
+                  onChange={(v) => setSettings({ ...settings, joinDateVisibility: v })}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Who can see my last active status</Label>
+                <p className="text-sm text-muted-foreground mb-2">If hidden, you appear offline to everyone</p>
+                <Select
+                  value={settings.lastActiveVisibility as string}
+                  onValueChange={(v) => setSettings({ ...settings, lastActiveVisibility: v as any })}
+                >
+                  <SelectTrigger className="w-full sm:w-64">
+                    <SelectValue placeholder="Select visibility" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="public">Everyone</SelectItem>
+                    <SelectItem value="followers-only">Friends</SelectItem>
+                    <SelectItem value="private">Only Me</SelectItem>
+                    <SelectItem value="hidden">Hidden</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
                 <Label>Profile Visibility</Label>
                 <p className="text-sm text-muted-foreground mb-2">Who can see your profile information</p>
+                <RadioGroup.Root
+                  value={profileVisibilitySelection}
+                  onValueChange={(val) => {
+                    if (val === "custom") {
+                      setIsCustomOpen(true)
+                      return
+                    }
+                    const v = val as PrivacyLevel
+                    applyProfilePreset(v)
+                    setSettings((prev) => ({ ...prev, profile: v }))
+                  }}
+                  className="grid grid-cols-1 gap-2"
+                >
+                  {[
+                    {
+                      value: "public",
+                      label: "Public",
+                      description: "Anyone can see my profile",
+                      Icon: Globe,
+                    },
+                    {
+                      value: "followers-only",
+                      label: "Friends Only",
+                      description: "Only people I follow who follow me back",
+                      Icon: Users,
+                    },
+                    {
+                      value: "private",
+                      label: "Private",
+                      description: "Only approved followers can see",
+                      Icon: Lock,
+                    },
+                  ].map((opt) => (
+                    <RadioGroup.Item key={opt.value} value={opt.value} asChild>
+                      <button
+                        type="button"
+                        className="flex items-start gap-3 rounded-lg border p-3 text-left hover:bg-accent/30 data-[state=checked]:border-primary focus:outline-none"
+                        aria-label={opt.label}
+                      >
+                        <div className="mt-0.5">
+                          <div className="h-4 w-4 rounded-full border data-[state=checked]:border-[5px] data-[state=checked]:border-primary" />
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 font-medium">
+                            <opt.Icon className="h-4 w-4" />
+                            {opt.label}
+                          </div>
+                          <p className="text-sm text-muted-foreground">{opt.description}</p>
+                        </div>
+                      </button>
+                    </RadioGroup.Item>
+                  ))}
+                  <RadioGroup.Item value="custom" asChild>
+                    <button
+                      type="button"
+                      onClick={() => setIsCustomOpen(true)}
+                      className="flex items-start gap-3 rounded-lg border p-3 text-left hover:bg-accent/30 data-[state=checked]:border-primary focus:outline-none"
+                      aria-label="Custom - Advanced settings"
+                    >
+                      <div className="mt-0.5">
+                        <div className="h-4 w-4 rounded-full border data-[state=checked]:border-[5px] data-[state=checked]:border-primary" />
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 font-medium">
+                          <Sliders className="h-4 w-4" />
+                          Custom - Advanced settings
+                        </div>
+                        <p className="text-sm text-muted-foreground">Open detailed controls for sections, search, and tagging.</p>
+                      </div>
+                    </button>
+                  </RadioGroup.Item>
+                </RadioGroup.Root>
+              </div>
+
+              {/* Granular controls */}
+              <div className="space-y-2">
+                <Label>Who can see my profile photo</Label>
+                <p className="text-sm text-muted-foreground mb-2">Control visibility of your avatar across the app</p>
                 <PrivacySelector
-                  value={settings.profile}
-                  onChange={(value) => setSettings({ ...settings, profile: value })}
+                  value={settings.avatarVisibility as PrivacyLevel}
+                  onChange={(value) => setSettings({ ...settings, avatarVisibility: value })}
                 />
               </div>
 
               <div className="space-y-2">
-                <Label>Email Address</Label>
-                <p className="text-sm text-muted-foreground mb-2">Who can see your email address</p>
+                <Label>Who can see my cover photo</Label>
+                <p className="text-sm text-muted-foreground mb-2">Control visibility of your banner image</p>
                 <PrivacySelector
-                  value={settings.email}
-                  onChange={(value) => setSettings({ ...settings, email: value })}
+                  value={settings.coverPhotoVisibility as PrivacyLevel}
+                  onChange={(value) => setSettings({ ...settings, coverPhotoVisibility: value })}
                 />
               </div>
 
               <div className="space-y-2">
-                <Label>Location</Label>
-                <p className="text-sm text-muted-foreground mb-2">Who can see your location</p>
+                <Label>Who can see my email</Label>
+                <p className="text-sm text-muted-foreground mb-2">Default: Only Me</p>
+                <Select value={settings.email} onValueChange={(v) => setSettings({ ...settings, email: v as any })}>
+                  <SelectTrigger className="w-full sm:w-64">
+                    <SelectValue placeholder="Select visibility" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="public">Everyone</SelectItem>
+                    <SelectItem value="followers-only">Friends</SelectItem>
+                    <SelectItem value="private">Only Me</SelectItem>
+                    <SelectItem value="never">Never</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Who can see my phone number</Label>
+                <p className="text-sm text-muted-foreground mb-2">Default: Only Me</p>
+                <Select value={settings.phone as string} onValueChange={(v) => setSettings({ ...settings, phone: v as any })}>
+                  <SelectTrigger className="w-full sm:w-64">
+                    <SelectValue placeholder="Select visibility" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="public">Everyone</SelectItem>
+                    <SelectItem value="followers-only">Friends</SelectItem>
+                    <SelectItem value="private">Only Me</SelectItem>
+                    <SelectItem value="never">Never</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Who can see my birthday</Label>
+                <p className="text-sm text-muted-foreground mb-2">Everyone options can show or hide your birth year</p>
+                <Select
+                  value={settings.birthdayVisibility}
+                  onValueChange={(v) => setSettings({ ...settings, birthdayVisibility: v as any })}
+                >
+                  <SelectTrigger className="w-full sm:w-64">
+                    <SelectValue placeholder="Select visibility" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="public_show_year">Everyone (Show Year)</SelectItem>
+                    <SelectItem value="public_hide_year">Everyone (Hide Year)</SelectItem>
+                    <SelectItem value="followers-only">Friends</SelectItem>
+                    <SelectItem value="private">Only Me</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Who can see my age</Label>
+                <p className="text-sm text-muted-foreground mb-2">Age is calculated from your birthday</p>
+                <PrivacySelector
+                  value={settings.ageVisibility as PrivacyLevel}
+                  onChange={(v) => setSettings({ ...settings, ageVisibility: v })}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Who can see my location</Label>
+                <p className="text-sm text-muted-foreground mb-2">Control who can see your location</p>
                 <PrivacySelector
                   value={settings.location}
                   onChange={(value) => setSettings({ ...settings, location: value })}
                 />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Location detail</Label>
+                <p className="text-sm text-muted-foreground mb-2">Choose how precise your location appears</p>
+                <Select
+                  value={settings.locationGranularity}
+                  onValueChange={(v) => setSettings({ ...settings, locationGranularity: v as any })}
+                >
+                  <SelectTrigger className="w-full sm:w-64">
+                    <SelectValue placeholder="Select detail level" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="exact">Exact City</SelectItem>
+                    <SelectItem value="region">State/Region Only</SelectItem>
+                    <SelectItem value="country">Country Only</SelectItem>
+                    <SelectItem value="hidden">Hidden</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </CardContent>
           </Card>
@@ -823,6 +1205,132 @@ export default function PrivacySettingsPage() {
             )}
           </CardContent>
         </Card>
+
+        {/* Restricted Accounts */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+              <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-lg bg-amber-500/10 flex items-center justify-center flex-shrink-0">
+                <ShieldCheck className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-amber-600" />
+              </div>
+              Restricted Accounts
+            </CardTitle>
+            <CardDescription className="text-xs sm:text-sm">
+              Soft-block users without notifying them. Their comments are hidden from others until you approve.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {restrictedUsers.length > 0 ? (
+              <div className="space-y-2 sm:space-y-3">
+                {restrictedUsers.map((restricted) => (
+                  <div key={restricted.id} className="flex items-center justify-between p-2 sm:p-3 rounded-lg border gap-2 sm:gap-3">
+                    <Link href={`/profile/${restricted.username}`} className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                      <Avatar className="h-8 w-8 sm:h-10 sm:w-10 flex-shrink-0">
+                        <AvatarImage src={restricted.avatar || "/placeholder.svg"} alt={restricted.fullName} />
+                        <AvatarFallback className="text-xs sm:text-sm">{restricted.fullName.charAt(0)}</AvatarFallback>
+                      </Avatar>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-semibold text-sm sm:text-base truncate">{restricted.fullName}</p>
+                        <p className="text-xs sm:text-sm text-muted-foreground truncate">@{restricted.username}</p>
+                      </div>
+                    </Link>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleUnrestrict(restricted.id)}
+                      className="flex-shrink-0"
+                    >
+                      <UserX className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
+                      <span className="hidden sm:inline">Unrestrict</span>
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs sm:text-sm text-muted-foreground text-center py-6 sm:py-8">No restricted accounts</p>
+            )}
+          </CardContent>
+        </Card>
+        {/* Custom Advanced Modal */}
+        <Dialog open={isCustomOpen} onOpenChange={setIsCustomOpen}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Advanced Profile Visibility</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Control visibility for specific sections and discovery options. These settings may not match a single preset and will be shown as "Custom".
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Basics</Label>
+                  <PrivacySelector
+                    value={settings.sections.basics}
+                    onChange={(v) => setSettings((prev) => ({ ...prev, sections: { ...prev.sections, basics: v } }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Statistics</Label>
+                  <PrivacySelector
+                    value={settings.sections.statistics}
+                    onChange={(v) => setSettings((prev) => ({ ...prev, sections: { ...prev.sections, statistics: v } }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Friends</Label>
+                  <PrivacySelector
+                    value={settings.sections.friends}
+                    onChange={(v) => setSettings((prev) => ({ ...prev, sections: { ...prev.sections, friends: v } }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Pets</Label>
+                  <PrivacySelector
+                    value={settings.sections.pets}
+                    onChange={(v) => setSettings((prev) => ({ ...prev, sections: { ...prev.sections, pets: v } }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Activity</Label>
+                  <PrivacySelector
+                    value={settings.sections.activity}
+                    onChange={(v) => setSettings((prev) => ({ ...prev, sections: { ...prev.sections, activity: v } }))}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="flex items-center justify-between rounded-lg border p-3">
+                  <div className="space-y-1">
+                    <Label>Searchable</Label>
+                    <p className="text-xs text-muted-foreground">Allow your profile to be discoverable in search</p>
+                  </div>
+                  <Switch
+                    checked={settings.searchable}
+                    onCheckedChange={(checked) => setSettings((prev) => ({ ...prev, searchable: checked }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Follow Requests</Label>
+                  <PrivacySelector
+                    value={settings.allowFollowRequests}
+                    onChange={(v) => setSettings((prev) => ({ ...prev, allowFollowRequests: v }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Tagging</Label>
+                  <PrivacySelector
+                    value={settings.allowTagging}
+                    onChange={(v) => setSettings((prev) => ({ ...prev, allowTagging: v }))}
+                  />
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsCustomOpen(false)}>Close</Button>
+              <Button onClick={() => setIsCustomOpen(false)}>Save</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         <div className="flex flex-col sm:flex-row justify-end gap-3 sm:gap-4 pt-4 sm:pt-6">
           <Button variant="outline" onClick={() => router.back()} disabled={isLoading} className="w-full sm:w-auto">

@@ -1,9 +1,15 @@
 import { Area } from "react-easy-crop"
 
+type CropOptions = {
+  brightness?: number // 1 = 100%
+  contrast?: number   // 1 = 100%
+}
+
 export async function getCroppedImg(
   imageSrc: string,
   pixelCrop: Area,
-  rotation = 0
+  rotation = 0,
+  options: CropOptions = {}
 ): Promise<string> {
   const image = await createImage(imageSrc)
   const canvas = document.createElement("canvas")
@@ -25,6 +31,17 @@ export async function getCroppedImg(
   ctx.translate(safeArea / 2, safeArea / 2)
   ctx.rotate((rotation * Math.PI) / 180)
   ctx.translate(-safeArea / 2, -safeArea / 2)
+
+  // Apply basic filters if provided
+  const brightness = options.brightness ?? 1
+  const contrast = options.contrast ?? 1
+  try {
+    // CanvasRenderingContext2D.filter is widely supported on modern browsers
+    // Use CSS-like filters for brightness/contrast
+    ;(ctx as CanvasRenderingContext2D).filter = `brightness(${brightness}) contrast(${contrast})`
+  } catch {
+    // No-op if filter unsupported
+  }
 
   // Draw rotated image and store data.
   ctx.drawImage(
@@ -57,4 +74,3 @@ function createImage(url: string): Promise<HTMLImageElement> {
     image.src = url
   })
 }
-

@@ -8,6 +8,8 @@ export interface EmailVerificationState {
   requestedAt?: string
   expiresAt?: string
   verifiedAt?: string
+  // For email change flows, store the new email awaiting verification
+  pendingEmail?: string
 }
 
 export interface CorporateEmailMetadata {
@@ -37,6 +39,8 @@ export interface User {
   suspendExpiry?: string // ISO date string for suspension expiration
   lastSeen?: string // ISO date string for last seen timestamp
   createdAt?: string // ISO date string for account creation (alias for joinedAt)
+  passwordChangedAt?: string // ISO date string when password was last changed
+  sessionInvalidatedAt?: string // ISO date string when all sessions were invalidated
   avatar?: string
   bio?: string
   location?: string
@@ -45,21 +49,38 @@ export interface User {
   following: string[]
   followingPets?: string[]
   coverPhoto?: string
+  lastUsernameChangeAt?: string
+  usernameHistory?: Array<{
+    previousUsername: string
+    newUsername: string
+    changedAt: string
+  }>
   privacy?: {
     profile: "public" | "private" | "followers-only"
-    email: "public" | "private" | "followers-only"
+    email: "public" | "private" | "followers-only" | "never"
+    phone?: "public" | "private" | "followers-only" | "never"
+    avatarVisibility?: "public" | "private" | "followers-only"
+    coverPhotoVisibility?: "public" | "private" | "followers-only"
+    birthdayVisibility?: "public_show_year" | "public_hide_year" | "followers-only" | "private"
+    ageVisibility?: "public" | "followers-only" | "private"
     location: "public" | "private" | "followers-only"
+    locationGranularity?: "exact" | "region" | "country" | "hidden"
     pets: "public" | "private" | "followers-only"
     posts: "public" | "private" | "followers-only"
     followers: "public" | "private" | "followers-only"
     following: "public" | "private" | "followers-only"
     searchable: boolean
     allowFollowRequests: "public" | "followers-only"
-    allowTagging: "public" | "followers-only" | "private"
+    allowTagging: "public" | "followers-only" | "private" | "none"
     secureMessages?: boolean
+    joinDateVisibility?: "public" | "followers-only" | "private"
+    lastActiveVisibility?: "public" | "followers-only" | "private" | "hidden"
+    messagePermissions?: "public" | "friends" | "friends-of-friends" | "following" | "none"
+    likesVisibility?: "public" | "followers-only" | "private"
     sections?: ProfileSectionPrivacy
   }
   blockedUsers?: string[] // User IDs that are blocked
+  restrictedUsers?: string[] // User IDs that are shadow-restricted by this user
   mutedUsers?: string[] // User IDs that are muted (soft block)
   closeFriends?: string[] // User IDs in close friends list
   occupation?: string
@@ -75,6 +96,10 @@ export interface User {
   emailVerified?: boolean
   emailVerification?: EmailVerificationState
   corporateEmail?: CorporateEmailMetadata
+  phoneVerified?: boolean
+  requirePhoneVerification?: boolean
+  requireEmailVerification?: boolean
+  verificationResubmitAt?: string
 }
 
 export interface Pet {

@@ -42,8 +42,8 @@ import {
   getGroupTopicsByGroupId,
   getGroupTopicById,
   addGroupTopic,
-} from '../storage'
-import type { User, Pet, BlogPost, Comment, WikiArticle, Activity, GroupTopic } from '../types'
+} from '@/lib/storage'
+import type { User, Pet, BlogPost, Comment, WikiArticle, Activity, GroupTopic } from '@/lib/types'
 
 // Mock localStorage with Jest-compatible methods
 const createLocalStorageMock = () => {

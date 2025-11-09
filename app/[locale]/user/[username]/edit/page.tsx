@@ -1,7 +1,6 @@
 "use client"
 
 import React, { useState, useEffect, use, useRef } from "react"
-import { useAuth } from "@/lib/auth"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { CardHeaderWithIcon } from "@/components/ui/card-header-with-icon"
@@ -17,12 +16,23 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { TagInput } from "@/components/ui/tag-input"
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { CityAutocomplete } from "@/components/ui/city-autocomplete"
 import { AvatarEditor } from "@/components/ui/avatar-editor"
+import { CoverEditor } from "@/components/ui/cover-editor"
 import { FormActions } from "@/components/ui/form-actions"
 import { TooltipProvider } from "@/components/ui/tooltip"
-import { getUserByUsername, updateUser } from "@/lib/storage"
+import { getUserByUsername, updateUser, getPetsByOwnerId } from "@/lib/storage"
+import { Progress } from "@/components/ui/progress"
+import { compressDataUrl } from "@/lib/utils/image-compress"
+import { uploadProfilePhoto, uploadCoverPhoto } from "@/lib/utils/upload"
+import { toast } from "sonner"
+import { emitLocalProfilePhotoUpdated, emitLocalCoverPhotoUpdated } from "@/lib/profile-updates"
+import { useAuth } from "@/lib/auth"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
+import Link from "next/link"
+import { calculateProfileCompletionPercent } from "@/lib/utils/profile-overview"
+import { getUsernameCooldown } from "@/lib/storage"
 import type { User, PrivacyLevel } from "@/lib/types"
 import { cn } from "@/lib/utils"
 import { getAnimalOptions } from "@/lib/animal-types"
@@ -34,6 +44,7 @@ import {
   Loader2,
   AlertCircle,
   CheckCircle2,
+  XCircle,
   Globe,
   MapPin,
   Phone,
@@ -125,6 +136,7 @@ export default function EditProfilePage({ params }: { params: Promise<{ username
     fullName: "",
     bio: "",
     avatar: "",
+    coverPhoto: "",
     location: "",
     website: "",
     phone: "",
@@ -209,10 +221,49 @@ export default function EditProfilePage({ params }: { params: Promise<{ username
   const [isEditingImage, setIsEditingImage] = useState(false)
   const [isEditorOpen, setIsEditorOpen] = useState(false)
   const [tempImageSrc, setTempImageSrc] = useState<string>("")
+  const [isUploading, setIsUploading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(0)
+  const [uploadError, setUploadError] = useState<string>("")
+  const [uploadedUrls, setUploadedUrls] = useState<{
+    original: string; large: string; medium: string; small: string; thumbnail: string
+  } | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const coverFileRef = useRef<HTMLInputElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [activeTab, setActiveTab] = useState<TabKey>("basic")
   const [loadedTabs, setLoadedTabs] = useState<Set<TabKey>>(() => new Set(["basic"]))
+  const [petsCount, setPetsCount] = useState(0)
+  const [newUsername, setNewUsername] = useState("")
+  const [isChangingUsername, setIsChangingUsername] = useState(false)
+  const [usernameStatus, setUsernameStatus] = useState<"idle" | "checking" | "available" | "taken" | "invalid" | "reserved">("idle")
+  const [showConfirm, setShowConfirm] = useState(false)
+  const [passwordInput, setPasswordInput] = useState("")
+
+  // Debounced availability check
+  useEffect(() => {
+    const controller = new AbortController()
+    if (!newUsername || newUsername === profileUser?.username) {
+      setUsernameStatus("idle")
+      return
+    }
+    const handler = setTimeout(async () => {
+      setUsernameStatus("checking")
+      try {
+        const res = await fetch(`/api/username/availability?username=${encodeURIComponent(newUsername)}`, { signal: controller.signal })
+        const data = await res.json()
+        if (data.available) setUsernameStatus("available")
+        else if (data.reason === 'invalid') setUsernameStatus("invalid")
+        else if (data.reason === 'reserved') setUsernameStatus("reserved")
+        else setUsernameStatus("taken")
+      } catch {
+        setUsernameStatus("idle")
+      }
+    }, 300)
+    return () => {
+      controller.abort()
+      clearTimeout(handler)
+    }
+  }, [newUsername, profileUser?.username])
 
   // Animal options with Lucide icons and colors (from shared config)
   const animalOptions = getAnimalOptions()
@@ -220,6 +271,8 @@ export default function EditProfilePage({ params }: { params: Promise<{ username
   // Minimum image dimensions for avatar
   const MIN_IMAGE_WIDTH = 200
   const MIN_IMAGE_HEIGHT = 200
+  const MIN_COVER_WIDTH = 1200
+  const MIN_COVER_HEIGHT = 400
 
   const handleTabChange = (value: string) => {
     const tab = value as TabKey
@@ -241,6 +294,62 @@ export default function EditProfilePage({ params }: { params: Promise<{ username
       </CardContent>
     </Card>
   )
+
+  // Profile completion (based on current form state + previews)
+  const completionSnapshotUser = profileUser
+    ? {
+        ...profileUser,
+        avatar: imagePreview || formData.avatar || profileUser.avatar,
+        coverPhoto: (formData as any).coverPhoto || profileUser.coverPhoto,
+        bio: formData.bio,
+        location: formData.city || formData.country
+          ? `${formData.city}${formData.country ? ", " + formData.country : ""}`
+          : profileUser.location,
+        dateOfBirth: formData.dateOfBirth || profileUser.dateOfBirth,
+        phone: formData.phone || profileUser.phone,
+        website: formData.website || profileUser.website,
+        interests: formData.interests.length ? formData.interests : profileUser.interests,
+        socialMedia: formData.socialMedia || profileUser.socialMedia,
+      }
+    : null
+
+  const completionPercent = completionSnapshotUser
+    ? calculateProfileCompletionPercent(completionSnapshotUser as any, petsCount)
+    : 0
+
+  const completionColor = completionPercent < 30 ? "#ef4444" : completionPercent < 60 ? "#f59e0b" : "#22c55e"
+  const angle = Math.max(0, Math.min(360, completionPercent * 3.6))
+
+  const checkItems: { key: string; label: string; complete: boolean; onClick: () => void }[] = [
+    {
+      key: "avatar",
+      label: "Add profile photo",
+      complete: Boolean((completionSnapshotUser as any)?.avatar),
+      onClick: () => document.getElementById("avatar-upload")?.scrollIntoView({ behavior: "smooth" }),
+    },
+    {
+      key: "bio",
+      label: "Write bio",
+      complete: Boolean(formData.bio && formData.bio.trim().length > 0),
+      onClick: () => document.getElementById("bio")?.scrollIntoView({ behavior: "smooth" }),
+    },
+    {
+      key: "birthday",
+      label: "Add birthday",
+      complete: Boolean(formData.dateOfBirth && formData.dateOfBirth.trim().length > 0),
+      onClick: () => document.getElementById("dateOfBirth")?.scrollIntoView({ behavior: "smooth" }),
+    },
+    {
+      key: "pet",
+      label: "Add a pet",
+      complete: petsCount > 0,
+      onClick: () => {
+        if (profileUser?.username) {
+          window.location.href = `/profile/${profileUser.username}/add-pet`
+        }
+      },
+    },
+  ]
 
   useEffect(() => {
     // Wait for auth to initialize before checking user
@@ -267,6 +376,7 @@ export default function EditProfilePage({ params }: { params: Promise<{ username
     }
 
     setProfileUser(fetchedUser)
+    setPetsCount(getPetsByOwnerId(fetchedUser.id).length)
     const locationParts = (fetchedUser.location || "").split(", ")
     const country = locationParts.length > 1 ? locationParts[1] : ""
     const city = locationParts.length > 0 ? locationParts[0] : ""
@@ -275,6 +385,7 @@ export default function EditProfilePage({ params }: { params: Promise<{ username
       fullName: fetchedUser.fullName || "",
       bio: fetchedUser.bio || "",
       avatar: fetchedUser.avatar || "",
+      coverPhoto: (fetchedUser as any).coverPhoto || "",
       location: fetchedUser.location || "",
       website: fetchedUser.website || "",
       phone: fetchedUser.phone || "",
@@ -422,12 +533,109 @@ export default function EditProfilePage({ params }: { params: Promise<{ username
     reader.readAsDataURL(file)
   }
 
-  const handleSaveCroppedImage = (croppedImage: string) => {
-    setImagePreview(croppedImage)
-    setFormData((prev) => ({ ...prev, avatar: croppedImage }))
-    setIsEditingImage(true)
+  const handleSaveCroppedImage = async (croppedImage: string) => {
+    setUploadError("")
     setIsEditorOpen(false)
     setTempImageSrc("")
+    try {
+      setIsUploading(true)
+      setUploadProgress(1)
+      // Compress to under 2MB, cap dimensions at 1000
+      const blob = await compressDataUrl(croppedImage, { maxBytes: 2 * 1024 * 1024, maxDimension: 1000, outputType: 'image/jpeg' })
+      const file = new File([blob], 'profile.jpg', { type: blob.type })
+      const uid = user?.id
+      if (!uid) throw new Error('Not authenticated')
+      const res = await uploadProfilePhoto({
+        userId: uid,
+        file,
+        fileName: file.name,
+        onProgress: (p) => setUploadProgress(p),
+      })
+
+      // Update local state and storage
+      setUploadedUrls(res.urls)
+      // cache-bust is already applied by server response; add a client-side timestamp too to be safe
+      const busted = `${res.profilePhotoUrl}${res.profilePhotoUrl.includes('?') ? '&' : '?'}t=${Date.now()}`
+      setImagePreview(busted)
+      setFormData((prev) => ({ ...prev, avatar: busted }))
+      updateUser(uid, { avatar: busted } as any)
+      // Patch auth store so UI updates immediately
+      useAuth.setState((state) => ({ user: state.user ? { ...state.user, avatar: busted } : state.user }))
+      // Local broadcast for same-origin tabs
+      emitLocalProfilePhotoUpdated({ type: 'profilePhotoUpdated', userId: uid, largeUrl: busted, allSizes: res.urls, ts: Date.now() })
+      setIsEditingImage(false)
+      setUploadProgress(100)
+      toast.success('Profile photo updated!')
+    } catch (e: any) {
+      setUploadError(e?.message || 'Failed to upload profile photo')
+    } finally {
+      setTimeout(() => setIsUploading(false), 500)
+    }
+  }
+
+  // Cover image states
+  const [coverPreview, setCoverPreview] = useState<string>("")
+  const [isCoverEditorOpen, setIsCoverEditorOpen] = useState(false)
+  const [tempCoverSrc, setTempCoverSrc] = useState<string>("")
+  const [isCoverUploading, setIsCoverUploading] = useState(false)
+  const [coverUploadProgress, setCoverUploadProgress] = useState(0)
+  const [coverUploadError, setCoverUploadError] = useState<string>("")
+  const [uploadedCoverUrls, setUploadedCoverUrls] = useState<{
+    original: string; large: string; medium: string; small: string
+  } | null>(null)
+
+  const handleCoverFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setCoverUploadError("")
+    const reader = new FileReader()
+    reader.onload = () => {
+      const dataUrl = reader.result as string
+      const img = new window.Image()
+      img.onload = () => {
+        const width = img.naturalWidth
+        const height = img.naturalHeight
+        if (width < MIN_COVER_WIDTH || height < MIN_COVER_HEIGHT) {
+          setCoverUploadError(`Image is too small. Minimum ${MIN_COVER_WIDTH}x${MIN_COVER_HEIGHT}px. Got ${width}x${height}`)
+          return
+        }
+        setTempCoverSrc(dataUrl)
+        setIsCoverEditorOpen(true)
+      }
+      img.onerror = () => setCoverUploadError('Failed to load image.')
+      img.src = dataUrl
+    }
+    reader.onerror = () => setCoverUploadError('Failed to read file.')
+    reader.readAsDataURL(file)
+  }
+
+  const handleSaveCroppedCover = async (croppedImage: string) => {
+    setIsCoverEditorOpen(false)
+    setTempCoverSrc("")
+    setCoverUploadError("")
+    try {
+      setIsCoverUploading(true)
+      setCoverUploadProgress(1)
+      // Compress to under ~6MB and cap dimension at 2000
+      const blob = await compressDataUrl(croppedImage, { maxBytes: 6 * 1024 * 1024, maxDimension: 2000, outputType: 'image/jpeg' })
+      const file = new File([blob], 'cover.jpg', { type: blob.type })
+      const uid = user?.id
+      if (!uid) throw new Error('Not authenticated')
+      const res = await uploadCoverPhoto({ userId: uid, file, fileName: file.name, onProgress: (p) => setCoverUploadProgress(p) })
+      setUploadedCoverUrls(res.urls)
+      const busted = `${res.coverPhotoUrl}${res.coverPhotoUrl.includes('?') ? '&' : '?'}t=${Date.now()}`
+      setCoverPreview(busted)
+      setFormData((prev) => ({ ...prev, coverPhoto: busted }))
+      updateUser(uid, { coverPhoto: busted } as any)
+      // Broadcast local
+      emitLocalCoverPhotoUpdated({ type: 'coverPhotoUpdated', userId: uid, largeUrl: busted, allSizes: res.urls, ts: Date.now() })
+      setCoverUploadProgress(100)
+      toast.success('Cover photo updated!')
+    } catch (e: any) {
+      setCoverUploadError(e?.message || 'Failed to upload cover photo')
+    } finally {
+      setTimeout(() => setIsCoverUploading(false), 500)
+    }
   }
 
   const handleRotateImage = () => {
@@ -705,6 +913,47 @@ export default function EditProfilePage({ params }: { params: Promise<{ username
           />
 
           <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Completion Overview */}
+            <Card className="mb-2">
+              <CardContent className="p-4 sm:p-6">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                  <div className="relative h-24 w-24 flex-shrink-0">
+                    <div
+                      className="absolute inset-0 rounded-full"
+                      style={{ background: `conic-gradient(${completionColor} ${angle}deg, #e5e7eb 0deg)` }}
+                    />
+                    <div className="absolute inset-2 rounded-full bg-background flex items-center justify-center">
+                      <div className="text-center">
+                        <div className="text-xl font-bold">{completionPercent}%</div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex-1 min-w-0 space-y-2">
+                    <div className="text-base sm:text-lg font-semibold">Your profile is {completionPercent}% complete</div>
+                    <p className="text-sm text-muted-foreground">
+                      {completionPercent < 60 ? "Complete your profile to get more followers!" : "Users with complete profiles get 3x more engagement."}
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                      {checkItems.map((item) => (
+                        <button
+                          type="button"
+                          key={item.key}
+                          onClick={item.onClick}
+                          className="flex items-center gap-2 text-left rounded-md border p-2 hover:bg-accent/40 transition-colors"
+                        >
+                          {item.complete ? (
+                            <CheckCircle2 className="h-4 w-4 text-green-600" />
+                          ) : (
+                            <XCircle className="h-4 w-4 text-red-600" />
+                          )}
+                          <span className={cn("text-sm", item.complete ? "line-through text-muted-foreground" : "")}>{item.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
             {/* Success/Error Message */}
             {message && (
               <Alert variant={message.type === "error" ? "destructive" : "default"}>
@@ -760,6 +1009,7 @@ export default function EditProfilePage({ params }: { params: Promise<{ username
                             variant="outline"
                             onClick={() => fileInputRef.current?.click()}
                             className="flex-1"
+                            disabled={isUploading}
                           >
                             <Upload className="h-4 w-4 mr-2" />
                             Choose File
@@ -773,12 +1023,25 @@ export default function EditProfilePage({ params }: { params: Promise<{ username
                                 setIsEditorOpen(true)
                               }}
                               className="flex-1"
+                              disabled={isUploading}
                             >
                               <ZoomIn className="h-4 w-4 mr-2" />
                               Edit & Crop
                             </Button>
                           )}
                         </div>
+                        {isUploading && (
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between text-xs text-muted-foreground">
+                              <span>Uploading...</span>
+                              <span>{uploadProgress}%</span>
+                            </div>
+                            <Progress value={uploadProgress} />
+                          </div>
+                        )}
+                        {uploadError && (
+                          <p className="text-sm text-destructive">{uploadError}</p>
+                        )}
                         <Input
                           id="avatar-upload"
                           type="file"
@@ -805,6 +1068,32 @@ export default function EditProfilePage({ params }: { params: Promise<{ username
                           minWidth={MIN_IMAGE_WIDTH}
                           minHeight={MIN_IMAGE_HEIGHT}
                         />
+                      )}
+
+                      {/* Optional returned sizes preview */}
+                      {uploadedUrls && (
+                        <div className="grid grid-cols-5 gap-3 pt-2">
+                          <div className="flex flex-col items-center gap-1">
+                            <img src={uploadedUrls.original} alt="Original" className="h-16 w-16 rounded-full object-cover" />
+                            <span className="text-[10px] text-muted-foreground">Original</span>
+                          </div>
+                          <div className="flex flex-col items-center gap-1">
+                            <img src={uploadedUrls.large} alt="Large" className="h-16 w-16 rounded-full object-cover" />
+                            <span className="text-[10px] text-muted-foreground">400</span>
+                          </div>
+                          <div className="flex flex-col items-center gap-1">
+                            <img src={uploadedUrls.medium} alt="Medium" className="h-16 w-16 rounded-full object-cover" />
+                            <span className="text-[10px] text-muted-foreground">200</span>
+                          </div>
+                          <div className="flex flex-col items-center gap-1">
+                            <img src={uploadedUrls.small} alt="Small" className="h-16 w-16 rounded-full object-cover" />
+                            <span className="text-[10px] text-muted-foreground">100</span>
+                          </div>
+                          <div className="flex flex-col items-center gap-1">
+                            <img src={uploadedUrls.thumbnail} alt="Thumb" className="h-16 w-16 rounded-full object-cover" />
+                            <span className="text-[10px] text-muted-foreground">50</span>
+                          </div>
+                        </div>
                       )}
 
                       {imagePreview && isEditingImage && (
@@ -858,6 +1147,51 @@ export default function EditProfilePage({ params }: { params: Promise<{ username
 
                   {/* Personal Details Section - Right Side */}
                   <div className="flex-1 space-y-6">
+                    {/* Username changer */}
+                    {profileUser && (
+                      <>
+                      <div className="space-y-2">
+                        <FormLabel htmlFor="username" icon={UserIcon}>
+                          Username
+                        </FormLabel>
+                        <div className="flex gap-2 items-center">
+                          <Input
+                            id="username"
+                            value={newUsername || profileUser.username}
+                            onChange={(e) => setNewUsername(e.target.value)}
+                            placeholder="yourname"
+                            className="max-w-sm"
+                          />
+                          {usernameStatus === 'checking' && <span className="text-xs text-muted-foreground">Checking...</span>}
+                          {usernameStatus === 'available' && <span className="text-xs text-green-600">Available</span>}
+                          {usernameStatus === 'taken' && <span className="text-xs text-red-600">Taken</span>}
+                          
+                          {usernameStatus === 'invalid' && <span className="text-xs text-red-600">Invalid format</span>}
+                        </div>
+                        <div>
+                          <Button
+                            type="button"
+                            onClick={() => setShowConfirm(true)}
+                            loading={isChangingUsername}
+                            disabled={
+                              isChangingUsername || !newUsername || newUsername === profileUser.username || usernameStatus !== 'available'
+                            }
+                          >
+                            Request Username Change
+                          </Button>
+                        </div>
+                        </div>
+                        {(() => {
+                          const cooldown = getUsernameCooldown(profileUser)
+                          return cooldown.canChange ? (
+                            <p className="text-xs text-muted-foreground">You can change your username now. Limit: once every 30 days.</p>
+                          ) : (
+                            <p className="text-xs text-muted-foreground">You can change username again in {cooldown.daysLeft} days.</p>
+                          )
+                        })()}
+                        <p className="text-[11px] text-muted-foreground">Allowed: letters, numbers, underscores and hyphens; 3–20 chars.</p>
+                      </>
+                    )}
                     <div className="grid md:grid-cols-2 gap-6">
                       <div className="space-y-2">
                         <FormLabel htmlFor="fullName" icon={UserIcon} required>
@@ -915,6 +1249,134 @@ export default function EditProfilePage({ params }: { params: Promise<{ username
                       />
                     </div>
                   </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Username confirmation modal */}
+            {profileUser && (
+              <Dialog open={showConfirm} onOpenChange={setShowConfirm}>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Confirm Username Change</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-3">
+                    <p className="text-sm">
+                      Are you sure you want to change your username from <strong>@{profileUser.username}</strong> to{' '}
+                      <strong>@{newUsername}</strong>? This action can only be done once every 30 days.
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Your previous username <strong>@{profileUser.username}</strong> will be available for others to claim.
+                    </p>
+                    <div className="space-y-1">
+                      <Label htmlFor="confirm-password">Enter your password to confirm</Label>
+                      <Input
+                        id="confirm-password"
+                        type="password"
+                        value={passwordInput}
+                        onChange={(e) => setPasswordInput(e.target.value)}
+                        placeholder="••••••••"
+                        className="max-w-sm"
+                      />
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setShowConfirm(false)} disabled={isChangingUsername}>Cancel</Button>
+                    <Button
+                      onClick={async () => {
+                        if (!profileUser) return
+                        if (!passwordInput) {
+                          toast.error('Please enter your password')
+                          return
+                        }
+                        setIsChangingUsername(true)
+                        try {
+                          const res = await fetch(`/api/users/${encodeURIComponent(profileUser.id)}/username`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ newUsername, password: passwordInput }),
+                          })
+                          const data = await res.json()
+                          if (!res.ok) {
+                            toast.error(data.error || 'Failed to change username')
+                            return
+                          }
+                          // Success
+                          const updated = data.newUsername as string
+                          useAuth.setState((state) => ({ user: state.user && state.user.id === profileUser.id ? { ...state.user, username: updated, lastUsernameChangeAt: new Date().toISOString() } : state.user }))
+                          setProfileUser({ ...(profileUser as any), username: updated, lastUsernameChangeAt: new Date().toISOString() })
+                          toast.success('Username updated')
+                          setShowConfirm(false)
+                          setPasswordInput('')
+                          router.replace(`/user/${updated}/edit`)
+                        } finally {
+                          setIsChangingUsername(false)
+                        }
+                      }}
+                      loading={isChangingUsername}
+                      disabled={!passwordInput || isChangingUsername}
+                    >
+                      Confirm Change
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            )}
+
+            {/* Cover Photo Editor */}
+            <Card className="mb-6">
+              <CardHeaderWithIcon
+                title="Cover Photo"
+                description="Upload and crop a 3:1 banner (recommended 1200x400px)"
+                icon={Camera}
+              />
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="relative h-40 sm:h-48 md:h-56 lg:h-64 w-full overflow-hidden rounded-lg border">
+                    <img
+                      src={coverPreview || formData.coverPhoto || "/golden-retriever-beach.png"}
+                      alt="Cover preview"
+                      className="h-full w-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/10 to-black/40 pointer-events-none" />
+                  </div>
+
+                  <div className="space-y-2">
+                    <FormLabel htmlFor="cover-upload" icon={ImageIcon} className="text-base font-medium">
+                      Cover Photo
+                    </FormLabel>
+                    <div className="flex flex-col sm:flex-row gap-3">
+                      <Button type="button" variant="outline" className="flex-1" onClick={() => coverFileRef.current?.click()} disabled={isCoverUploading}>
+                        <Upload className="h-4 w-4 mr-2" /> Choose File
+                      </Button>
+                      {coverPreview && (
+                        <Button type="button" variant="outline" className="flex-1" onClick={() => { setTempCoverSrc(coverPreview); setIsCoverEditorOpen(true) }} disabled={isCoverUploading}>
+                          <ZoomIn className="h-4 w-4 mr-2" /> Edit & Crop
+                        </Button>
+                      )}
+                    </div>
+                    <Input id="cover-upload" type="file" accept="image/*" onChange={handleCoverFile} ref={coverFileRef} className="hidden" />
+                    <p className="text-xs text-muted-foreground">Max 15MB. Minimum {MIN_COVER_WIDTH}x{MIN_COVER_HEIGHT}px. Aspect ratio 3:1.</p>
+
+                    {coverUploadError && <p className="text-sm text-destructive">{coverUploadError}</p>}
+                    {isCoverUploading && (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between text-xs text-muted-foreground"><span>Uploading cover…</span><span>{coverUploadProgress}%</span></div>
+                        <Progress value={coverUploadProgress} />
+                      </div>
+                    )}
+                  </div>
+
+                  {tempCoverSrc && (
+                    <CoverEditor
+                      imageSrc={tempCoverSrc}
+                      isOpen={isCoverEditorOpen}
+                      onClose={() => { setIsCoverEditorOpen(false); setTempCoverSrc("") }}
+                      onSave={handleSaveCroppedCover}
+                      minWidth={MIN_COVER_WIDTH}
+                      minHeight={MIN_COVER_HEIGHT}
+                    />
+                  )}
                 </div>
               </CardContent>
             </Card>

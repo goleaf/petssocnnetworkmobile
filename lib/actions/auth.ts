@@ -289,15 +289,29 @@ export async function verifyEmailAction(token: string): Promise<AuthResult> {
     return { success: false, error: "User not found" }
   }
 
+  // If this token came from an email change request, update the email
+  const oldEmail = user.email
+  const newEmail = record.email
+
   updateServerUser(user.id, {
+    email: newEmail,
     emailVerified: true,
     emailVerification: {
       ...(user.emailVerification || {}),
       status: "verified",
       verifiedAt: new Date().toISOString(),
       token: undefined,
+      pendingEmail: undefined,
     },
   })
+
+  // Log confirmations to both addresses
+  try {
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
+    const normalizedBase = baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl
+    console.info(`[auth] Email change confirmed for user ${user.username}. Old: ${oldEmail} → New: ${newEmail}`)
+    console.info(`[auth] Confirmation notices sent to ${oldEmail} and ${newEmail} (simulated). See ${normalizedBase}/settings`)
+  } catch {}
 
   revalidatePath("/")
   return { success: true }

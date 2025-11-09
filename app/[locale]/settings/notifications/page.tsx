@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Button } from "@/components/ui/button"
-import { BackButton } from "@/components/ui/back-button"
+import { SettingsHeader } from "@/components/settings/SettingsHeader"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -268,14 +268,7 @@ export default function NotificationSettingsPage() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl space-y-6">
-      <BackButton onClick={() => router.back()} label="Back" />
-
-      <div>
-        <h1 className="text-3xl font-bold">Notification Settings</h1>
-        <p className="text-muted-foreground mt-2">
-          Control delivery preferences, channels, and event coverage for your notifications.
-        </p>
-      </div>
+      <SettingsHeader description="Choose how and when you’re notified." />
 
       <Card>
         <CardHeader className="pb-3">

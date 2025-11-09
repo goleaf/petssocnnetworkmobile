@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { getUsers, getPets, getBlogPosts, getActivities, updateUser } from "@/lib/storage"
 import type { Activity as UserActivity, PrivacyLevel } from "@/lib/types"
 import { useAuth } from "@/lib/auth"
-import { MapPin, Calendar, Users, Heart, PawPrint, FileText, Lock, Activity as ActivityIcon, Camera, CheckCircle2 } from "lucide-react"
+import { MapPin, Calendar, Users, Heart, PawPrint, FileText, Lock, Activity as ActivityIcon, Camera, CheckCircle2, Award } from "lucide-react"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import Link from "next/link"
 import { useCallback, useEffect, useState } from "react"
@@ -32,6 +32,8 @@ import {
 } from "@/lib/utils/privacy"
 import { getPrivacyNotice } from "@/lib/utils/privacy-messages"
 import { useStorageListener } from "@/lib/hooks/use-storage-listener"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { Progress } from "@/components/ui/progress"
 
 const STORAGE_KEYS_TO_WATCH = ["pet_social_users", "pet_social_pets", "pet_social_blog_posts", "pet_social_activities"]
 
@@ -179,6 +181,7 @@ export default function ProfilePage({ params }: { params: Promise<{ username: st
   const profileOverview = getProfileOverview(user.id)
   const badges = profileOverview?.badges
   const highlights = profileOverview?.highlights
+  const completion = profileOverview?.completionPercent ?? 0
 
   const getPrivacyMessage = (scope: "pets" | "posts" | "followers" | "following") =>
     getPrivacyNotice({
@@ -269,13 +272,15 @@ export default function ProfilePage({ params }: { params: Promise<{ username: st
 
   return (
       <div className="container mx-auto px-4 py-8 max-w-7xl">
+        {typeof window !== 'undefined' && (new URLSearchParams(window.location.search).get('renamed_from')) && (
+          <div className="mb-4 rounded-md border bg-amber-50 text-amber-900 border-amber-200 p-3 text-sm">
+            This user recently changed their username from @{new URLSearchParams(window.location.search).get('renamed_from')} to @{user.username}.
+          </div>
+        )}
       <section className="rounded-3xl border border-border/60 bg-card shadow-sm overflow-hidden">
         <div className="relative h-[220px] sm:h-[260px] lg:h-[400px] w-full group">
-          <img
-            src={coverPhoto}
-            alt={`${user.fullName}'s cover`}
-            className="h-full w-full object-cover"
-          />
+          <img src={coverPhoto} alt={`${user.fullName}'s cover`} className="h-full w-full object-cover" />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/25 to-black/50" />
           {isOwnProfile && (
             <div className="absolute inset-0 flex items-center justify-center gap-2 text-white text-sm font-semibold uppercase tracking-wide bg-black/30 opacity-0 transition-opacity group-hover:opacity-100">
               <Camera className="h-5 w-5" />
@@ -316,13 +321,43 @@ export default function ProfilePage({ params }: { params: Promise<{ username: st
                           <BadgeDisplay user={user} size="lg" variant="icon" />
                         </div>
                         <div className="flex flex-wrap items-center gap-2 text-lg text-muted-foreground">
-                          <span>@{user.username}</span>
-                          {isVerified && (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-primary text-sm font-semibold">
-                              <CheckCircle2 className="h-4 w-4" />
-                              Verified
-                            </span>
-                          )}
+                          <span className="flex items-center gap-2">
+                            @{user.username}
+                            {/* Blue verification checkmark next to username */}
+                            {isVerified && (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span className="inline-flex items-center justify-center h-5 w-5" aria-label="Verified account">
+                                      <CheckCircle2 className="h-4 w-4 text-sky-500" />
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>Verified account</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            )}
+                            {(() => {
+                              const pct = profileOverview?.completionPercent ?? 0
+                              const tier = pct <= 30 ? "Bronze" : pct <= 60 ? "Silver" : pct <= 85 ? "Gold" : "Platinum"
+                              const color = tier === "Bronze" ? "text-amber-600" : tier === "Silver" ? "text-slate-400" : tier === "Gold" ? "text-yellow-500" : "text-indigo-500"
+                              return (
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-muted/60" aria-label={`Profile strength: ${tier}`}>
+                                        <Award className={`h-3.5 w-3.5 ${color}`} />
+                                      </span>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p>Profile strength: {tier}. This user has a complete, verified profile.</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              )
+                            })()}
+                          </span>
                         </div>
                       </div>
                       {user.bio && <p className="text-base text-foreground">{user.bio}</p>}
@@ -403,6 +438,25 @@ export default function ProfilePage({ params }: { params: Promise<{ username: st
                         badges={badges}
                         highlights={highlights}
                       />
+                      {currentUser?.id === user.id && (
+                        <div className="mt-2 space-y-1">
+                          <div className="flex items-center justify-between text-xs text-muted-foreground">
+                            <span>Profile completion</span>
+                            <span>{completion}%</span>
+                          </div>
+                          <Progress value={completion} />
+                          {completion < 100 && (
+                            <Link href={`/user/${user.username}/edit`} className="text-xs text-primary hover:underline">
+                              Complete your profile
+                            </Link>
+                          )}
+                        </div>
+                      )}
+                      {currentUser?.id === user.id && (
+                        <div className="mt-4">
+                          <ProfileInsights profileId={user.id} />
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <div className="mt-2 flex items-center gap-2 rounded-lg border border-dashed border-muted-foreground/40 bg-muted/30 p-4 text-sm text-muted-foreground">

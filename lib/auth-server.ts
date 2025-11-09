@@ -22,6 +22,7 @@ export interface SessionData {
   username: string
   role: UserRole
   expiresAt: number
+  issuedAt?: number
 }
 
 /**
@@ -31,12 +32,14 @@ export interface SessionData {
  */
 export function createSession(user: User): string {
   const expiresAt = Date.now() + SESSION_MAX_AGE * 1000
+  const issuedAt = Date.now()
   
   const sessionData: SessionData = {
     userId: user.id,
     username: user.username,
     role: user.role || "user",
     expiresAt,
+    issuedAt,
   }
 
   // Encode session data as base64 JSON
@@ -52,7 +55,14 @@ export function createSession(user: User): string {
 export function validateSession(token: string): SessionData | null {
   try {
     const decoded = Buffer.from(token, "base64").toString("utf-8")
-    const sessionData: SessionData = JSON.parse(decoded)
+    const parsed: any = JSON.parse(decoded)
+    const sessionData: SessionData = {
+      userId: parsed.userId,
+      username: parsed.username,
+      role: parsed.role,
+      expiresAt: parsed.expiresAt,
+      issuedAt: parsed.issuedAt || parsed.expiresAt || Date.now(),
+    }
     
     // Check expiration
     if (Date.now() > sessionData.expiresAt) {
@@ -103,6 +113,16 @@ export async function getCurrentUser(): Promise<User | null> {
   
   if (!user) {
     // User not found, clear session
+    await clearSession()
+    return null
+  }
+
+  // Invalidate sessions issued before password change or forced logout
+  const issuedAt = session.issuedAt || 0
+  const passwordChangedAt = user.passwordChangedAt ? new Date(user.passwordChangedAt).getTime() : 0
+  const sessionInvalidatedAt = user.sessionInvalidatedAt ? new Date(user.sessionInvalidatedAt).getTime() : 0
+  const cutoff = Math.max(passwordChangedAt, sessionInvalidatedAt)
+  if (cutoff && issuedAt < cutoff) {
     await clearSession()
     return null
   }
@@ -259,4 +279,3 @@ export async function requireModerator(): Promise<User> {
   
   return user
 }
-

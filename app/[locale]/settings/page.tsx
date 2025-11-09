@@ -8,12 +8,13 @@ import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { BackButton } from "@/components/ui/back-button"
+import { SettingsHeader } from "@/components/settings/SettingsHeader"
 import { useAuth } from "@/components/auth/auth-provider"
 import { PrivacySelector } from "@/components/privacy-selector"
 import { BlurToggle } from "@/components/moderation/blur-toggle"
 import { updateUser, getUsers, blockUser, unblockUser, isExpertVerified, getExpertVerificationRequestByUserId } from "@/lib/storage"
 import { getNotificationSettings, saveNotificationSettings } from "@/lib/notifications"
+import { requestEmailChangeAction, updatePasswordAction, logoutAllDevicesAction } from "@/lib/actions/account"
 import type { PrivacyLevel, NotificationSettings, NotificationChannel } from "@/lib/types"
 import {
   ArrowLeft,
@@ -34,8 +35,14 @@ import {
   Key,
   type LucideIcon,
 } from "lucide-react"
+import { Eye, EyeOff, LogOut } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import Link from "next/link"
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Progress } from "@/components/ui/progress"
 
 const CHANNEL_SUMMARY_ORDER: NotificationChannel[] = ["in_app", "push", "email", "digest"]
 
@@ -63,7 +70,7 @@ const CHANNEL_SUMMARY_META: Record<NotificationChannel, { label: string; icon: L
 }
 
 export default function SettingsPage() {
-  const { user } = useAuth()
+  const { user, refresh } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
   const [isLoading, setIsLoading] = useState(false)
@@ -90,6 +97,30 @@ export default function SettingsPage() {
   })
   const [notificationSettings, setNotificationSettings] = useState<NotificationSettings | null>(null)
   const [blockedUsers, setBlockedUsers] = useState<any[]>([])
+  // Email change dialog state
+  const [emailDialogOpen, setEmailDialogOpen] = useState(false)
+  const [newEmail, setNewEmail] = useState("")
+  const [currentPassword, setCurrentPassword] = useState("")
+  const [sendVerification, setSendVerification] = useState(true)
+  const [emailSubmitting, setEmailSubmitting] = useState(false)
+  const [emailError, setEmailError] = useState<string | null>(null)
+  // Password change state
+  const [curPassVisible, setCurPassVisible] = useState(false)
+  const [newPassVisible, setNewPassVisible] = useState(false)
+  const [confirmPassVisible, setConfirmPassVisible] = useState(false)
+  const [newPassword, setNewPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
+  const [passwordSubmitting, setPasswordSubmitting] = useState(false)
+  const [passwordError, setPasswordError] = useState<string | null>(null)
+  // Verification Request UI state
+  const [isVerifOpen, setIsVerifOpen] = useState(false)
+  const [verifName, setVerifName] = useState("")
+  const [verifReason, setVerifReason] = useState("")
+  const [idFront, setIdFront] = useState<File | null>(null)
+  const [idBack, setIdBack] = useState<File | null>(null)
+  const [proofFiles, setProofFiles] = useState<File[]>([])
+  const [bizDocs, setBizDocs] = useState<File[]>([])
+  const [isSubmittingVerif, setIsSubmittingVerif] = useState(false)
 
   // Handle success/error messages from URL params
   useEffect(() => {
@@ -192,15 +223,110 @@ export default function SettingsPage() {
     setBlockedUsers(blockedUsers.filter((u) => u.id !== unblockUserId))
   }
 
+  const passwordStrength = (() => {
+    let score = 0
+    const pwd = newPassword
+    if (pwd.length >= 8) score++
+    if (/[a-z]/.test(pwd)) score++
+    if (/[A-Z]/.test(pwd)) score++
+    if (/\d/.test(pwd)) score++
+    if (/[!@#$%^&*]/.test(pwd)) score++
+    const value = Math.min(100, Math.round((score / 5) * 100))
+    let label: "weak" | "fair" | "good" | "strong" = "weak"
+    if (value >= 80) label = "strong"
+    else if (value >= 60) label = "good"
+    else if (value >= 40) label = "fair"
+    return { value, label }
+  })()
+
+  const canSubmitPassword =
+    !!user &&
+    newPassword.length >= 8 &&
+    /[a-z]/.test(newPassword) &&
+    /[A-Z]/.test(newPassword) &&
+    /\d/.test(newPassword) &&
+    /[!@#$%^&*]/.test(newPassword) &&
+    newPassword === confirmPassword
+
+  const handleUpdatePassword = async () => {
+    if (!user) return
+    setPasswordError(null)
+    if (!canSubmitPassword) {
+      setPasswordError("Please meet password requirements and confirm correctly")
+      return
+    }
+    setPasswordSubmitting(true)
+    try {
+      const result = await updatePasswordAction({ userId: user.id, currentPassword, newPassword })
+      if (!result.success) {
+        setPasswordError(result.error || "Failed to update password")
+        return
+      }
+      setMessage({ type: "success", text: "Password updated successfully" })
+      setCurrentPassword("")
+      setNewPassword("")
+      setConfirmPassword("")
+    } catch (e: any) {
+      setPasswordError(e?.message || "Failed to update password")
+    } finally {
+      setPasswordSubmitting(false)
+    }
+  }
+
+  const handleLogoutAll = async () => {
+    if (!user) return
+    const res = await logoutAllDevicesAction(user.id)
+    if (res.success) {
+      router.push("/login")
+    }
+  }
+
+  const handleEmailChange = async () => {
+    if (!user) return
+    setEmailError(null)
+    // Basic email format validation
+    if (!newEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) {
+      setEmailError("Enter a valid email address")
+      return
+    }
+    if (!currentPassword) {
+      setEmailError("Enter your current password to confirm")
+      return
+    }
+
+    setEmailSubmitting(true)
+    try {
+      const result = await requestEmailChangeAction({
+        userId: user.id,
+        newEmail,
+        currentPassword,
+        sendVerification,
+      })
+      if (!result.success) {
+        setEmailError(result.error || "Failed to request email change")
+        return
+      }
+      setEmailDialogOpen(false)
+      setNewEmail("")
+      setCurrentPassword("")
+      setSendVerification(true)
+      setMessage({ type: "success", text: `Verification sent. Pending verification: ${newEmail}` })
+      await refresh()
+    } catch (e: any) {
+      setEmailError(e?.message || "Failed to request email change")
+    } finally {
+      setEmailSubmitting(false)
+    }
+  }
+
   if (!user) {
     return null
   }
 
   return (
     <div className="container mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6 md:py-8 max-w-7xl">
-      <BackButton onClick={() => router.back()} label="Back" />
-
       <div className="space-y-4 sm:space-y-6">
+        <SettingsHeader description="Manage your account preferences, privacy, and notifications." />
         {/* Success/Error Message */}
         {message && (
           <Alert
@@ -216,13 +342,89 @@ export default function SettingsPage() {
             <AlertDescription>{message.text}</AlertDescription>
           </Alert>
         )}
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold">Settings</h1>
-          <p className="text-muted-foreground mt-2 text-sm sm:text-base">Manage your privacy and notification preferences</p>
-        </div>
+        {/* Email Management */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+              <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-lg bg-blue-500/10 flex items-center justify-center flex-shrink-0">
+                <Mail className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-blue-500" />
+              </div>
+              Email Management
+            </CardTitle>
+            <CardDescription className="text-xs sm:text-sm">
+              View your current email and manage verification or changes.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div>
+                <div className="text-sm">Current email</div>
+                <div className="font-medium">{user.email}</div>
+                <div className="mt-1 text-xs text-muted-foreground flex items-center gap-2">
+                  {user.emailVerified ? (
+                    <Badge variant="outline" className="border-green-500/50 text-green-600">Verified</Badge>
+                  ) : (
+                    <Badge variant="outline" className="border-yellow-500/50 text-yellow-600">Unverified</Badge>
+                  )}
+                  {user.emailVerification?.pendingEmail && (
+                    <span>
+                      Pending verification: <span className="font-medium">{user.emailVerification.pendingEmail}</span>
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div className="flex gap-2">
+                {!user.emailVerified && (
+                  <Button asChild variant="outline">
+                    <Link href="/verify-email">Verify Email</Link>
+                  </Button>
+                )}
+                <Button onClick={() => setEmailDialogOpen(true)}>Change Email</Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
 
         {/* Privacy Settings Section */}
         <div className="space-y-6">
+          {/* Verification */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-lg bg-sky-500/10 flex items-center justify-center flex-shrink-0">
+                  <ShieldCheck className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-sky-500" />
+                </div>
+                Verification
+              </CardTitle>
+              <CardDescription className="text-xs sm:text-sm">
+                Verified accounts help prevent impersonation for public figures, brands, and organizations.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between gap-3">
+                <div className="text-sm text-muted-foreground">
+                  {user ? (
+                    <>
+                      <p>
+                        Eligibility: {user.followers.length.toLocaleString()} followers. Minimum required: 10,000.
+                      </p>
+                      <p>Have your legal name and documents ready.</p>
+                    </>
+                  ) : (
+                    <p>Sign in to request verification.</p>
+                  )}
+                </div>
+                <Button
+                  onClick={() => setIsVerifOpen(true)}
+                  disabled={!user || user.followers.length < 10000}
+                >
+                  Request Verification
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
           <div>
             <h2 className="text-xl sm:text-2xl font-semibold mb-2 sm:mb-4">Privacy Settings</h2>
             <p className="text-muted-foreground mb-4 text-sm sm:text-base">Control who can see your information and content</p>
@@ -720,6 +922,134 @@ export default function SettingsPage() {
           </Button>
         </div>
       </div>
+
+      {/* Email Change Dialog */}
+      <Dialog open={emailDialogOpen} onOpenChange={setEmailDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Change Email</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-1">
+              <Label htmlFor="new-email">New email address</Label>
+              <Input
+                id="new-email"
+                type="email"
+                placeholder="name@example.com"
+                value={newEmail}
+                onChange={(e) => setNewEmail(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="current-password">Current password</Label>
+              <Input
+                id="current-password"
+                type="password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                placeholder="Enter your password to confirm"
+              />
+            </div>
+            <label className="flex items-center gap-2 text-sm">
+              <Checkbox checked={sendVerification} onCheckedChange={(v) => setSendVerification(Boolean(v))} />
+              <span>Send verification email to new address</span>
+            </label>
+            {emailError && <p className="text-sm text-destructive">{emailError}</p>}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEmailDialogOpen(false)} disabled={emailSubmitting}>Cancel</Button>
+            <Button onClick={handleEmailChange} loading={emailSubmitting} disabled={emailSubmitting}>Submit</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Verification Dialog */}
+      <Dialog open={isVerifOpen} onOpenChange={setIsVerifOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Request Verification</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-1">
+              <Label htmlFor="verif-name">Full legal name</Label>
+              <Input id="verif-name" value={verifName} onChange={(e) => setVerifName(e.target.value)} placeholder="As it appears on your ID" />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="verif-reason">Reason for verification</Label>
+              <Textarea id="verif-reason" value={verifReason} onChange={(e) => setVerifReason(e.target.value.slice(0, 500))} placeholder="Explain why this account should be verified (max 500 chars)" rows={4} />
+              <p className="text-xs text-muted-foreground">{verifReason.length}/500</p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <Label htmlFor="id-front">Government ID (front)</Label>
+                <Input id="id-front" type="file" accept="image/*" onChange={(e) => setIdFront(e.target.files?.[0] || null)} />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="id-back">Government ID (back)</Label>
+                <Input id="id-back" type="file" accept="image/*" onChange={(e) => setIdBack(e.target.files?.[0] || null)} />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="notability">Proof of notability (news, social links, achievements)</Label>
+              <Input id="notability" type="file" multiple onChange={(e) => setProofFiles(Array.from(e.target.files || []))} />
+              <p className="text-xs text-muted-foreground">You can also include links within your reason above.</p>
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="biz-docs">Business documents (optional)</Label>
+              <Input id="biz-docs" type="file" multiple onChange={(e) => setBizDocs(Array.from(e.target.files || []))} />
+              <p className="text-xs text-muted-foreground">Only if this account represents a brand or organization (e.g., registration, tax ID).</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsVerifOpen(false)} disabled={isSubmittingVerif}>Cancel</Button>
+            <Button
+              loading={isSubmittingVerif}
+              onClick={async () => {
+                if (!user) return
+                if (!verifName.trim() || !verifReason.trim()) {
+                  setMessage({ type: 'error', text: 'Please fill out your legal name and reason.' })
+                  return
+                }
+                if (!idFront || !idBack) {
+                  setMessage({ type: 'error', text: 'Please upload front and back of your government ID.' })
+                  return
+                }
+                setIsSubmittingVerif(true)
+                try {
+                  const form = new FormData()
+                  form.append('userId', user.id)
+                  form.append('fullName', verifName)
+                  form.append('reason', verifReason)
+                  form.append('idFront', idFront)
+                  form.append('idBack', idBack)
+                  proofFiles.forEach((f, i) => form.append('proof'+i, f))
+                  bizDocs.forEach((f, i) => form.append('biz'+i, f))
+                  const res = await fetch('/api/verification/request', { method: 'POST', body: form })
+                  const data = await res.json()
+                  if (!res.ok) {
+                    setMessage({ type: 'error', text: data.error || 'Failed to submit verification request' })
+                    return
+                  }
+                  setMessage({ type: 'success', text: 'Verification request submitted!' })
+                  setIsVerifOpen(false)
+                  setVerifName('')
+                  setVerifReason('')
+                  setIdFront(null)
+                  setIdBack(null)
+                  setProofFiles([])
+                  setBizDocs([])
+                } catch (e) {
+                  setMessage({ type: 'error', text: 'Network error submitting verification request' })
+                } finally {
+                  setIsSubmittingVerif(false)
+                }
+              }}
+            >
+              Submit Request
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

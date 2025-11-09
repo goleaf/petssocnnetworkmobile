@@ -1,11 +1,11 @@
 "use client"
 
-import React, { useState, useCallback, useRef } from "react"
+import React, { useState, useCallback, useEffect } from "react"
 import Cropper, { Area, Point } from "react-easy-crop"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Slider } from "@/components/ui/slider"
-import { ZoomIn, ZoomOut, RotateCw, Check, X as XIcon } from "lucide-react"
+import { ZoomIn, RotateCw, RotateCcw, Check, X as XIcon, Sun, Contrast as ContrastIcon } from "lucide-react"
 import { getCroppedImg } from "@/lib/utils/image-crop"
 
 interface AvatarEditorProps {
@@ -34,6 +34,9 @@ export function AvatarEditor({
   const [rotation, setRotation] = useState(0)
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null)
   const [isProcessing, setIsProcessing] = useState(false)
+  const [brightness, setBrightness] = useState(1) // 1 = 100%
+  const [contrast, setContrast] = useState(1) // 1 = 100%
+  const [previewDataUrl, setPreviewDataUrl] = useState<string>("")
 
   const onCropComplete = useCallback((croppedArea: Area, croppedAreaPixels: Area) => {
     setCroppedAreaPixels(croppedAreaPixels)
@@ -47,7 +50,8 @@ export function AvatarEditor({
       const croppedImage = await getCroppedImg(
         imageSrc,
         croppedAreaPixels,
-        rotation
+        rotation,
+        { brightness, contrast }
       )
 
       // Validate cropped image dimensions
@@ -81,8 +85,29 @@ export function AvatarEditor({
     setRotation(0)
     setCroppedAreaPixels(null)
     setIsProcessing(false)
+    setBrightness(1)
+    setContrast(1)
+    setPreviewDataUrl("")
     onClose()
   }
+
+  // Generate live preview when crop or adjustments change
+  useEffect(() => {
+    let cancelled = false
+    const generate = async () => {
+      if (!imageSrc || !croppedAreaPixels) return
+      try {
+        const dataUrl = await getCroppedImg(imageSrc, croppedAreaPixels, rotation, { brightness, contrast })
+        if (!cancelled) setPreviewDataUrl(dataUrl)
+      } catch {
+        /* ignore preview errors */
+      }
+    }
+    generate()
+    return () => {
+      cancelled = true
+    }
+  }, [imageSrc, croppedAreaPixels, rotation, brightness, contrast])
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
@@ -112,6 +137,9 @@ export function AvatarEditor({
                   height: "100%",
                   position: "relative",
                 },
+                mediaStyle: {
+                  filter: `brightness(${brightness}) contrast(${contrast})`,
+                },
               }}
             />
           </div>
@@ -122,8 +150,7 @@ export function AvatarEditor({
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <label className="text-sm font-medium flex items-center gap-2">
-                  <ZoomIn className="h-4 w-4" />
-                  Zoom
+                  <ZoomIn className="h-4 w-4" /> Zoom
                 </label>
                 <span className="text-sm text-muted-foreground">{Math.round(zoom * 100)}%</span>
               </div>
@@ -137,8 +164,17 @@ export function AvatarEditor({
               />
             </div>
 
-            {/* Rotation Control */}
+            {/* Rotation Controls */}
             <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setRotation((prev) => prev - 90)}
+                className="flex-1"
+              >
+                <RotateCcw className="h-4 w-4 mr-2" /> Rotate Left
+              </Button>
               <Button
                 type="button"
                 variant="outline"
@@ -146,15 +182,90 @@ export function AvatarEditor({
                 onClick={() => setRotation((prev) => prev + 90)}
                 className="flex-1"
               >
-                <RotateCw className="h-4 w-4 mr-2" />
-                Rotate
+                <RotateCw className="h-4 w-4 mr-2" /> Rotate Right
               </Button>
+            </div>
+
+            {/* Brightness */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium flex items-center gap-2">
+                  <Sun className="h-4 w-4" /> Brightness
+                </label>
+                <span className="text-sm text-muted-foreground">{Math.round(brightness * 100)}%</span>
+              </div>
+              <Slider
+                value={[brightness]}
+                min={0.5}
+                max={1.5}
+                step={0.05}
+                onValueChange={(v) => setBrightness(v[0])}
+                className="w-full"
+              />
+            </div>
+
+            {/* Contrast */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium flex items-center gap-2">
+                  <ContrastIcon className="h-4 w-4" /> Contrast
+                </label>
+                <span className="text-sm text-muted-foreground">{Math.round(contrast * 100)}%</span>
+              </div>
+              <Slider
+                value={[contrast]}
+                min={0.5}
+                max={1.5}
+                step={0.05}
+                onValueChange={(v) => setContrast(v[0])}
+                className="w-full"
+              />
             </div>
 
             {/* Info */}
             <p className="text-xs text-muted-foreground text-center">
               Minimum size: {minWidth}x{minHeight}px
             </p>
+          </div>
+
+          {/* Previews */}
+          <div className="space-y-3">
+            <div className="text-sm font-medium">Preview</div>
+            <div className="flex items-center gap-6">
+              <div className="flex flex-col items-center gap-2">
+                <div className="h-[200px] w-[200px] rounded-full overflow-hidden bg-muted border">
+                  {previewDataUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={previewDataUrl} alt="Large preview" className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="h-full w-full" />
+                  )}
+                </div>
+                <span className="text-xs text-muted-foreground">200 x 200</span>
+              </div>
+              <div className="flex flex-col items-center gap-2">
+                <div className="h-[100px] w-[100px] rounded-full overflow-hidden bg-muted border">
+                  {previewDataUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={previewDataUrl} alt="Medium preview" className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="h-full w-full" />
+                  )}
+                </div>
+                <span className="text-xs text-muted-foreground">100 x 100</span>
+              </div>
+              <div className="flex flex-col items-center gap-2">
+                <div className="h-[50px] w-[50px] rounded-full overflow-hidden bg-muted border">
+                  {previewDataUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={previewDataUrl} alt="Small preview" className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="h-full w-full" />
+                  )}
+                </div>
+                <span className="text-xs text-muted-foreground">50 x 50</span>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -181,7 +292,7 @@ export function AvatarEditor({
             ) : (
               <>
                 <Check className="h-4 w-4 mr-2" />
-                Save Avatar
+                Apply
               </>
             )}
           </Button>
@@ -190,4 +301,3 @@ export function AvatarEditor({
     </Dialog>
   )
 }
-

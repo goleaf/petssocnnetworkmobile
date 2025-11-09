@@ -25,6 +25,7 @@ export interface ProfileOverview {
     recentPosts?: number
     highEngagement?: boolean
   }
+  completionPercent: number
 }
 
 /**
@@ -95,6 +96,9 @@ export function getProfileOverview(userId: string): ProfileOverview | null {
   // Calculate highlights
   const highlights = calculateHighlights(user, allActivities, allPosts, allUsers)
 
+  // Completion percent
+  const completionPercent = calculateProfileCompletionPercent(user, petsCount)
+
   return {
     userId,
     followersCount,
@@ -106,7 +110,76 @@ export function getProfileOverview(userId: string): ProfileOverview | null {
     groupsCount,
     badges: Object.keys(badges).some((key) => badges[key as keyof typeof badges]) ? badges : undefined,
     highlights: Object.keys(highlights).length > 0 ? highlights : undefined,
+    completionPercent,
   }
+}
+
+/**
+ * Calculate profile completion percent based on weighted fields.
+ * Weights:
+ * - Profile photo 10%
+ * - Cover photo 5%
+ * - Bio 15%
+ * - Location 5%
+ * - Birthday 5%
+ * - Phone verified 10%
+ * - Email verified 10%
+ * - Interests 10%
+ * - At least one pet added 20%
+ * - Contact info 5%
+ * - Social links 5%
+ */
+export function calculateProfileCompletionPercent(user: User, petsCount: number): number {
+  const weights = {
+    avatar: 10,
+    cover: 5,
+    bio: 15,
+    location: 5,
+    birthday: 5,
+    phoneVerified: 10,
+    emailVerified: 10,
+    interests: 10,
+    hasPet: 20,
+    contactInfo: 5,
+    socialLinks: 5,
+  }
+
+  let total = 0
+
+  // Profile photo
+  if (user.avatar && user.avatar.trim().length > 0) total += weights.avatar
+  // Cover photo
+  if (user.coverPhoto && user.coverPhoto.trim().length > 0) total += weights.cover
+  // Bio
+  if (user.bio && user.bio.trim().length > 0) total += weights.bio
+  // Location
+  if (user.location && user.location.trim().length > 0) total += weights.location
+  // Birthday
+  if (user.dateOfBirth && user.dateOfBirth.trim().length > 0) total += weights.birthday
+  // Phone verified (fallback: consider a dedicated flag if present, else require phone present + boolean true)
+  const phoneVerified = (user as any).phoneVerified === true
+  if (phoneVerified) total += weights.phoneVerified
+  // Email verified
+  const emailVerified = Boolean(user.emailVerified || user.emailVerification?.status === 'verified')
+  if (emailVerified) total += weights.emailVerified
+  // Interests
+  if (Array.isArray(user.interests) && user.interests.length > 0) total += weights.interests
+  // Pets
+  if (petsCount > 0) total += weights.hasPet
+  // Contact info (phone or website present)
+  if ((user.phone && user.phone.trim().length > 0) || (user.website && user.website.trim().length > 0)) {
+    total += weights.contactInfo
+  }
+  // Social links
+  const social = (user as any).socialMedia || {}
+  const hasSocial = Boolean(
+    social.instagram || social.facebook || social.twitter || social.youtube || social.linkedin || social.tiktok
+  )
+  if (hasSocial) total += weights.socialLinks
+
+  // Clamp between 0 and 100
+  total = Math.max(0, Math.min(100, total))
+  return Math.round(total)
 }
 
 /**
@@ -189,4 +262,3 @@ function calculateHighlights(
 
   return highlights
 }
-

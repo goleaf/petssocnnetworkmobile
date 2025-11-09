@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { BackButton } from "@/components/ui/back-button"
+import { SettingsHeader } from "@/components/settings/SettingsHeader"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -331,11 +331,7 @@ export default function IntegrationsSettingsPage() {
   return (
     <div className="container mx-auto max-w-4xl py-8 px-4">
       <div className="mb-6">
-        <BackButton />
-        <h1 className="text-3xl font-bold mt-4">Integrations</h1>
-        <p className="text-muted-foreground mt-2">
-          Manage webhooks and API keys for external integrations
-        </p>
+        <SettingsHeader description="Manage webhooks and API keys for external integrations." />
       </div>
 
       <Tabs defaultValue="webhooks" className="space-y-6">
@@ -819,4 +815,3 @@ export default function IntegrationsSettingsPage() {
     </div>
   )
 }
-

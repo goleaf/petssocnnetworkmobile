@@ -218,18 +218,26 @@ export function AdvancedComments({
     const allComments = getContextComments({ type: contextType, id: contextId })
     if (viewerId) {
       const blockedIds = viewerBlockKey ? viewerBlockKey.split("|").filter(Boolean) : null
+      const isMod = currentUser?.role === "admin" || currentUser?.role === "moderator"
       setComments(
         allComments.filter((comment) => {
-          if (blockedIds && blockedIds.includes(comment.userId)) {
+          if (blockedIds && blockedIds.includes(comment.userId)) return false
+          if (areUsersBlocked(viewerId, comment.userId)) return false
+          // Pending comments are only visible to their author, the content owner, or moderators
+          if (comment.status === "pending") {
+            if (comment.userId === viewerId) return true
+            if (contextOwnerId && viewerId === contextOwnerId) return true
+            if (isMod) return true
             return false
           }
-          return !areUsersBlocked(viewerId, comment.userId)
+          return true
         }),
       )
     } else {
-      setComments(allComments)
+      // Logged out: hide pending comments
+      setComments(allComments.filter((c) => c.status !== "pending"))
     }
-  }, [contextType, contextId, viewerId, viewerBlockKey])
+  }, [contextType, contextId, viewerId, viewerBlockKey, currentUser?.role, contextOwnerId])
 
   const refreshUsers = useCallback(() => {
     setUsers(getUsers())
@@ -267,7 +275,7 @@ export function AdvancedComments({
 
   const commentTree = useMemo(() => buildCommentTree(comments, { sortDirection: "asc" }), [comments])
   const totalComments = comments.length
-  const viewerCanModerate = canUserModerate(currentUser)
+  const viewerCanModerate = canUserModerate(currentUser) || (currentUser?.id && currentUser.id === contextOwnerId)
 
   const totalVisibleComments = useMemo(() => {
     if (viewerCanModerate) return totalComments
@@ -314,6 +322,7 @@ export function AdvancedComments({
     if (!commentDraft.trim()) return
     const processedContent = replaceEmoticons(commentDraft.trim())
     const now = new Date().toISOString()
+    const authorIsRestricted = Boolean(ownerUser?.restrictedUsers?.includes(currentUser!.id))
     const baseComment: Comment = applyContext(
       {
         id: generateCommentId(),
@@ -321,7 +330,7 @@ export function AdvancedComments({
         content: processedContent,
         createdAt: now,
         format: "markdown",
-        status: "published",
+        status: authorIsRestricted ? "pending" : "published",
         reactions: DEFAULT_REACTIONS,
         flags: [],
       },
@@ -358,6 +367,7 @@ export function AdvancedComments({
     if (!replyTargetId || !replyDraft.trim()) return
     const processedContent = replaceEmoticons(replyDraft.trim())
     const now = new Date().toISOString()
+    const authorIsRestricted = Boolean(ownerUser?.restrictedUsers?.includes(currentUser!.id))
     const replyComment: Comment = applyContext(
       {
         id: generateCommentId(),
@@ -366,7 +376,7 @@ export function AdvancedComments({
         createdAt: now,
         parentCommentId: replyTargetId,
         format: "markdown",
-        status: "published",
+        status: authorIsRestricted ? "pending" : "published",
         reactions: DEFAULT_REACTIONS,
         flags: [],
       },
@@ -518,6 +528,12 @@ export function AdvancedComments({
       onFlag={() => handleFlag(node)}
       onModerate={() => handleModeration(node)}
       onViewFlags={() => handleOpenFlagDetails(node)}
+      onQuickApprove={() => {
+        if (!currentUser) return
+        if (!(currentUser.id === contextOwnerId || canUserModerate(currentUser))) return
+        moderateComment(node.id, "published", currentUser.id)
+        loadComments()
+      }}
     >
       {node.children.map((child) => renderCommentNode(child))}
     </CommentCard>
@@ -776,6 +792,7 @@ interface CommentCardProps {
   onFlag: () => void
   onModerate: () => void
   onViewFlags: () => void
+  onQuickApprove?: () => void
   children: React.ReactNode
 }
 
@@ -807,6 +824,7 @@ function CommentCard({
   onFlag,
   onModerate,
   onViewFlags,
+  onQuickApprove,
   children,
 }: CommentCardProps) {
   const author = usersById.get(node.userId)
@@ -864,6 +882,13 @@ function CommentCard({
                     <ShieldAlert className="h-3 w-3" />
                     {COMMENT_STATUS_LABELS.pending}
                   </Badge>
+                )}
+                {isPending && viewerCanModerate && !isOwner && (
+                  <Button size="xs" variant="outline" className="h-6"
+                    onClick={onQuickApprove}
+                  >
+                    Approve
+                  </Button>
                 )}
                 {isHidden && (
                   <Badge variant="destructive" className="flex items-center gap-1">

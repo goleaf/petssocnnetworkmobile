@@ -74,6 +74,7 @@ import { TierBadge } from "@/components/tier-badge"
 import { SidebarUserList } from "@/components/sidebar-user-list"
 import { getPetUrlFromPet } from "@/lib/utils/pet-url"
 import { formatDate } from "@/lib/utils/date"
+import { Progress } from "@/components/ui/progress"
 import { getAnimalConfigLucide } from "@/lib/animal-types"
 import {
   DropdownMenu,
@@ -96,7 +97,12 @@ import { useStorageListener } from "@/lib/hooks/use-storage-listener"
 import { PostContent } from "@/components/post/post-content"
 import { CompactStatBlock, ProfileStats } from "@/components/profile-stats"
 import { getProfileOverview } from "@/lib/utils/profile-overview"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { Award } from "lucide-react"
 import { usePinnedItems } from "@/lib/pinned-items"
+import { useProfileUpdates } from "@/lib/profile-updates"
+import { recordProfileView, classifyReferrer } from "@/lib/profile-analytics"
+import { ProfileInsights } from "@/components/profile/profile-insights"
 
 const STORAGE_KEYS_TO_WATCH = ["pet_social_users", "pet_social_pets", "pet_social_blog_posts"]
 
@@ -172,6 +178,17 @@ export default function UserProfilePage() {
 
   useStorageListener(STORAGE_KEYS_TO_WATCH, loadProfile)
 
+  // Realtime: refresh this profile when its photo updates
+  useProfileUpdates((evt) => {
+    if (evt.type === 'profilePhotoUpdated' || evt.type === 'coverPhotoUpdated') {
+      const usernameParam = params.username as string
+      const current = getUserByUsername(usernameParam)
+      if (current && current.id === evt.userId) {
+        loadProfile()
+      }
+    }
+  })
+
   const handleFollow = () => {
     if (!currentUser || !user) return
     const isCurrentlyFollowing = currentUser.following.includes(user.id)
@@ -198,6 +215,14 @@ export default function UserProfilePage() {
     setIsFollowing(!isCurrentlyFollowing)
     loadProfile()
   }
+
+  // Record profile view once per session for non-owners
+  useEffect(() => {
+    if (!user) return
+    if (currentUser?.id === user.id) return
+    const src = classifyReferrer(typeof document !== 'undefined' ? document.referrer : '')
+    recordProfileView(user.id, currentUser?.id || null, src)
+  }, [user?.id, currentUser?.id])
 
   const handleBlockUser = () => {
     if (!currentUser || !user) return
@@ -343,10 +368,17 @@ export default function UserProfilePage() {
 
   const badges = profileOverview?.badges
   const highlights = profileOverview?.highlights
+  const completion = profileOverview?.completionPercent ?? 0
+  const isVerified = Boolean(badges?.verified || user.badge === 'verified')
 
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-10 max-w-6xl">
+        {typeof window !== 'undefined' && (new URLSearchParams(window.location.search).get('renamed_from')) && (
+          <div className="mb-4 rounded-md border bg-amber-50 text-amber-900 border-amber-200 p-3 text-sm">
+            This user recently changed their username from @{new URLSearchParams(window.location.search).get('renamed_from')} to @{user.username}.
+          </div>
+        )}
         {/* Profile Header */}
         <Card className="mb-6 shadow-sm border bg-card">
           <CardContent className="p-6 sm:p-8 lg:p-10">
@@ -374,7 +406,33 @@ export default function UserProfilePage() {
                       <RoleBadge role={user.role} size="md" />
                       <TierBadge user={user} size="md" showPoints={isOwnProfile} />
                     </div>
-                    <p className="text-muted-foreground text-sm sm:text-base">@{user.username}</p>
+                    <p className="text-muted-foreground text-sm sm:text-base flex items-center gap-2">
+                      @{user.username}
+                      {isVerified && (
+                        <span className="inline-flex items-center justify-center h-5 w-5" title="Verified account">
+                          <CheckCircle2 className="h-4 w-4 text-sky-500" />
+                        </span>
+                      )}
+                      {(() => {
+                        const pct = profileOverview?.completionPercent ?? 0
+                        const tier = pct <= 30 ? "Bronze" : pct <= 60 ? "Silver" : pct <= 85 ? "Gold" : "Platinum"
+                        const color = tier === "Bronze" ? "text-amber-600" : tier === "Silver" ? "text-slate-400" : tier === "Gold" ? "text-yellow-500" : "text-indigo-500"
+                        return (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-muted/60" aria-label={`Profile strength: ${tier}`}>
+                                  <Award className={`h-3.5 w-3.5 ${color}`} />
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Profile strength: {tier}. This user has a complete, verified profile.</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        )
+                      })()}
+                    </p>
                     {mutualFollowersCount > 0 && !isOwnProfile && (
                       <Badge variant="secondary" className="w-fit mt-1">
                         {mutualFollowersCount} mutual follower{mutualFollowersCount !== 1 ? "s" : ""}
@@ -527,7 +585,7 @@ export default function UserProfilePage() {
                 </div>
                 
                 {/* Badges and Highlights */}
-                {(badges || highlights) && (
+                {(badges || highlights || (isOwnProfile && completion >= 0)) && (
                   <div className="pt-2 space-y-2">
                     {badges && (badges.verified || badges.pro || badges.shelter || badges.vet) && (
                       <div className="flex items-center gap-2 flex-wrap">
@@ -561,6 +619,25 @@ export default function UserProfilePage() {
                         <span className="font-medium">High engagement profile</span>
                       </div>
                     )}
+                    {isOwnProfile && (
+                      <div className="space-y-1 w-full max-w-xs">
+                        <div className="flex items-center justify-between text-xs text-muted-foreground">
+                          <span>Profile completion</span>
+                          <span>{completion}%</span>
+                        </div>
+                        <Progress value={completion} />
+                        {completion < 100 && (
+                          <Link href={`/user/${user.username}/edit`} className="text-xs text-primary hover:underline">
+                            Complete your profile
+                          </Link>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+                {isOwnProfile && (
+                  <div className="pt-4">
+                    <ProfileInsights profileId={user.id} />
                   </div>
                 )}
               </div>
