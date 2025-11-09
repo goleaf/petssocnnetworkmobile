@@ -23,10 +23,11 @@ CI=true pnpm test:e2e --workers=1
 
 ## Test Organization
 
-All tests have been moved to centralized locations:
+All executable suites now live in curated folders:
 
 - **E2E Tests**: `e2e/` folder (Playwright browser tests)
-- **Unit Tests**: `tests/unit/` folder (Jest tests)
+- **Unit Tests**: `tests/active/` folder (Jest tests run in CI)
+- **Legacy Suites**: `tests/legacy/` (archived reference material that no longer runs automatically)
 
 ### Test Structure:
 ```
@@ -35,11 +36,17 @@ e2e/                          # Playwright E2E tests
 ├── test-helpers.ts           # Helper functions
 └── *.spec.ts                 # Test files
 
-tests/unit/                   # Jest unit tests
-├── api/                      # API route tests
-├── app/                      # Page/component tests
-├── components/               # Component tests
-└── lib/                      # Library/utility tests
+tests/active/                 # Jest unit tests executed by pnpm test
+├── api/                      # API route regression tests
+├── lib/tests/unit/           # Moderation, wiki, and analytics flows
+├── profile/                  # UI smoke tests
+└── *.test.ts                 # Focused utility specs
+
+tests/legacy/                 # Archived suites (kept for future migration)
+├── api/                      # Generated API specs
+├── app/                      # Component/page experiments
+├── components/               # UI spikes
+└── lib/                      # Upstream and vendor fixtures
 ```
 
 ## Running Tests
