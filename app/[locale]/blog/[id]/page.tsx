@@ -53,6 +53,7 @@ import { extractPromoteableSections } from "@/lib/utils/blog"
 import { getAllSeries } from "@/lib/storage-series"
 import type { Series } from "@/components/blog/series-card"
 import { findRelatedWikiArticles } from "@/lib/utils/related-wiki"
+import { toast } from "sonner"
 
 export default function BlogPostPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
@@ -423,6 +424,29 @@ export default function BlogPostPage({ params }: { params: Promise<{ id: string 
             {currentUser && currentUser.id !== post.authorId && (
               <>
                 <WatchButton targetId={post.id} targetType="post" initialWatching={isWatchingPost} />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    try {
+                      const key = `pet_social_hidden_topics_${currentUser.id}`
+                      const prev: string[] = JSON.parse(localStorage.getItem(key) || '[]')
+                      const baseTopics = new Set<string>([
+                        ...((post.hashtags || []) as string[]),
+                        ...((post.tags || []) as string[]),
+                      ].filter(Boolean).map((s) => String(s).toLowerCase()))
+                      if (baseTopics.size === 0) {
+                        const title = `${post.title || ''}`.toLowerCase()
+                        title.split(/[^a-z0-9]+/g).filter((w) => w && w.length >= 4).slice(0, 3).forEach((w) => baseTopics.add(w))
+                      }
+                      const next = Array.from(new Set<string>([...prev, ...Array.from(baseTopics)]))
+                      localStorage.setItem(key, JSON.stringify(next))
+                      toast.message('You will see fewer similar posts')
+                    } catch {}
+                  }}
+                >
+                  Hide similar
+                </Button>
                 <PostReportMenu postId={post.id} postTitle={post.title} />
               </>
             )}

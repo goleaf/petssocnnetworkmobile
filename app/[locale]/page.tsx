@@ -928,9 +928,10 @@ export default function HomePage() {
     refreshFeatured()
   }, [refreshFeatured])
 
+  // Avoid dependency cycles: trigger personal data refresh on auth/user changes only
   useEffect(() => {
     refreshPersonalData()
-  }, [refreshPersonalData])
+  }, [isAuthenticated, user?.id])
 
   // Auto-refresh on focus/visibility: silent fetch → show banner if new
   useEffect(() => {
@@ -1011,9 +1012,10 @@ export default function HomePage() {
   }, [user?.id])
 
   const refreshAll = useCallback(() => {
+    // Keep deps stable to avoid cascaded callback changes
     refreshFeatured()
     refreshPersonalData()
-  }, [refreshFeatured, refreshPersonalData])
+  }, [refreshFeatured, isAuthenticated, user?.id])
 
   useStorageListener(STORAGE_KEYS_TO_WATCH, refreshAll)
 
@@ -1400,6 +1402,7 @@ export default function HomePage() {
                           onEdit={handleEdit}
                           onShare={handleShare}
                           currentUser={user}
+                          onRefresh={refreshFeedData}
                         />
                       )}
                     />
@@ -1451,6 +1454,7 @@ export default function HomePage() {
                           onEdit={handleEdit}
                           onShare={handleShare}
                           currentUser={user}
+                          onRefresh={refreshFeedData}
                         />
                       )}
                     />
@@ -1502,6 +1506,7 @@ export default function HomePage() {
                           onEdit={handleEdit}
                           onShare={handleShare}
                           currentUser={user}
+                          onRefresh={refreshFeedData}
                         />
                       )}
                     />
@@ -1560,6 +1565,7 @@ export default function HomePage() {
                           onEdit={handleEdit}
                           onShare={handleShare}
                           currentUser={user}
+                          onRefresh={refreshFeedData}
                         />
                       )}
                     />
@@ -1611,6 +1617,7 @@ export default function HomePage() {
                           onEdit={handleEdit}
                           onShare={handleShare}
                           currentUser={user}
+                          onRefresh={refreshFeedData}
                         />
                       )}
                     />
@@ -1938,6 +1945,7 @@ function FeedPostCard({
   isNewlyInserted,
   isNewSinceLastVisit,
   onSeen,
+  onRefresh,
 }: {
   post: BlogPost
   onReaction: (postId: string, reactionType: ReactionType) => void
@@ -1949,6 +1957,7 @@ function FeedPostCard({
   isNewlyInserted?: boolean
   isNewSinceLastVisit?: boolean
   onSeen?: (postId: string) => void
+  onRefresh?: () => void
 }) {
   const media = (post.media ?? { images: [], videos: [], links: [] }) as BlogPostMedia
   const pet = getPets().find((p) => p.id === post.petId)
@@ -2065,7 +2074,7 @@ function FeedPostCard({
   const markAsSold = () => {
     if (post.authorId !== currentUser.id) return
     updateBlogPost({ ...post, listingSoldAt: new Date().toISOString() })
-    refreshFeedData()
+    try { onRefresh?.() } catch {}
   }
 
   // Event post RSVP state and helpers
@@ -2445,6 +2454,30 @@ function FeedPostCard({
                 <DropdownMenuItem
                   onClick={() => {
                     try {
+                      const key = `pet_social_hidden_topics_${currentUser.id}`
+                      const prev: string[] = JSON.parse(localStorage.getItem(key) || '[]')
+                      const baseTopics = new Set<string>([
+                        ...((post.hashtags || []) as string[]),
+                        ...((post.tags || []) as string[]),
+                      ].filter(Boolean).map((s) => String(s).toLowerCase()))
+                      // Fallback: derive a few keywords from title if no tags/hashtags
+                      if (baseTopics.size === 0) {
+                        const title = `${post.title || ''}`.toLowerCase()
+                        title.split(/[^a-z0-9]+/g).filter((w) => w && w.length >= 4).slice(0, 3).forEach((w) => baseTopics.add(w))
+                      }
+                      const next = Array.from(new Set<string>([...prev, ...Array.from(baseTopics)]))
+                      localStorage.setItem(key, JSON.stringify(next))
+                      toast.message('You will see fewer similar posts')
+                      onRefresh?.()
+                    } catch {}
+                  }}
+                >
+                  <EyeOff className="h-4 w-4 mr-2" />
+                  Hide similar
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => {
+                    try {
                       const reports = JSON.parse(localStorage.getItem('pet_social_reports') || '[]')
                       reports.push({ id: `report_${Date.now()}`, postId: post.id, reason: 'other', reportedAt: new Date().toISOString() })
                       localStorage.setItem('pet_social_reports', JSON.stringify(reports))
@@ -2649,7 +2682,7 @@ function FeedPostCard({
         )}
 
         {/* Post Actions */}
-        <PostInteractionBar post={post} currentUser={currentUser} onRefresh={refreshFeedData} onOpenComments={() => setShowComments(true)} />
+        <PostInteractionBar post={post} currentUser={currentUser} onRefresh={onRefresh} onOpenComments={() => setShowComments(true)} />
         {showComments && (
           <InlineComments postId={post.id} />
         )}

@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
-import { Play, Pause, Volume2, VolumeX, Maximize, Minimize, Settings, ClosedCaptioning } from "lucide-react"
+import { Play, Pause, Volume2, VolumeX, Maximize, Minimize, Settings, Captions } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { VideoQuality, VideoCaptionTrack } from "@/lib/types"
 
@@ -218,7 +218,7 @@ export function VideoPlayer({ sources, poster, captions = [], autoPlayInView = t
             </div>
           )}
           {captions.length > 0 && (
-            <button onClick={toggleCc} className={cn("text-white", ccEnabled && 'text-primary')}> <ClosedCaptioning className="h-5 w-5" /> </button>
+            <button onClick={toggleCc} className={cn("text-white", ccEnabled && 'text-primary')}> <Captions className="h-5 w-5" /> </button>
           )}
           <button onClick={toggleFullscreen} className="text-white">{isFullscreen ? <Minimize className="h-5 w-5" /> : <Maximize className="h-5 w-5" />}</button>
         </div>

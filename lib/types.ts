@@ -663,6 +663,13 @@ export interface BlogPost {
   listingPaymentMethods?: string[]
   listingSoldAt?: string
   listingArchivedAt?: string
+  // Deletion lifecycle
+  deletedAt?: string
+  deletedById?: string
+  scheduledHardDeleteAt?: string
+  // Ranking
+  relevanceScore?: number
+  relevanceUpdatedAt?: string
 }
 
 export type ReactionType = "like" | "love" | "laugh" | "wow" | "sad" | "angry" | "paw"

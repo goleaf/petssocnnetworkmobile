@@ -1,6 +1,7 @@
 import type { BlogPost, Place } from "@/lib/types"
 import { getBlogPosts } from "@/lib/storage"
 import { getCommentsByPostId } from "@/lib/storage"
+import { getUsers, isPostSaved } from "@/lib/storage"
 
 /**
  * Configuration for ranking algorithm weights
@@ -137,6 +138,22 @@ function calculateEngagement(
   
   // Log scaling to prevent extremely popular posts from dominating
   return Math.log10(engagementScore * 9 + 1) / Math.log10(10)
+}
+
+/**
+ * Piecewise recency multiplier based on hours since creation
+ */
+function piecewiseRecencyMultiplier(createdAt: string): number {
+  const now = Date.now()
+  const created = new Date(createdAt).getTime()
+  const hoursOld = (now - created) / (1000 * 60 * 60)
+  if (hoursOld < 1) return 1.0
+  if (hoursOld < 3) return 0.9
+  if (hoursOld < 6) return 0.7
+  if (hoursOld < 12) return 0.5
+  if (hoursOld < 24) return 0.3
+  if (hoursOld < 48) return 0.1
+  return 0.05
 }
 
 /**
@@ -530,6 +547,35 @@ export function rankPosts(
   config: Partial<RankingConfig> = {},
   userContext?: UserRankingContext,
 ): BlogPost[] {
+  // Precompute share counts, save counts, and author follower counts to avoid O(N^2)
+  const allPosts = getBlogPosts()
+  const shareCounts = new Map<string, number>()
+  for (const p of allPosts) {
+    const origin = (p as any).sharedFromPostId as string | undefined
+    if (origin) {
+      shareCounts.set(origin, (shareCounts.get(origin) || 0) + 1)
+    }
+  }
+
+  const users = getUsers()
+  const saveCounts = new Map<string, number>()
+  try {
+    // Use isPostSaved for each user to count saves per post
+    for (const u of users) {
+      for (const p of posts) {
+        try {
+          if (isPostSaved(u.id, p.id)) {
+            saveCounts.set(p.id, (saveCounts.get(p.id) || 0) + 1)
+          }
+        } catch {}
+      }
+    }
+  } catch {}
+
+  const authorFollowerCounts = new Map<string, number>()
+  for (const u of users) {
+    authorFollowerCounts.set(u.id, (u.followers?.length || 0))
+  }
   const viewerId = userContext?.currentUserId
   const following = userContext?.followingIds ?? new Set<string>()
   const muted = userContext?.mutedKeywords || []
@@ -546,14 +592,23 @@ export function rankPosts(
     .map((post) => {
     const commentCount = commentCounts.get(post.id) || 0
     const place = post.placeId ? places.get(post.placeId) || null : null
-    let score = calculatePostRankingScore(
-      post,
-      commentCount,
-      place,
-      userLocation,
-      config,
-      userContext
-    )
+    const ageHours = (Date.now() - new Date(post.createdAt).getTime()) / (1000 * 60 * 60)
+    let score: number
+    if (ageHours >= 1 && typeof (post as any).relevanceScore === 'number') {
+      // Use precomputed score for older posts
+      score = (post as any).relevanceScore as number
+    } else {
+      // Compute on-the-fly for recent posts (< 1h) or when score missing
+      score = computePseudocodeRankingScore(
+        post,
+        commentCount,
+        place,
+        userLocation,
+        config,
+        userContext,
+        { shareCounts, saveCounts, authorFollowerCounts }
+      )
+    }
 
     // Apply negative signals as multiplicative penalties
     let penalty = 1
@@ -600,4 +655,78 @@ export function rankPosts(
   scoredPosts.sort((a, b) => b.score - a.score)
 
   return scoredPosts.map((item) => item.post)
+}
+
+// Extended extras used to compute on-the-fly engagement metrics
+interface Extras {
+  shareCounts: Map<string, number>
+  saveCounts: Map<string, number>
+  authorFollowerCounts: Map<string, number>
+}
+
+/**
+ * Override the core scoring to follow a simplified, multiplicative model:
+ * base = (likes*1 + comments*3 + shares*2.5 + saves*1.5) [normalized] * recency_multiplier
+ * final = base * (1 + affinity) * (0.5 + contentTypePref) * (1 + topicScore/10)
+ */
+function computePseudocodeRankingScore(
+  post: BlogPost,
+  commentCount: number,
+  place: Place | null,
+  userLocation: { lat: number; lng: number } | null,
+  config: Partial<RankingConfig>,
+  userContext: UserRankingContext | undefined,
+  extras: Extras,
+): number {
+  // Recency
+  const recencyMult = piecewiseRecencyMultiplier(post.createdAt)
+
+  // Likes/reactions
+  const reactionsTotal = post.reactions
+    ? Object.values(post.reactions).reduce((sum, arr) => sum + (arr?.length || 0), 0)
+    : (post.likes?.length || 0)
+
+  // Shares and saves
+  const shares = extras.shareCounts.get(post.id) || 0
+  const saves = extras.saveCounts.get(post.id) || 0
+
+  // Engagement per pseudocode
+  let engagement = reactionsTotal * 1.0 + commentCount * 3.0 + shares * 2.5 + saves * 1.5
+
+  // Normalize by author follower count to prevent absolute dominance
+  const followers = extras.authorFollowerCounts.get(post.authorId) || 0
+  if (followers > 1000) {
+    const denom = Math.log10(followers)
+    if (denom > 0) engagement = engagement / denom
+  }
+
+  const base = engagement * recencyMult
+
+  // Affinity boost (0..1 -> 1..2)
+  const affinity = calculateAffinity(post, userContext)
+  const affinityBoost = 1 + affinity
+
+  // Content-type preference (0..1 -> 0.5..1.5)
+  const ctp = calculateContentTypePreference(post, userContext)
+  const typeBoost = 0.5 + ctp
+
+  // Topic relevance boost: sum raw topic prefs for hashtags then /10
+  let topicScoreRaw = 0
+  if (userContext?.topicPreferences) {
+    const topics = getAllHashtags(post).map((t) => t.toLowerCase())
+    for (const t of topics) {
+      topicScoreRaw += userContext.topicPreferences.get(t) || 0
+    }
+  }
+  const topicBoost = 1 + topicScoreRaw / 10
+
+  let finalScore = base * affinityBoost * typeBoost * topicBoost
+
+  // Mild proximity consideration: slight bump if very close (retain some local feel)
+  const proximityScore = calculateProximity(post, place, userLocation)
+  if (proximityScore > 0) {
+    finalScore *= 1 + Math.min(proximityScore * 0.2, 0.2)
+  }
+
+  return finalScore
 }
