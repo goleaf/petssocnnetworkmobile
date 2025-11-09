@@ -18,6 +18,7 @@ import { HelpCircle, X, Package } from "lucide-react"
 import { ErrorText } from "@/components/ui/error-text"
 import { productInfoboxSchema, type ProductInfoboxInput } from "@/lib/schemas/product-infobox"
 import { ZodIssue } from "zod"
+import { useUnitSystem } from "@/lib/i18n/hooks"
 
 interface ProductInfoboxFormProps {
   initialData?: ProductInfoboxInput
@@ -128,6 +129,7 @@ function LabelWithTooltip({ htmlFor, tooltip, required, children }: {
 }
 
 export function ProductInfoboxForm({ initialData, onChange, errors }: ProductInfoboxFormProps) {
+  const unitSystem = useUnitSystem()
   const [formData, setFormData] = useState<ProductInfoboxInput>(() => ({
     productName: initialData?.productName || "",
     brand: initialData?.brand || "",
@@ -366,16 +368,27 @@ export function ProductInfoboxForm({ initialData, onChange, errors }: ProductInf
             </div>
 
             <div className="space-y-2">
-              <LabelWithTooltip htmlFor="weight" tooltip="Product weight">
+              <LabelWithTooltip htmlFor="weight" tooltip="Product weight. If you enter only a number, we’ll add your preferred unit.">
                 Weight
               </LabelWithTooltip>
               <Input
                 id="weight"
                 value={formData.weight || ""}
                 onChange={(e) => handleFieldChange("weight", e.target.value)}
-                placeholder="e.g., 2.5 lbs"
+                onBlur={(e) => {
+                  const val = e.target.value.trim()
+                  if (!val) return
+                  const numeric = Number(val)
+                  const containsUnit = /[a-zA-Z]/.test(val)
+                  if (!Number.isNaN(numeric) && !containsUnit) {
+                    const suffix = unitSystem === "imperial" ? " lbs" : " kg"
+                    handleFieldChange("weight", `${numeric}${suffix}`)
+                  }
+                }}
+                placeholder={unitSystem === "imperial" ? "e.g., 2.5 lbs" : "e.g., 1.1 kg"}
                 className="h-10"
               />
+              <p className="text-xs text-muted-foreground">Tip: enter a number and we’ll add {unitSystem === "imperial" ? "lbs" : "kg"} for you.</p>
             </div>
           </div>
 

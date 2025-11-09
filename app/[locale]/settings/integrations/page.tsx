@@ -37,6 +37,7 @@ import {
   ApiKey,
   WebhookStatus,
   WebhookHttpMethod,
+  AuthorizedApp,
 } from "@/lib/types"
 import {
   getWebhooks,
@@ -49,8 +50,11 @@ import {
   deleteApiKey,
   revokeApiKey,
   activateApiKey,
+  getAuthorizedApps,
+  revokeAuthorizedApp,
 } from "@/lib/storage"
-import { testWebhookDelivery } from "@/lib/utils/webhook"
+import { testWebhookDelivery, notifyAppRevocation } from "@/lib/utils/webhook"
+import { formatCommentDate, formatDate } from "@/lib/utils/date"
 import {
   Plus,
   Trash2,
@@ -95,8 +99,10 @@ export default function IntegrationsSettingsPage() {
   const router = useRouter()
   const [webhooks, setWebhooks] = useState<Webhook[]>([])
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([])
+  const [authorizedApps, setAuthorizedApps] = useState<AuthorizedApp[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [testingWebhookId, setTestingWebhookId] = useState<string | null>(null)
+  const [revokingAppId, setRevokingAppId] = useState<string | null>(null)
 
   // Webhook form state
   const [webhookDialogOpen, setWebhookDialogOpen] = useState(false)
@@ -129,6 +135,7 @@ export default function IntegrationsSettingsPage() {
   const loadData = () => {
     setWebhooks(getWebhooks())
     setApiKeys(getApiKeys())
+    setAuthorizedApps((getAuthorizedApps() || []).filter((a) => a.isActive))
   }
 
   const handleCreateWebhook = () => {
@@ -284,6 +291,25 @@ export default function IntegrationsSettingsPage() {
     }
   }
 
+  const handleRevokeApp = async (app: AuthorizedApp) => {
+    setRevokingAppId(app.id)
+    try {
+      const result = revokeAuthorizedApp(app.id)
+      if (result.success) {
+        // Fire-and-forget developer webhook notification
+        void notifyAppRevocation(app)
+        toast.success(`${app.name} disconnected`)
+        loadData()
+      } else {
+        toast.error(result.error || `Failed to revoke ${app.name}`)
+      }
+    } catch (e) {
+      toast.error(`Failed to revoke ${app.name}`)
+    } finally {
+      setRevokingAppId(null)
+    }
+  }
+
   const toggleWebhookEvent = (event: string) => {
     setWebhookForm((prev) => ({
       ...prev,
@@ -343,6 +369,11 @@ export default function IntegrationsSettingsPage() {
           <TabsTrigger value="api-keys">
             <Key className="h-4 w-4 mr-2" />
             API Keys
+          </TabsTrigger>
+          <TabsTrigger value="apps">
+            {/* Using Key icon fallback if app icon not available */}
+            <Key className="h-4 w-4 mr-2" />
+            Authorized Apps
           </TabsTrigger>
         </TabsList>
 
@@ -556,6 +587,108 @@ export default function IntegrationsSettingsPage() {
                                     className="bg-destructive text-destructive-foreground"
                                   >
                                     Delete
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+        <TabsContent value="apps" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Authorized Applications</CardTitle>
+                  <CardDescription>
+                    Manage third-party apps that can access your account
+                  </CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {authorizedApps.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <AlertCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>No authorized applications</p>
+                  <p className="text-sm mt-2">Apps you connect will appear here</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {authorizedApps.map((app) => (
+                    <Card key={app.id}>
+                      <CardContent className="pt-6">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-2">
+                              {/* Logo + Name */}
+                              <div className="flex items-center gap-3">
+                                <div className="h-9 w-9 rounded-md overflow-hidden bg-muted flex items-center justify-center">
+                                  {app.logoUrl ? (
+                                    // eslint-disable-next-line @next/next/no-img-element
+                                    <img src={app.logoUrl} alt={app.name} className="h-full w-full object-cover" />
+                                  ) : (
+                                    <Key className="h-5 w-5 text-muted-foreground" />
+                                  )}
+                                </div>
+                                <h3 className="font-semibold">{app.name}</h3>
+                              </div>
+                            </div>
+                            {/* Permissions */}
+                            <div className="flex flex-wrap gap-2 mb-2">
+                              {app.permissions.map((perm) => (
+                                <Badge key={perm} variant="outline" className="text-xs">
+                                  {perm}
+                                </Badge>
+                              ))}
+                            </div>
+                            <div className="text-xs text-muted-foreground space-x-3">
+                              <span>Connected on {formatDate(app.connectedAt)}</span>
+                              {app.lastUsedAt && (
+                                <span>• Last accessed {formatCommentDate(app.lastUsedAt)}</span>
+                              )}
+                            </div>
+                            <p className="text-xs text-amber-600 mt-2 flex items-center gap-1">
+                              <AlertCircle className="h-3 w-3" />
+                              Revoking access may stop this app from functioning
+                            </p>
+                          </div>
+                          <div className="flex gap-2">
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  disabled={revokingAppId === app.id}
+                                >
+                                  {revokingAppId === app.id ? (
+                                    <Clock className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <>Revoke Access</>
+                                  )}
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Disconnect {app.name}?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    This will disconnect {app.name}. You'll need to re-authorize if you want to use it again.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => handleRevokeApp(app)}
+                                    className="bg-destructive text-destructive-foreground"
+                                  >
+                                    Revoke Access
                                   </AlertDialogAction>
                                 </AlertDialogFooter>
                               </AlertDialogContent>

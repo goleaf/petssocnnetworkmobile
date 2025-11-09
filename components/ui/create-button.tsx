@@ -1,11 +1,11 @@
 import * as React from "react"
 import { Button, type ButtonProps } from "@/components/ui/button"
-import { Plus, PenSquare, Send } from "lucide-react"
+import { Plus, PenSquare, Send, PawPrint } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 interface CreateButtonProps extends ButtonProps {
   children?: React.ReactNode
-  iconType?: "plus" | "pen" | "send" | "none"
+  iconType?: "plus" | "pen" | "send" | "paw" | "none"
   iconClassName?: string
 }
 
@@ -22,6 +22,8 @@ export function CreateButton({
         return <PenSquare className={cn("h-4 w-4 mr-2", iconClassName)} />
       case "send":
         return <Send className={cn("h-4 w-4 mr-2", iconClassName)} />
+      case "paw":
+        return <PawPrint className={cn("h-4 w-4 mr-2", iconClassName)} />
       case "plus":
         return <Plus className={cn("h-4 w-4 mr-2", iconClassName)} />
       default:

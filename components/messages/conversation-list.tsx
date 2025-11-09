@@ -6,6 +6,9 @@ import { getUserById } from "@/lib/storage"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
+import { ChevronLeft } from "lucide-react"
+import { useIsMdUp } from "@/lib/hooks/use-media-query"
 
 interface ConversationListProps {
   conversations: Conversation[]
@@ -14,6 +17,10 @@ interface ConversationListProps {
   currentUserId: string
   typingIndicators?: Record<string, Record<string, number>>
   onSelect: (conversationId: string) => void
+  className?: string
+  showHeader?: boolean
+  showCollapseButton?: boolean
+  onCollapseToggle?: () => void
 }
 
 export function ConversationList({
@@ -23,20 +30,32 @@ export function ConversationList({
   currentUserId,
   typingIndicators = {},
   onSelect,
+  className,
+  showHeader = true,
+  showCollapseButton = false,
+  onCollapseToggle,
 }: ConversationListProps) {
+  const isMdUp = useIsMdUp()
   if (conversations.length === 0) {
     return (
-      <div className="rounded-lg border bg-card p-6 text-center text-sm text-muted-foreground">
+      <div className={cn("rounded-lg border bg-card p-6 text-center text-sm text-muted-foreground", className)}>
         No conversations yet. Start a private chat to get started.
       </div>
     )
   }
 
   return (
-    <div className="rounded-lg border bg-card">
-      <div className="border-b px-4 py-3">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Conversations</h2>
-      </div>
+    <div className={cn("rounded-lg border bg-card", className)}>
+      {showHeader && (
+        <div className="sticky top-0 z-10 flex items-center justify-between gap-2 border-b bg-card/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-card/60">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Conversations</h2>
+          {showCollapseButton && isMdUp && (
+            <Button variant="ghost" size="icon" onClick={onCollapseToggle} aria-label="Collapse list">
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
+      )}
       <div className="divide-y">
         {conversations.map((conversation) => {
           const otherParticipantId = conversation.participantIds.find((id) => id !== currentUserId) ?? currentUserId

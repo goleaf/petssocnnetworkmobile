@@ -5,6 +5,7 @@ import type { User } from "@/lib/types"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
+import { CreateButton } from "@/components/ui/create-button"
 import { Badge } from "@/components/ui/badge"
 import { getPets, getBlogPosts, getUsers, getPetsByOwnerId } from "@/lib/storage"
 import { Heart, MessageCircle, TrendingUp, Users, PawPrint, BookOpen, Plus, UserPlus, CalendarClock } from "lucide-react"
@@ -108,6 +109,15 @@ export default function DashboardContent({ user }: { user: User }) {
         <p className="text-muted-foreground">Here{"'"}s what{"'"}s happening in your pet community</p>
       </div>
 
+      {/* Prominent Add Pet CTA */}
+      <div className="mb-6">
+        <Link href="/dashboard/add-pet">
+          <CreateButton iconType="paw" size="lg" className="w-full sm:w-auto px-6 py-6 text-base">
+            Add Pet
+          </CreateButton>
+        </Link>
+      </div>
+
       {/* Stats Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3 md:gap-4 mb-8">
         <CompactStatBlock
@@ -179,13 +189,13 @@ export default function DashboardContent({ user }: { user: User }) {
                 </div>
               ) : (
                 <div className="text-center py-8 text-muted-foreground">
-                  <PawPrint className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                  <p>You haven{"'"}t added any pets yet</p>
+                  <img src="/man-and-cat.png" alt="Add your first pet" className="h-32 w-auto mx-auto mb-4 rounded-md" />
+                  <p className="text-base text-foreground font-medium">Add your first furry friend!</p>
+                  <p className="text-sm mt-1">Share your pet's profile with the community.</p>
                   <Link href="/dashboard/add-pet">
-                    <Button className="mt-4">
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add Your First Pet
-                    </Button>
+                    <CreateButton iconType="paw" size="lg" className="mt-4 px-6 py-6 text-base">
+                      Add Pet
+                    </CreateButton>
                   </Link>
                 </div>
               )}

@@ -16,7 +16,7 @@ import { BlurToggle } from "@/components/moderation/blur-toggle"
 import { updateUser, getUsers, blockUser, unblockUser, isExpertVerified, getExpertVerificationRequestByUserId } from "@/lib/storage"
 import { getNotificationSettings, saveNotificationSettings } from "@/lib/notifications"
 import { requestEmailChangeAction, updatePasswordAction, logoutAllDevicesAction, requestAccountDeletionAction } from "@/lib/actions/account"
-import { getActiveSessionsAction, logoutSessionAction, logoutAllOtherSessionsAction } from "@/lib/actions/sessions"
+import { getActiveSessionsAction, logoutSessionAction, logoutAllOtherSessionsAction, renameSessionDeviceAction } from "@/lib/actions/sessions"
 import type { PrivacyLevel, NotificationSettings, NotificationChannel } from "@/lib/types"
 import {
   ArrowLeft,
@@ -39,7 +39,7 @@ import {
   Key,
   type LucideIcon,
 } from "lucide-react"
-import { Eye, EyeOff, LogOut, Monitor, Smartphone } from "lucide-react"
+import { Eye, EyeOff, LogOut, Monitor, Pencil, Check, X } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import Link from "next/link"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -133,6 +133,7 @@ export default function SettingsPage() {
   // Session management state
   const [sessions, setSessions] = useState<Array<{
     token: string
+    customName?: string
     deviceName?: string
     deviceType?: string
     os?: string
@@ -146,6 +147,9 @@ export default function SettingsPage() {
     isCurrent?: boolean
   }> | null>(null)
   const [isLoadingSessions, setIsLoadingSessions] = useState(false)
+  const [editingToken, setEditingToken] = useState<string | null>(null)
+  const [nameDraft, setNameDraft] = useState<string>("")
+  const [renameSaving, setRenameSaving] = useState<boolean>(false)
   // Verification Request UI state
   const [isVerifOpen, setIsVerifOpen] = useState(false)
   const [verifName, setVerifName] = useState("")
@@ -391,6 +395,29 @@ export default function SettingsPage() {
     await refreshSessions()
   }
 
+  const startRename = (token: string, currentName?: string) => {
+    setEditingToken(token)
+    setNameDraft(currentName || "")
+  }
+
+  const cancelRename = () => {
+    setEditingToken(null)
+    setNameDraft("")
+  }
+
+  const saveRename = async () => {
+    if (!editingToken) return
+    try {
+      setRenameSaving(true)
+      await renameSessionDeviceAction(editingToken, nameDraft)
+      await refreshSessions()
+      setEditingToken(null)
+      setNameDraft("")
+    } finally {
+      setRenameSaving(false)
+    }
+  }
+
   const handleEmailChange = async () => {
     if (!user) return
     setEmailError(null)
@@ -593,23 +620,23 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
-        {/* Active Sessions */}
+        {/* Trusted Devices */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
               <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-lg bg-emerald-500/10 flex items-center justify-center flex-shrink-0">
                 <Monitor className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-emerald-600" />
               </div>
-              Active Sessions
+              Trusted Devices
             </CardTitle>
-            <CardDescription className="text-xs sm:text-sm">Manage your logged in devices and sessions.</CardDescription>
+            <CardDescription className="text-xs sm:text-sm">Manage devices that can access your account and sign out lost or stolen devices.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {isLoadingSessions && <p className="text-sm text-muted-foreground">Loading sessions…</p>}
-            {sessions && sessions.length === 0 && (
-              <p className="text-sm text-muted-foreground">No active sessions found.</p>
+            {sessions && sessions.filter((s) => !s.revoked).length === 0 && (
+              <p className="text-sm text-muted-foreground">No trusted devices found.</p>
             )}
-            {sessions && sessions.length > 0 && (
+            {sessions && sessions.filter((s) => !s.revoked).length > 0 && (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead className="text-muted-foreground">
@@ -622,7 +649,7 @@ export default function SettingsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {sessions.map((s) => {
+                    {sessions.filter((s) => !s.revoked).map((s) => {
                       const isCurrent = s.isCurrent
                       const DeviceIcon = s.deviceType === "mobile" || s.deviceType === "tablet" ? Smartphone : Monitor
                       return (
@@ -631,13 +658,39 @@ export default function SettingsPage() {
                             <div className="flex items-center gap-2">
                               <DeviceIcon className="h-4 w-4" />
                               <div className="flex items-center gap-2">
-                                <span className="font-medium">{s.deviceName || "Device"}</span>
-                                <span className="text-xs text-muted-foreground">{s.browser || s.os}</span>
-                                {isCurrent && (
-                                  <Badge variant="outline" className="border-green-500/50 text-green-600">This device</Badge>
-                                )}
-                                {s.revoked && (
-                                  <Badge variant="outline" className="border-destructive/50 text-destructive">Signed out</Badge>
+                                {editingToken === s.token ? (
+                                  <div className="flex items-center gap-2">
+                                    <Input
+                                      value={nameDraft}
+                                      onChange={(e) => setNameDraft(e.target.value)}
+                                      className="h-8 w-40"
+                                      placeholder="Device name"
+                                    />
+                                    <Button size="sm" onClick={saveRename} loading={renameSaving} disabled={!nameDraft.trim()}>
+                                      <Check className="h-3.5 w-3.5" />
+                                    </Button>
+                                    <Button size="sm" variant="ghost" onClick={cancelRename}>
+                                      <X className="h-3.5 w-3.5" />
+                                    </Button>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-medium">{s.customName || s.deviceName || "Device"}</span>
+                                    <button
+                                      type="button"
+                                      className="inline-flex items-center text-muted-foreground hover:text-foreground"
+                                      onClick={() => startRename(s.token, s.customName || s.deviceName || "")}
+                                      aria-label="Rename device"
+                                    >
+                                      <Pencil className="h-3.5 w-3.5" />
+                                    </button>
+                                    <span className="text-xs text-muted-foreground">
+                                      {s.browser && s.os ? `${s.browser} on ${s.os}` : s.browser || s.os || ""}
+                                    </span>
+                                    {isCurrent && (
+                                      <Badge variant="outline" className="border-green-500/50 text-green-600">Current device</Badge>
+                                    )}
+                                  </div>
                                 )}
                               </div>
                             </div>
@@ -668,10 +721,10 @@ export default function SettingsPage() {
                             <Button
                               size="sm"
                               variant="outline"
-                              disabled={isCurrent || s.revoked}
+                              disabled={isCurrent}
                               onClick={() => handleLogoutSession(s.token)}
                             >
-                              Log Out
+                              Remove Device
                             </Button>
                           </td>
                         </tr>
@@ -683,7 +736,7 @@ export default function SettingsPage() {
             )}
             <div className="flex justify-end">
               <Button variant="outline" onClick={handleLogoutAllOthers} disabled={!sessions || sessions.every((s) => s.isCurrent || s.revoked)}>
-                Log Out All Other Sessions
+                Remove All Devices (except current)
               </Button>
             </div>
           </CardContent>

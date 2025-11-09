@@ -12,6 +12,7 @@ import {
   Database,
   CreditCard,
   HelpCircle,
+  Accessibility,
   type LucideIcon,
 } from "lucide-react"
 
@@ -32,6 +33,7 @@ export default function SettingsSidebar({ locale, showBilling = false }: { local
     { href: `${base}/privacy`, label: "Privacy & Safety", icon: Shield },
     { href: `${base}/notifications`, label: "Notifications", icon: Bell },
     { href: `${base}/appearance`, label: "Appearance", icon: Palette },
+    { href: `${base}/accessibility`, label: "Accessibility", icon: Accessibility },
     { href: `${base}/language`, label: "Language & Region", icon: Globe },
     { href: `${base}/data-storage`, label: "Data & Storage", icon: Database },
     { href: `${base}/billing`, label: "Billing", icon: CreditCard, hidden: !showBilling },

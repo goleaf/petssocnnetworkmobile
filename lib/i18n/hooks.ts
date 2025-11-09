@@ -5,6 +5,7 @@
  */
 
 import React from 'react';
+import { useAuth } from '@/lib/auth';
 import { useLocale } from 'next-intl';
 import {
   formatNumber,
@@ -14,10 +15,12 @@ import {
   formatWeight,
   formatLength,
   formatDistance,
+  formatTemperature,
   getUnitSystemForLocale,
   getCurrencyForLocale,
   type UnitSystem,
 } from './formatting';
+import { usePreferences } from '@/lib/preferences';
 
 /**
  * Hook to format numbers with current locale
@@ -47,12 +50,14 @@ export function useFormatCurrency() {
  */
 export function useFormatDate() {
   const locale = useLocale();
+  const { user } = useAuth();
+  const timeZone = user?.displayPreferences?.timezone;
   
   return (
     date: Date | string | number,
     options?: Intl.DateTimeFormatOptions & { timeZone?: string }
   ) => {
-    return formatDate(date, { ...options, locale });
+    return formatDate(date, { ...options, locale, timeZone: options?.timeZone || timeZone });
   };
 }
 
@@ -63,6 +68,8 @@ export function useFormatDate() {
 export function useFormatRelativeTime() {
   const locale = useLocale();
   const [mounted, setMounted] = React.useState(false);
+  const { user } = useAuth();
+  const _timeZone = user?.displayPreferences?.timezone;
   
   React.useEffect(() => {
     setMounted(true);
@@ -72,10 +79,24 @@ export function useFormatRelativeTime() {
     // Only format relative time after component has mounted to avoid hydration mismatch
     if (!mounted) {
       // Return absolute date format during SSR
-      return formatDate(date, { locale, dateStyle: 'short' });
+      return formatDate(date, { locale, dateStyle: 'short', timeZone: _timeZone });
     }
     return formatRelativeTime(date, locale);
   };
+}
+
+/**
+ * Hook to access current user's date/time display preferences
+ */
+export function useUserDateTimePrefs() {
+  const { user } = useAuth();
+  return React.useMemo(() => ({
+    timestampDisplay: user?.displayPreferences?.timestampDisplay || 'relative',
+    dateFormat: user?.displayPreferences?.dateFormat || 'MDY',
+    timeFormat: user?.displayPreferences?.timeFormat || '12h',
+    timeZone: user?.displayPreferences?.timezone,
+    country: user?.displayPreferences?.country,
+  }), [user]);
 }
 
 /**
@@ -83,7 +104,8 @@ export function useFormatRelativeTime() {
  */
 export function useFormatWeight() {
   const locale = useLocale();
-  const unitSystem = getUnitSystemForLocale(locale);
+  const preferred = usePreferences((s) => s.unitSystem);
+  const unitSystem = preferred ?? getUnitSystemForLocale(locale);
   
   return (value: number, customUnitSystem?: UnitSystem) => {
     return formatWeight(value, customUnitSystem || unitSystem, locale);
@@ -95,7 +117,8 @@ export function useFormatWeight() {
  */
 export function useFormatLength() {
   const locale = useLocale();
-  const unitSystem = getUnitSystemForLocale(locale);
+  const preferred = usePreferences((s) => s.unitSystem);
+  const unitSystem = preferred ?? getUnitSystemForLocale(locale);
   
   return (value: number, customUnitSystem?: UnitSystem) => {
     return formatLength(value, customUnitSystem || unitSystem, locale);
@@ -107,7 +130,8 @@ export function useFormatLength() {
  */
 export function useFormatDistance() {
   const locale = useLocale();
-  const unitSystem = getUnitSystemForLocale(locale);
+  const preferred = usePreferences((s) => s.unitSystem);
+  const unitSystem = preferred ?? getUnitSystemForLocale(locale);
   
   return (value: number, customUnitSystem?: UnitSystem) => {
     return formatDistance(value, customUnitSystem || unitSystem, locale);
@@ -119,7 +143,8 @@ export function useFormatDistance() {
  */
 export function useUnitSystem(): UnitSystem {
   const locale = useLocale();
-  return getUnitSystemForLocale(locale);
+  const preferred = usePreferences((s) => s.unitSystem);
+  return preferred ?? getUnitSystemForLocale(locale);
 }
 
 /**
@@ -130,3 +155,15 @@ export function useCurrency(): string {
   return getCurrencyForLocale(locale);
 }
 
+/**
+ * Hook to format temperature with current unit preference
+ */
+export function useFormatTemperature() {
+  const locale = useLocale();
+  const preferred = usePreferences((s) => s.unitSystem);
+  const unitSystem = preferred ?? getUnitSystemForLocale(locale);
+  
+  return (value: number, customUnitSystem?: UnitSystem) => {
+    return formatTemperature(value, customUnitSystem || unitSystem, locale);
+  };
+}

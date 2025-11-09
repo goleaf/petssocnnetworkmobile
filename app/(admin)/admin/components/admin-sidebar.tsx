@@ -21,6 +21,7 @@ import {
   ChevronRight,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useKeyboardShortcut } from "@/components/a11y/useKeyboardShortcut"
 
 // Context for sidebar state
 const SidebarContext = createContext<{ collapsed: boolean }>({ collapsed: false })
@@ -57,19 +58,8 @@ export function AdminSidebar() {
   const pathname = usePathname()
   const sidebarRef = useRef<HTMLDivElement>(null)
 
-  // Keyboard navigation
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Toggle sidebar with Cmd/Ctrl + B
-      if ((e.metaKey || e.ctrlKey) && e.key === "b") {
-        e.preventDefault()
-        setCollapsed((prev) => !prev)
-      }
-    }
-
-    window.addEventListener("keydown", handleKeyDown)
-    return () => window.removeEventListener("keydown", handleKeyDown)
-  }, [])
+  // Keyboard shortcut: Cmd/Ctrl + B toggle (respects sticky/slow keys)
+  useKeyboardShortcut("b", () => setCollapsed((prev) => !prev), { withCtrlOrMeta: true })
 
   // Update CSS variable for main content spacing
   useEffect(() => {
@@ -135,4 +125,3 @@ export function AdminSidebar() {
     </SidebarContext.Provider>
   )
 }
-

@@ -489,7 +489,7 @@ export default function NotificationSettingsPage() {
                     enabled: Boolean(checked),
                     start: prev.quietHours?.start || "22:00",
                     end: prev.quietHours?.end || "07:00",
-                    timezone: prev.quietHours?.timezone || (Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"),
+                    timezone: prev.quietHours?.timezone || (user?.displayPreferences?.timezone || (Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC")),
                     days:
                       prev.quietHours?.days || [
                         "monday",
@@ -516,7 +516,7 @@ export default function NotificationSettingsPage() {
                 onChange={(e) =>
                   setSettings((prev) => ({
                     ...prev,
-                    quietHours: { ...(prev.quietHours || ({} as any)), start: e.target.value, enabled: true, timezone: prev.quietHours?.timezone || (Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC") },
+                    quietHours: { ...(prev.quietHours || ({} as any)), start: e.target.value, enabled: true, timezone: prev.quietHours?.timezone || (user?.displayPreferences?.timezone || (Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC")) },
                   }))
                 }
                 disabled={!settings.quietHours?.enabled}
@@ -530,7 +530,7 @@ export default function NotificationSettingsPage() {
                 onChange={(e) =>
                   setSettings((prev) => ({
                     ...prev,
-                    quietHours: { ...(prev.quietHours || ({} as any)), end: e.target.value, enabled: true, timezone: prev.quietHours?.timezone || (Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC") },
+                    quietHours: { ...(prev.quietHours || ({} as any)), end: e.target.value, enabled: true, timezone: prev.quietHours?.timezone || (user?.displayPreferences?.timezone || (Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC")) },
                   }))
                 }
                 disabled={!settings.quietHours?.enabled}
@@ -538,7 +538,7 @@ export default function NotificationSettingsPage() {
             </div>
             <div>
               <Label className="text-xs uppercase text-muted-foreground">Timezone</Label>
-              <Input type="text" value={settings.quietHours?.timezone || (Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC")} disabled />
+              <Input type="text" value={settings.quietHours?.timezone || (user?.displayPreferences?.timezone || (Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"))} disabled />
             </div>
           </div>
 
@@ -572,7 +572,7 @@ export default function NotificationSettingsPage() {
                               ...(prev.quietHours || ({} as any)),
                               enabled: true,
                               days: Array.from(days) as any,
-                              timezone: prev.quietHours?.timezone || (Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"),
+                              timezone: prev.quietHours?.timezone || (user?.displayPreferences?.timezone || (Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC")),
                             },
                           }
                         })

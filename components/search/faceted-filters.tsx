@@ -10,7 +10,10 @@ import { Separator } from "@/components/ui/separator"
 import { X, MapPin, ShieldCheck } from "lucide-react"
 import type { SearchFilters, SearchFacets, SearchCategory } from "@/lib/types/search"
 import { SEARCH_CATEGORIES } from "@/lib/search/config"
-import { getCurrentLocation, formatDistance } from "@/lib/search/utils"
+import { getCurrentLocation } from "@/lib/search/utils"
+import { useUnitSystem } from "@/lib/i18n/hooks"
+import { useLocale } from "next-intl"
+import { convertDistance, formatDistance as fmtDistance } from "@/lib/i18n/formatting"
 
 interface FacetedFiltersProps {
   filters: SearchFilters
@@ -30,6 +33,8 @@ export function FacetedFilters({
   const [locationEnabled, setLocationEnabled] = useState(
     !!filters.location || !!userLocation
   )
+  const unitSystem = useUnitSystem()
+  const locale = useLocale()
 
   const handleCategoryChange = (category: SearchCategory) => {
     onFiltersChange({
@@ -265,7 +270,17 @@ export function FacetedFilters({
                   {filters.location.lng.toFixed(4)}
                 </div>
               )}
-              <div>Radius: {filters.location.radius || 10}km</div>
+              <div>
+                Radius: {
+                  unitSystem === "imperial"
+                    ? fmtDistance(
+                        convertDistance(filters.location.radius || 10, "metric", "imperial"),
+                        "imperial",
+                        locale,
+                      )
+                    : fmtDistance(filters.location.radius || 10, "metric", locale)
+                }
+              </div>
             </div>
           )}
         </div>
@@ -273,4 +288,3 @@ export function FacetedFilters({
     </Card>
   )
 }
-

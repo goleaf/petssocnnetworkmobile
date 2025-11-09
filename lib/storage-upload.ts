@@ -166,6 +166,32 @@ export async function uploadImage(
 }
 
 /**
+ * Upload image honoring user media settings (downscale/compress when HQ uploads disabled).
+ */
+export async function uploadImageWithSettings(
+  file: File,
+  userId: string,
+  folder: string = "articles",
+): Promise<ImageUploadResult> {
+  try {
+    const { getMediaSettings } = await import("./media-settings")
+    const { downscaleImageFile } = await import("./utils/image")
+    const settings = getMediaSettings(userId)
+    let working = file
+
+    if (!settings.highQualityUploads) {
+      // Downscale to 1920px max dimension and moderate quality for bandwidth saving
+      working = await downscaleImageFile(file, { maxWidth: 1920, maxHeight: 1920, quality: 0.8, format: 'image/webp' })
+    }
+
+    return await uploadImage(working, folder)
+  } catch (e) {
+    // Fallback to normal upload if settings or transform fail
+    return await uploadImage(file, folder)
+  }
+}
+
+/**
  * Upload video file (similar to uploadImage but for videos)
  */
 export async function uploadVideo(

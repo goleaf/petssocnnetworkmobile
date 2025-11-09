@@ -62,6 +62,7 @@ import type {
   Webhook,
   ApiKey,
   WebhookDelivery,
+  AuthorizedApp,
 } from "./types"
 import {
   mockUsers,
@@ -5887,6 +5888,7 @@ export function getIntegrationSettings(): IntegrationSettings {
   return readData<IntegrationSettings>(STORAGE_KEYS.INTEGRATIONS, {
     webhooks: [],
     apiKeys: [],
+    authorizedApps: [],
   })
 }
 
@@ -6031,6 +6033,69 @@ export function revokeApiKey(keyId: string): { success: boolean; error?: string 
 
 export function activateApiKey(keyId: string): { success: boolean; error?: string } {
   return updateApiKey(keyId, { isActive: true })
+}
+
+// Authorized Applications Operations
+export function getAuthorizedApps(): AuthorizedApp[] {
+  const settings = getIntegrationSettings()
+  return settings.authorizedApps || []
+}
+
+export function getAuthorizedAppById(appId: string): AuthorizedApp | null {
+  const apps = getAuthorizedApps()
+  return apps.find((a) => a.id === appId) || null
+}
+
+export function addAuthorizedApp(
+  app: Omit<AuthorizedApp, "id" | "connectedAt" | "isActive">
+): AuthorizedApp {
+  const settings = getIntegrationSettings()
+  const newApp: AuthorizedApp = {
+    ...app,
+    id: `oa_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`,
+    connectedAt: new Date().toISOString(),
+    isActive: true,
+  }
+  settings.authorizedApps = settings.authorizedApps || []
+  settings.authorizedApps.push(newApp)
+  saveIntegrationSettings(settings)
+  return newApp
+}
+
+export function updateAuthorizedApp(
+  appId: string,
+  updates: Partial<AuthorizedApp>
+): { success: boolean; error?: string } {
+  const settings = getIntegrationSettings()
+  settings.authorizedApps = settings.authorizedApps || []
+  const index = settings.authorizedApps.findIndex((a) => a.id === appId)
+  if (index === -1) {
+    return { success: false, error: "Authorized app not found" }
+  }
+  settings.authorizedApps[index] = { ...settings.authorizedApps[index], ...updates }
+  saveIntegrationSettings(settings)
+  return { success: true }
+}
+
+export function deleteAuthorizedApp(appId: string): { success: boolean; error?: string } {
+  const settings = getIntegrationSettings()
+  settings.authorizedApps = settings.authorizedApps || []
+  const index = settings.authorizedApps.findIndex((a) => a.id === appId)
+  if (index === -1) {
+    return { success: false, error: "Authorized app not found" }
+  }
+  settings.authorizedApps.splice(index, 1)
+  saveIntegrationSettings(settings)
+  return { success: true }
+}
+
+export function revokeAuthorizedApp(appId: string): { success: boolean; error?: string } {
+  // Mark as inactive immediately; UI may also choose to remove from list
+  return updateAuthorizedApp(appId, { isActive: false })
+}
+
+export function recordAuthorizedAppAccess(appId: string): { success: boolean; error?: string } {
+  return updateAuthorizedApp(appId, { lastUsedAt: new Date().toISOString() })
 }
 
 // Pinned Items Operations

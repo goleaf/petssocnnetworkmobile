@@ -10,6 +10,9 @@ import { TierComputationProvider } from "@/components/tier-computation-provider"
 import { LinkCheckerScheduler } from "@/components/link-checker-scheduler"
 import { getLocale } from 'next-intl/server'
 import { NavigationLoadingIndicator } from "@/components/ui/navigation-loading-indicator"
+import { ScreenReaderProvider } from "@/components/a11y/screen-reader-provider"
+import { MotorAccessibilityProvider } from "@/components/a11y/motor-accessibility-provider"
+import { SkipLinks } from "@/components/a11y/SkipLinks"
 
 const _geist = Geist({ subsets: ["latin"] })
 const _geistMono = Geist_Mono({ subsets: ["latin"] })
@@ -32,11 +35,18 @@ export default async function RootLayout({
       <body className={`font-sans antialiased`}>
         <AuthProvider>
           <TierComputationProvider>
-            <DeepLinkHandler />
-            <LinkCheckerScheduler />
-            <NavigationLoadingIndicator />
-            <Navigation />
-            {children}
+            <ScreenReaderProvider>
+              <MotorAccessibilityProvider>
+                <SkipLinks />
+                <DeepLinkHandler />
+                <LinkCheckerScheduler />
+                <NavigationLoadingIndicator />
+                <Navigation />
+                <main id="main-content" role="main" className="min-h-[60vh]">
+                  {children}
+                </main>
+              </MotorAccessibilityProvider>
+            </ScreenReaderProvider>
           </TierComputationProvider>
         </AuthProvider>
         <Analytics />

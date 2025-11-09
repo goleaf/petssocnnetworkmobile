@@ -13,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { FormActions } from "@/components/ui/form-actions"
 import { Switch } from "@/components/ui/switch"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import {
   Tooltip,
   TooltipContent,
@@ -34,7 +35,6 @@ import type {
   Achievement,
   AchievementCategory,
 } from "@/lib/types"
-import { ANIMAL_TYPES } from "@/lib/animal-types"
 import { calculateAge } from "@/lib/utils/date"
 import { PrivacySelector } from "@/components/privacy-selector"
 import {
@@ -78,6 +78,8 @@ import {
   Eye,
   Lock,
 } from "lucide-react"
+import { useUnitSystem } from "@/lib/i18n/hooks"
+import { getWikiArticlesByCategory } from "@/lib/storage"
 
 // Label with Tooltip Component
 interface LabelWithTooltipProps {
@@ -203,7 +205,10 @@ const ACHIEVEMENT_TYPE_OPTIONS: { value: AchievementCategory; label: string; des
 export interface PetFormData {
   name: string
   species: Pet["species"]
+  speciesId?: string
+  customSpecies?: string
   breed: string
+  breedId?: string
   age: string
   gender: Pet["gender"]
   bio: string
@@ -243,6 +248,7 @@ interface ValidationErrors {
 }
 
 export function PetForm({ mode, initialData, onSubmit, onCancel, petName }: PetFormProps) {
+  const unitSystem = useUnitSystem()
   const resolvedPrivacy = (() => {
     const rawPrivacy = initialData?.privacy
     if (
@@ -267,7 +273,10 @@ export function PetForm({ mode, initialData, onSubmit, onCancel, petName }: PetF
   const [formData, setFormData] = useState<PetFormData>({
     name: initialData?.name || "",
     species: initialData?.species || "dog",
+    speciesId: initialData?.speciesId || undefined,
+    customSpecies: "",
     breed: initialData?.breed || "",
+    breedId: initialData?.breedId || undefined,
     age: initialData?.age?.toString() || "",
     gender: initialData?.gender || "male",
     bio: initialData?.bio || "",
@@ -326,6 +335,28 @@ export function PetForm({ mode, initialData, onSubmit, onCancel, petName }: PetF
   const [errors, setErrors] = useState<ValidationErrors>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
+  
+  // Character counter helper (Unicode-aware)
+  const charCount = (value: string) => Array.from(value || "").length
+
+  // Breed suggestions state (for Basic Information step)
+  const [breedSuggestOpen, setBreedSuggestOpen] = useState(false)
+  const allBreedArticles = React.useMemo(() => getWikiArticlesByCategory("breeds"), [])
+  const breedSuggestions = React.useMemo(() => {
+    const isDog = formData.species === "dog"
+    const isCat = formData.species === "cat"
+    const q = (formData.breed || "").toLowerCase()
+    const pool = allBreedArticles.filter((a) => {
+      const sub = (a.subcategory || "").toLowerCase()
+      const speciesList = (a.species || []).map((s) => s.toLowerCase())
+      if (isDog) return sub.includes("dog") || speciesList.includes("dog")
+      if (isCat) return sub.includes("cat") || speciesList.includes("cat")
+      if (formData.speciesId) return speciesList.includes((formData.speciesId || "").toLowerCase())
+      return false
+    })
+    if (!q) return pool.slice(0, 10)
+    return pool.filter((a) => a.title.toLowerCase().includes(q)).slice(0, 10)
+  }, [allBreedArticles, formData.breed, formData.species, formData.speciesId])
 
   useEffect(() => {
     if (!formData.birthday) {
@@ -355,20 +386,34 @@ export function PetForm({ mode, initialData, onSubmit, onCancel, petName }: PetF
     })
   }, [formData.birthday])
 
-  // Real-time validation
+  // Real-time validation (Unicode-aware for name)
   const validateField = (name: string, value: any): string | undefined => {
     switch (name) {
-      case "name":
-        if (!value || value.trim().length === 0) {
+      case "name": {
+        const val = (value ?? "").toString()
+        if (!val.trim()) {
           return "Pet name is required"
         }
-        if (value.trim().length < 2) {
+        const len = charCount(val.trim())
+        if (len < 2) {
           return "Pet name must be at least 2 characters"
         }
-        if (value.trim().length > 50) {
-          return "Pet name must be less than 50 characters"
+        if (len > 50) {
+          return "Pet name must be 50 characters or fewer"
         }
         break
+      }
+      case "species": {
+        if (!value) return "Species is required"
+        break
+      }
+      case "customSpecies": {
+        if (formData.species === "other" && (!formData.speciesId || formData.speciesId === "custom")) {
+          const val = (value ?? "").toString().trim()
+          if (charCount(val) < 2) return "Please enter a species"
+        }
+        break
+      }
       case "age":
         if (value && (Number.isNaN(Number(value)) || Number(value) < 0 || Number(value) > 50)) {
           return "Age must be between 0 and 50"
@@ -400,6 +445,14 @@ export function PetForm({ mode, initialData, onSubmit, onCancel, petName }: PetF
     
     const nameError = validateField("name", formData.name)
     if (nameError) newErrors.name = nameError
+
+    const speciesError = validateField("species", formData.species)
+    if (speciesError) newErrors.species = speciesError
+
+    if (formData.species === "other" && (!formData.speciesId || formData.speciesId === "custom")) {
+      const customErr = validateField("customSpecies", formData.customSpecies)
+      if (customErr) newErrors.customSpecies = customErr
+    }
 
     const ageError = validateField("age", formData.age)
     if (ageError) newErrors.age = ageError
@@ -689,14 +742,19 @@ export function PetForm({ mode, initialData, onSubmit, onCancel, petName }: PetF
                   >
                     Pet Name
                   </LabelWithTooltip>
-                  <Input
-                    id="name"
-                    value={formData.name}
-                    onChange={(e) => handleFieldChange("name", e.target.value)}
-                    placeholder="Enter your pet's name"
-                    className={`h-10 ${errors.name ? "border-destructive" : ""}`}
-                    required
-                  />
+                  <div className="relative">
+                    <Input
+                      id="name"
+                      value={formData.name}
+                      onChange={(e) => handleFieldChange("name", e.target.value)}
+                      placeholder="e.g., Luna 🐕 or Milo 🐈"
+                      className={`h-10 pr-14 ${errors.name ? "border-destructive" : ""}`}
+                      required
+                    />
+                    <span className="absolute inset-y-0 right-2 flex items-center text-xs text-muted-foreground">
+                      {charCount(formData.name)}/50
+                    </span>
+                  </div>
                   {errors.name && <ErrorText>{errors.name}</ErrorText>}
                 </div>
 
@@ -709,43 +767,92 @@ export function PetForm({ mode, initialData, onSubmit, onCancel, petName }: PetF
                     >
                       Species
                     </LabelWithTooltip>
-                    <Select
-                      value={formData.species}
-                      onValueChange={(value: Pet["species"]) => handleFieldChange("species", value)}
-                    >
-                      <SelectTrigger className="h-10 w-full">
-                        <SelectValue>
-                          {(() => {
-                            const animalConfig = ANIMAL_TYPES.find(a => a.value === formData.species)
-                            const Icon = animalConfig?.lucideIcon || PawPrint
-                            const label = animalConfig ? animalConfig.label : "Other"
-                            const iconColor = animalConfig ? animalConfig.color : "text-muted-foreground"
-                            return (
-                              <div className="flex items-center gap-2">
-                                <Icon className={`h-4 w-4 flex-shrink-0 ${iconColor}`} />
-                                <span className="truncate">{label}</span>
-                              </div>
-                            )
-                          })()}
-                        </SelectValue>
-                      </SelectTrigger>
-                      <SelectContent>
-                        {(["dog", "cat", "bird", "rabbit", "hamster", "fish", "other"] as Pet["species"][]).map((species) => {
-                          const animalConfig = ANIMAL_TYPES.find(a => a.value === species)
-                          const Icon = animalConfig?.lucideIcon || PawPrint
-                          const label = animalConfig ? animalConfig.label : "Other"
-                          const iconColor = animalConfig ? animalConfig.color : "text-muted-foreground"
-                          return (
-                            <SelectItem key={species} value={species}>
-                              <div className="flex items-center gap-2">
-                                <Icon className={`h-4 w-4 flex-shrink-0 ${iconColor}`} />
-                                <span>{label}</span>
-                              </div>
-                            </SelectItem>
-                          )
-                        })}
-                      </SelectContent>
-                    </Select>
+                    {(() => {
+                      // Display-level species options with emoji; map to Pet["species"] + speciesId
+                      const speciesOptions: Array<{ value: string; label: string; emoji: string }> = [
+                        { value: "dog", label: "Dog", emoji: "🐕" },
+                        { value: "cat", label: "Cat", emoji: "🐈" },
+                        { value: "bird", label: "Bird", emoji: "🐦" },
+                        { value: "rabbit", label: "Rabbit", emoji: "🐇" },
+                        { value: "guinea-pig", label: "Guinea Pig", emoji: "🐹" },
+                        { value: "hamster", label: "Hamster", emoji: "🐹" },
+                        { value: "fish", label: "Fish", emoji: "🐟" },
+                        { value: "reptile", label: "Reptile", emoji: "🦎" },
+                        { value: "horse", label: "Horse", emoji: "🐴" },
+                        { value: "farm-animal", label: "Farm Animal", emoji: "🐄" },
+                        { value: "other", label: "Other", emoji: "✨" },
+                      ]
+
+                      const getDisplayFromState = () => {
+                        if (formData.species !== "other") return formData.species
+                        switch (formData.speciesId) {
+                          case "guinea-pig":
+                          case "reptile":
+                          case "horse":
+                          case "farm-animal":
+                            return formData.speciesId
+                          default:
+                            return "other"
+                        }
+                      }
+
+                      const setFromDisplay = (displayValue: string) => {
+                        if (["dog", "cat", "bird", "rabbit", "hamster", "fish"].includes(displayValue)) {
+                          handleFieldChange("species", displayValue as Pet["species"]) // resets to core species
+                          setFormData((prev) => ({ ...prev, speciesId: undefined, customSpecies: "" }))
+                          return
+                        }
+                        // Extended categories map to species: other + speciesId
+                        handleFieldChange("species", "other")
+                        setFormData((prev) => ({ ...prev, speciesId: displayValue, customSpecies: displayValue === "other" ? prev.customSpecies : "" }))
+                      }
+
+                      return (
+                        <Select value={getDisplayFromState()} onValueChange={setFromDisplay}>
+                          <SelectTrigger className="h-10 w-full">
+                            <SelectValue>
+                              {(() => {
+                                const active = speciesOptions.find((o) => o.value === getDisplayFromState())
+                                return (
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-base" aria-hidden>{active?.emoji}</span>
+                                    <span className="truncate">{active?.label}</span>
+                                  </div>
+                                )
+                              })()}
+                            </SelectValue>
+                          </SelectTrigger>
+                          <SelectContent>
+                            {speciesOptions.map((opt) => (
+                              <SelectItem key={opt.value} value={opt.value}>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-base" aria-hidden>{opt.emoji}</span>
+                                  <span>{opt.label}</span>
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )
+                    })()}
+
+                    {/* Custom species input when Other is selected */}
+                    {formData.species === "other" && (!formData.speciesId || formData.speciesId === "other" || formData.speciesId === "custom") && (
+                      <div className="mt-2 space-y-1.5">
+                        <Label htmlFor="customSpecies">Custom species</Label>
+                        <Input
+                          id="customSpecies"
+                          value={formData.customSpecies}
+                          onChange={(e) => {
+                            if (formData.speciesId !== "custom") setFormData((prev) => ({ ...prev, speciesId: "custom" }))
+                            handleFieldChange("customSpecies", e.target.value)
+                          }}
+                          placeholder="e.g., Hedgehog, Mini Pig"
+                          className={`h-10 ${errors.customSpecies ? "border-destructive" : ""}`}
+                        />
+                        {errors.customSpecies && <ErrorText>{errors.customSpecies}</ErrorText>}
+                      </div>
+                    )}
                   </div>
 
                   <div className="space-y-2">
@@ -788,17 +895,82 @@ export function PetForm({ mode, initialData, onSubmit, onCancel, petName }: PetF
                 <div className="space-y-2">
                   <LabelWithTooltip 
                     htmlFor="breed"
-                    tooltip="Enter your pet's breed or breed mix if known."
+                    tooltip="Select from suggestions for dogs/cats or enter a breed."
                   >
                     Breed
                   </LabelWithTooltip>
-                  <Input
-                    id="breed"
-                    value={formData.breed}
-                    onChange={(e) => handleFieldChange("breed", e.target.value)}
-                    placeholder="e.g., Golden Retriever, Maine Coon"
-                    className="h-10"
-                  />
+                  {(() => {
+                    const isDog = formData.species === "dog"
+                    const isCat = formData.species === "cat"
+                    const enableSuggest = isDog || isCat || Boolean(formData.speciesId)
+
+                    const selectBreed = (article?: any, labelOverride?: string) => {
+                      if (article) {
+                        setFormData((prev) => ({ ...prev, breed: article.title, breedId: article.id }))
+                      } else {
+                        setFormData((prev) => ({ ...prev, breed: labelOverride || prev.breed, breedId: undefined }))
+                      }
+                      setBreedSuggestOpen(false)
+                    }
+
+                    return (
+                      <div className="relative">
+                        <Popover open={breedSuggestOpen && enableSuggest} onOpenChange={setBreedSuggestOpen}>
+                          <PopoverTrigger asChild>
+                            <Input
+                              id="breed"
+                              value={formData.breed}
+                              onChange={(e) => {
+                                handleFieldChange("breed", e.target.value)
+                                if (!breedSuggestOpen) setBreedSuggestOpen(true)
+                              }}
+                              onFocus={() => enableSuggest && setBreedSuggestOpen(true)}
+                              placeholder={isDog ? "Search dog breeds…" : isCat ? "Search cat breeds…" : "Enter breed (optional)"}
+                              className="h-10"
+                              autoComplete="off"
+                            />
+                          </PopoverTrigger>
+                          <PopoverContent className="w-[min(520px,90vw)] p-0" align="start">
+                            <div className="max-h-64 overflow-auto divide-y">
+                              <div className="p-2 flex gap-2">
+                                <Button type="button" variant="secondary" size="sm" onClick={() => selectBreed(undefined, "Mixed Breed")}>
+                                  Mixed Breed
+                                </Button>
+                                <Button type="button" variant="outline" size="sm" onClick={() => selectBreed(undefined, "Unknown")}>
+                                  Unknown
+                                </Button>
+                              </div>
+                              {breedSuggestions.length === 0 ? (
+                                <div className="p-3 text-sm text-muted-foreground">No suggestions. Try a different term.</div>
+                              ) : (
+                                <ul className="py-1">
+                                  {breedSuggestions.map((a) => (
+                                    <li key={a.id}>
+                                      <button
+                                        type="button"
+                                        className="w-full flex items-center gap-3 px-3 py-2 hover:bg-accent text-left"
+                                        onClick={() => selectBreed(a)}
+                                      >
+                                        {a.coverImage ? (
+                                          <img src={a.coverImage} alt="" className="h-8 w-8 rounded object-cover flex-shrink-0" />
+                                        ) : (
+                                          <div className="h-8 w-8 rounded bg-muted flex items-center justify-center text-xs text-muted-foreground">—</div>
+                                        )}
+                                        <div className="min-w-0">
+                                          <p className="text-sm font-medium truncate">{a.title}</p>
+                                          {a.subcategory && <p className="text-xs text-muted-foreground truncate">{a.subcategory.replace(/-/g, " ")}</p>}
+                                        </div>
+                                      </button>
+                                    </li>
+                                  ))}
+                                </ul>
+                              )}
+                            </div>
+                          </PopoverContent>
+                        </Popover>
+                      </div>
+                    )
+                  })()}
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -867,7 +1039,11 @@ export function PetForm({ mode, initialData, onSubmit, onCancel, petName }: PetF
                   <div className="space-y-2">
                     <LabelWithTooltip 
                       htmlFor="weight"
-                      tooltip="Enter your pet's weight (e.g., 70 lbs, 5 kg). Useful for health tracking."
+                      tooltip={
+                        unitSystem === "imperial"
+                          ? "Enter your pet's weight (e.g., 70 lbs). Useful for health tracking."
+                          : "Enter your pet's weight (e.g., 5 kg). Useful for health tracking."
+                      }
                     >
                       <Weight className="h-4 w-4" />
                       Weight
@@ -876,9 +1052,23 @@ export function PetForm({ mode, initialData, onSubmit, onCancel, petName }: PetF
                       id="weight"
                       value={formData.weight}
                       onChange={(e) => handleFieldChange("weight", e.target.value)}
-                      placeholder="e.g., 70 lbs, 5 kg"
+                      onBlur={(e) => {
+                        const val = e.target.value.trim()
+                        if (!val) return
+                        // If numeric without unit, append the preferred unit suffix
+                        const numeric = Number(val)
+                        const containsUnit = /[a-zA-Z]/.test(val)
+                        if (!Number.isNaN(numeric) && !containsUnit) {
+                          const suffix = unitSystem === "imperial" ? " lbs" : " kg"
+                          handleFieldChange("weight", `${numeric}${suffix}`)
+                        }
+                      }}
+                      placeholder={unitSystem === "imperial" ? "e.g., 70 lbs" : "e.g., 5 kg"}
                       className="h-10"
                     />
+                    <p className="text-xs text-muted-foreground">
+                      Tip: enter a number and we’ll add {unitSystem === "imperial" ? "lbs" : "kg"} for you.
+                    </p>
                   </div>
 
                   <div className="space-y-2">

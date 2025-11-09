@@ -1,186 +1,134 @@
+"use client"
+
 /**
- * Regional variations system for regulations and care guidelines
- * Provides region-specific content based on locale
+ * Country/Region and Timezone helpers
+ * - Provides country codes and localized names using Intl.DisplayNames
+ * - Provides IANA timezones with computed GMT offsets
  */
 
-import { getTranslations } from 'next-intl/server';
-import { useTranslations } from 'next-intl';
-
-export type RegionCode =
-  | 'us'
-  | 'uk'
-  | 'eu'
-  | 'ca'
-  | 'au'
-  | 'jp'
-  | 'cn'
-  | 'kr';
-
-export interface RegionalContent {
-  region: RegionCode;
-  regulations?: Record<string, string>;
-  careGuidelines?: Record<string, string>;
-  restrictions?: string[];
-  requirements?: string[];
+export interface CountryOption {
+  code: string
+  name: string
 }
 
-/**
- * Map locale to region code
- */
-export function getRegionFromLocale(locale: string): RegionCode {
-  // Extract country code from locale (e.g., 'en-US' -> 'us')
-  const parts = locale.split('-');
-  if (parts.length > 1) {
-    const countryCode = parts[1].toLowerCase();
-    
-    // Map country codes to regions
-    const regionMap: Record<string, RegionCode> = {
-      us: 'us',
-      gb: 'uk',
-      ca: 'ca',
-      au: 'au',
-      jp: 'jp',
-      cn: 'cn',
-      kr: 'kr',
-    };
+export interface TimezoneOption {
+  id: string
+  label: string
+  offsetMinutes: number
+  offsetLabel: string
+}
 
-    if (regionMap[countryCode]) {
-      return regionMap[countryCode];
-    }
+// ISO 3166-1 alpha-2 region codes
+// Kept minimal in data (codes only); names are generated per-locale
+const REGION_CODES: string[] = [
+  "AD","AE","AF","AG","AI","AL","AM","AO","AQ","AR","AS","AT","AU","AW","AX","AZ",
+  "BA","BB","BD","BE","BF","BG","BH","BI","BJ","BL","BM","BN","BO","BQ","BR","BS","BT","BV","BW","BY","BZ",
+  "CA","CC","CD","CF","CG","CH","CI","CK","CL","CM","CN","CO","CR","CU","CV","CW","CX","CY","CZ",
+  "DE","DJ","DK","DM","DO","DZ",
+  "EC","EE","EG","EH","ER","ES","ET",
+  "FI","FJ","FK","FM","FO","FR",
+  "GA","GB","GD","GE","GF","GG","GH","GI","GL","GM","GN","GP","GQ","GR","GS","GT","GU","GW","GY",
+  "HK","HM","HN","HR","HT","HU",
+  "ID","IE","IL","IM","IN","IO","IQ","IR","IS","IT",
+  "JE","JM","JO","JP",
+  "KE","KG","KH","KI","KM","KN","KP","KR","KW","KY","KZ",
+  "LA","LB","LC","LI","LK","LR","LS","LT","LU","LV","LY",
+  "MA","MC","MD","ME","MF","MG","MH","MK","ML","MM","MN","MO","MP","MQ","MR","MS","MT","MU","MV","MW","MX","MY","MZ",
+  "NA","NC","NE","NF","NG","NI","NL","NO","NP","NR","NU","NZ",
+  "OM",
+  "PA","PE","PF","PG","PH","PK","PL","PM","PN","PR","PS","PT","PW","PY",
+  "QA",
+  "RE","RO","RS","RU","RW",
+  "SA","SB","SC","SD","SE","SG","SH","SI","SJ","SK","SL","SM","SN","SO","SR","SS","ST","SV","SX","SY","SZ",
+  "TC","TD","TF","TG","TH","TJ","TK","TL","TM","TN","TO","TR","TT","TV","TW","TZ",
+  "UA","UG","UM","US","UY","UZ",
+  "VA","VC","VE","VG","VI","VN","VU",
+  "WF","WS",
+  "YE","YT",
+  "ZA","ZM","ZW"
+]
+
+export function getAllCountries(locale: string = 'en-US'): CountryOption[] {
+  const dn = typeof Intl !== 'undefined' && (Intl as any).DisplayNames
+    ? new Intl.DisplayNames([locale], { type: 'region' })
+    : null
+  const items = REGION_CODES.map((code) => ({
+    code,
+    name: dn ? (dn.of(code) || code) : code,
+  }))
+  return items.sort((a, b) => a.name.localeCompare(b.name))
+}
+
+export function detectBrowserTimezone(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
+  } catch {
+    return 'UTC'
   }
-
-  // Map language codes to default regions
-  const langCode = parts[0].toLowerCase();
-  const langRegionMap: Record<string, RegionCode> = {
-    en: 'us', // Default English to US
-    de: 'eu',
-    fr: 'eu',
-    es: 'eu',
-    it: 'eu',
-    pt: 'eu',
-    nl: 'eu',
-    pl: 'eu',
-    ru: 'eu',
-    ja: 'jp',
-    zh: 'cn',
-    ko: 'kr',
-  };
-
-  return langRegionMap[langCode] || 'us';
 }
 
-/**
- * Get region-specific regulations (server-side)
- */
-export async function getRegionalRegulations(
-  region: RegionCode,
-  locale?: string
-): Promise<Record<string, string>> {
-  // In a real implementation, this would fetch from a database or API
-  // For now, we'll use translations
-  const t = await getTranslations({ locale, namespace: 'Regulations' });
-  
-  // Example regulations structure
-  const regulations: Record<string, string> = {
-    vaccination: t(`${region}.vaccination`, { defaultValue: '' }),
-    licensing: t(`${region}.licensing`, { defaultValue: '' }),
-    leash: t(`${region}.leash`, { defaultValue: '' }),
-    breed: t(`${region}.breed`, { defaultValue: '' }),
-  };
-
-  return regulations;
+function computeOffsetMinutes(tz: string, ref: Date = new Date()): { minutes: number; label: string } {
+  try {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: tz,
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+      timeZoneName: 'short',
+    }).formatToParts(ref)
+    const zone = parts.find((p) => p.type === 'timeZoneName')?.value || 'GMT+0'
+    const m = /GMT([+-])(\d{1,2})(?::?(\d{2}))?/.exec(zone) || /UTC([+-])(\d{1,2})(?::?(\d{2}))?/.exec(zone)
+    if (m) {
+      const sign = m[1] === '-' ? -1 : 1
+      const h = parseInt(m[2] || '0', 10)
+      const mm = parseInt(m[3] || '0', 10)
+      const minutes = sign * (h * 60 + mm)
+      const label = `GMT${sign === -1 ? '-' : '+'}${String(h).padStart(1, '0')}${mm ? ':' + String(mm).padStart(2, '0') : ''}`
+      return { minutes, label }
+    }
+  } catch {}
+  return { minutes: 0, label: 'GMT+0' }
 }
 
-/**
- * Hook to get region-specific regulations (client-side)
- */
-export function useRegionalRegulations(
-  region: RegionCode
-): Record<string, string> {
-  const t = useTranslations('Regulations');
-  
-  const regulations: Record<string, string> = {
-    vaccination: t(`${region}.vaccination`, { defaultValue: '' }),
-    licensing: t(`${region}.licensing`, { defaultValue: '' }),
-    leash: t(`${region}.leash`, { defaultValue: '' }),
-    breed: t(`${region}.breed`, { defaultValue: '' }),
-  };
+export function getAllTimezonesWithOffsets(locale: string = 'en-US'): TimezoneOption[] {
+  const zones: string[] = (() => {
+    const anyIntl: any = Intl as any
+    if (anyIntl && typeof anyIntl.supportedValuesOf === 'function') {
+      try {
+        return anyIntl.supportedValuesOf('timeZone') as string[]
+      } catch {
+        // fallthrough
+      }
+    }
+    return [
+      'UTC','Etc/UTC','America/New_York','America/Chicago','America/Denver','America/Los_Angeles','America/Sao_Paulo',
+      'Europe/London','Europe/Paris','Europe/Berlin','Europe/Madrid','Europe/Rome','Europe/Moscow',
+      'Africa/Johannesburg','Africa/Cairo','Asia/Dubai','Asia/Jerusalem','Asia/Kolkata','Asia/Bangkok','Asia/Shanghai','Asia/Tokyo','Asia/Seoul',
+      'Australia/Sydney','Pacific/Auckland'
+    ]
+  })()
 
-  return regulations;
+  const items: TimezoneOption[] = zones.map((id) => {
+    const { minutes, label } = computeOffsetMinutes(id)
+    return {
+      id,
+      label: `(${label}) ${id}`,
+      offsetMinutes: minutes,
+      offsetLabel: label,
+    }
+  })
+
+  items.sort((a, b) => (a.offsetMinutes - b.offsetMinutes) || a.id.localeCompare(b.id))
+  return items
 }
 
-/**
- * Get region-specific care guidelines (server-side)
- */
-export async function getRegionalCareGuidelines(
-  region: RegionCode,
-  locale?: string
-): Promise<Record<string, string>> {
-  const t = await getTranslations({ locale, namespace: 'CareGuidelines' });
-  
-  const guidelines: Record<string, string> = {
-    feeding: t(`${region}.feeding`, { defaultValue: '' }),
-    exercise: t(`${region}.exercise`, { defaultValue: '' }),
-    grooming: t(`${region}.grooming`, { defaultValue: '' }),
-    health: t(`${region}.health`, { defaultValue: '' }),
-  };
-
-  return guidelines;
-}
-
-/**
- * Hook to get region-specific care guidelines (client-side)
- */
-export function useRegionalCareGuidelines(
-  region: RegionCode
-): Record<string, string> {
-  const t = useTranslations('CareGuidelines');
-  
-  const guidelines: Record<string, string> = {
-    feeding: t(`${region}.feeding`, { defaultValue: '' }),
-    exercise: t(`${region}.exercise`, { defaultValue: '' }),
-    grooming: t(`${region}.grooming`, { defaultValue: '' }),
-    health: t(`${region}.health`, { defaultValue: '' }),
-  };
-
-  return guidelines;
-}
-
-/**
- * Check if a specific regulation applies to a region
- */
-export function hasRegulation(region: RegionCode, regulation: string): boolean {
-  // In a real implementation, this would check against a database
-  // For now, return a simple check
-  const regionRegulations: Record<RegionCode, string[]> = {
-    us: ['vaccination', 'licensing', 'leash'],
-    uk: ['vaccination', 'licensing', 'leash'],
-    eu: ['vaccination', 'licensing', 'leash', 'microchipping'],
-    ca: ['vaccination', 'licensing', 'leash'],
-    au: ['vaccination', 'licensing', 'leash'],
-    jp: ['vaccination', 'licensing'],
-    cn: ['vaccination', 'licensing'],
-    kr: ['vaccination', 'licensing'],
-  };
-
-  return regionRegulations[region]?.includes(regulation) || false;
-}
-
-/**
- * Get all applicable regulations for a region
- */
-export function getRegulationsForRegion(region: RegionCode): string[] {
-  const regionRegulations: Record<RegionCode, string[]> = {
-    us: ['vaccination', 'licensing', 'leash'],
-    uk: ['vaccination', 'licensing', 'leash'],
-    eu: ['vaccination', 'licensing', 'leash', 'microchipping'],
-    ca: ['vaccination', 'licensing', 'leash'],
-    au: ['vaccination', 'licensing', 'leash'],
-    jp: ['vaccination', 'licensing'],
-    cn: ['vaccination', 'licensing'],
-    kr: ['vaccination', 'licensing'],
-  };
-
-  return regionRegulations[region] || [];
+export function guessUserCountry(): string | null {
+  try {
+    const navLang = (navigator.languages && navigator.languages[0]) || navigator.language || ''
+    const m = /-(\w{2})/.exec(navLang)
+    return m ? m[1].toUpperCase() : null
+  } catch {
+    return null
+  }
 }
 

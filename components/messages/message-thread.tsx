@@ -6,15 +6,23 @@ import type { Conversation, DirectMessage } from "@/lib/types"
 import { getUserById } from "@/lib/storage"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
+import { ChevronLeft, ChevronRight } from "lucide-react"
+import { useIsMdUp } from "@/lib/hooks/use-media-query"
 
 interface MessageThreadProps {
   conversation: Conversation | null
   messages: DirectMessage[]
   currentUserId: string
   typingUserIds: string[]
+  onBack?: () => void
+  hasStickyComposer?: boolean
+  showListButtonMdUp?: boolean
+  onShowList?: () => void
 }
 
-export function MessageThread({ conversation, messages, currentUserId, typingUserIds }: MessageThreadProps) {
+export function MessageThread({ conversation, messages, currentUserId, typingUserIds, onBack, hasStickyComposer = false, showListButtonMdUp = false, onShowList, }: MessageThreadProps) {
+  const isMdUp = useIsMdUp()
   const containerRef = useRef<HTMLDivElement | null>(null)
 
   const otherParticipantId = useMemo(
@@ -46,7 +54,23 @@ export function MessageThread({ conversation, messages, currentUserId, typingUse
 
   return (
     <div className="flex h-full flex-col rounded-lg border bg-card">
+      {!isMdUp && onBack && (
+        <div className="sticky top-0 z-10 flex items-center gap-2 border-b bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+          <Button variant="ghost" size="icon" aria-label="Back" onClick={onBack}>
+            <ChevronLeft className="h-5 w-5" />
+          </Button>
+          <div className="min-w-0">
+            <p className="text-sm font-medium truncate">{otherParticipant?.fullName ?? "Private conversation"}</p>
+            <p className="text-xs text-muted-foreground truncate">Private chat</p>
+          </div>
+        </div>
+      )}
       <div className="flex items-center gap-3 border-b px-5 py-4">
+        {isMdUp && showListButtonMdUp && onShowList ? (
+          <Button variant="ghost" size="icon" aria-label="Show list" onClick={onShowList}>
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        ) : null}
         <Avatar className="h-11 w-11">
           <AvatarImage src={otherParticipant?.avatar || "/placeholder.svg"} alt={otherParticipant?.fullName || "User"} />
           <AvatarFallback>{(otherParticipant?.fullName ?? "User").charAt(0)}</AvatarFallback>
@@ -58,7 +82,13 @@ export function MessageThread({ conversation, messages, currentUserId, typingUse
           </p>
         </div>
       </div>
-      <div ref={containerRef} className="flex-1 space-y-4 overflow-y-auto px-5 py-6">
+      <div
+        ref={containerRef}
+        className={cn(
+          "flex-1 space-y-4 overflow-y-auto px-5 py-6",
+          hasStickyComposer && !isMdUp ? "pb-28" : "",
+        )}
+      >
         {messages.map((message) => {
           const isOwnMessage = message.senderId === currentUserId
           const sender = getUserById(message.senderId)

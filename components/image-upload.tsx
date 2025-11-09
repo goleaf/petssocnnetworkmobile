@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Camera, Upload, X, Image as ImageIcon, Loader2 } from "lucide-react"
-import { uploadImage, type ImageUploadResult } from "@/lib/storage-upload"
+import { uploadImage, uploadImageWithSettings, type ImageUploadResult } from "@/lib/storage-upload"
+import { useAuth } from "@/components/auth/auth-provider"
 import { cn } from "@/lib/utils"
 
 interface ImageUploadProps {
@@ -39,6 +40,7 @@ export function ImageUpload({
   label,
   showPreview = true,
 }: ImageUploadProps) {
+  const { user } = useAuth()
   const [isUploading, setIsUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
   const [error, setError] = useState<string | null>(null)
@@ -91,7 +93,9 @@ export function ImageUpload({
           })
         }, 100)
 
-        const result = await uploadImage(file, folder)
+        const result = user
+          ? await uploadImageWithSettings(file, user.id, folder)
+          : await uploadImage(file, folder)
         clearInterval(progressInterval)
         setUploadProgress(100)
 
@@ -275,4 +279,3 @@ export function ImageUpload({
     </div>
   )
 }
-

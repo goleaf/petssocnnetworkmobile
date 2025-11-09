@@ -8,6 +8,9 @@ import { Slider } from "@/components/ui/slider"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { X } from "lucide-react"
+import { useUnitSystem } from "@/lib/i18n/hooks"
+import { useLocale } from "next-intl"
+import { convertDistance, formatDistance as fmtDistance } from "@/lib/i18n/formatting"
 
 interface Facets {
   species?: Record<string, number>
@@ -41,6 +44,13 @@ export function SearchFacets({
   maxRadius = 50,
 }: SearchFacetsProps) {
   const [radius, setRadius] = useState(activeFilters.radius || maxRadius)
+  const unitSystem = useUnitSystem()
+  const locale = useLocale()
+
+  const displayRadius = (km: number) =>
+    unitSystem === "imperial"
+      ? fmtDistance(convertDistance(km, "metric", "imperial"), "imperial", locale)
+      : fmtDistance(km, "metric", locale)
 
   const toggleSpecies = (species: string) => {
     const current = activeFilters.species || []
@@ -137,7 +147,7 @@ export function SearchFacets({
             )}
             {activeFilters.radius && activeFilters.radius < maxRadius && (
               <Badge variant="secondary" className="gap-1">
-                Within {activeFilters.radius} km
+                Within {displayRadius(activeFilters.radius)}
                 <button
                   onClick={() => {
                     setRadius(maxRadius)
@@ -239,7 +249,7 @@ export function SearchFacets({
             <div className="space-y-2">
               <div className="flex items-center justify-between text-sm">
                 <span>Radius</span>
-                <span className="font-medium">{radius} km</span>
+                <span className="font-medium">{displayRadius(radius)}</span>
               </div>
               <Slider
                 value={[radius]}
@@ -259,4 +269,3 @@ export function SearchFacets({
     </div>
   )
 }
-

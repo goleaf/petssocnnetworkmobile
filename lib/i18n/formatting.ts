@@ -125,6 +125,23 @@ export function convertDistance(
 }
 
 /**
+ * Convert temperature between Celsius and Fahrenheit
+ */
+export function convertTemperature(
+  value: number,
+  from: UnitSystem,
+  to: UnitSystem
+): number {
+  if (from === to) return value;
+  if (from === 'metric' && to === 'imperial') {
+    // °C -> °F
+    return value * 9 / 5 + 32;
+  }
+  // °F -> °C
+  return (value - 32) * 5 / 9;
+}
+
+/**
  * Format a number according to locale
  */
 export function formatNumber(
@@ -268,3 +285,19 @@ export function formatDistance(
   return `${formattedValue} ${unit}`;
 }
 
+/**
+ * Format temperature with automatic unit selection
+ */
+export function formatTemperature(
+  value: number,
+  unitSystem: UnitSystem,
+  locale?: string
+): string {
+  const unit = unitSystem === 'metric' ? '°C' : '°F';
+  const formattedValue = formatNumber(value, {
+    locale,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  });
+  return `${formattedValue}${unit}`;
+}

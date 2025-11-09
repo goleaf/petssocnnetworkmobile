@@ -1,7 +1,12 @@
+"use client"
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Sparkles, AlertCircle } from "lucide-react"
 import { type BreedInfoboxOutput } from "@/lib/schemas/breed-infobox"
+import { useUnitSystem } from "@/lib/i18n/hooks"
+import { useLocale } from "next-intl"
+import { convertWeight, convertLength, formatWeight, formatLength } from "@/lib/i18n/formatting"
 
 interface BreedInfoboxDisplayProps {
   breedData: BreedInfoboxOutput
@@ -37,6 +42,8 @@ function formatTagName(tag: string): string {
 
 export function BreedInfoboxDisplay({ breedData }: BreedInfoboxDisplayProps) {
   const hasData = Object.keys(breedData).length > 0
+  const unitSystem = useUnitSystem()
+  const locale = useLocale()
 
   if (!hasData) {
     return null
@@ -98,12 +105,28 @@ export function BreedInfoboxDisplay({ breedData }: BreedInfoboxDisplayProps) {
               <div className="flex gap-4">
                 {breedData.maleAvgWeightKg && (
                   <span className="font-medium">
-                    ♂ {breedData.maleAvgWeightKg}kg
+                    ♂ {
+                      formatWeight(
+                        unitSystem === "imperial"
+                          ? convertWeight(breedData.maleAvgWeightKg, "metric", "imperial")
+                          : breedData.maleAvgWeightKg,
+                        unitSystem,
+                        locale,
+                      )
+                    }
                   </span>
                 )}
                 {breedData.femaleAvgWeightKg && (
                   <span className="font-medium">
-                    ♀ {breedData.femaleAvgWeightKg}kg
+                    ♀ {
+                      formatWeight(
+                        unitSystem === "imperial"
+                          ? convertWeight(breedData.femaleAvgWeightKg, "metric", "imperial")
+                          : breedData.femaleAvgWeightKg,
+                        unitSystem,
+                        locale,
+                      )
+                    }
                   </span>
                 )}
               </div>
@@ -116,12 +139,28 @@ export function BreedInfoboxDisplay({ breedData }: BreedInfoboxDisplayProps) {
               <div className="flex gap-4">
                 {breedData.maleAvgHeightCm && (
                   <span className="font-medium">
-                    ♂ {breedData.maleAvgHeightCm}cm
+                    ♂ {
+                      formatLength(
+                        unitSystem === "imperial"
+                          ? convertLength(breedData.maleAvgHeightCm, "metric", "imperial")
+                          : breedData.maleAvgHeightCm,
+                        unitSystem,
+                        locale,
+                      )
+                    }
                   </span>
                 )}
                 {breedData.femaleAvgHeightCm && (
                   <span className="font-medium">
-                    ♀ {breedData.femaleAvgHeightCm}cm
+                    ♀ {
+                      formatLength(
+                        unitSystem === "imperial"
+                          ? convertLength(breedData.femaleAvgHeightCm, "metric", "imperial")
+                          : breedData.femaleAvgHeightCm,
+                        unitSystem,
+                        locale,
+                      )
+                    }
                   </span>
                 )}
               </div>
@@ -311,4 +350,3 @@ export function BreedInfoboxDisplay({ breedData }: BreedInfoboxDisplayProps) {
     </Card>
   )
 }
-

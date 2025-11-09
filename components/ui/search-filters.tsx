@@ -8,6 +8,9 @@ import { Button } from "@/components/ui/button"
 import { X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { getBlogPosts } from "@/lib/storage"
+import { useUnitSystem } from "@/lib/i18n/hooks"
+import { convertDistance, formatDistance as fmtDistance } from "@/lib/i18n/formatting"
+import { useLocale } from "next-intl"
 import { ANIMAL_TYPES } from "@/lib/animal-types"
 
 // Filter types
@@ -305,14 +308,19 @@ export function RadiusFilter({
   className,
   location,
 }: RadiusFilterProps) {
-  const options: TypeaheadOption[] = useMemo(
-    () =>
-      RADIUS_OPTIONS.map((opt) => ({
-        value: opt.value,
-        label: opt.label,
-      })),
-    []
-  )
+  const unitSystem = useUnitSystem()
+  const locale = useLocale()
+  const options: TypeaheadOption[] = useMemo(() => {
+    // Base values are in km; adapt labels to unit preference
+    return RADIUS_OPTIONS.map((opt) => {
+      const km = parseFloat(opt.value)
+      const label =
+        unitSystem === "imperial"
+          ? fmtDistance(convertDistance(km, "metric", "imperial"), "imperial", locale)
+          : fmtDistance(km, "metric", locale)
+      return { value: opt.value, label }
+    })
+  }, [unitSystem, locale])
 
   const selectedValue = Array.isArray(value) ? value[0] || "" : value || ""
 

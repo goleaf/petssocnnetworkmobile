@@ -6,6 +6,7 @@ import { Search, Bell, Settings, User, Menu, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
+import { useKeyboardShortcut } from "@/components/a11y/useKeyboardShortcut"
 
 interface BreadcrumbItem {
   label: string
@@ -37,24 +38,23 @@ export function AdminTopbar() {
     return crumbs
   })()
 
-  // Keyboard navigation
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Cmd/Ctrl + K for search
-      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
-        e.preventDefault()
-        setShowSearch(true)
-        setTimeout(() => searchInputRef.current?.focus(), 0)
-      }
-      
-      // Escape to close search
-      if (e.key === "Escape" && showSearch) {
-        setShowSearch(false)
-      }
-    }
+  // Keyboard shortcut: Cmd/Ctrl + K for search (respects sticky/slow keys)
+  useKeyboardShortcut(
+    "k",
+    () => {
+      setShowSearch(true)
+      setTimeout(() => searchInputRef.current?.focus(), 0)
+    },
+    { withCtrlOrMeta: true }
+  )
 
-    window.addEventListener("keydown", handleKeyDown)
-    return () => window.removeEventListener("keydown", handleKeyDown)
+  // Escape to close search
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && showSearch) setShowSearch(false)
+    }
+    window.addEventListener("keydown", onKeyDown)
+    return () => window.removeEventListener("keydown", onKeyDown)
   }, [showSearch])
 
   // Focus search input when shown
@@ -156,4 +156,3 @@ export function AdminTopbar() {
     </header>
   )
 }
-

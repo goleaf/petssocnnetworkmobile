@@ -125,6 +125,31 @@ export interface User {
   // Cached computed fields (server-side convenience)
   cachedCompletionPercent?: number
   cachedCounts?: { followers: number; following: number; updatedAt: string }
+  // Display and localization preferences
+  displayPreferences?: DisplayPreferences
+}
+
+// Timestamp display preference
+export type TimestampDisplayPreference = "relative" | "absolute" | "both"
+
+// Date format preference
+export type DateFormatPreference = "MDY" | "DMY" | "YMD" // MM/DD/YYYY, DD/MM/YYYY, YYYY-MM-DD
+
+// Time format preference
+export type TimeFormatPreference = "12h" | "24h"
+
+// Aggregate display preferences for dates/times
+export interface DisplayPreferences {
+  timestampDisplay: TimestampDisplayPreference
+  dateFormat: DateFormatPreference
+  timeFormat: TimeFormatPreference
+  country?: string // ISO 3166-1 alpha-2, e.g., "US"
+  timezone?: string // IANA timezone, e.g., "America/New_York"
+  // Content preferences
+  preferredContentLanguages?: string[] // ISO 639-1 codes, e.g., ["en","es"]
+  showTranslations?: boolean
+  autoTranslate?: boolean
+  primaryLanguage?: string // Target language for auto-translate
 }
 
 export interface Pet {
@@ -272,6 +297,8 @@ export interface BlogPostMedia {
   images: string[]
   videos: string[]
   links: BlogPostMediaLink[]
+  // Optional safety metadata for videos by URL
+  videoSafety?: Record<string, { flashing?: boolean }>
 }
 
 // Poll types for blog posts
@@ -328,6 +355,27 @@ export interface UserContentPreferences {
   sensitiveContentViewPreference?: ContentViewPreference // Preference for viewing sensitive content (stable vs latest)
   defaultToStableForHealth?: boolean // Default to stable view for health topics
   defaultToStableForRegulatory?: boolean // Default to stable view for regulatory topics
+  updatedAt: string
+}
+
+// Media and data usage settings
+export type AutoPlayVideosPreference = "always" | "wifi" | "never"
+export type CellularDataUsage = "unrestricted" | "reduced" | "minimal"
+
+// Caption language preference for media playback
+export type CaptionLanguagePreference = "auto" | "en" | "es"
+
+export interface MediaSettings {
+  userId: string
+  autoPlayVideos: AutoPlayVideosPreference
+  autoPlayGifs: boolean
+  highQualityUploads: boolean
+  cellularDataUsage: CellularDataUsage
+  // Accessibility and media preferences
+  showCaptions?: boolean
+  captionLanguage?: CaptionLanguagePreference
+  audioDescriptions?: boolean
+  flashWarnings?: boolean
   updatedAt: string
 }
 
@@ -439,6 +487,7 @@ export interface BlogPost {
   title: string
   content: string
   slug?: string // URL-friendly slug (generated from title)
+  language?: string // ISO 639-1 code for content language (optional)
   seriesId?: string // ID of BlogSeries this post belongs to
   seriesOrder?: number // Order within the series
   coverImage?: string
@@ -2001,9 +2050,27 @@ export interface ApiKey {
   isActive: boolean
 }
 
+export interface AuthorizedAppDeveloperWebhook {
+  url: string
+  method?: WebhookHttpMethod
+  secret?: string
+}
+
+export interface AuthorizedApp {
+  id: string
+  name: string
+  logoUrl?: string
+  permissions: string[]
+  connectedAt: string
+  lastUsedAt?: string
+  isActive: boolean
+  developerWebhook?: AuthorizedAppDeveloperWebhook
+}
+
 export interface IntegrationSettings {
   webhooks: Webhook[]
   apiKeys: ApiKey[]
+  authorizedApps?: AuthorizedApp[]
 }
 
 export type PinnedItemType = "post" | "pet" | "wiki"

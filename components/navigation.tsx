@@ -37,6 +37,7 @@ import {
 import { cn } from "@/lib/utils"
 import { NotificationsDropdown } from "@/components/notifications-dropdown"
 import { useApplyProfilePhotoUpdates } from "@/lib/profile-updates"
+import { ScreenReaderToggle } from "@/components/a11y/ScreenReaderToggle"
 
 export function Navigation() {
   const { user, isAuthenticated, logout, isAdmin, isModerator } = useAuth()
@@ -70,7 +71,7 @@ export function Navigation() {
   }
 
   return (
-    <nav className="border-b bg-background sticky top-0 z-50">
+    <nav id="primary-navigation" aria-label="Primary" className="border-b bg-background sticky top-0 z-50">
       <div className="container mx-auto px-4 max-w-7xl">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
@@ -105,6 +106,8 @@ export function Navigation() {
                     Write
                   </Button>
                 </Link>
+                {/* Screen reader mode toggle (desktop) */}
+                <ScreenReaderToggle />
                 <Link href="/promote">
                   <Button size="sm" variant="outline">
                     <TrendingUp className="h-4 w-4 mr-2" />
@@ -218,6 +221,8 @@ export function Navigation() {
                     Sign In
                   </Button>
                 </Link>
+                {/* Screen reader mode toggle (desktop, signed out) */}
+                <ScreenReaderToggle />
                 <Link href="/register">
                   <Button>
                     <UserPlus className="h-4 w-4 mr-2" />
@@ -238,6 +243,10 @@ export function Navigation() {
               </SheetTrigger>
               <SheetContent side="right">
                 <div className="flex flex-col gap-4 mt-8">
+                  {/* Screen reader mode toggle (mobile) */}
+                  <div>
+                    <ScreenReaderToggle />
+                  </div>
                   {isAuthenticated && user && (
                     <div className="flex items-center gap-3 pb-4 border-b">
                       <Avatar className="h-12 w-12">

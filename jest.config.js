@@ -12,11 +12,13 @@ const customJestConfig = {
   // Enable React mock
   automock: false,
   moduleNameMapper: {
-    '^@/(.*)$': '<rootDir>/$1',
+    // Specific mocks must come before the catch-all alias
+    '^@/components/auth/auth-provider$': '<rootDir>/tests/unit/auth/auth-provider.ts',
     // Map legacy relative mocks used by older tests
     '^\.\./auth/auth-provider$': '<rootDir>/tests/unit/auth/auth-provider.ts',
     '^\.\./notifications-dropdown$': '<rootDir>/tests/unit/notifications-dropdown.tsx',
-    '^@/components/auth/auth-provider$': '<rootDir>/tests/unit/auth/auth-provider.ts',
+    // Catch-all for tsconfig "@/" alias
+    '^@/(.*)$': '<rootDir>/$1',
     // Map Next.js internal paths to our mock
     '^next/dist/server/web/exports/next-response$': '<rootDir>/__mocks__/next/server.js',
     '^next/server$': '<rootDir>/__mocks__/next/server.js',

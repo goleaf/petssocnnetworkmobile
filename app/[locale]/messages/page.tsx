@@ -19,6 +19,7 @@ import {
   Video,
   X,
   ChevronLeft,
+  ChevronRight,
 } from "lucide-react"
 
 import { useAuth } from "@/lib/auth"
@@ -208,6 +209,7 @@ function summarizeMessage(message: DirectMessage | undefined, currentUserId: str
 export default function MessagesPage() {
   const isMdUp = useIsMdUp()
   const { user, isAuthenticated } = useAuth()
+  const [isListCollapsedMdUp, setIsListCollapsedMdUp] = useState(false)
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null)
   const [messages, setMessages] = useState<DirectMessage[]>([])
@@ -580,6 +582,21 @@ export default function MessagesPage() {
   useEffect(() => {
     if (hasSearchFilters) return
     if (!user) return
+
+    // On mobile, prefer showing the list and do not auto-select.
+    if (!isMdUp) {
+      if (!selectedConversationId) return
+      const isVisible = displayedSummaries.some(
+        (summary) => summary.conversation.id === selectedConversationId,
+      )
+      if (!isVisible) {
+        selectedConversationRef.current = null
+        setSelectedConversationId(null)
+        setMessages([])
+      }
+      return
+    }
+
     if (!selectedConversationId) {
       if (displayedSummaries.length > 0) {
         const nextConversationId = displayedSummaries[0].conversation.id
@@ -607,7 +624,7 @@ export default function MessagesPage() {
         setMessages([])
       }
     }
-  }, [displayedSummaries, hasSearchFilters, selectedConversationId, user])
+  }, [displayedSummaries, hasSearchFilters, selectedConversationId, user, isMdUp])
 
   const activeConversation = useMemo(() => {
     if (!selectedConversationId) return null
@@ -923,19 +940,33 @@ export default function MessagesPage() {
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-6 max-w-6xl">
         <Card className="overflow-hidden border">
-          <div className="grid grid-cols-1 md:grid-cols-[320px_1fr]">
+          <div className="grid grid-cols-1 md:grid-cols-[360px_1fr] lg:grid-cols-[400px_1fr] xl:grid-cols-[420px_1fr]">
             <aside
               className={cn(
                 "border-b md:border-b-0 md:border-r bg-muted/20",
                 !isMdUp && selectedConversationId ? "hidden" : "block",
+                isMdUp && isListCollapsedMdUp ? "md:hidden" : "",
               )}
             >
               <div className="space-y-3 border-b p-4">
-                <div>
-                  <h1 className="text-xl font-semibold">Messages</h1>
-                  <p className="text-sm text-muted-foreground">
-                    Search across every thread and quickly jump into the right conversation.
-                  </p>
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <h1 className="text-xl font-semibold">Messages</h1>
+                    <p className="text-sm text-muted-foreground">
+                      Search across every thread and quickly jump into the right conversation.
+                    </p>
+                  </div>
+                  {isMdUp && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label="Collapse list"
+                      onClick={() => setIsListCollapsedMdUp(true)}
+                      className="mt-1"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                  )}
                 </div>
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -1298,15 +1329,27 @@ export default function MessagesPage() {
                     </div>
                   )}
                   <div className="border-b px-6 py-4 flex items-center justify-between">
-                    <div>
-                      <h2 className="text-lg font-semibold">
-                        {activeParticipants.length > 0
-                          ? activeParticipants.map((participant) => participant.fullName).join(", ")
-                          : "Direct Message"}
-                      </h2>
-                      <p className="text-sm text-muted-foreground">
-                        Share photos, videos, and files to keep everyone in the loop.
-                      </p>
+                    <div className="flex items-center gap-2 min-w-0">
+                      {isMdUp && isListCollapsedMdUp && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          aria-label="Show list"
+                          onClick={() => setIsListCollapsedMdUp(false)}
+                        >
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
+                      )}
+                      <div className="min-w-0">
+                        <h2 className="text-lg font-semibold">
+                          {activeParticipants.length > 0
+                            ? activeParticipants.map((participant) => participant.fullName).join(", ")
+                            : "Direct Message"}
+                        </h2>
+                        <p className="text-sm text-muted-foreground">
+                          Share photos, videos, and files to keep everyone in the loop.
+                        </p>
+                      </div>
                     </div>
                     <div className="flex items-center gap-2">
                       {activeParticipants.length > 1 && (
@@ -1420,7 +1463,7 @@ export default function MessagesPage() {
                             <div
                               data-message-id={message.id}
                               className={cn(
-                                "max-w-[85%] rounded-lg p-3 shadow-sm transition",
+                                "max-w-[85%] md:max-w-[75%] rounded-lg p-3 shadow-sm transition",
                                 isOwn
                                   ? "bg-primary text-primary-foreground ml-auto"
                                   : "bg-background border",
@@ -1513,7 +1556,7 @@ export default function MessagesPage() {
                     </div>
                   )}
 
-                  <div className="border-t px-4 sm:px-6 py-4 space-y-4 sticky bottom-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+                  <div className="border-t px-4 sm:px-6 py-4 space-y-4 sticky bottom-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 pb-[env(safe-area-inset-bottom)]">
                     {pendingAttachments.length > 0 && (
                       <div className="rounded-md border border-dashed border-border/80 p-3">
                         <p className="text-sm font-medium mb-2">Attachments</p>

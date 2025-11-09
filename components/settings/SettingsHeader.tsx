@@ -7,6 +7,7 @@ const LABELS: Record<string, string> = {
   privacy: "Privacy & Safety",
   notifications: "Notifications",
   appearance: "Appearance",
+  accessibility: "Accessibility",
   language: "Language & Region",
   "data-storage": "Data & Storage",
   billing: "Billing",
@@ -50,4 +51,3 @@ export function SettingsHeader({ description, subsection }: { description?: stri
     </div>
   )
 }
-

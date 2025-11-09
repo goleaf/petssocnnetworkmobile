@@ -4,6 +4,7 @@ import { use } from "react"
 import Head from "next/head"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
+import { CreateButton } from "@/components/ui/create-button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
@@ -557,10 +558,9 @@ export default function ProfilePage({ params }: { params: Promise<{ username: st
               {currentUser && currentUser.id === user.id && (
                 <div className="mb-6 flex justify-end">
                   <Link href={`/profile/${user.username}/add-pet`}>
-                    <Button className="gap-2">
-                      <PawPrint className="h-4 w-4" />
-                      Add New Pet
-                    </Button>
+                    <CreateButton iconType="paw" size="lg" className="gap-2 px-6 py-6 text-base">
+                      Add Pet
+                    </CreateButton>
                   </Link>
                 </div>
               )}
@@ -626,15 +626,15 @@ export default function ProfilePage({ params }: { params: Promise<{ username: st
               </div>
               {pets.length === 0 && (
                 <Card>
-                  <CardContent className="p-8 text-center space-y-4">
-                    <PawPrint className="h-12 w-12 mx-auto text-muted-foreground/50" />
-                    <p className="text-muted-foreground">No pets yet</p>
+                  <CardContent className="p-8 text-center space-y-3">
+                    <img src="/man-and-cat.png" alt="Add your first pet" className="h-32 w-auto mx-auto rounded-md" />
+                    <p className="text-base text-foreground font-medium">Add your first furry friend!</p>
+                    <p className="text-sm text-muted-foreground">Create a pet profile to start sharing updates.</p>
                     {currentUser && currentUser.id === user.id && (
                       <Link href={`/profile/${user.username}/add-pet`}>
-                        <Button className="mt-4">
-                          <PawPrint className="h-4 w-4 mr-2" />
-                          Add Your First Pet
-                        </Button>
+                        <CreateButton iconType="paw" size="lg" className="mt-2 px-6 py-6 text-base">
+                          Add Pet
+                        </CreateButton>
                       </Link>
                     )}
                   </CardContent>

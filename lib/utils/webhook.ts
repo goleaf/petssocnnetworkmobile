@@ -1,4 +1,4 @@
-import type { Webhook, WebhookDelivery } from "../types"
+import type { Webhook, WebhookDelivery, AuthorizedApp } from "../types"
 import { addWebhookDelivery } from "../storage"
 
 /**
@@ -150,4 +150,67 @@ export async function testWebhookDelivery(
   }
 
   return deliverWebhook(webhook, testPayload)
+}
+
+/**
+ * Notify a third-party application that authorization has been revoked
+ */
+export async function notifyAppRevocation(
+  app: AuthorizedApp
+): Promise<{ success: boolean; error?: string }> {
+  const devHook = app.developerWebhook
+  if (!devHook || !devHook.url) {
+    return { success: false, error: "No developer webhook configured" }
+  }
+
+  const payload = {
+    event: "authorization.revoked",
+    timestamp: new Date().toISOString(),
+    data: {
+      appId: app.id,
+      appName: app.name,
+      permissions: app.permissions,
+      connectedAt: app.connectedAt,
+      lastUsedAt: app.lastUsedAt || null,
+    },
+  }
+
+  const payloadString = JSON.stringify(payload)
+
+  // Prepare headers with optional HMAC signature
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    "User-Agent": "PetSocialNetwork-Webhook/1.0",
+  }
+
+  if (devHook.secret) {
+    try {
+      const signature = await generateHmacSignature(payloadString, devHook.secret)
+      headers["X-Webhook-Signature"] = `sha256=${signature}`
+      headers["X-Webhook-Timestamp"] = Date.now().toString()
+    } catch (err) {
+      return { success: false, error: "Failed to generate webhook signature" }
+    }
+  }
+
+  try {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 30000)
+    const response = await fetch(devHook.url, {
+      method: devHook.method || "POST",
+      headers,
+      body: payloadString,
+      signal: controller.signal,
+    })
+    clearTimeout(timeoutId)
+
+    if (!response.ok) {
+      const text = await response.text().catch(() => "")
+      return { success: false, error: `HTTP ${response.status}: ${text.substring(0, 200)}` }
+    }
+    return { success: true }
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : "Unknown error"
+    return { success: false, error: msg }
+  }
 }

@@ -17,6 +17,8 @@ export interface SessionRecord {
   ip?: string
   deviceType?: SessionDeviceType
   deviceName?: string
+  // Optional user-provided alias for the device
+  customName?: string
   os?: string
   browser?: string
   city?: string
@@ -155,3 +157,12 @@ export function getUserSessions(userId: string): SessionRecord[] {
   return sessions.sort((a, b) => (b.lastActivityAt || 0) - (a.lastActivityAt || 0))
 }
 
+/**
+ * Update a session's custom (user-provided) name
+ */
+export function setSessionCustomName(token: string, name: string): void {
+  const rec = tokenStore.get(token)
+  if (!rec) return
+  rec.customName = name.trim()
+  tokenStore.set(token, rec)
+}

@@ -7,6 +7,7 @@ import {
   revokeSession,
   revokeOtherSessions,
   updateSessionActivity,
+  setSessionCustomName,
 } from "../session-store"
 import { registerSession } from "../session-store"
 
@@ -14,6 +15,7 @@ import { SESSION_COOKIE_NAME } from "../auth-server"
 
 export interface ActiveSessionDto {
   token: string
+  customName?: string
   deviceName?: string
   deviceType?: string
   os?: string
@@ -46,6 +48,7 @@ export async function getActiveSessionsAction(): Promise<{ success: boolean; ses
 
   const data = sessions.map((s) => ({
     token: s.token,
+    customName: s.customName,
     deviceName: s.deviceName,
     deviceType: s.deviceType,
     os: s.os,
@@ -79,5 +82,18 @@ export async function logoutAllOtherSessionsAction(): Promise<{ success: boolean
   const cookieStore = await cookies()
   const currentToken = cookieStore.get(SESSION_COOKIE_NAME)?.value || ""
   revokeOtherSessions(user.id, currentToken)
+  return { success: true }
+}
+
+export async function renameSessionDeviceAction(token: string, name: string): Promise<{ success: boolean; error?: string }>{
+  const user = await getCurrentUser()
+  if (!user) return { success: false, error: "Not authenticated" }
+  if (!token || !name || name.trim().length === 0) return { success: false, error: "Invalid name" }
+  // Ensure this token belongs to the current user
+  const sessions = getUserSessions(user.id)
+  if (!sessions.find((s) => s.token === token)) {
+    return { success: false, error: "Session not found" }
+  }
+  setSessionCustomName(token, name)
   return { success: true }
 }

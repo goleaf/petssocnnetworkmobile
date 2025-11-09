@@ -2586,6 +2586,9 @@ export const mockBlogPosts: BlogPost[] = [
         "/golden-retriever-beach.png",
       ],
       videos: ["https://storage.googleapis.com/coverr-main/mp4/Mt_Baker.mp4"],
+      videoSafety: {
+        "https://storage.googleapis.com/coverr-main/mp4/Mt_Baker.mp4": { flashing: true },
+      },
       links: [
         {
           url: "https://www.akc.org/expert-advice/training/swimming-safety-tips-for-dogs/",

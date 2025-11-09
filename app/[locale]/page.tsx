@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { CreateButton } from "@/components/ui/create-button"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { PrivacySelector } from "@/components/privacy-selector"
@@ -16,6 +17,8 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { formatDate } from "@/lib/utils/date"
 import type { BlogPost, BlogPostMedia, Pet, User as UserType, ReactionType, PrivacyLevel } from "@/lib/types"
+import { detectPostLanguage, isPreferredLanguage } from "@/lib/utils/language"
+import { useLocale } from 'next-intl'
 import { getPetUrlFromPet } from "@/lib/utils/pet-url"
 import { canViewPost } from "@/lib/utils/privacy"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
@@ -52,6 +55,7 @@ export default function HomePage() {
   const [filter, setFilter] = useState<"all" | "following">("all")
   const [isFeedLoading, setIsFeedLoading] = useState(true)
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
+  const locale = useLocale()
 
   const refreshFeatured = useCallback(() => {
     const posts = getBlogPosts()
@@ -134,11 +138,23 @@ export default function HomePage() {
       return
     }
 
-    const visiblePosts = allPosts.filter((post) => {
+    let visiblePosts = allPosts.filter((post) => {
       const author = allUsers.find((candidate) => candidate.id === post.authorId)
       if (!author) return false
       return canViewPost(post, author, user.id)
     })
+    // Prioritize posts matching preferred content languages
+    const preferred = user.displayPreferences?.preferredContentLanguages || []
+    if (preferred.length > 0) {
+      visiblePosts = [...visiblePosts].sort((a, b) => {
+        const aLang = detectPostLanguage(a)
+        const bLang = detectPostLanguage(b)
+        const aPref = isPreferredLanguage(aLang, preferred) ? 1 : 0
+        const bPref = isPreferredLanguage(bLang, preferred) ? 1 : 0
+        if (aPref !== bPref) return bPref - aPref
+        return 0
+      })
+    }
     setFeedPosts(visiblePosts)
   }, [user, filter])
 
@@ -151,12 +167,24 @@ export default function HomePage() {
     const allPosts = getBlogPosts()
     const allUsers = getUsers()
 
-    const visiblePosts = allPosts.filter((post) => {
+    let visiblePosts = allPosts.filter((post) => {
       const author = allUsers.find((candidate) => candidate.id === post.authorId)
       if (!author) return false
       return canViewPost(post, author, user.id)
     })
+    const preferred = user.displayPreferences?.preferredContentLanguages || []
+    if (preferred.length > 0) {
+      visiblePosts = [...visiblePosts].sort((a, b) => {
+        const aLang = detectPostLanguage(a)
+        const bLang = detectPostLanguage(b)
+        const aPref = isPreferredLanguage(aLang, preferred) ? 1 : 0
+        const bPref = isPreferredLanguage(bLang, preferred) ? 1 : 0
+        if (aPref !== bPref) return bPref - aPref
+        return 0
+      })
+    }
 
+    const preferred = user.displayPreferences?.preferredContentLanguages || []
     const trending = [...visiblePosts].sort((a, b) => {
       const aLikes = a.reactions
         ? Object.values(a.reactions).reduce((sum, arr) => sum + (arr?.length || 0), 0)
@@ -164,6 +192,11 @@ export default function HomePage() {
       const bLikes = b.reactions
         ? Object.values(b.reactions).reduce((sum, arr) => sum + (arr?.length || 0), 0)
         : b.likes.length
+      const aLang = detectPostLanguage(a)
+      const bLang = detectPostLanguage(b)
+      const aPref = isPreferredLanguage(aLang, preferred) ? 1 : 0
+      const bPref = isPreferredLanguage(bLang, preferred) ? 1 : 0
+      if (aPref !== bPref) return bPref - aPref
       return bLikes - aLikes
     })
     setTrendingPosts(trending.slice(0, 3))
@@ -264,6 +297,7 @@ export default function HomePage() {
       authorId: user.id,
       title: newPostContent.substring(0, 50) + (newPostContent.length > 50 ? "..." : ""),
       content: newPostContent,
+      language: user.displayPreferences?.primaryLanguage || user.displayPreferences?.preferredContentLanguages?.[0] || (locale?.split('-')[0] || 'en'),
       tags: [],
       categories: [],
       likes: [],
@@ -339,6 +373,15 @@ export default function HomePage() {
         <div className="mb-8">
           <h1 className="text-4xl font-bold mb-2">Welcome back, {user.fullName}!</h1>
           <p className="text-muted-foreground">Here{"'"}s what{"'"}s happening in your pet community</p>
+        </div>
+
+        {/* Prominent Add Pet CTA */}
+        <div className="mb-6">
+          <Link href="/dashboard/add-pet">
+            <CreateButton iconType="paw" size="lg" className="w-full sm:w-auto px-6 py-6 text-base">
+              Add Pet
+            </CreateButton>
+          </Link>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

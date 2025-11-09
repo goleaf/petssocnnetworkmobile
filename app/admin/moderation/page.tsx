@@ -65,6 +65,7 @@ export default function ModerationDashboardPage() {
   return (
     <div className="container mx-auto p-6 space-y-6">
       <h1 className="text-3xl font-bold">Content Moderation</h1>
+      <div className="text-sm text-muted-foreground">Media Moderation Queue</div>
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4">

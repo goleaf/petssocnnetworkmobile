@@ -48,12 +48,22 @@ export default function AddPetPage({ params }: { params: Promise<{ username: str
       })
       .filter((achievement) => achievement.title.length > 0)
 
+    const derivedSpeciesId = (() => {
+      if (formData.speciesId === "custom") {
+        const cs = (formData.customSpecies || "").trim().toLowerCase()
+        return cs ? cs.replace(/\s+/g, "-") : undefined
+      }
+      return formData.speciesId
+    })()
+
     const newPet = {
       id: String(Date.now()),
       ownerId: user.id,
       name: formData.name,
       species: formData.species,
+      speciesId: derivedSpeciesId,
       breed: formData.breed || undefined,
+      breedId: formData.breedId || undefined,
       age: formData.age ? Number.parseInt(formData.age) : undefined,
       gender: formData.gender,
       bio: formData.bio || undefined,

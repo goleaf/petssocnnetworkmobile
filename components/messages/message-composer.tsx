@@ -4,14 +4,16 @@ import { useState } from "react"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { Send } from "lucide-react"
+import { cn } from "@/lib/utils"
 
 interface MessageComposerProps {
   onSend: (content: string) => void
   onTyping?: () => void
   disabled?: boolean
+  sticky?: boolean
 }
 
-export function MessageComposer({ onSend, onTyping, disabled }: MessageComposerProps) {
+export function MessageComposer({ onSend, onTyping, disabled, sticky = false }: MessageComposerProps) {
   const [value, setValue] = useState("")
 
   const handleSubmit = (event: React.FormEvent) => {
@@ -38,7 +40,14 @@ export function MessageComposer({ onSend, onTyping, disabled }: MessageComposerP
   }
 
   return (
-    <form onSubmit={handleSubmit} className="border-t bg-card/95 px-5 py-4">
+    <form
+      onSubmit={handleSubmit}
+      className={cn(
+        "border-t bg-card/95 px-5 py-4",
+        sticky &&
+          "sticky bottom-0 z-10 backdrop-blur supports-[backdrop-filter]:bg-card/60 pb-[env(safe-area-inset-bottom)]",
+      )}
+    >
       <div className="flex items-end gap-3">
         <Textarea
           value={value}
