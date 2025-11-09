@@ -2,10 +2,10 @@
 
 ## Tasks
 
-- [ ] Review commit `test: stabilize jest command`
-- [ ] Merge branch `codex/run-tests-and-fix-errors` into `main`
-- [ ] Run repository test suite post-merge
-- [ ] Delete remote branch and close PR
+- [x] Review commit `test: stabilize jest command`
+- [x] Merge branch `codex/run-tests-and-fix-errors` into `main`
+- [x] Run repository test suite post-merge
+- [x] Delete remote branch and close PR
 
 ## Priority Order
 1. Review commit contents
