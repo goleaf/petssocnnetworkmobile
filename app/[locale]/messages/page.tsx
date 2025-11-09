@@ -18,6 +18,7 @@ import {
   SlidersHorizontal,
   Video,
   X,
+  ChevronLeft,
 } from "lucide-react"
 
 import { useAuth } from "@/lib/auth"
@@ -58,6 +59,7 @@ import {
   type MessageSearchFilters,
   type MessageSearchSort,
 } from "@/lib/direct-messages"
+import { useIsMdUp } from "@/lib/hooks/use-media-query"
 
 const STORAGE_KEYS_TO_WATCH = ["pet_social_conversations", "pet_social_direct_messages", "pet_social_users"] as const
 const MAX_ATTACHMENT_SIZE = 5 * 1024 * 1024 // 5MB
@@ -204,6 +206,7 @@ function summarizeMessage(message: DirectMessage | undefined, currentUserId: str
 }
 
 export default function MessagesPage() {
+  const isMdUp = useIsMdUp()
   const { user, isAuthenticated } = useAuth()
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null)
@@ -366,7 +369,11 @@ export default function MessagesPage() {
     const selectionExists = currentSelection
       ? updatedConversations.some((conversation) => conversation.id === currentSelection)
       : false
-    const nextSelection = selectionExists ? currentSelection : updatedConversations[0]?.id ?? null
+    const nextSelection = selectionExists
+      ? currentSelection
+      : isMdUp
+        ? updatedConversations[0]?.id ?? null
+        : null
 
     selectedConversationRef.current = nextSelection
     if (nextSelection !== currentSelection) {
@@ -380,7 +387,7 @@ export default function MessagesPage() {
     } else {
       setMessages([])
     }
-  }, [user])
+  }, [user, isMdUp])
 
   const resetSearchFilters = useCallback(() => {
     setSearchQuery("")
@@ -917,7 +924,12 @@ export default function MessagesPage() {
       <div className="container mx-auto px-4 py-6 max-w-6xl">
         <Card className="overflow-hidden border">
           <div className="grid grid-cols-1 md:grid-cols-[320px_1fr]">
-            <aside className="border-b md:border-b-0 md:border-r bg-muted/20">
+            <aside
+              className={cn(
+                "border-b md:border-b-0 md:border-r bg-muted/20",
+                !isMdUp && selectedConversationId ? "hidden" : "block",
+              )}
+            >
               <div className="space-y-3 border-b p-4">
                 <div>
                   <h1 className="text-xl font-semibold">Messages</h1>
@@ -1253,9 +1265,38 @@ export default function MessagesPage() {
               </div>
             </aside>
 
-            <section className="flex flex-col min-h-[70vh]">
+            <section
+              className={cn(
+                "flex flex-col min-h-[70vh]",
+                !isMdUp && !selectedConversationId ? "hidden" : "flex",
+              )}
+            >
               {activeConversation ? (
                 <>
+                  {/* Mobile thread header with back button */}
+                  {!isMdUp && (
+                    <div className="sticky top-0 z-10 flex items-center gap-2 border-b bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/60 md:hidden">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label="Back"
+                        onClick={() => {
+                          selectedConversationRef.current = null
+                          setSelectedConversationId(null)
+                        }}
+                      >
+                        <ChevronLeft className="h-5 w-5" />
+                      </Button>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium truncate">
+                          {activeParticipants.length > 0
+                            ? activeParticipants.map((p) => p.fullName).join(", ")
+                            : "Direct Message"}
+                        </p>
+                        <p className="text-xs text-muted-foreground truncate">Private chat</p>
+                      </div>
+                    </div>
+                  )}
                   <div className="border-b px-6 py-4 flex items-center justify-between">
                     <div>
                       <h2 className="text-lg font-semibold">
@@ -1287,7 +1328,14 @@ export default function MessagesPage() {
                     </div>
                   </div>
 
-                  <div ref={messageListRef} className="flex-1 overflow-y-auto px-4 sm:px-6 py-6 space-y-4 bg-muted/10">
+                  <div
+                    ref={messageListRef}
+                    className={cn(
+                      "flex-1 overflow-y-auto px-4 sm:px-6 py-6 space-y-4 bg-muted/10",
+                      // Reserve space for sticky composer on mobile so last message isn't hidden
+                      !isMdUp ? "pb-28" : "",
+                    )}
+                  >
                     {messages.length === 0 ? (
                       <div className="h-full flex items-center justify-center text-center text-muted-foreground">
                         <div>
@@ -1465,7 +1513,7 @@ export default function MessagesPage() {
                     </div>
                   )}
 
-                  <div className="border-t px-4 sm:px-6 py-4 space-y-4">
+                  <div className="border-t px-4 sm:px-6 py-4 space-y-4 sticky bottom-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
                     {pendingAttachments.length > 0 && (
                       <div className="rounded-md border border-dashed border-border/80 p-3">
                         <p className="text-sm font-medium mb-2">Attachments</p>
