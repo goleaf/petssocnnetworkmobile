@@ -91,9 +91,9 @@ async function putToS3(key: string, body: Buffer, contentType: string): Promise<
   return `https://${BUCKET_NAME}.s3.${region}.amazonaws.com/${key}`
 }
 
-export async function POST(request: NextRequest, { params }: { params: { userId: string } }) {
+export async function POST(request: NextRequest, context: { params: Promise<{ userId: string }> }) {
   try {
-    const userId = params.userId
+    const { userId } = await context.params
     // Best-effort lookup for previous avatar cleanup; may be undefined for new users
     const existingUser = getServerUserById(userId)
     const form = await request.formData()
@@ -217,9 +217,9 @@ export async function POST(request: NextRequest, { params }: { params: { userId:
   }
 }
 
-export async function DELETE(request: NextRequest, { params }: { params: { userId: string } }) {
+export async function DELETE(request: NextRequest, context: { params: Promise<{ userId: string }> }) {
   try {
-    const userId = params.userId
+    const { userId } = await context.params
     const viewer = await getCurrentUser()
     if (!viewer || viewer.id !== userId) {
       return NextResponse.json({ error: 'Not authorized' }, { status: 403 })

@@ -9,11 +9,12 @@ const aliasSetSchema = z.object({
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await context.params
     const aliasSet = await db.aliasSet.findUnique({
-      where: { id: params.id },
+      where: { id },
     })
 
     if (!aliasSet) {
@@ -41,14 +42,15 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const body = await request.json()
     const data = aliasSetSchema.parse(body)
 
+    const { id } = await context.params
     const aliasSet = await db.aliasSet.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         name: data.name,
         aliases: data.aliases.map((a) => a.toLowerCase()),
@@ -79,11 +81,12 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await context.params
     await db.aliasSet.delete({
-      where: { id: params.id },
+      where: { id },
     })
 
     return NextResponse.json({ success: true })

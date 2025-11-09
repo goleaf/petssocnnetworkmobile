@@ -555,12 +555,6 @@ export default function PrivacySettingsPage() {
     // Keep it for potential future use
   }
 
-  const handleUnblock = (unblockUserId: string) => {
-    if (!user) return
-    unblockUser(user.id, unblockUserId)
-    setBlockedUsers(blockedUsers.filter((u) => u.id !== unblockUserId))
-  }
-
   const handleUnrestrict = (targetUserId: string) => {
     if (!user) return
     unrestrictUser(user.id, targetUserId)

@@ -4,10 +4,10 @@ import type { ScheduleGroupEventParams } from "@/lib/groups"
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id: groupId } = params
+    const { id: groupId } = await context.params
     const body = await request.json()
     const {
       authorId,
@@ -68,10 +68,10 @@ export async function POST(
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id: groupId } = params
+    const { id: groupId } = await context.params
     const { getGroupEventsByGroupId } = await import("@/lib/storage")
 
     const events = getGroupEventsByGroupId(groupId)
@@ -85,4 +85,3 @@ export async function GET(
     )
   }
 }
-

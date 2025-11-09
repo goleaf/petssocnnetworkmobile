@@ -210,10 +210,11 @@ export function buildProfileResponse(user: User, viewerId: string | null): any {
   }
 }
 
-export async function GET(request: NextRequest, { params }: { params: { userId: string } }) {
+export async function GET(request: NextRequest, context: { params: Promise<{ userId: string }> }) {
   const viewer = await getCurrentUser()
   const viewerId = viewer?.id || null
-  const user = getServerUserById(params.userId)
+  const { userId } = await context.params
+  const user = getServerUserById(userId)
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
   const response = buildProfileResponse(user, viewerId)
   // Cache a full profile object (owner view) with TTL 1 hour for backend reuse
@@ -239,13 +240,14 @@ function validateUrl(url: string): boolean {
   try { const u = new URL(url); return ['http:', 'https:'].includes(u.protocol) } catch { return false }
 }
 
-export async function PUT(request: NextRequest, { params }: { params: { userId: string } }) {
+export async function PUT(request: NextRequest, context: { params: Promise<{ userId: string }> }) {
   const viewer = await getCurrentUser()
-  if (!viewer || viewer.id !== params.userId) {
+  const { userId } = await context.params
+  if (!viewer || viewer.id !== userId) {
     return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
   }
 
-  const user = getServerUserById(params.userId)
+  const user = getServerUserById(userId)
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
   let payload: any

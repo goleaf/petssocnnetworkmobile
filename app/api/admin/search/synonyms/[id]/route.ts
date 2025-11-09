@@ -9,11 +9,12 @@ const synonymSchema = z.object({
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await context.params
     const synonym = await db.synonym.findUnique({
-      where: { id: params.id },
+      where: { id },
     })
 
     if (!synonym) {
@@ -41,14 +42,15 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const body = await request.json()
     const data = synonymSchema.parse(body)
 
+    const { id } = await context.params
     const synonym = await db.synonym.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         term: data.term.toLowerCase(),
         synonyms: data.synonyms.map((s) => s.toLowerCase()),
@@ -79,11 +81,12 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await context.params
     await db.synonym.delete({
-      where: { id: params.id },
+      where: { id },
     })
 
     return NextResponse.json({ success: true })

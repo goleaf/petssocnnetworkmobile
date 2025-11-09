@@ -463,11 +463,11 @@ export default function BlogPostPage({ params }: { params: Promise<{ id: string 
             />
             {currentUser && currentUser.id === post.authorId && (
               <>
-                <Link href={`/blog/${post.id}/edit`}>
-                  <EditButton asChild size="sm">
+                <EditButton asChild size="sm">
+                  <Link href={`/blog/${post.id}/edit`}>
                     Edit
-                  </EditButton>
-                </Link>
+                  </Link>
+                </EditButton>
                 <Button asChild variant="outline" size="sm" className="gap-2">
                   <Link href={`/blog/${post.id}/analytics`}>
                     <BarChart3 className="h-4 w-4" />

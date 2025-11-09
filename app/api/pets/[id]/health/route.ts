@@ -16,10 +16,10 @@ function findPet(id: string) {
   return mockPets.find((p) => p.id === id)
 }
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   const user = await getCurrentUser()
   const ip = getIp(req)
-  const petId = params.id
+  const { id: petId } = await context.params
   const viaToken = Boolean(new URL(req.url).searchParams.get('access'))
   const pet = findPet(petId)
 
@@ -37,10 +37,10 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   return NextResponse.json({ petId, health: pickHealthFields(pet) }, { status: 200 })
 }
 
-export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   const user = await getCurrentUser()
   const ip = getIp(req)
-  const petId = params.id
+  const { id: petId } = await context.params
   const viaToken = Boolean(new URL(req.url).searchParams.get('access'))
   const pet = findPet(petId)
 
@@ -68,4 +68,3 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     return NextResponse.json({ error: 'Invalid body' }, { status: 400 })
   }
 }
-

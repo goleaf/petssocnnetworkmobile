@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server'
 import { addClient } from '@/lib/server/sse'
+import { TransformStream } from 'node:stream/web'
 
 export const runtime = 'nodejs'
 
@@ -20,4 +21,3 @@ export async function GET(request: NextRequest) {
     },
   })
 }
-

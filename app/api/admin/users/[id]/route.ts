@@ -12,7 +12,7 @@ import type { User, UserRole, UserStatus } from "@/lib/types"
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const currentUser = await getCurrentUser()
@@ -23,7 +23,8 @@ export async function GET(
       )
     }
 
-    const user = getServerUserById(params.id)
+    const { id } = await context.params
+    const user = getServerUserById(id)
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
@@ -44,7 +45,7 @@ export async function GET(
  */
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const currentUser = await getCurrentUser()
@@ -55,7 +56,8 @@ export async function PATCH(
       )
     }
 
-    const user = getServerUserById(params.id)
+    const { id } = await context.params
+    const user = getServerUserById(id)
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
@@ -127,10 +129,10 @@ export async function PATCH(
     }
 
     // Apply updates
-    updateServerUser(params.id, updates)
+    updateServerUser(id, updates)
 
     // Get updated user
-    const updatedUser = getServerUserById(params.id)
+    const updatedUser = getServerUserById(id)
 
     return NextResponse.json({
       success: true,
@@ -145,4 +147,3 @@ export async function PATCH(
     )
   }
 }
-

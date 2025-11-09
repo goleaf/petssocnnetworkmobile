@@ -184,7 +184,7 @@ export default function AddPetPage() {
                 <Label htmlFor="gender">Gender</Label>
                 <Select
                   value={formData.gender}
-                  onValueChange={(value: Pet["gender"]) => setFormData({ ...formData, gender: value })}
+                  onValueChange={(value: string) => setFormData({ ...formData, gender: value as Pet["gender"] })}
                 >
                   <SelectTrigger className="w-full">
                     <SelectValue>
@@ -197,11 +197,12 @@ export default function AddPetPage() {
                           male: "Male",
                           female: "Female",
                         }
-                        const Icon = genderIcons[formData.gender] || User
+                        const g = (formData.gender || 'male') as 'male' | 'female'
+                        const Icon = genderIcons[g] || User
                         return (
                           <div className="flex items-center gap-2">
                             <Icon className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
-                            <span className="truncate">{genderLabels[formData.gender]}</span>
+                            <span className="truncate">{genderLabels[g]}</span>
                           </div>
                         )
                       })()}

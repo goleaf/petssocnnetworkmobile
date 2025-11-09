@@ -16,6 +16,50 @@ import { TextEncoder, TextDecoder } from 'util'
 global.TextEncoder = TextEncoder
 global.TextDecoder = TextDecoder
 
+// Provide a spy-friendly mock for storage-upload so tests can jest.spyOn named exports
+jest.mock('@/lib/storage-upload', () => {
+  // Use the dedicated shim that exposes configurable properties (ESM)
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const raw = require('./tests/shims/spyon-storage-upload.ts')
+  const shim = raw && raw.default ? raw.default : raw
+  const proxy = new Proxy(shim, {
+    defineProperty(target, prop, descriptor) {
+      try {
+        if ((prop === 'getSignedUploadUrl' || prop === 'getImageDimensions') && descriptor && 'value' in descriptor && typeof descriptor.value === 'function') {
+          if (prop === 'getSignedUploadUrl' && typeof target.__setGetSignedImpl === 'function') {
+            target.__setGetSignedImpl(descriptor.value)
+            return true
+          }
+          if (prop === 'getImageDimensions' && typeof target.__setGetImageDimensionsImpl === 'function') {
+            target.__setGetImageDimensionsImpl(descriptor.value)
+            return true
+          }
+        }
+      } catch {}
+      try {
+        return Reflect.defineProperty(target, prop, descriptor)
+      } catch {
+        return false
+      }
+    },
+  })
+  return proxy
+})
+
+// Patch jest.spyOn to gracefully handle non-configurable properties on module namespace objects
+// by delegating to shimmed setter functions when available.
+// With the Proxy above, jest.spyOn should work normally. No further patching required.
+
+// Debug: ensure mocked storage-upload export properties are spyable
+try {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const mod = require('@/lib/storage-upload')
+  // Ensure default export mirrors the same object for any interop paths
+  if (!mod.default) {
+    try { Object.defineProperty(mod, 'default', { value: mod, configurable: true }) } catch {}
+  }
+} catch {}
+
 // Basic fetch polyfill for tests
 if (typeof global.fetch === 'undefined') {
   global.fetch = jest.fn(async (input, init) => {

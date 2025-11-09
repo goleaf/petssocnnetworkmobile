@@ -37,6 +37,8 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { NotificationsDropdown } from "@/components/notifications-dropdown"
+import { getUserConversations, getDirectMessagesByConversation } from "@/lib/storage"
+import { useStorageListener } from "@/lib/hooks/use-storage-listener"
 import { useApplyProfilePhotoUpdates } from "@/lib/profile-updates"
 import { ScreenReaderToggle } from "@/components/a11y/ScreenReaderToggle"
 import { PetSwitcher } from "@/components/pets/pet-switcher"
@@ -48,10 +50,40 @@ export function Navigation() {
   const pathname = usePathname()
   const [isOpen, setIsOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const [unreadTotal, setUnreadTotal] = useState(0)
 
   useEffect(() => {
     setMounted(true)
   }, [])
+
+  // Compute unread messages badge
+  const recomputeUnread = () => {
+    if (!user) {
+      setUnreadTotal(0)
+      return
+    }
+    const conversations = getUserConversations(user.id)
+    let total = 0
+    for (const conv of conversations) {
+      const fromCounts = conv.unreadCounts?.[user.id]
+      if (typeof fromCounts === "number") {
+        total += fromCounts
+        continue
+      }
+      const history = getDirectMessagesByConversation(conv.id)
+      total += history.filter((m) => m.senderId !== user.id && !m.readAt?.[user.id]).length
+    }
+    setUnreadTotal(total)
+  }
+
+  useEffect(() => {
+    recomputeUnread()
+  }, [user?.id])
+
+  useStorageListener([
+    "pet_social_conversations",
+    "pet_social_direct_messages",
+  ], recomputeUnread)
 
   // Listen for profile photo updates (SSE/BroadcastChannel) and patch auth store/local cache
   useApplyProfilePhotoUpdates()
@@ -96,6 +128,11 @@ export function Navigation() {
                 >
                   <item.icon className="h-4 w-4 mr-2" />
                   {item.label}
+                  {item.href === "/messages" && isAuthenticated && unreadTotal > 0 && (
+                    <span className="ml-2 inline-flex min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-medium text-primary-foreground">
+                      {unreadTotal > 99 ? "99+" : unreadTotal}
+                    </span>
+                  )}
                 </Button>
               </Link>
             ))}

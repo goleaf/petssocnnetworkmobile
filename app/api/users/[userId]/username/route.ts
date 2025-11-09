@@ -8,13 +8,13 @@ import { revalidatePath } from 'next/cache'
 const USERNAME_REGEX = /^[a-zA-Z0-9_-]{3,20}$/
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000
 
-export async function POST(request: NextRequest, { params }: { params: { userId: string } }) {
+export async function POST(request: NextRequest, context: { params: Promise<{ userId: string }> }) {
   try {
     const sessionUser = await getCurrentUser()
     if (!sessionUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
-    const userId = params.userId
+    const { userId } = await context.params
     if (sessionUser.id !== userId) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }

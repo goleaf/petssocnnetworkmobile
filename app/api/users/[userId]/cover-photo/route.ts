@@ -56,9 +56,9 @@ async function putToS3(key: string, body: Buffer, contentType: string): Promise<
   return `https://${BUCKET_NAME}.s3.${region}.amazonaws.com/${key}`
 }
 
-export async function POST(request: NextRequest, { params }: { params: { userId: string } }) {
+export async function POST(request: NextRequest, context: { params: Promise<{ userId: string }> }) {
   try {
-    const userId = params.userId
+    const { userId } = await context.params
     const form = await request.formData()
     const file = form.get('photo') as unknown as File | null
     if (!file) return NextResponse.json({ error: 'Missing file: photo' }, { status: 400 })

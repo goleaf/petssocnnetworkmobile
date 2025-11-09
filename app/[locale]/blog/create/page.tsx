@@ -19,11 +19,13 @@ import { TagInput } from "@/components/ui/tag-input"
 import { addBlogPost, getPetsByOwnerId } from "@/lib/storage"
 import type { BlogPost, BlogPostMedia, PrivacyLevel, Draft } from "@/lib/types"
 import { normalizeCategoryList } from "@/lib/utils/categories"
-import { Save } from "lucide-react"
+import { Save, Sparkles } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
 import { MarkdownEditor } from "@/components/markdown-editor"
 import { PrivacySelector } from "@/components/privacy-selector"
 import { saveDraft, deleteDraft, getDraftsByUserId } from "@/lib/drafts"
+import { getSuggestedTags } from "@/lib/utils/tag-suggestions"
 
 type CreateBlogFormState = {
   petId: string
@@ -34,6 +36,7 @@ type CreateBlogFormState = {
   privacy: PrivacyLevel
   hashtags: string
   media: BlogPostMedia
+  disableWikiLinks?: boolean
 }
 
 export default function CreateBlogPage() {
@@ -63,6 +66,7 @@ export default function CreateBlogPage() {
       videos: [],
       links: [],
     },
+    disableWikiLinks: false,
   })
   const [draftId, setDraftId] = useState<string>("")
   const [lastSaved, setLastSaved] = useState<string>("")

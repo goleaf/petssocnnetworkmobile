@@ -20,8 +20,9 @@ const bodySchema = z.object({
   parentCommentId: z.string().optional(),
 })
 
-export async function POST(request: NextRequest, { params }: { params: { postId: string } }) {
+export async function POST(request: NextRequest, context: { params: Promise<{ postId: string }> }) {
   try {
+    const { postId } = await context.params
     const parsed = bodySchema.safeParse(await request.json())
     if (!parsed.success) {
       return NextResponse.json(
@@ -31,7 +32,7 @@ export async function POST(request: NextRequest, { params }: { params: { postId:
     }
 
     const { userId, text, parentCommentId } = parsed.data
-    const post = getBlogPostById(params.postId)
+    const post = getBlogPostById(postId)
     if (!post || (post as any).deletedAt) {
       return NextResponse.json({ error: "Post not found" }, { status: 404 })
     }
@@ -128,4 +129,3 @@ export async function POST(request: NextRequest, { params }: { params: { postId:
     )
   }
 }
-

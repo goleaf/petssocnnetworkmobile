@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getVerificationRequestById, updateVerificationRequest } from '@/lib/server-verification-requests'
 import { getServerUserById, updateServerUser } from '@/lib/storage-server'
 
-export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
-    const id = params.id
+    const { id } = await context.params
     const body = await request.json()
     const decision = String(body?.decision || '') as 'approve' | 'reject'
     const notes = String(body?.notes || '')
@@ -53,4 +53,3 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     return NextResponse.json({ error: 'Server error' }, { status: 500 })
   }
 }
-

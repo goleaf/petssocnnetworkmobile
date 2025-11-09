@@ -10,6 +10,8 @@ interface TagInputProps {
   onChange: (value: string) => void
   placeholder?: string
   className?: string
+  // Optional list of suggestions for caller UI; not used internally
+  suggestions?: string[]
 }
 
 export function TagInput({ value, onChange, placeholder, className }: TagInputProps) {

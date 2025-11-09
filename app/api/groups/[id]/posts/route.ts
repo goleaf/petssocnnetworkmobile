@@ -3,10 +3,10 @@ import { postToGroup } from "@/lib/groups"
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id: groupId } = params
+    const { id: groupId } = await context.params
     const body = await request.json()
     const { userId, title, content, tags } = body as {
       userId: string
@@ -49,10 +49,10 @@ export async function POST(
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id: groupId } = params
+    const { id: groupId } = await context.params
     const { getGroupTopicsByGroupId } = await import("@/lib/storage")
 
     const topics = getGroupTopicsByGroupId(groupId)
@@ -66,4 +66,3 @@ export async function GET(
     )
   }
 }
-

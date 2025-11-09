@@ -621,6 +621,16 @@ export interface BlogPost {
   promotionBudget?: number
   media?: BlogPostMedia
   poll?: PostPoll
+  // Content/linking preferences
+  disableWikiLinks?: boolean
+  // Brand affiliation disclosure (optional)
+  brandAffiliation?: {
+    disclosed: boolean
+    organizationName?: string
+    organizationType?: "brand" | "organization" | "sponsor" | "affiliate"
+    disclosureMissing?: boolean
+    lastEditDisclosure?: boolean
+  }
   placeId?: string
   reports?: ArticleReport[] // User reports on this article
   coiFlags?: COIFlag[] // Conflict of Interest flags
@@ -1358,6 +1368,8 @@ export interface GroupEvent {
   rsvpRequired?: boolean
   meetingUrl?: string
   address?: string
+  // Optional map/location URL for directions
+  locationUrl?: string
   createdAt: string
   updatedAt: string
   locationSharingEnabled?: boolean
@@ -1470,7 +1482,7 @@ export interface GroupMetrics {
 
 export type MessageReadMap = Record<string, string | null>
 
-export type MessageAttachmentType = "image" | "video" | "document" | "link"
+export type MessageAttachmentType = "image" | "video" | "document" | "link" | "location" | "live-location" | "contact"
 
 export interface MessageAttachment {
   id: string
@@ -1480,6 +1492,25 @@ export interface MessageAttachment {
   mimeType: string
   url: string
   thumbnailUrl?: string
+  caption?: string
+  // Link preview metadata (for type === "link")
+  siteName?: string
+  faviconUrl?: string
+  description?: string
+  // Location fields (for type === 'location' | 'live-location')
+  lat?: number
+  lon?: number
+  accuracy?: number
+  address?: string
+  // Live location
+  live?: boolean
+  expiresAt?: string
+  // Contact share (for type === 'contact')
+  userId?: string
+  username?: string
+  fullName?: string
+  avatar?: string
+  followersCount?: number
 }
 
 export type ConversationType = "direct" | "group" | "support" | "pet"
@@ -1517,6 +1548,15 @@ export interface DirectMessage {
   attachments?: MessageAttachment[]
   status?: MessageDeliveryStatus
   isSystem?: boolean
+  reactions?: Record<string, string[]>
+  repliedToId?: string
+  forwardedFromId?: string
+  editedAt?: string
+  editHistory?: Array<{ content: string; editedAt: string }>
+  deletedFor?: string[]
+  deletedForEveryone?: boolean
+  deletedBy?: string
+  deletedAt?: string
 }
 
 export interface ConversationTypingIndicator {

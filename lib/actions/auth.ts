@@ -80,9 +80,9 @@ function calculateAge(dateOfBirth: string): number | null {
 /**
  * Login server action
  */
-function getClientIp(): string {
+async function getClientIp(): Promise<string> {
   try {
-    const requestHeaders = headers()
+    const requestHeaders = await headers()
     const forwardedFor = requestHeaders.get("x-forwarded-for")
     if (forwardedFor) {
       return forwardedFor.split(",")[0]?.trim() || "unknown"
@@ -143,7 +143,7 @@ export async function loginAction(input: LoginInput): Promise<AuthResult> {
 
   // Register session in session store with metadata
   try {
-    const requestHeaders = headers()
+    const requestHeaders = await headers()
     const userAgent = requestHeaders.get("user-agent") || undefined
     const forwarded = requestHeaders.get("x-forwarded-for")
     const ip = forwarded ? forwarded.split(",")[0].trim() : requestHeaders.get("x-real-ip") || undefined
@@ -215,7 +215,7 @@ export async function registerAction(input: RegisterInput): Promise<AuthResult> 
     return { success: false, error: "You must accept the Terms of Service and Privacy Policy" }
   }
 
-  const rateLimitResult = incrementRegistrationAttempts(getClientIp())
+  const rateLimitResult = incrementRegistrationAttempts(await getClientIp())
   if (!rateLimitResult.allowed) {
     const retryMinutes = Math.max(1, Math.ceil(rateLimitResult.retryAfterMs / 60000))
     return {

@@ -5,11 +5,12 @@ import type { ReportStatus, ReportPriority } from "@/lib/types"
 // GET /api/reports/[id] - Get a specific report
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await context.params
     const report = await prisma.contentReport.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         reason: true,
       },
@@ -29,7 +30,7 @@ export async function GET(
 // PATCH /api/reports/[id] - Update a report
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const body = await request.json()
@@ -44,8 +45,9 @@ export async function PATCH(
       updateData.resolvedAt = new Date()
     }
 
+    const { id } = await context.params
     const report = await prisma.contentReport.update({
-      where: { id: params.id },
+      where: { id },
       data: updateData,
       include: {
         reason: true,
@@ -72,4 +74,3 @@ export async function PATCH(
     return NextResponse.json({ error: "Failed to update report" }, { status: 500 })
   }
 }
-

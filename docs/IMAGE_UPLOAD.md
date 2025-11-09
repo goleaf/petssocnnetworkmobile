@@ -157,6 +157,31 @@ Gets a signed URL for uploading a file.
 
 Gets a signed URL for downloading a private file.
 
+### Post‑Upload Image Optimization
+
+After uploading an image, you can invoke server‑side optimization to generate modern formats and thumbnails while stripping EXIF data (orientation is applied via auto‑rotate):
+
+Endpoint: `POST /api/upload/process-image`
+
+Request body:
+```
+{ "fileUrl": "https://.../bucket/path/to/image.jpg", "options": { "qualityLarge": 80, "qualityThumb": 75 } }
+```
+
+What it does:
+- For vertical images, generates a 1080x1920 story crop (WebP + progressive JPEG)
+- For all images, generates optimized originals (long side ≤ 1920, WebP + progressive JPEG)
+- Generates thumbnails: small 150x267 and tiny 50x89 (both 9:16 crops, WebP + progressive JPEG)
+- Strips EXIF metadata for privacy while preserving orientation via auto‑rotate
+
+Client helper:
+```ts
+import { processUploadedImage } from "@/lib/storage-upload"
+
+const outputs = await processUploadedImage(fileUrl)
+// outputs.optimized.webp.url, outputs.story?.jpeg.url, outputs.thumbnails.small.webp.url, etc.
+```
+
 ## File Organization
 
 Files are organized in storage with the following structure:
@@ -243,4 +268,3 @@ if (Capacitor.isNativePlatform()) {
 - Verify environment variables are set
 - Check AWS credentials
 - Ensure bucket exists and is accessible
-

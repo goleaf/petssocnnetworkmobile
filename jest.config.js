@@ -7,11 +7,15 @@ const createJestConfig = nextJest({
 
 // Add any custom config to be passed to Jest
 const customJestConfig = {
+  // Run early mocks before test files are evaluated
+  setupFiles: ['<rootDir>/jest.setup.preenv.js'],
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
   testEnvironment: 'jest-environment-jsdom',
   // Explicitly disable automatic mocks so our manual spies behave predictably
   automock: false,
   moduleNameMapper: {
+    // Make storage-upload spyable by mapping to a shim that exposes configurable properties (ESM)
+    '^@/lib/storage-upload$': '<rootDir>/tests/shims/spyon-storage-upload.ts',
     // Specific mocks must come before the catch-all alias
     '^@/components/auth/auth-provider$': '<rootDir>/tests/unit/auth/auth-provider.ts',
     // Map legacy relative mocks used by older tests

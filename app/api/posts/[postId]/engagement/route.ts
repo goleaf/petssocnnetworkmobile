@@ -25,8 +25,9 @@ function getReactionCounts(post: BlogPost): ReactionCounts {
   return counts
 }
 
-export async function GET(request: NextRequest, { params }: { params: { postId: string } }) {
+export async function GET(request: NextRequest, context: { params: Promise<{ postId: string }> }) {
   try {
+    const { postId } = await context.params
     const { searchParams } = new URL(request.url)
     const parsed = querySchema.safeParse({ viewerId: searchParams.get("viewerId") || undefined })
     if (!parsed.success) {
@@ -34,7 +35,7 @@ export async function GET(request: NextRequest, { params }: { params: { postId: 
     }
     const viewerId = parsed.data.viewerId
 
-    const post = getBlogPostById(params.postId)
+    const post = getBlogPostById(postId)
     if (!post || (post as any).deletedAt) {
       return NextResponse.json({ error: "Post not found" }, { status: 404 })
     }
@@ -188,4 +189,3 @@ export async function GET(request: NextRequest, { params }: { params: { postId: 
     )
   }
 }
-

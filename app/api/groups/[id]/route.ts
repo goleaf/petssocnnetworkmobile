@@ -3,10 +3,10 @@ import { getGroupById, getGroupBySlug } from "@/lib/storage"
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params
+    const { id } = await context.params
     const { searchParams } = new URL(request.url)
     const bySlug = searchParams.get("bySlug") === "true"
 
@@ -30,4 +30,3 @@ export async function GET(
     )
   }
 }
-

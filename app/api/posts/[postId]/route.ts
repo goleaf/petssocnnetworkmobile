@@ -35,9 +35,9 @@ const editSchema = z.object({
   editorId: z.string().optional(), // fallback when session auth not used
 })
 
-export async function PUT(request: NextRequest, { params }: { params: { postId: string } }) {
+export async function PUT(request: NextRequest, context: { params: Promise<{ postId: string }> }) {
   try {
-    const { postId } = params
+    const { postId } = await context.params
     const body = await request.json()
     const parsed = editSchema.safeParse(body)
     if (!parsed.success) {
@@ -159,9 +159,9 @@ export async function PUT(request: NextRequest, { params }: { params: { postId: 
   }
 }
 
-export async function DELETE(request: NextRequest, { params }: { params: { postId: string } }) {
+export async function DELETE(request: NextRequest, context: { params: Promise<{ postId: string }> }) {
   try {
-    const { postId } = params
+    const { postId } = await context.params
     const body = await request.json().catch(() => ({}))
     const editorId: string | undefined = body?.editorId
     if (!editorId) {

@@ -49,7 +49,7 @@ export default function ActivityPage() {
       (p.likes || []).forEach((id) => reactors.add(id))
     }
     const comments = getUserCommentsForPost(p.id)
-    const commenters = new Set(comments.map((c) => c.userId))
+    const commenters = new Set<string>((comments as any[]).map((c: any) => String(c.userId)))
     const engaged = new Set<string>([...reactors, ...commenters])
     engaged.forEach((id) => engagedUsers.add(id))
     const score = reactors.size + commenters.size
@@ -71,7 +71,7 @@ export default function ActivityPage() {
 
   // Peak activity times for followers (based on comment times)
   const followerIds = new Set(user.followers || [])
-  const followerComments = getAllComments().filter((c) => followerIds.has(c.userId) && new Date(c.createdAt).getTime() >= new Date(sinceIso).getTime())
+  const followerComments = (getAllComments() as any[]).filter((c: any) => followerIds.has(c.userId) && new Date(c.createdAt).getTime() >= new Date(sinceIso).getTime())
   const byHour = new Array(24).fill(0)
   const byDow = new Array(7).fill(0)
   for (const c of followerComments) {
@@ -161,4 +161,3 @@ function getUserCommentsForPost(postId: string) {
   const mod = require('@/lib/storage')
   return mod.getCommentsByPostId ? mod.getCommentsByPostId(postId) : []
 }
-

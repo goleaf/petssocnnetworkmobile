@@ -64,8 +64,10 @@ class RedisCacheAdapter implements CacheAdapter {
   constructor(redisUrl?: string) {
     // Lazy load redis client
     try {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const redis = require('redis');
+      // Avoid static bundler resolution; require at runtime only when configured
+      // eslint-disable-next-line @typescript-eslint/no-implied-eval
+      const dynamicRequire = (0, eval)('require') as any
+      const redis = dynamicRequire('redis')
       this.client = redis.createClient({ url: redisUrl || process.env.REDIS_URL });
       this.client.connect().catch(console.error);
     } catch (error) {
@@ -251,4 +253,3 @@ export async function cached<T>(
   await setCached(key, value, ttl);
   return value;
 }
-

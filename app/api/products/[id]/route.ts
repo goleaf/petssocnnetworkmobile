@@ -10,10 +10,10 @@ export const runtime = "nodejs"
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params
+    const { id } = await context.params
     const product = getProductById(id)
 
     if (!product) {
@@ -34,10 +34,10 @@ export async function GET(
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params
+    const { id } = await context.params
     const body = await request.json()
 
     const existingProduct = getProductById(id)
@@ -77,10 +77,10 @@ export async function PATCH(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params
+    const { id } = await context.params
 
     const existingProduct = getProductById(id)
     if (!existingProduct) {

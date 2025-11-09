@@ -82,6 +82,65 @@ import { invalidateCache } from "./cache"
 import { sanitizeLocationForStorage } from "./utils/location-obfuscation"
 import { generateGroupsForAnimal } from "./generate-groups"
 
+// Starred messages -----------------------------------------------------------
+
+interface StarredMessage {
+  id: string
+  userId: string
+  messageId: string
+  conversationId: string
+  starredAt: string
+}
+
+const STARRED_KEY = 'pet_social_starred_messages'
+
+function readStarred(): StarredMessage[] {
+  try {
+    return readData<StarredMessage[]>(STARRED_KEY, [])
+  } catch {
+    return []
+  }
+}
+
+function writeStarred(list: StarredMessage[]) {
+  writeData(STARRED_KEY, list)
+}
+
+export function getStarredMessagesForUser(userId: string): StarredMessage[] {
+  return readStarred()
+    .filter((s) => s.userId === userId)
+    .sort((a, b) => new Date(b.starredAt).getTime() - new Date(a.starredAt).getTime())
+}
+
+export function isMessageStarred(userId: string, messageId: string): boolean {
+  return readStarred().some((s) => s.userId === userId && s.messageId === messageId)
+}
+
+export function starMessage(userId: string, messageId: string): boolean {
+  const all = readStarred()
+  if (all.some((s) => s.userId === userId && s.messageId === messageId)) return false
+  const msg = getDirectMessageById(messageId)
+  if (!msg) return false
+  const record: StarredMessage = {
+    id: generateStorageId('starred'),
+    userId,
+    messageId,
+    conversationId: msg.conversationId,
+    starredAt: new Date().toISOString(),
+  }
+  all.push(record)
+  writeStarred(all)
+  return true
+}
+
+export function unstarMessage(userId: string, messageId: string): boolean {
+  const all = readStarred()
+  const next = all.filter((s) => !(s.userId === userId && s.messageId === messageId))
+  if (next.length === all.length) return false
+  writeStarred(next)
+  return true
+}
+
 const STORAGE_KEYS = {
   USERS: "pet_social_users",
   USERNAME_HISTORY: "pet_social_username_history",
@@ -1827,6 +1886,37 @@ export function updateConversation(conversationId: string, updates: Partial<Conv
   updatedList[index] = updatedConversation
   saveConversations(updatedList)
   return updatedConversation
+}
+
+/**
+ * Explicitly set unread count for a user on a conversation. This does not mutate message readAt maps
+ * and should be used for UI affordances like "Mark as Unread".
+ */
+export function setConversationUnreadCount(
+  conversationId: string,
+  userId: string,
+  count: number,
+): Conversation | undefined {
+  const conversation = getConversationById(conversationId)
+  if (!conversation) return undefined
+  const nextUnread = {
+    ...(conversation.unreadCounts ?? {}),
+    [userId]: Math.max(0, Math.floor(count)),
+  }
+  return updateConversation(conversationId, { unreadCounts: nextUnread })
+}
+
+/**
+ * Permanently delete a conversation and all of its messages.
+ */
+export function deleteConversation(conversationId: string): void {
+  const conversations = getConversations()
+  const nextConversations = conversations.filter((c) => c.id !== conversationId)
+  if (nextConversations.length !== conversations.length) {
+    saveConversations(nextConversations)
+  }
+  const remainingMessages = getAllDirectMessages().filter((m) => m.conversationId !== conversationId)
+  saveAllDirectMessages(remainingMessages)
 }
 
 // Direct message operations --------------------------------------------------
@@ -4535,6 +4625,28 @@ export function updateDirectMessage(messageId: string, updates: Partial<DirectMe
       snippet: merged.content ?? existing.content,
     })
   }
+}
+
+export function deleteDirectMessageById(messageId: string): void {
+  const messages = getAllDirectMessages()
+  const index = messages.findIndex((m) => m.id === messageId)
+  if (index === -1) return
+  const message = messages[index]
+  const conversationId = message.conversationId
+  const remaining = messages.filter((m) => m.id !== messageId)
+  saveAllDirectMessages(remaining)
+
+  // Update conversation last message and snippet
+  const convoMessages = remaining
+    .filter((m) => m.conversationId === conversationId)
+    .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+  const last = convoMessages.at(-1)
+  const nextUpdatedAt = last ? last.createdAt : new Date().toISOString()
+  updateConversation(conversationId, {
+    lastMessageId: last?.id,
+    snippet: last?.content,
+    updatedAt: nextUpdatedAt,
+  })
 }
 
 // Wiki Translation Functions

@@ -11,7 +11,7 @@ let mockPrivacyRequests: PrivacyRequest[] = []
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const currentUser = await getCurrentUser()
@@ -22,7 +22,8 @@ export async function GET(
       )
     }
 
-    const request = mockPrivacyRequests.find((req) => req.id === params.id)
+    const { id } = await context.params
+    const request = mockPrivacyRequests.find((req) => req.id === id)
 
     if (!request) {
       return NextResponse.json(
@@ -47,7 +48,7 @@ export async function GET(
  */
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const currentUser = await getCurrentUser()
@@ -61,7 +62,8 @@ export async function PATCH(
     const body = await request.json()
     const { action, notes, rejectionReason } = body
 
-    const requestIndex = mockPrivacyRequests.findIndex((req) => req.id === params.id)
+    const { id } = await context.params
+    const requestIndex = mockPrivacyRequests.findIndex((req) => req.id === id)
 
     if (requestIndex === -1) {
       return NextResponse.json(
@@ -148,4 +150,3 @@ export async function PATCH(
     )
   }
 }
-

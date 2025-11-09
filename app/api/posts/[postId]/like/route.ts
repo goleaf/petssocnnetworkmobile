@@ -43,8 +43,9 @@ function countReactions(post: BlogPost): ReactionCounts {
   return base
 }
 
-export async function POST(request: NextRequest, { params }: { params: { postId: string } }) {
+export async function POST(request: NextRequest, context: { params: Promise<{ postId: string }> }) {
   try {
+    const { postId } = await context.params
     const parsed = bodySchema.safeParse(await request.json())
     if (!parsed.success) {
       return NextResponse.json({ error: "Invalid request" }, { status: 400 })
@@ -53,7 +54,7 @@ export async function POST(request: NextRequest, { params }: { params: { postId:
     const { userId } = parsed.data
     const reaction: ReactionType = (parsed.data.reaction as ReactionType) || "like"
 
-    const post = getBlogPostById(params.postId)
+    const post = getBlogPostById(postId)
     if (!post || (post as any).deletedAt) {
       return NextResponse.json({ error: "Post not found" }, { status: 404 })
     }
@@ -113,15 +114,16 @@ export async function POST(request: NextRequest, { params }: { params: { postId:
   }
 }
 
-export async function DELETE(request: NextRequest, { params }: { params: { postId: string } }) {
+export async function DELETE(request: NextRequest, context: { params: Promise<{ postId: string }> }) {
   try {
+    const { postId } = await context.params
     const parsed = bodySchema.safeParse(await request.json())
     if (!parsed.success) {
       return NextResponse.json({ error: "Invalid request" }, { status: 400 })
     }
     const { userId } = parsed.data
 
-    const post = getBlogPostById(params.postId)
+    const post = getBlogPostById(postId)
     if (!post || (post as any).deletedAt) {
       return NextResponse.json({ error: "Post not found" }, { status: 404 })
     }

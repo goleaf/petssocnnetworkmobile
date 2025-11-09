@@ -7,10 +7,33 @@ import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/auth"
 import { CreatePostButton } from "@/components/posts/CreatePostButton"
+import { useEffect, useState } from "react"
+import { getUserConversations, getDirectMessagesByConversation } from "@/lib/storage"
+import { useStorageListener } from "@/lib/hooks/use-storage-listener"
 
 export function MobileBottomNav() {
   const pathname = usePathname()
   const { isAuthenticated, user } = useAuth()
+  const [unreadTotal, setUnreadTotal] = useState(0)
+
+  const recomputeUnread = () => {
+    if (!user) { setUnreadTotal(0); return }
+    const conversations = getUserConversations(user.id)
+    let total = 0
+    for (const conv of conversations) {
+      const fromCounts = conv.unreadCounts?.[user.id]
+      if (typeof fromCounts === "number") {
+        total += fromCounts
+        continue
+      }
+      const history = getDirectMessagesByConversation(conv.id)
+      total += history.filter((m) => m.senderId !== user.id && !m.readAt?.[user.id]).length
+    }
+    setUnreadTotal(total)
+  }
+
+  useEffect(() => { recomputeUnread() }, [user?.id])
+  useStorageListener(["pet_social_conversations", "pet_social_direct_messages"], recomputeUnread)
 
   return (
     <nav className="md:hidden fixed bottom-0 inset-x-0 z-50 border-t bg-background">
@@ -38,7 +61,7 @@ export function MobileBottomNav() {
           />
         </div>
 
-        <Link href={isAuthenticated ? "/messages" : "/login"} className="flex items-center justify-center">
+        <Link href={isAuthenticated ? "/messages" : "/login"} className="flex items-center justify-center relative">
           <Button
             variant="ghost"
             size="icon"
@@ -47,6 +70,11 @@ export function MobileBottomNav() {
           >
             <MessageCircle className="h-5 w-5" />
           </Button>
+          {isAuthenticated && unreadTotal > 0 && (
+            <span className="absolute top-2 right-4 inline-flex min-w-4 -translate-y-1/2 translate-x-1/2 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-medium leading-4 text-primary-foreground">
+              {unreadTotal > 99 ? "99+" : unreadTotal}
+            </span>
+          )}
         </Link>
         <Link href={isAuthenticated && user ? `/user/${user.username}` : "/login"} className="flex items-center justify-center">
           <Button
@@ -64,4 +92,3 @@ export function MobileBottomNav() {
 }
 
 export default MobileBottomNav
-
