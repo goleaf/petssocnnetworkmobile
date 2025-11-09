@@ -51,6 +51,7 @@ import { RelativeTime } from "@/components/ui/relative-time"
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import * as RadioGroup from "@radix-ui/react-radio-group"
+import { usePreferences } from "@/lib/preferences"
 
 const CHANNEL_SUMMARY_ORDER: NotificationChannel[] = ["in_app", "push", "email", "digest"]
 
@@ -79,6 +80,7 @@ const CHANNEL_SUMMARY_META: Record<NotificationChannel, { label: string; icon: L
 
 export default function SettingsPage() {
   const { user, refresh } = useAuth()
+  const { feedAutoLoad, setFeedAutoLoad } = usePreferences((s) => ({ feedAutoLoad: s.feedAutoLoad, setFeedAutoLoad: s.setFeedAutoLoad }))
   const router = useRouter()
   const searchParams = useSearchParams()
   const [isLoading, setIsLoading] = useState(false)
@@ -479,6 +481,23 @@ export default function SettingsPage() {
             <AlertDescription>{message.text}</AlertDescription>
           </Alert>
         )}
+        {/* Feed Preferences */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base sm:text-lg">Feed Preferences</CardTitle>
+            <CardDescription className="text-xs sm:text-sm">Control how your feed loads more posts.</CardDescription>
+          </CardHeader>
+          <CardContent className="flex items-center justify-between gap-3">
+            <div>
+              <div className="font-medium">Auto-load more on scroll</div>
+              <p className="text-xs text-muted-foreground">Automatically load more items when you reach the bottom.</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Switch id="pref-feed-autoload" checked={feedAutoLoad} onCheckedChange={setFeedAutoLoad} />
+              <Label htmlFor="pref-feed-autoload">{feedAutoLoad ? "On" : "Off"}</Label>
+            </div>
+          </CardContent>
+        </Card>
         {/* Email Management */}
         <Card>
           <CardHeader>

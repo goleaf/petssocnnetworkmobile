@@ -7,6 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { DeleteButton } from "@/components/ui/delete-button"
 import { getDraftsByUserId, deleteDraft } from "@/lib/drafts"
+import { addBlogPost } from "@/lib/storage"
+import type { BlogPost, BlogPostMedia } from "@/lib/types"
 import type { Draft } from "@/lib/types"
 import { FileText, Trash2, Clock } from "lucide-react"
 import Link from "next/link"
@@ -31,6 +33,42 @@ export default function DraftsPage() {
   }
 
   if (!user) return null
+
+  const publishFeedDraft = (draft: Draft) => {
+    if (!user) return
+    const m = draft.metadata || {}
+    const now = new Date().toISOString()
+    const post: BlogPost = {
+      id: String(Date.now()),
+      petId: m.petId || "",
+      authorId: user.id,
+      title: draft.title || draft.content.substring(0, 50) || "Untitled",
+      content: draft.content || "",
+      language: user.displayPreferences?.primaryLanguage,
+      tags: [],
+      categories: [],
+      likes: [],
+      createdAt: now,
+      updatedAt: now,
+      privacy: m.privacy || "public",
+      hashtags: [],
+      media: {
+        images: Array.isArray(m.media?.images) ? m.media.images : [],
+        videos: [],
+        links: [],
+        captions: m.media?.captions || {},
+      },
+      taggedPetIds: m.taggedPetIds || [],
+      placeId: m.placeId || undefined,
+      feeling: m.feeling,
+      activity: m.activity,
+      poll: m.poll || undefined,
+    }
+    addBlogPost(post)
+    deleteDraft(draft.id)
+    setDrafts((prev) => prev.filter((d) => d.id !== draft.id))
+    router.push(`/blog/${post.id}`)
+  }
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
@@ -66,13 +104,29 @@ export default function DraftsPage() {
                     </div>
                   </div>
                   <div className="flex gap-2">
-                    <Link href={draft.type === "blog" ? "/blog/create" : "/wiki/create"}>
-                      <Button variant="outline" size="sm">
-                        Continue
-                      </Button>
-                    </Link>
-                    <DeleteButton size="sm" onClick={() => handleDelete(draft.id)} showIcon={true}>
-                    </DeleteButton>
+                    {draft.type === "feed" ? (
+                      <>
+                        <Button variant="outline" size="sm" onClick={() => {
+                          try { localStorage.setItem('compose_draft_id', draft.id) } catch {}
+                          router.push('/')
+                        }}>
+                          Edit
+                        </Button>
+                        <Button size="sm" onClick={() => publishFeedDraft(draft)}>
+                          Publish
+                        </Button>
+                        <DeleteButton size="sm" onClick={() => handleDelete(draft.id)} showIcon={true} />
+                      </>
+                    ) : (
+                      <>
+                        <Link href={draft.type === "blog" ? "/blog/create" : "/wiki/create"}>
+                          <Button variant="outline" size="sm">
+                            Continue
+                          </Button>
+                        </Link>
+                        <DeleteButton size="sm" onClick={() => handleDelete(draft.id)} showIcon={true} />
+                      </>
+                    )}
                   </div>
                 </div>
               </CardHeader>

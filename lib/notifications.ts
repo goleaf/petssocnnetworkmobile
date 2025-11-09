@@ -687,6 +687,21 @@ export function performNotificationAction(
     updatedAt: nowIso(),
   }
 
+  // Domain-specific hooks for known actions
+  try {
+    if (actionId === 'med_mark_given') {
+      const petId = String((metadata as any)?.petId || current.metadata?.petId || '')
+      const medicationId = String((metadata as any)?.medicationId || current.metadata?.medicationId || '')
+      if (petId && medicationId) {
+        // Lazy import to avoid client bundle bloat
+        // eslint-disable-next-line @typescript-eslint/no-floating-promises
+        import('./pet-medication').then(({ markMedicationDoseGivenToday }) => {
+          try { markMedicationDoseGivenToday(petId, medicationId) } catch {}
+        })
+      }
+    }
+  } catch {}
+
   const next = [...notifications]
   next[index] = updated
   saveNotifications(next)
@@ -995,6 +1010,34 @@ export function createPostNotification(
         targetUrl: `/blog/${postId}`,
       },
     ],
+  }
+  addNotification(notification)
+}
+
+export function createPostSharedNotification(
+  sharerId: string,
+  originalAuthorId: string,
+  sharerName: string,
+  originalPostId: string,
+) {
+  const notification: Notification = {
+    id: `notif_${Date.now()}_${Math.random()}`,
+    userId: originalAuthorId,
+    type: "post",
+    actorId: sharerId,
+    targetId: originalPostId,
+    targetType: "post",
+    message: `${sharerName} shared your post`,
+    read: false,
+    createdAt: nowIso(),
+    priority: "normal",
+    category: "community",
+    channels: ["in_app"],
+    metadata: {
+      actorName: sharerName,
+      targetTypeLabel: "post",
+      actorId: sharerId,
+    },
   }
   addNotification(notification)
 }

@@ -8,9 +8,13 @@ type PreferencesState = {
   unitSystem?: UnitSystem
   setUnitSystem: (unit: UnitSystem) => void
   clearUnitSystem: () => void
+  // Feed behavior
+  feedAutoLoad: boolean
+  setFeedAutoLoad: (enabled: boolean) => void
 }
 
 const STORAGE_KEY = "preference_unit_system"
+const FEED_AUTOLOAD_KEY = "preference_feed_auto_load"
 
 export const usePreferences = create<PreferencesState>((set) => ({
   unitSystem:
@@ -41,5 +45,23 @@ export const usePreferences = create<PreferencesState>((set) => ({
     } catch {}
     set({ unitSystem: undefined })
   },
+  feedAutoLoad:
+    typeof window !== "undefined"
+      ? (() => {
+          try {
+            const raw = window.localStorage.getItem(FEED_AUTOLOAD_KEY)
+            return raw === "1" || raw === "true"
+          } catch {
+            return false
+          }
+        })()
+      : false,
+  setFeedAutoLoad: (enabled) => {
+    try {
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(FEED_AUTOLOAD_KEY, enabled ? "1" : "0")
+      }
+    } catch {}
+    set({ feedAutoLoad: enabled })
+  },
 }))
-

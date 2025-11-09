@@ -248,6 +248,47 @@ export default function DataStorageSettingsPage(): JSX.Element {
         </CardContent>
       </Card>
 
+      {/* Media Quality Filters */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Media Quality Filters</CardTitle>
+          <CardDescription>Only show the highest quality photos and videos.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between max-w-md">
+            <div className="space-y-1">
+              <Label>High Quality Only (Photos)</Label>
+              <p className="text-xs text-muted-foreground">Hide low-resolution and poorly lit photos using on-device analysis.</p>
+            </div>
+            <Switch
+              checked={settings?.highQualityOnlyImages ?? false}
+              data-testid="toggle-high-quality-only-images"
+              onCheckedChange={(val) => setSettings((prev) => (prev ? { ...prev, highQualityOnlyImages: val } : prev))}
+              disabled={!settings}
+            />
+          </div>
+
+          <div className="flex items-center justify-between max-w-md">
+            <div className="space-y-1">
+              <Label>Videos Only HD</Label>
+              <p className="text-xs text-muted-foreground">Show only high-definition (1080p+) videos to ensure clarity.</p>
+            </div>
+            <Switch
+              checked={settings?.videosOnlyHD ?? false}
+              data-testid="toggle-videos-only-hd"
+              onCheckedChange={(val) => setSettings((prev) => (prev ? { ...prev, videosOnlyHD: val } : prev))}
+              disabled={!settings}
+            />
+          </div>
+
+          <div className="flex justify-end">
+            <Button onClick={handleSave} loading={saving} disabled={!settings || saving}>
+              Save changes
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Audio & Video Accessibility */}
       <Card>
         <CardHeader>

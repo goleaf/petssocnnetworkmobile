@@ -39,6 +39,8 @@ import { NotificationsDropdown } from "@/components/notifications-dropdown"
 import { useApplyProfilePhotoUpdates } from "@/lib/profile-updates"
 import { ScreenReaderToggle } from "@/components/a11y/ScreenReaderToggle"
 import { PetSwitcher } from "@/components/pets/pet-switcher"
+import { CreatePostButton } from "@/components/posts/CreatePostButton"
+import { MobileBottomNav } from "@/components/MobileBottomNav"
 
 export function Navigation() {
   const { user, isAuthenticated, logout, isAdmin, isModerator } = useAuth()
@@ -72,6 +74,7 @@ export function Navigation() {
   }
 
   return (
+    <>
     <nav id="primary-navigation" aria-label="Primary" className="border-b bg-background sticky top-0 z-50">
       <div className="container mx-auto px-4 max-w-7xl">
         <div className="flex items-center justify-between h-16">
@@ -98,10 +101,15 @@ export function Navigation() {
           </div>
 
           {/* Desktop User Menu */}
+          
           <div className="hidden md:flex items-center gap-2">
             {isAuthenticated && user ? (
               <>
                 <PetSwitcher />
+                {/* Prominent Create Post button (desktop) */}
+                <CreatePostButton size="sm">
+                  Post
+                </CreatePostButton>
                 <Link href="/blog/create">
                   <Button size="sm">
                     <PenSquare className="h-4 w-4 mr-2" />
@@ -194,6 +202,18 @@ export function Navigation() {
                       <DropdownMenuItem>
                         <FileText className="mr-2 h-4 w-4" />
                         My Drafts
+                      </DropdownMenuItem>
+                    </Link>
+                    <Link href="/activity">
+                      <DropdownMenuItem>
+                        <TrendingUp className="mr-2 h-4 w-4" />
+                        Your Activity
+                      </DropdownMenuItem>
+                    </Link>
+                    <Link href="/saved">
+                      <DropdownMenuItem>
+                        <Bookmark className="mr-2 h-4 w-4" />
+                        Saved Posts
                       </DropdownMenuItem>
                     </Link>
                     {(isAdmin() || isModerator()) && (
@@ -326,5 +346,8 @@ export function Navigation() {
         </div>
       </div>
     </nav>
+    {/* Mobile Bottom Nav with Create Post */}
+    <MobileBottomNav />
+    </>
   )
 }

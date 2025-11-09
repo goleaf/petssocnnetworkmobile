@@ -13,6 +13,7 @@ import {
   CreditCard,
   HelpCircle,
   Accessibility,
+  Compass,
   type LucideIcon,
 } from "lucide-react"
 
@@ -31,6 +32,7 @@ export default function SettingsSidebar({ locale, showBilling = false }: { local
   const items: SettingsItem[] = [
     { href: `${base}`, label: "Account Settings", icon: User },
     { href: `${base}/privacy`, label: "Privacy & Safety", icon: Shield },
+    { href: `${base}/content`, label: "Content Preferences", icon: Compass },
     { href: `${base}/notifications`, label: "Notifications", icon: Bell },
     { href: `${base}/appearance`, label: "Appearance", icon: Palette },
     { href: `${base}/accessibility`, label: "Accessibility", icon: Accessibility },

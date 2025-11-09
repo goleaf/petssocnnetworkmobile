@@ -75,7 +75,7 @@ import {
   WIKI_CATEGORY_IMAGE_POOLS,
 } from "./mock-data"
 import { calculateAge } from "./utils/date"
-import { addNotification, createMentionNotification } from "./notifications"
+import { addNotification, createMentionNotification, createLikeNotification } from "./notifications"
 import { extractMentions } from "./utils/mentions"
 import { normalizeCategoryList } from "./utils/categories"
 import { invalidateCache } from "./cache"
@@ -87,6 +87,8 @@ const STORAGE_KEYS = {
   USERNAME_HISTORY: "pet_social_username_history",
   PETS: "pet_social_pets",
   BLOG_POSTS: "pet_social_blog_posts",
+  SEEN_POSTS: "pet_social_seen_posts",
+  FEED_LAST_VISIT: "pet_social_feed_last_visit",
   COMMENTS: "pet_social_comments",
   WIKI_ARTICLES: "pet_social_wiki_articles",
   WIKI_REVISIONS: "pet_social_wiki_revisions",
@@ -102,6 +104,7 @@ const STORAGE_KEYS = {
   GROUP_RESOURCES: "pet_social_group_resources",
   GROUP_ACTIVITIES: "pet_social_group_activities",
   POLL_VOTES: "pet_social_poll_votes",
+  STORIES: "pet_social_stories",
   EVENT_RSVPS: "pet_social_event_rsvps",
   GROUP_WARNINGS: "pet_social_group_warnings",
   GROUP_BANS: "pet_social_group_bans",
@@ -122,12 +125,17 @@ const STORAGE_KEYS = {
   EXPERT_VERIFICATION_REQUESTS: "pet_social_expert_verification_requests",
   WATCH_ENTRIES: "pet_social_watch_entries",
   PINNED_ITEMS: "pet_social_pinned_items",
+  SAVED_POSTS: "pet_social_saved_posts",
+  HIDDEN_POSTS: "pet_social_hidden_posts",
   ANNOUNCEMENTS: "pet_social_announcements",
   ANNOUNCEMENT_DISMISSALS: "pet_social_announcement_dismissals",
   SOURCES: "pet_social_sources",
   INTEGRATIONS: "pet_social_integrations",
   PRODUCTS: "pet_social_products",
   RECALLS: "pet_social_recalls",
+  SAVED_COLLECTIONS: "pet_social_saved_collections",
+  SAVED_COLLECTION_SHARES: "pet_social_saved_collection_shares",
+  ACTIVITY_VIEWS: "pet_social_activity_views",
 }
 
 const DEFAULT_CONVERSATIONS: Conversation[] = JSON.parse(JSON.stringify(mockConversations)) as Conversation[]
@@ -2279,6 +2287,7 @@ const DEFAULT_REACTIONS: Record<ReactionType, string[]> = {
   wow: [],
   sad: [],
   angry: [],
+  paw: [],
 }
 
 const COMMENT_FLAG_THRESHOLD = 3
@@ -2355,11 +2364,57 @@ function normalizeMedia(media: BlogPost["media"] | undefined): BlogPostMedia {
       .filter((link): link is BlogPostMedia["links"][number] => link !== null)
   }
 
-  return {
-    images: normalizeUrls(media?.images),
-    videos: normalizeUrls(media?.videos),
-    links: normalizeLinks(media?.links),
+  const images = normalizeUrls(media?.images)
+  const videos = normalizeUrls(media?.videos)
+  const links = normalizeLinks(media?.links)
+  const rawCaptions = (media as BlogPostMedia | undefined)?.captions || {}
+  const captions: Record<string, string> = {}
+  if (rawCaptions && typeof rawCaptions === 'object') {
+    for (const [url, text] of Object.entries(rawCaptions)) {
+      if (images.includes(url) && typeof text === 'string') captions[url] = text.slice(0, 200)
+    }
   }
+  const rawTags = (media as BlogPostMedia | undefined)?.imageTags || {}
+  const imageTags: Record<string, string[]> = {}
+  if (rawTags && typeof rawTags === 'object') {
+    for (const [url, ids] of Object.entries(rawTags as Record<string, unknown>)) {
+      if (!images.includes(url)) continue
+      if (Array.isArray(ids)) {
+        const clean = ids.filter((x) => typeof x === 'string' && x).map((x) => String(x))
+        if (clean.length) imageTags[url] = clean
+      }
+    }
+  }
+  const allowDownload = (media as BlogPostMedia | undefined)?.allowDownload
+  // Video variants
+  const variantsRaw = (media as BlogPostMedia | undefined)?.videoVariants
+  const videoVariants = Array.isArray(variantsRaw)
+    ? variantsRaw
+        .map((v) => {
+          if (!v || typeof v !== 'object') return null
+          const src = typeof (v as any).src === 'string' ? (v as any).src.trim() : ''
+          const quality = (v as any).quality
+          if (!src) return null
+          const q = quality === '480p' || quality === '720p' || quality === '1080p' ? quality : 'auto'
+          return { src, quality: q as any }
+        })
+        .filter(Boolean) as BlogPostMedia['videoVariants']
+    : []
+  const videoThumbnail = typeof (media as any)?.videoThumbnail === 'string' ? (media as any).videoThumbnail : undefined
+  const captionsRaw = (media as any)?.videoCaptions
+  const videoCaptions = Array.isArray(captionsRaw)
+    ? captionsRaw
+        .map((c) => {
+          if (!c || typeof c !== 'object') return null
+          const lang = typeof (c as any).lang === 'string' ? (c as any).lang : 'en'
+          const label = typeof (c as any).label === 'string' ? (c as any).label : 'Captions'
+          const srcVtt = typeof (c as any).srcVtt === 'string' ? (c as any).srcVtt : undefined
+          const vtt = typeof (c as any).vtt === 'string' ? (c as any).vtt : undefined
+          return { lang, label, srcVtt, vtt }
+        })
+        .filter(Boolean) as BlogPostMedia['videoCaptions']
+    : []
+  return { images, videos, links, captions, imageTags, allowDownload, videoVariants, videoThumbnail, videoCaptions }
 }
 
 function normalizeBlogPost(post: Partial<BlogPost>): BlogPost {
@@ -2639,6 +2694,7 @@ export function togglePostReaction(postId: string, userId: string, reactionType:
       posts[index].reactions = normalizeReactions(undefined)
     }
     const reactions = posts[index].reactions!
+    const hadAnyBefore = Object.values(reactions).some((arr) => (arr || []).includes(userId))
     const reactionArray = reactions[reactionType as keyof typeof reactions] || []
     const hasReacted = reactionArray.includes(userId)
 
@@ -2657,12 +2713,26 @@ export function togglePostReaction(postId: string, userId: string, reactionType:
       // Add reaction
       reactions[reactionType as keyof typeof reactions] = [...reactionArray, userId]
 
-      // Award points for liking a post
-      if (reactionType === "like" && typeof window !== "undefined") {
+      // Award points for reacting to a post (love or legacy like)
+      if ((reactionType === "love" || reactionType === "like") && typeof window !== "undefined") {
         import("./points-integration").then(({ awardPointsToUser }) => {
           awardPointsToUser(userId, "post_like")
         })
       }
+
+      // First reaction notification (avoid spam): only when user had no prior reaction
+      try {
+        if (!hadAnyBefore) {
+          const post = posts[index]
+          if (post.authorId !== userId) {
+            const user = getUserById(userId)
+            const title = post.title || (post.content ? String(post.content).slice(0, 80) : "your post")
+            if (user) {
+              createLikeNotification(userId, post.authorId, post.id, "post", user.fullName, title)
+            }
+          }
+        }
+      } catch {}
     }
     posts[index] = normalizeBlogPost(posts[index])
     localStorage.setItem(STORAGE_KEYS.BLOG_POSTS, JSON.stringify(posts))
@@ -3245,6 +3315,53 @@ export function removePollVote(pollId: string, userId: string): void {
   )
   setAllPollVotes(votes)
   recalculatePollStats(pollId)
+}
+
+// ---------------------------------------------------------------------------
+// Stories (24h ephemeral)
+// ---------------------------------------------------------------------------
+import type { Story } from "./types"
+
+export function getStories(): Story[] {
+  return readData<Story[]>(STORAGE_KEYS.STORIES, [])
+}
+
+export function addStory(story: Story): void {
+  const stories = getStories()
+  stories.push(story)
+  writeData(STORAGE_KEYS.STORIES, stories)
+}
+
+export function deleteExpiredStories(): void {
+  const now = Date.now()
+  const stories = getStories()
+  const filtered = stories.filter((s) => new Date(s.expiresAt).getTime() > now)
+  if (filtered.length !== stories.length) writeData(STORAGE_KEYS.STORIES, filtered)
+}
+
+export function getActiveStories(): Story[] {
+  const now = Date.now()
+  return getStories().filter((s) => new Date(s.expiresAt).getTime() > now)
+}
+
+export function getActiveStoriesByUserId(userId: string): Story[] {
+  return getActiveStories().filter((s) => s.userId === userId)
+}
+
+export function getUsersWithActiveStories(): string[] {
+  const set = new Set(getActiveStories().map((s) => s.userId))
+  return Array.from(set)
+}
+
+export function markStoryViewed(storyId: string, viewerId: string): void {
+  const stories = getStories()
+  const index = stories.findIndex((s) => s.id === storyId)
+  if (index === -1) return
+  const s = stories[index]
+  const viewers = Array.isArray(s.viewers) ? s.viewers : []
+  if (!viewers.includes(viewerId)) viewers.push(viewerId)
+  stories[index] = { ...s, viewers }
+  writeData(STORAGE_KEYS.STORIES, stories)
 }
 
 // ---------------------------------------------------------------------------
@@ -6204,6 +6321,264 @@ export function togglePinnedItem(
     const result = addPinnedItem(type, itemId, metadata)
     return { ...result, isPinned: true }
   }
+}
+
+// Saved/Hidden Posts (client-side convenience)
+type UserIdToPostIds = Record<string, string[]>
+
+function readUserPostMap(key: string): UserIdToPostIds {
+  return readData<UserIdToPostIds>(key, {})
+}
+
+function writeUserPostMap(key: string, value: UserIdToPostIds): void {
+  writeData<UserIdToPostIds>(key, value)
+}
+
+// Saved posts
+export function getSavedPostIds(userId: string): string[] {
+  const map = readUserPostMap(STORAGE_KEYS.SAVED_POSTS)
+  return map[userId] ?? []
+}
+
+export function isPostSaved(userId: string, postId: string): boolean {
+  return getSavedPostIds(userId).includes(postId)
+}
+
+export function toggleSavedPost(userId: string, postId: string): { isSaved: boolean } {
+  const map = readUserPostMap(STORAGE_KEYS.SAVED_POSTS)
+  const list = map[userId] ?? []
+  const idx = list.indexOf(postId)
+  if (idx >= 0) {
+    list.splice(idx, 1)
+    map[userId] = list
+    writeUserPostMap(STORAGE_KEYS.SAVED_POSTS, map)
+    return { isSaved: false }
+  }
+  map[userId] = Array.from(new Set([...list, postId]))
+  writeUserPostMap(STORAGE_KEYS.SAVED_POSTS, map)
+  return { isSaved: true }
+}
+
+// Saved Collections ---------------------------------------------------------
+export interface SavedCollection {
+  id: string
+  userId: string
+  name: string
+  postIds: string[]
+  createdAt: string
+  updatedAt: string
+}
+
+function getAllSavedCollections(): SavedCollection[] {
+  return readData<SavedCollection[]>(STORAGE_KEYS.SAVED_COLLECTIONS, [])
+}
+
+function setAllSavedCollections(items: SavedCollection[]) {
+  writeData<SavedCollection[]>(STORAGE_KEYS.SAVED_COLLECTIONS, items)
+}
+
+export function getSavedCollectionsByUser(userId: string): SavedCollection[] {
+  return getAllSavedCollections().filter((c) => c.userId === userId)
+}
+
+export function ensureDefaultSavedCollection(userId: string): SavedCollection {
+  const items = getAllSavedCollections()
+  let mine = items.filter((c) => c.userId === userId)
+  if (mine.length === 0) {
+    const col: SavedCollection = {
+      id: generateStorageId('savedcol'),
+      userId,
+      name: 'Saved',
+      postIds: Array.from(new Set(getSavedPostIds(userId))),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    }
+    setAllSavedCollections([...items, col])
+    return col
+  }
+  return mine[0]!
+}
+
+export function createSavedCollection(userId: string, name: string): SavedCollection {
+  const items = getAllSavedCollections()
+  const col: SavedCollection = {
+    id: generateStorageId('savedcol'),
+    userId,
+    name: name.trim() || 'New Collection',
+    postIds: [],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  }
+  setAllSavedCollections([...items, col])
+  return col
+}
+
+export function renameSavedCollection(userId: string, collectionId: string, newName: string) {
+  const items = getAllSavedCollections()
+  const idx = items.findIndex((c) => c.id === collectionId && c.userId === userId)
+  if (idx === -1) return
+  items[idx] = { ...items[idx], name: newName.trim() || items[idx].name, updatedAt: new Date().toISOString() }
+  setAllSavedCollections(items)
+}
+
+export function deleteSavedCollection(userId: string, collectionId: string) {
+  const items = getAllSavedCollections().filter((c) => !(c.userId === userId && c.id === collectionId))
+  setAllSavedCollections(items)
+}
+
+export function addPostToSavedCollection(userId: string, collectionId: string, postId: string) {
+  const items = getAllSavedCollections()
+  const idx = items.findIndex((c) => c.id === collectionId && c.userId === userId)
+  if (idx === -1) return
+  const setIds = new Set(items[idx].postIds)
+  setIds.add(postId)
+  items[idx] = { ...items[idx], postIds: Array.from(setIds), updatedAt: new Date().toISOString() }
+  setAllSavedCollections(items)
+}
+
+export function removePostFromSavedCollection(userId: string, collectionId: string, postId: string) {
+  const items = getAllSavedCollections()
+  const idx = items.findIndex((c) => c.id === collectionId && c.userId === userId)
+  if (idx === -1) return
+  items[idx] = { ...items[idx], postIds: items[idx].postIds.filter((id) => id !== postId), updatedAt: new Date().toISOString() }
+  setAllSavedCollections(items)
+}
+
+export function movePostsBetweenCollections(userId: string, sourceId: string, targetId: string, postIds: string[]) {
+  if (sourceId === targetId) return
+  const items = getAllSavedCollections()
+  const sIdx = items.findIndex((c) => c.id === sourceId && c.userId === userId)
+  const tIdx = items.findIndex((c) => c.id === targetId && c.userId === userId)
+  if (sIdx === -1 || tIdx === -1) return
+  const srcSet = new Set(items[sIdx].postIds)
+  const tgtSet = new Set(items[tIdx].postIds)
+  for (const id of postIds) {
+    srcSet.delete(id)
+    tgtSet.add(id)
+  }
+  items[sIdx] = { ...items[sIdx], postIds: Array.from(srcSet), updatedAt: new Date().toISOString() }
+  items[tIdx] = { ...items[tIdx], postIds: Array.from(tgtSet), updatedAt: new Date().toISOString() }
+  setAllSavedCollections(items)
+}
+
+// Saved collection shares (temporary view links)
+export interface SavedCollectionShare {
+  token: string
+  ownerId: string
+  collectionName: string
+  postIds: string[]
+  createdAt: string
+  expiresAt: string
+}
+
+export function createSavedCollectionShare(userId: string, collectionId: string, hoursValid = 24): SavedCollectionShare | null {
+  const col = getAllSavedCollections().find((c) => c.userId === userId && c.id === collectionId)
+  if (!col) return null
+  const token = generateStorageId('savedshare')
+  const share: SavedCollectionShare = {
+    token,
+    ownerId: userId,
+    collectionName: col.name,
+    postIds: [...col.postIds],
+    createdAt: new Date().toISOString(),
+    expiresAt: new Date(Date.now() + hoursValid * 60 * 60 * 1000).toISOString(),
+  }
+  const map = readData<Record<string, SavedCollectionShare>>(STORAGE_KEYS.SAVED_COLLECTION_SHARES, {})
+  map[token] = share
+  writeData(STORAGE_KEYS.SAVED_COLLECTION_SHARES, map)
+  return share
+}
+
+export function getSavedCollectionShare(token: string): SavedCollectionShare | null {
+  const map = readData<Record<string, SavedCollectionShare>>(STORAGE_KEYS.SAVED_COLLECTION_SHARES, {})
+  const share = map[token]
+  if (!share) return null
+  if (new Date(share.expiresAt).getTime() < Date.now()) return null
+  return share
+}
+
+// Hidden posts
+export function getHiddenPostIds(userId: string): string[] {
+  const map = readUserPostMap(STORAGE_KEYS.HIDDEN_POSTS)
+  return map[userId] ?? []
+}
+
+export function isPostHidden(userId: string, postId: string): boolean {
+  return getHiddenPostIds(userId).includes(postId)
+}
+
+export function toggleHiddenPost(userId: string, postId: string): { isHidden: boolean } {
+  const map = readUserPostMap(STORAGE_KEYS.HIDDEN_POSTS)
+  const list = map[userId] ?? []
+  const idx = list.indexOf(postId)
+  if (idx >= 0) {
+    list.splice(idx, 1)
+    map[userId] = list
+    writeUserPostMap(STORAGE_KEYS.HIDDEN_POSTS, map)
+    return { isHidden: false }
+  }
+  map[userId] = Array.from(new Set([...list, postId]))
+  writeUserPostMap(STORAGE_KEYS.HIDDEN_POSTS, map)
+  return { isHidden: true }
+}
+
+// Seen posts tracking (per user)
+export function getSeenPostIds(userId: string): string[] {
+  const map = readUserPostMap(STORAGE_KEYS.SEEN_POSTS)
+  return map[userId] ?? []
+}
+
+export function addSeenPosts(userId: string, postIds: string[]): void {
+  if (!userId || postIds.length === 0) return
+  const map = readUserPostMap(STORAGE_KEYS.SEEN_POSTS)
+  const existing = new Set(map[userId] ?? [])
+  for (const id of postIds) existing.add(id)
+  map[userId] = Array.from(existing)
+  writeUserPostMap(STORAGE_KEYS.SEEN_POSTS, map)
+}
+
+export function markPostSeen(userId: string, postId: string): void {
+  addSeenPosts(userId, [postId])
+}
+
+// Feed last-visit tracking (per user -> ISO string)
+type UserIdToString = Record<string, string>
+
+function readUserStringMap(key: string): UserIdToString {
+  return readData<UserIdToString>(key, {})
+}
+
+function writeUserStringMap(key: string, value: UserIdToString): void {
+  writeData<UserIdToString>(key, value)
+}
+
+export function getFeedLastVisitAt(userId: string): string | undefined {
+  const map = readUserStringMap(STORAGE_KEYS.FEED_LAST_VISIT)
+  return map[userId]
+}
+
+export function setFeedLastVisitAt(userId: string, iso: string): void {
+  const map = readUserStringMap(STORAGE_KEYS.FEED_LAST_VISIT)
+  map[userId] = iso
+  writeUserStringMap(STORAGE_KEYS.FEED_LAST_VISIT, map)
+}
+
+// ---------------- Personal Activity Views ----------------
+import type { ViewEvent } from "./types"
+
+export function getViewEvents(): ViewEvent[] {
+  return readData<ViewEvent[]>(STORAGE_KEYS.ACTIVITY_VIEWS, [])
+}
+
+export function addViewEvent(event: ViewEvent) {
+  const arr = getViewEvents()
+  arr.push(event)
+  writeData(STORAGE_KEYS.ACTIVITY_VIEWS, arr)
+}
+
+export function getUserViewEventsSince(userId: string, sinceIso: string): ViewEvent[] {
+  const since = new Date(sinceIso).getTime()
+  return getViewEvents().filter((e) => e.userId === userId && new Date(e.viewedAt).getTime() >= since)
 }
 
 // Care Guides Storage Functions

@@ -8,6 +8,7 @@ import {
   deleteComment,
   flagComment,
   getBlogPostById,
+  updateBlogPost,
   getCommentsByPetPhotoId,
   getCommentsByPostId,
   getCommentsByWikiArticleId,
@@ -91,6 +92,8 @@ interface AdvancedCommentsProps {
   header?: string | null
   emptyStateMessage?: string
   onCountChange?: (count: number) => void
+  maxDepth?: number
+  reactionsMode?: 'simple' | 'full'
 }
 
 interface FlagDialogState {
@@ -128,6 +131,7 @@ const REACTION_EMOJIS: Record<ReactionType, string> = {
   wow: "😮",
   sad: "😢",
   angry: "😡",
+  paw: "🐾",
 }
 
 function generateCommentId() {
@@ -169,6 +173,8 @@ export function AdvancedComments({
   header = "Comments",
   emptyStateMessage = "No comments yet. Be the first to start the discussion!",
   onCountChange,
+  maxDepth = 3,
+  reactionsMode = 'simple',
 }: AdvancedCommentsProps) {
   const { user: currentUser } = useAuth()
   const contextType = context.type
@@ -193,9 +199,13 @@ export function AdvancedComments({
 
   const [comments, setComments] = useState<Comment[]>(() => getContextComments(context))
   const [users, setUsers] = useState<User[]>(() => getUsers())
+  const [bestAnswerId, setBestAnswerId] = useState<string | null>(() => (contextType === 'post' ? (getBlogPostById(contextId)?.bestAnswerCommentId || null) : null))
+  const [pinnedCommentId, setPinnedCommentId] = useState<string | null>(() => (contextType === 'post' ? (getBlogPostById(contextId)?.pinnedCommentId || null) : null))
   const [commentDraft, setCommentDraft] = useState("")
+  const [commentAttachment, setCommentAttachment] = useState<string | null>(null)
   const [replyTargetId, setReplyTargetId] = useState<string | null>(null)
   const [replyDraft, setReplyDraft] = useState("")
+  const [replyAttachment, setReplyAttachment] = useState<string | null>(null)
   const [editTargetId, setEditTargetId] = useState<string | null>(null)
   const [editDraft, setEditDraft] = useState("")
   const [editBrandAffiliation, setEditBrandAffiliation] = useState<{ disclosed: boolean; organizationName?: string; organizationType?: "brand" | "organization" | "sponsor" | "affiliate" }>({ disclosed: false })
@@ -246,7 +256,23 @@ export function AdvancedComments({
   useEffect(() => {
     loadComments()
     refreshUsers()
+    if (contextType === 'post') {
+      setBestAnswerId(getBlogPostById(contextId)?.bestAnswerCommentId || null)
+      setPinnedCommentId(getBlogPostById(contextId)?.pinnedCommentId || null)
+    }
   }, [loadComments, refreshUsers])
+
+  // Listen for storage updates to reflect best answer changes
+  useEffect(() => {
+    if (typeof window === 'undefined' || contextType !== 'post') return
+    const handler = (e: StorageEvent) => {
+      if (e.key && e.key !== 'pet_social_blog_posts') return
+      setBestAnswerId(getBlogPostById(contextId)?.bestAnswerCommentId || null)
+      setPinnedCommentId(getBlogPostById(contextId)?.pinnedCommentId || null)
+    }
+    window.addEventListener('storage', handler)
+    return () => window.removeEventListener('storage', handler)
+  }, [contextType, contextId])
 
   const usersById = useMemo(() => {
     const map = new Map<string, User>()
@@ -273,7 +299,18 @@ export function AdvancedComments({
       ? `${blockingOwnerName} has blocked you. You can no longer interact with this content.`
       : "Interactions with this content are currently disabled."
 
-  const commentTree = useMemo(() => buildCommentTree(comments, { sortDirection: "asc" }), [comments])
+  const [sortMode, setSortMode] = useState<'top'|'newest'>('top')
+  const commentTree = useMemo(() => {
+    const roots = buildCommentTree(comments, { sortDirection: "asc" })
+    if (sortMode === 'newest') {
+      return [...roots].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    }
+    const likes = (n: Comment) => n.reactions?.like?.length || 0
+    return [...roots].sort((a, b) => {
+      const d = likes(b) - likes(a)
+      return d !== 0 ? d : (new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    })
+  }, [comments, sortMode])
   const totalComments = comments.length
   const viewerCanModerate = canUserModerate(currentUser) || (currentUser?.id && currentUser.id === contextOwnerId)
 
@@ -339,6 +376,7 @@ export function AdvancedComments({
 
     addComment(baseComment)
     setCommentDraft("")
+    setCommentAttachment(null)
     loadComments()
   }
 
@@ -356,6 +394,7 @@ export function AdvancedComments({
     } else {
       setReplyDraft("")
     }
+    setReplyAttachment(null)
   }
 
   const handleSubmitReply = () => {
@@ -379,6 +418,7 @@ export function AdvancedComments({
         status: authorIsRestricted ? "pending" : "published",
         reactions: DEFAULT_REACTIONS,
         flags: [],
+        attachmentImageUrl: replyAttachment || undefined,
       },
       context,
     )
@@ -386,6 +426,7 @@ export function AdvancedComments({
     addComment(replyComment)
     setReplyTargetId(null)
     setReplyDraft("")
+    setReplyAttachment(null)
     loadComments()
   }
 
@@ -486,13 +527,13 @@ export function AdvancedComments({
 
   const handleDelete = (comment: Comment) => {
     if (!ensureAuthenticated("delete comments")) return
-    if (!canUserDeleteComment(comment, currentUser)) return
+    if (!(canUserDeleteComment(comment, currentUser) || viewerCanModerate)) return
     setDeleteState({ open: true, target: comment })
   }
 
   const confirmDelete = () => {
     if (!deleteState.target || !currentUser) return
-    if (!canUserDeleteComment(deleteState.target, currentUser)) return
+    if (!(canUserDeleteComment(deleteState.target, currentUser) || viewerCanModerate)) return
     deleteComment(deleteState.target.id)
     setDeleteState({ open: false, target: null })
     loadComments()
@@ -507,6 +548,16 @@ export function AdvancedComments({
       currentUser={currentUser}
       viewerCanModerate={viewerCanModerate}
       interactionBlocked={isInteractionBlocked}
+      canMarkBestAnswer={contextType === 'post' && currentUser?.id === contextOwnerId}
+      isBestAnswer={bestAnswerId === node.id}
+      onMarkBestAnswer={() => {
+        if (contextType !== 'post' || !currentUser || currentUser.id !== contextOwnerId) return
+        const post = getBlogPostById(contextId)
+        if (!post) return
+        const next = bestAnswerId === node.id ? undefined : node.id
+        updateBlogPost({ ...post, bestAnswerCommentId: next })
+        setBestAnswerId(next || null)
+      }}
       onStartReply={() => handleStartReply(node)}
       onCancelReply={handleCancelReply}
       onSubmitReply={handleSubmitReply}
@@ -554,9 +605,16 @@ export function AdvancedComments({
             <span>Interactions disabled due to blocking</span>
           </div>
         ) : (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <SmilePlus className="h-4 w-4" />
-            <span>Format with Markdown · Press ⌘/Ctrl + Enter to submit</span>
+          <div className="flex items-center gap-3 text-sm text-muted-foreground">
+            <div className="inline-flex items-center gap-1">
+              <span className="text-xs">Sort:</span>
+              <Button size="xs" variant={sortMode==='top' ? 'default' : 'outline'} onClick={() => setSortMode('top')}>Top</Button>
+              <Button size="xs" variant={sortMode==='newest' ? 'default' : 'outline'} onClick={() => setSortMode('newest')}>Newest</Button>
+            </div>
+            <div className="inline-flex items-center gap-1">
+              <SmilePlus className="h-4 w-4" />
+              <span className="text-xs">Markdown · ⌘/Ctrl+Enter</span>
+            </div>
           </div>
         )}
       </div>
@@ -567,14 +625,28 @@ export function AdvancedComments({
             {blockingMessage}
           </div>
         ) : (
-          <CommentEditor
-            value={commentDraft}
-            onChange={setCommentDraft}
-            onSubmit={handleCreateComment}
-            submitLabel="Post comment"
-            placeholder="Share your thoughts..."
-            autoFocus={false}
-          />
+          <div className="space-y-2">
+            <CommentEditor
+              value={commentDraft}
+              onChange={setCommentDraft}
+              onSubmit={handleCreateComment}
+              submitLabel="Post comment"
+              placeholder="Share your thoughts..."
+              autoFocus={false}
+            />
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-xs">
+                <input type="file" accept="image/*,image/gif" onChange={(e) => {
+                  const f = e.currentTarget.files?.[0]
+                  if (!f) { setCommentAttachment(null); return }
+                  const reader = new FileReader()
+                  reader.onload = () => setCommentAttachment(String(reader.result))
+                  reader.readAsDataURL(f)
+                }} />
+              </div>
+              {commentAttachment && <span className="text-xs text-muted-foreground">1 attachment selected</span>}
+            </div>
+          </div>
         )
       ) : (
         <div className="rounded-lg border border-dashed bg-muted/30 p-6 text-center text-sm text-muted-foreground">
@@ -583,6 +655,29 @@ export function AdvancedComments({
       )}
 
       <div className="space-y-4">
+        {pinnedCommentId && context.type === 'post' && (
+          <div className="rounded-lg border bg-card p-4 shadow-sm">
+            <div className="mb-2 text-sm font-semibold">Pinned Comment</div>
+            {(() => {
+              const flatten = (nodes: CommentNode[]): CommentNode[] => nodes.flatMap(n => [n, ...flatten(n.children)])
+              const node = flatten(commentTree).find((n) => n.id === pinnedCommentId)
+              return node ? renderCommentNode(node) : null
+            })()}
+          </div>
+        )}
+        {bestAnswerId && contextType === 'post' && (
+          <div className="rounded-lg border bg-card p-4 shadow-sm">
+            <div className="mb-2 text-sm font-semibold flex items-center gap-2">
+              <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-green-800 dark:bg-green-900/30 dark:text-green-200">Best Answer</span>
+            </div>
+            {/* Render the best answer node at top as well */}
+            {(() => {
+              const flatten = (nodes: CommentNode[]): CommentNode[] => nodes.flatMap(n => [n, ...flatten(n.children)])
+              const node = flatten(commentTree).find((n) => n.id === bestAnswerId)
+              return node ? renderCommentNode(node) : null
+            })()}
+          </div>
+        )}
         {commentTree.length === 0 ? (
           <div className="rounded-lg border border-dashed bg-muted/30 px-6 py-10 text-center text-sm text-muted-foreground">
             {emptyStateMessage}
@@ -773,6 +868,9 @@ interface CommentCardProps {
   currentUser: User | null
   viewerCanModerate: boolean
   interactionBlocked: boolean
+  canMarkBestAnswer?: boolean
+  isBestAnswer?: boolean
+  onMarkBestAnswer?: () => void
   onStartReply: () => void
   onCancelReply: () => void
   onSubmitReply: () => void
@@ -803,6 +901,9 @@ function CommentCard({
   currentUser,
   viewerCanModerate,
   interactionBlocked,
+  canMarkBestAnswer,
+  isBestAnswer,
+  onMarkBestAnswer,
   onStartReply,
   onCancelReply,
   onSubmitReply,
@@ -874,6 +975,9 @@ function CommentCard({
               </div>
               <div className="mt-1 flex flex-wrap items-center gap-2">
                 {isOwner && <Badge variant="outline">You</Badge>}
+                {isBestAnswer && (
+                  <Badge className="bg-green-600 text-white hover:bg-green-600/90">Best Answer</Badge>
+                )}
                 {isPending && (
                   <Badge
                     variant="secondary"
@@ -933,6 +1037,12 @@ function CommentCard({
                     Delete
                   </DropdownMenuItem>
                 )}
+                {canMarkBestAnswer && (
+                  <DropdownMenuItem onClick={onMarkBestAnswer}>
+                    <ShieldCheck className="mr-2 h-4 w-4" />
+                    {isBestAnswer ? 'Unmark Best Answer' : 'Mark as Best Answer'}
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem onClick={onFlag}>
                   <Flag className="mr-2 h-4 w-4" />
                   {userHasFlagged ? "Update flag" : "Report"}
@@ -949,6 +1059,18 @@ function CommentCard({
                       Moderate
                     </DropdownMenuItem>
                   </>
+                )}
+                {context.type === 'post' && currentUser?.id === contextOwnerId && (
+                  <DropdownMenuItem onClick={() => {
+                    const post = getBlogPostById(contextId)
+                    if (!post) return
+                    const next = pinnedCommentId === node.id ? undefined : node.id
+                    updateBlogPost({ ...post, pinnedCommentId: next })
+                    setPinnedCommentId(next || null)
+                  }}>
+                    <ShieldCheck className="mr-2 h-4 w-4" />
+                    {pinnedCommentId === node.id ? 'Unpin comment' : 'Pin comment'}
+                  </DropdownMenuItem>
                 )}
               </DropdownMenuContent>
             </DropdownMenu>
@@ -975,62 +1097,35 @@ function CommentCard({
                 />
               </div>
             ) : (
-              <ReactMarkdown>{node.content}</ReactMarkdown>
+              <div className="space-y-2">
+                <ReactMarkdown>{node.content}</ReactMarkdown>
+                {node.attachmentImageUrl && (
+                  <img src={node.attachmentImageUrl} alt="attachment" className="max-h-64 rounded-md border" />
+                )}
+              </div>
             )}
           </div>
 
           {!isEditing && (
             <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
               {currentUser && !interactionBlocked && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="sm" className="h-7 gap-1 px-2 text-xs">
-                      <SmilePlus className="h-3.5 w-3.5" />
-                      {totalReactions > 0 ? (
-                        <span className="font-medium">{totalReactions}</span>
-                      ) : (
-                        <span>React</span>
-                      )}
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="w-44">
-                    {(Object.keys(REACTION_EMOJIS) as ReactionType[]).map((reactionType) => {
-                      const count = node.reactions?.[reactionType]?.length ?? 0
-                      const active = reaction === reactionType
-                      return (
-                        <DropdownMenuItem
-                          key={reactionType}
-                          onClick={() => onToggleReaction(reactionType)}
-                          className={cn(active ? "bg-primary/10 font-medium" : "")}
-                        >
-                          <span className="mr-2 text-lg">{REACTION_EMOJIS[reactionType]}</span>
-                          <span className="capitalize flex-1">{reactionType}</span>
-                          {count > 0 && <span className="text-xs text-muted-foreground">({count})</span>}
-                        </DropdownMenuItem>
-                      )
-                    })}
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                <Button variant="ghost" size="sm" className="h-7 gap-1 px-2 text-xs" onClick={() => onToggleReaction('like')}>
+                  <span className="text-red-500">❤</span>
+                  <span>{node.reactions?.like?.length || 0}</span>
+                </Button>
               )}
 
-              {!interactionBlocked && (
+              {!interactionBlocked && (depth < 2) && (
                 <Button variant="ghost" size="sm" className="h-7 gap-1 px-2 text-xs" onClick={onStartReply}>
                   <Reply className="h-3.5 w-3.5" />
                   Reply
                 </Button>
               )}
-
-              {reaction && (
-                <span className="flex items-center gap-1 rounded-full bg-primary/10 px-2 py-1 text-primary">
-                  {REACTION_EMOJIS[reaction]}
-                  <span className="text-[11px] font-medium">You reacted</span>
-                </span>
-              )}
             </div>
           )}
 
           {isReplying && !interactionBlocked && (
-            <div className="border-l border-dashed pl-4">
+            <div className="border-l border-dashed pl-4 space-y-2">
               <CommentEditor
                 value={replyDraft}
                 onChange={setReplyDraft}
@@ -1041,6 +1136,16 @@ function CommentCard({
                 minRows={3}
                 placeholder="Write your reply..."
               />
+              <div className="flex items-center gap-2 text-xs">
+                <input type="file" accept="image/*,image/gif" onChange={(e) => {
+                  const f = e.currentTarget.files?.[0]
+                  if (!f) { return }
+                  const reader = new FileReader()
+                  reader.onload = () => setReplyAttachment(String(reader.result))
+                  reader.readAsDataURL(f)
+                }} />
+                {replyAttachment && <span className="text-muted-foreground">1 attachment selected</span>}
+              </div>
             </div>
           )}
 

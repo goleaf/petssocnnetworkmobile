@@ -172,6 +172,9 @@ export function runPetHealthReminderSweep(userId: string) {
               category: "reminders",
               channels: ["in_app", "push"],
               metadata: { petId: pet.id, petName, petAvatar: avatar, medicationId: m.id, medication: m.name },
+              actions: [
+                { id: 'med_mark_given', label: 'Mark as Given', action: 'custom', metadata: { petId: pet.id, medicationId: m.id } },
+              ],
             })
             markSent(key)
           }
@@ -250,4 +253,3 @@ export function runPetHealthReminderSweep(userId: string) {
     }
   }
 }
-

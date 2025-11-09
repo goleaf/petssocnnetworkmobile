@@ -66,3 +66,10 @@
 - [ ] Update translations (multilanguage support)
 - [ ] Run tests and fix errors
 - [ ] Build and verify
+
+# CreatePostButton React ReferenceError
+
+## Priority 0: Immediate Fix
+- [x] Capture error context and stack trace
+- [x] Align component hook usage with React 18 import conventions
+- [ ] Run `npm run build` to confirm resolution

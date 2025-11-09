@@ -44,6 +44,8 @@ interface MediaMeta {
   height?: number
   duration?: number
   quality?: MediaQuality
+  brightness?: number
+  qualityScore?: number
 }
 
 interface MediaGalleryProps {
@@ -204,10 +206,20 @@ export function MediaGallery({
           [index]: { status: "loading" },
         }))
 
-        image.onload = () => {
+        image.onload = async () => {
           if (!isMounted) return
           const width = image.naturalWidth
           const height = image.naturalHeight
+          let brightness: number | undefined
+          let qualityScore: number | undefined
+          try {
+            const mod = await import("@/lib/utils/image-analysis")
+            const res = await mod.analyzeImageQuality(item.url, { width, height })
+            brightness = res.brightness
+            qualityScore = res.score
+          } catch {
+            // ignore analysis errors
+          }
           setMetadata((previous) => ({
             ...previous,
             [index]: {
@@ -215,6 +227,8 @@ export function MediaGallery({
               width,
               height,
               quality: classifyMediaQuality(width, height),
+              brightness,
+              qualityScore,
             },
           }))
         }
@@ -461,6 +475,9 @@ export function MediaGallery({
   }
 
   const [ackFlash, setAckFlash] = useState(false)
+
+  // Note: Quality metadata is collected above. For now, gallery does not
+  // filter items but could do so in the future using mediaSettings.
 
   return (
     <div className={cn("space-y-3", className)}>

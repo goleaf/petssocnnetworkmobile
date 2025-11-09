@@ -151,6 +151,12 @@ export interface DisplayPreferences {
   autoTranslate?: boolean
   primaryLanguage?: string // Target language for auto-translate
   strictLanguageFilter?: boolean // When true, hide posts not in preferred languages
+  // Content filtering (user-level)
+  mutedKeywords?: string[] // Words/phrases to hide completely from feeds
+  // Discovery & ads preferences
+  showExploreContent?: boolean // Show posts from people I don't follow
+  showSponsoredPosts?: boolean // Show promoted/sponsored posts
+  showSuggestedPosts?: boolean // Inject recommended posts into my feed
 }
 
 export interface Pet {
@@ -198,6 +204,12 @@ export interface Pet {
   spayedNeutered?: boolean
   specialNeeds?: string
   dislikes?: string
+  // Collaboration
+  coOwners?: Array<{ userId: string; permissions: { viewHealth?: boolean; editProfile?: boolean; editHealth?: boolean } }>
+  // Medication adherence log: map medicationId -> ISO dates given
+  medicationAdherence?: Record<string, string[]>
+  // Optional weight history for alerts
+  weightHistory?: Array<{ date: string; weight: number }>
   privacy?: PrivacyLevel | PetPrivacySettings
   socialCircle?: PetSocialCircle
   // Structured data support
@@ -324,6 +336,67 @@ export interface BlogPostMedia {
   links: BlogPostMediaLink[]
   // Optional safety metadata for videos by URL
   videoSafety?: Record<string, { flashing?: boolean }>
+  // Optional per-image captions keyed by image URL
+  captions?: Record<string, string>
+  // Optional per-image pet tags (pet IDs) keyed by image URL
+  imageTags?: Record<string, string[]>
+  // Whether viewers may download original images
+  allowDownload?: boolean
+  // Optional video streaming variants (transcoded)
+  videoVariants?: Array<{ src: string; quality: VideoQuality }>
+  // Optional thumbnail/poster for video
+  videoThumbnail?: string
+  // Optional caption tracks for video
+  videoCaptions?: VideoCaptionTrack[]
+}
+
+export type VideoQuality = 'auto' | '480p' | '720p' | '1080p'
+
+export interface VideoCaptionTrack {
+  lang: string
+  label: string
+  // Hosted VTT file
+  srcVtt?: string
+  // Inline VTT content (stored directly)
+  vtt?: string
+}
+
+// Stories (24h ephemeral content)
+export type StoryOverlayType = 'text' | 'sticker' | 'gif' | 'location' | 'poll' | 'question' | 'countdown' | 'drawing'
+
+export interface StoryOverlay {
+  id: string
+  type: StoryOverlayType
+  x?: number // 0..1 relative position
+  y?: number // 0..1 relative position
+  rotation?: number
+  scale?: number
+  // Text overlay fields
+  text?: string
+  color?: string
+  fontSize?: number // px
+  fontFamily?: string
+  // Generic payload for other overlay types
+  data?: any
+}
+
+export interface StoryMedia {
+  type: 'image' | 'video'
+  url: string
+  duration?: number // seconds (images default to 5)
+  aspect?: '9:16' | '16:9' | '4:3'
+}
+
+export interface Story {
+  id: string
+  userId: string
+  petId?: string
+  media: StoryMedia[]
+  overlays?: StoryOverlay[]
+  background?: { color?: string; gradient?: string }
+  createdAt: string
+  expiresAt: string
+  viewers?: string[] // user IDs who viewed
 }
 
 // Poll types for blog posts
@@ -395,6 +468,11 @@ export interface MediaSettings {
   autoPlayVideos: AutoPlayVideosPreference
   autoPlayGifs: boolean
   highQualityUploads: boolean
+  // Viewing filters
+  /** When true, hide low‑resolution and poorly lit photos */
+  highQualityOnlyImages?: boolean
+  /** When true, only show videos that are HD (>=1080p) or higher */
+  videosOnlyHD?: boolean
   cellularDataUsage: CellularDataUsage
   // Accessibility and media preferences
   showCaptions?: boolean
@@ -552,9 +630,42 @@ export interface BlogPost {
   authorInfo?: AuthorInfo // Author page information
   mdxCallouts?: MDXCallout[] // MDX callouts in the content
   sectionPromotions?: BlogSectionPromotion[] // Sections promoted to wiki
+  // Enhancements
+  taggedPetIds?: string[]
+  feeling?: string
+  activity?: string
+  // Advanced visibility
+  visibilityMode?: "public" | "followers" | "friends" | "private" | "custom"
+  allowedUserIds?: string[]
+  // Reposts
+  sharedFromPostId?: string
+  sharedComment?: string
+  // Post types
+  postType?: 'question' | 'event' | 'listing'
+  questionCategory?: 'Training' | 'Health' | 'Behavior' | 'Products' | 'General'
+  bestAnswerCommentId?: string
+  // Event posts
+  eventStartAt?: string // ISO datetime for event start
+  eventDurationMinutes?: number
+  eventTimezone?: string
+  eventAlbumImages?: string[]
+  eventReminder24SentAt?: string
+  eventReminder1hSentAt?: string
+  eventCheckedInUserIds?: string[]
+  // Comments management
+  pinnedCommentId?: string
+  // Marketplace listing fields
+  listingPrice?: number
+  listingCurrency?: string
+  listingCondition?: 'New' | 'Like New' | 'Good' | 'Fair'
+  listingCategory?: 'Toys' | 'Food' | 'Clothing' | 'Accessories' | 'Furniture' | 'Healthcare' | 'Books' | 'Other'
+  listingShipping?: { localPickup?: boolean; shippingAvailable?: boolean }
+  listingPaymentMethods?: string[]
+  listingSoldAt?: string
+  listingArchivedAt?: string
 }
 
-export type ReactionType = "like" | "love" | "laugh" | "wow" | "sad" | "angry"
+export type ReactionType = "like" | "love" | "laugh" | "wow" | "sad" | "angry" | "paw"
 
 export type PostAnalyticsPeriod = 7 | 30 | 90 | "lifetime"
 
@@ -648,6 +759,8 @@ export interface Comment {
   flags?: CommentFlag[]
   moderation?: CommentModeration
   editedBy?: string
+  // Optional single attachment (image/GIF); no videos to keep size reasonable
+  attachmentImageUrl?: string
 }
 
 export interface WikiArticle {
@@ -985,12 +1098,20 @@ export interface NotificationSettings {
 export interface Draft {
   id: string
   userId: string
-  type: "blog" | "wiki"
+  type: "blog" | "wiki" | "feed"
   title: string
   content: string
   metadata?: any
   lastSaved: string
   createdAt: string
+}
+
+// Lightweight client-side view analytics
+export interface ViewEvent {
+  userId: string
+  postId: string
+  viewedAt: string
+  durationMs: number
 }
 
 export interface ScheduledPost {
@@ -1163,6 +1284,7 @@ export interface PostPoll {
   allowMultiple?: boolean
   expiresAt?: string
   isClosed?: boolean
+  anonymous?: boolean
 }
 
 export interface GroupPoll {

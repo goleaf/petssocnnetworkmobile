@@ -89,6 +89,19 @@
 2. Routing fix implementation
 3. Testing
 
+# CreatePostButton React ReferenceError
+
+## Tasks
+
+- [x] Investigate `ReferenceError: React is not defined` surfacing from `components/posts/CreatePostButton`
+- [x] Correct hook imports to use direct React named imports in the component
+- [ ] Validate locally by running `npm run build` to ensure bundler success
+
+## Priority Order
+1. Confirm runtime error details
+2. Implement hook import fix
+3. Run build for regression check
+
 # Global Loading Experience
 
 ## Tasks

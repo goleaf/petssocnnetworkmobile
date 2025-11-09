@@ -3,6 +3,7 @@ import { z } from "zod"
 import { getBlogPosts, getUsers, getPets } from "@/lib/storage"
 import { canViewPost } from "@/lib/utils/privacy"
 import type { BlogPost } from "@/lib/types"
+import { diversifyAndInjectFeed, diversifyPosts } from "@/lib/utils/feed-diversity"
 
 // Request validation schema
 const getFeedSchema = z.object({
@@ -72,25 +73,36 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    // Sort by creation date (newest first)
-    visiblePosts.sort((a, b) => {
-      const dateA = new Date(a.createdAt).getTime()
-      const dateB = new Date(b.createdAt).getTime()
-      return dateB - dateA
+    // Base ordering by recency
+    const recencySorted = [...visiblePosts].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+
+    // Apply diversity constraints for both scopes
+    const diversifiedBase = diversifyPosts(recencySorted, {
+      windowSize: 10,
+      maxPerAuthorInWindow: 3,
+      maxSameTypeRun: 3,
     })
 
-    // Apply cursor-based pagination
-    let paginatedPosts = visiblePosts
+    // Inject discovery slots (outside follow network) only for "all" scope
+    const withDiscovery = scope === "all"
+      ? diversifyAndInjectFeed(diversifiedBase, recencySorted, viewer, allUsers, allPets, [5, 15, 30, 50], {
+          windowSize: 10,
+          maxPerAuthorInWindow: 3,
+          maxSameTypeRun: 3,
+        })
+      : diversifiedBase
+
+    // Apply cursor-based pagination after diversification/injection
+    let finalList = withDiscovery
     if (afterCursor) {
-      const cursorIndex = paginatedPosts.findIndex((p) => p.id === afterCursor)
+      const cursorIndex = finalList.findIndex((p) => p.id === afterCursor)
       if (cursorIndex !== -1) {
-        paginatedPosts = paginatedPosts.slice(cursorIndex + 1)
+        finalList = finalList.slice(cursorIndex + 1)
       }
     }
 
-    // Apply limit
-    const posts = paginatedPosts.slice(0, limit)
-    const nextCursor = posts.length > 0 && paginatedPosts.length > limit ? posts[posts.length - 1].id : null
+    const posts = finalList.slice(0, limit)
+    const nextCursor = posts.length > 0 && finalList.length > limit ? posts[posts.length - 1].id : null
 
     // Enrich posts with author and pet info (for client-side use)
     const enrichedPosts = posts.map((post) => {

@@ -12,10 +12,19 @@ import {
   getBlogPosts,
   getPetById,
   getUserById,
+  getUsers,
   getCommentsByPostId,
   areUsersBlocked,
   updateBlogPost,
+  getPlaceById,
+  getEventRSVPsByEventId,
+  getUserEventRSVP,
+  addEventRSVP,
+  updateEventRSVP,
+  generateStorageId,
+  createConversation,
 } from "@/lib/storage"
+import { createNotification } from "@/lib/notifications"
 import { cacheArticle, getCachedArticle, trackOfflineRead } from "@/lib/offline-cache"
 import { useOfflineSync } from "@/lib/hooks/use-offline-sync"
 import { useAuth } from "@/lib/auth"
@@ -59,6 +68,103 @@ export default function BlogPostPage({ params }: { params: Promise<{ id: string 
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false)
   const [accessDenied, setAccessDenied] = useState(false)
   const [relatedWikiArticles, setRelatedWikiArticles] = useState<any[]>([])
+  const isEvent = Boolean(post?.postType === 'event')
+  const isListing = Boolean(post?.postType === 'listing')
+  const listingSold = Boolean(post?.listingSoldAt)
+  const listingArchived = Boolean(post?.listingArchivedAt)
+  const [rsvpStatus, setRsvpStatus] = useState<('going'|'maybe'|'not-going'|null)>(() => {
+    if (!post || !isEvent || !currentUser) return null
+    const mine = getUserEventRSVP(post.id, currentUser.id)
+    return (mine?.status as any) || null
+  })
+  const [rsvpCounts, setRsvpCounts] = useState<{going:number; maybe:number; notGoing:number}>(() => {
+    if (!post || !isEvent) return { going: 0, maybe: 0, notGoing: 0 }
+    const list = getEventRSVPsByEventId(post.id)
+    return {
+      going: list.filter(r => r.status === 'going').length,
+      maybe: list.filter(r => r.status === 'maybe').length,
+      notGoing: list.filter(r => r.status === 'not-going').length,
+    }
+  })
+  const refreshRsvps = () => {
+    if (!post || !isEvent) return
+    const list = getEventRSVPsByEventId(post.id)
+    setRsvpCounts({
+      going: list.filter(r => r.status === 'going').length,
+      maybe: list.filter(r => r.status === 'maybe').length,
+      notGoing: list.filter(r => r.status === 'not-going').length,
+    })
+    if (currentUser) {
+      const mine = getUserEventRSVP(post.id, currentUser.id)
+      setRsvpStatus((mine?.status as any) || null)
+    }
+  }
+  const setRSVP = (status: 'going'|'maybe'|'not-going') => {
+    if (!post || !currentUser) return
+    const existing = getUserEventRSVP(post.id, currentUser.id)
+    const now = new Date().toISOString()
+    if (existing) {
+      updateEventRSVP(existing.eventId, existing.userId, { status, respondedAt: now })
+    } else {
+      addEventRSVP({ id: generateStorageId('event_rsvp'), eventId: post.id, userId: currentUser.id, status, respondedAt: now })
+    }
+    refreshRsvps()
+  }
+  const inviteMutuals = () => {
+    if (!post || !currentUser) return
+    const following = new Set(currentUser.following || [])
+    const mutuals = (currentUser.followers || []).filter(uid => following.has(uid))
+    for (const uid of mutuals) {
+      createNotification({
+        userId: uid,
+        type: 'message',
+        actorId: currentUser.id,
+        targetId: post.id,
+        targetType: 'post',
+        message: `${currentUser.fullName} invited you to: ${post.title}`,
+        category: 'reminders',
+      })
+    }
+  }
+  const canCheckIn = (() => {
+    if (!post || !isEvent) return false
+    const start = post.eventStartAt ? new Date(post.eventStartAt) : null
+    const end = (start && post.eventDurationMinutes) ? new Date(start.getTime() + post.eventDurationMinutes * 60000) : null
+    const now = new Date()
+    if (!start) return false
+    const windowStart = new Date(start.getTime() - 30*60000)
+    const windowEnd = new Date((end ?? new Date(start.getTime() + 2*60*60000)).getTime() + 60*60000)
+    return now >= windowStart && now <= windowEnd
+  })()
+  const hasCheckedIn = Boolean(post?.eventCheckedInUserIds?.includes(currentUser?.id || ''))
+  const checkIn = () => {
+    if (!post || !currentUser) return
+    const ids = new Set(post.eventCheckedInUserIds || [])
+    ids.add(currentUser.id)
+    updateBlogPost({ ...post, eventCheckedInUserIds: Array.from(ids) })
+    setPost(getBlogPostById(post.id))
+  }
+  const addAlbumPhotoUrl = () => {
+    if (!post || !currentUser) return
+    const url = window.prompt('Paste image URL to add to event album:')
+    if (!url) return
+    const list = Array.isArray(post.eventAlbumImages) ? [...post.eventAlbumImages] : []
+    list.push(url)
+    updateBlogPost({ ...post, eventAlbumImages: list })
+    setPost(getBlogPostById(post.id))
+  }
+  const messageSeller = () => {
+    if (!post || !currentUser) return
+    try {
+      const conv = createConversation([currentUser.id, post.authorId])
+      window.alert('Conversation created. Check your Messages to continue.')
+    } catch {}
+  }
+  const markAsSold = () => {
+    if (!post || !currentUser || post.authorId !== currentUser.id) return
+    updateBlogPost({ ...post, listingSoldAt: new Date().toISOString() })
+    setPost(getBlogPostById(post.id))
+  }
 
   useEffect(() => {
     async function loadPost() {
@@ -232,6 +338,30 @@ export default function BlogPostPage({ params }: { params: Promise<{ id: string 
             </div>
           </div>
           <h1 className="text-4xl font-bold leading-tight">{post.title}</h1>
+          {post.postType === 'question' && (
+            <div className="flex items-center gap-2">
+              <Badge variant="outline">Question</Badge>
+              {post.questionCategory && (
+                <Badge variant="secondary">{post.questionCategory}</Badge>
+              )}
+            </div>
+          )}
+          {post.postType === 'event' && (
+            <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+              <Badge variant="outline">Event</Badge>
+              {(() => {
+                const start = post.eventStartAt ? new Date(post.eventStartAt) : null
+                const when = start ? `${start.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}${post.eventTimezone ? ` (${post.eventTimezone})` : ''}` : ''
+                const placeName = post.placeId ? getPlaceById(post.placeId)?.name : undefined
+                return (
+                  <>
+                    {when && <span>{when}</span>}
+                    {placeName && (<span>• at {placeName}</span>)}
+                  </>
+                )
+              })()}
+            </div>
+          )}
           <div className="flex flex-wrap gap-2">
             {post.categories?.length
               ? post.categories.map((category) => {
@@ -351,9 +481,100 @@ export default function BlogPostPage({ params }: { params: Promise<{ id: string 
           </div>
         </CardHeader>
         <CardContent className="px-6 pb-6 space-y-6">
+          {post.postType === 'event' && (
+            <div className="rounded-md border p-4 bg-accent/20">
+              <div className="flex flex-wrap items-center gap-2 text-sm">
+                {(() => {
+                  const start = post.eventStartAt ? new Date(post.eventStartAt) : null
+                  const end = (start && post.eventDurationMinutes) ? new Date(start.getTime() + post.eventDurationMinutes*60000) : null
+                  return (
+                    <>
+                      {start && (<span>{start.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}{post.eventTimezone ? ` (${post.eventTimezone})` : ''}</span>)}
+                      {end && (<span>• Ends {end.toLocaleTimeString(undefined, { timeStyle: 'short' })}</span>)}
+                      {post.placeId && (<span>• at {getPlaceById(post.placeId)?.name}</span>)}
+                    </>
+                  )
+                })()}
+              </div>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <Button size="sm" variant={rsvpStatus === 'going' ? 'default' : 'outline'} onClick={() => setRSVP('going')}>Going ({rsvpCounts.going})</Button>
+                <Button size="sm" variant={rsvpStatus === 'maybe' ? 'default' : 'outline'} onClick={() => setRSVP('maybe')}>Interested ({rsvpCounts.maybe})</Button>
+                <Button size="sm" variant={rsvpStatus === 'not-going' ? 'default' : 'outline'} onClick={() => setRSVP('not-going')}>Can't Go ({rsvpCounts.notGoing})</Button>
+                <Button size="sm" variant="ghost" onClick={inviteMutuals}>Invite Friends</Button>
+                {currentUser && canCheckIn && !hasCheckedIn && (
+                  <Button size="sm" onClick={checkIn}>Check In</Button>
+                )}
+              </div>
+              <div className="mt-3 flex -space-x-2">
+                {(() => {
+                  const list = getEventRSVPsByEventId(post.id).filter(r => r.status === 'going').slice(0, 14)
+                  return list.map((r) => {
+                    const u = getUsers().find(x => x.id === r.userId)
+                    return (
+                      <Avatar key={r.userId} className="h-8 w-8 ring-2 ring-background">
+                        <AvatarImage src={u?.avatar || '/placeholder.svg'} />
+                        <AvatarFallback>{u?.fullName?.charAt(0) || '?'}</AvatarFallback>
+                      </Avatar>
+                    )
+                  })
+                })()}
+              </div>
+              {hasCheckedIn && (
+                <div className="mt-3">
+                  <Button size="sm" variant="outline" onClick={addAlbumPhotoUrl}>Add Photo to Event Album</Button>
+                </div>
+              )}
+            </div>
+          )}
+          {post.postType === 'listing' && (
+            <div className={"rounded-md border p-4 " + (listingArchived ? 'opacity-60 ' : '') + (listingSold ? 'opacity-70 ' : '')}>
+              <div className="flex flex-wrap items-center gap-2 text-sm">
+                <Badge variant="outline">Listing</Badge>
+                {post.listingCategory && <Badge variant="secondary">{post.listingCategory}</Badge>}
+                {typeof post.listingPrice === 'number' && (
+                  <span className="font-medium">{post.listingCurrency || 'USD'} {post.listingPrice.toFixed(2)}</span>
+                )}
+                {post.listingCondition && (
+                  <span className="text-xs text-muted-foreground">• {post.listingCondition}</span>
+                )}
+                {post.placeId && (
+                  <span className="text-xs text-muted-foreground">• {getPlaceById(post.placeId)?.name}</span>
+                )}
+                {listingSold && <Badge variant="destructive">SOLD</Badge>}
+                {listingArchived && <Badge variant="outline">Archived</Badge>}
+              </div>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <div className="text-xs text-muted-foreground">
+                  {post.listingShipping?.localPickup ? 'Local pickup' : ''}{post.listingShipping?.localPickup && post.listingShipping?.shippingAvailable ? ' • ' : ''}{post.listingShipping?.shippingAvailable ? 'Shipping available' : ''}
+                </div>
+                {post.listingPaymentMethods && post.listingPaymentMethods.length > 0 && (
+                  <div className="text-xs text-muted-foreground">• Accepts: {post.listingPaymentMethods.join(', ')}</div>
+                )}
+                <div className="ml-auto flex gap-2">
+                  <Button size="sm" variant="outline" onClick={messageSeller}>Message Seller</Button>
+                  {currentUser && currentUser.id === post.authorId && !listingSold && (
+                    <Button size="sm" onClick={markAsSold}>Mark as Sold</Button>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
           <div className="prose prose-lg max-w-none">
             <PostContent content={post.content} post={post} className="text-foreground leading-relaxed" />
           </div>
+
+          {post.postType === 'event' && post.eventAlbumImages && post.eventAlbumImages.length > 0 && (
+            <div className="not-prose">
+              <h3 className="text-lg font-semibold mb-2">Event Album</h3>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                {post.eventAlbumImages.map((url, idx) => (
+                  <div key={idx} className="aspect-square overflow-hidden rounded-md border bg-background">
+                    <img src={url} alt={`Event photo ${idx+1}`} className="h-full w-full object-cover" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {(galleryMedia.images.length > 0 || galleryMedia.videos.length > 0) && (
             <div className="not-prose">
@@ -472,13 +693,13 @@ export default function BlogPostPage({ params }: { params: Promise<{ id: string 
         </Card>
       )}
 
-      {/* Comments Section */}
+      {/* Comments/Answers Section */}
       <Card className="mt-6 border-2">
         <CardHeader className="border-b pb-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-bold">Comments</h2>
+            <h2 className="text-2xl font-bold">{post.postType === 'question' ? 'Answers' : 'Comments'}</h2>
             <Badge variant="secondary" className="text-sm">
-              {totalCommentsCount} {totalCommentsCount === 1 ? "Comment" : "Comments"}
+              {totalCommentsCount} {totalCommentsCount === 1 ? (post.postType === 'question' ? 'Answer' : 'Comment') : (post.postType === 'question' ? 'Answers' : 'Comments')}
             </Badge>
           </div>
         </CardHeader>
@@ -488,6 +709,8 @@ export default function BlogPostPage({ params }: { params: Promise<{ id: string 
             header={null}
             emptyStateMessage="No comments yet. Be the first to comment!"
             onCountChange={setCommentCount}
+            reactionsMode="simple"
+            maxDepth={3}
           />
         </CardContent>
       </Card>

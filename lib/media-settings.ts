@@ -22,6 +22,9 @@ export function createDefaultMediaSettings(userId: string): MediaSettings {
     autoPlayGifs: true,
     // Default to high quality so existing uploads remain unchanged
     highQualityUploads: true,
+    // Viewing filters default off
+    highQualityOnlyImages: false,
+    videosOnlyHD: false,
     // Reasonable default that still loads media on cellular
     cellularDataUsage: "reduced",
     // Accessibility defaults
@@ -53,6 +56,8 @@ function normalizeSettings(settings: MediaSettings): MediaSettings {
   if (typeof copy.showCaptions !== "boolean") copy.showCaptions = true
   if (typeof copy.audioDescriptions !== "boolean") copy.audioDescriptions = false
   if (typeof copy.flashWarnings !== "boolean") copy.flashWarnings = true
+  if (typeof copy.highQualityOnlyImages !== "boolean") copy.highQualityOnlyImages = false
+  if (typeof copy.videosOnlyHD !== "boolean") copy.videosOnlyHD = false
   return copy
 }
 

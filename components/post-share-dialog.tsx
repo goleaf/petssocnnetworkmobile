@@ -3,7 +3,9 @@
 import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import type { BlogPost } from "@/lib/types"
-import { getPetById, getUserById } from "@/lib/storage"
+import { getPetById, getUserById, getPetsByOwnerId, addBlogPost } from "@/lib/storage"
+import { useAuth } from "@/lib/auth"
+import { createPostSharedNotification } from "@/lib/notifications"
 import { formatDate } from "@/lib/utils/date"
 import {
   Dialog,
@@ -58,9 +60,11 @@ function copyText(value: string, onSuccess: () => void, onError: (error: unknown
 }
 
 export function PostShareDialog({ post, open, onOpenChange }: PostShareDialogProps) {
+  const { user } = useAuth()
   const [origin, setOrigin] = useState("")
   const [copyState, setCopyState] = useState<CopyState>("idle")
   const [copyError, setCopyError] = useState<string | null>(null)
+  const [comment, setComment] = useState("")
 
   useEffect(() => {
     if (!open) {
@@ -126,6 +130,60 @@ export function PostShareDialog({ post, open, onOpenChange }: PostShareDialogPro
     }
   }
 
+  const handleShareNow = () => {
+    if (!user || !post) return
+    const pets = getPetsByOwnerId(user.id)
+    const petId = pets[0]?.id || post.petId
+    const now = new Date().toISOString()
+    const repost: BlogPost = {
+      id: String(Date.now()),
+      petId,
+      authorId: user.id,
+      title: post.title || 'Shared a post',
+      content: comment || '',
+      tags: [],
+      categories: [],
+      likes: [],
+      createdAt: now,
+      updatedAt: now,
+      privacy: user.privacy?.posts || 'public',
+      hashtags: [],
+      media: { images: [], videos: [], links: [] },
+      sharedFromPostId: post.id,
+      sharedComment: comment || undefined,
+    }
+    addBlogPost(repost)
+    // Notify original author
+    try { createPostSharedNotification(user.id, post.authorId, user.fullName, post.id) } catch {}
+    setComment("")
+    onOpenChange(false)
+  }
+
+  const handleSendDM = () => {
+    if (!postUrl) return
+    copyText(postUrl, () => setCopyState('link'), () => {})
+  }
+
+  const handleShareStory = () => {
+    if (!user || !post) return
+    const now = new Date()
+    const story: import("@/lib/types").Story = {
+      id: `story_${Date.now()}_${Math.random().toString(16).slice(2)}`,
+      userId: user.id,
+      media: post.media?.images?.[0]
+        ? [{ type: 'image', url: post.media!.images[0], duration: 5, aspect: '9:16' }]
+        : [{ type: 'image', url: `${origin}/placeholder.svg`, duration: 5, aspect: '9:16' }],
+      overlays: comment ? [{ id: 'text1', type: 'text', text: comment, color: '#fff', fontSize: 22, x: 0.5, y: 0.9 }] : [],
+      background: !post.media?.images?.length ? { gradient: 'linear-gradient(135deg,#f093fb 0%,#f5576c 100%)' } : undefined,
+      createdAt: now.toISOString(),
+      expiresAt: new Date(now.getTime() + 24*60*60*1000).toISOString(),
+      viewers: [],
+    }
+    try { const { addStory } = require('@/lib/storage'); addStory(story) } catch {}
+    setComment("")
+    onOpenChange(false)
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-xl">
@@ -158,6 +216,17 @@ export function PostShareDialog({ post, open, onOpenChange }: PostShareDialogPro
                     Native share
                   </Button>
                 </div>
+                {/* Share actions */}
+                {user && (
+                  <div className="space-y-2">
+                    <Textarea placeholder="Add a comment (optional)" value={comment} onChange={(e) => setComment(e.target.value)} rows={2} />
+                    <div className="flex flex-wrap gap-2">
+                      <Button size="sm" onClick={handleShareNow}>Share Now</Button>
+                      <Button size="sm" variant="outline" onClick={handleShareStory}>Share to Story</Button>
+                      <Button size="sm" variant="outline" onClick={handleSendDM}>Send in Message</Button>
+                    </div>
+                  </div>
+                )}
                 <div>
                   <p className="font-medium text-sm mb-1 line-clamp-2">{post.title}</p>
                   <p className="text-sm text-muted-foreground line-clamp-3">{post.content}</p>

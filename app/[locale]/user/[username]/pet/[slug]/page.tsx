@@ -16,6 +16,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox"
 import { uploadImageWithProgress } from "@/lib/utils/upload-signed"
 import { getPetByUsernameAndSlug, getUserById, getBlogPosts, togglePetFollow, getUsers, getPets, getWikiArticles, updatePet } from "@/lib/storage"
+import { getPetByUsernameAndSlugForViewer } from "@/lib/pet-health-storage"
+import { createShareInvite, grantTemporaryAccess, getInvite, redeemShareInvite, acceptCoOwnerInvite } from "@/lib/pet-sharing"
 import type { PrivacyLevel } from "@/lib/types"
 import { useAuth } from "@/lib/auth"
 import {
@@ -60,6 +62,7 @@ import { addComment, getCommentsByPetPhotoId, toggleCommentReaction } from "@/li
 import type { Comment, ReactionType } from "@/lib/types"
 import { toggleTimelineReaction, getTimelineReactions } from "@/lib/storage"
 import { canViewPet, canInteractWithPet, canViewPost } from "@/lib/utils/privacy"
+import { markMedicationDoseGivenToday, getMedicationAdherenceCountThisMonth } from "@/lib/pet-medication"
 import { PetBreedSummary } from "@/components/pet-breed-summary"
 import { PetCareChecklist } from "@/components/pet-care-checklist"
 import { PetFavorites } from "@/components/pet/pet-favorites"
@@ -122,6 +125,33 @@ export default function PetProfilePage({ params }: { params: Promise<{ username:
       } else {
         setFriends([])
       }
+
+      // Handle access token in URL for share links
+      try {
+        const params = new URLSearchParams(window.location.search)
+        const accessToken = params.get('access') || params.get('invite')
+        if (accessToken) {
+          const invite = getInvite(accessToken)
+          if (invite && invite.petId === fetchedPet.id) {
+            // Grant temporary access for viewing health data
+            if (invite.permissions?.viewHealth) {
+              grantTemporaryAccess(fetchedPet.id)
+            }
+          }
+        }
+      } catch {}
+
+      // Refresh with decrypted view for authorized viewer or temporary access
+      const accessGranted = (() => {
+        try {
+          const params = new URLSearchParams(window.location.search)
+          return params.has('access') || params.has('invite')
+        } catch { return false }
+      })()
+      const grantSet = accessGranted ? new Set<string>([fetchedPet.id]) : new Set<string>()
+      getPetByUsernameAndSlugForViewer(username, slug, currentUser?.id ?? null, grantSet).then((decrypted) => {
+        if (decrypted) setPet(decrypted)
+      })
     } else {
       setOwner(null)
       setPosts([])
@@ -238,6 +268,33 @@ export default function PetProfilePage({ params }: { params: Promise<{ username:
       </div>
     )
   }
+
+  // Owner-only share controls
+  const isOwner = viewerId === owner.id
+  const [shareOpen, setShareOpen] = useState(false)
+  const [shareViewHealth, setShareViewHealth] = useState(true)
+  const [shareCoOwner, setShareCoOwner] = useState(false)
+  const [shareLink, setShareLink] = useState<string>("")
+
+  const generateShare = () => {
+    const invite = createShareInvite(pet.id, owner.id, { viewHealth: shareViewHealth, coOwner: shareCoOwner })
+    const url = `${window.location.origin}${window.location.pathname}?access=${encodeURIComponent(invite.token)}`
+    setShareLink(url)
+  }
+
+  // Accept co-owner if visiting with invite and logged in
+  const [coOwnerOffer, setCoOwnerOffer] = useState<{ token: string; label: string } | null>(null)
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search)
+      const token = params.get('invite') || params.get('access')
+      if (!token || !pet) return
+      const inv = getInvite(token)
+      if (inv && inv.petId === pet.id && inv.permissions?.coOwner && currentUser && currentUser.id !== owner.id) {
+        setCoOwnerOffer({ token, label: 'Accept Co-owner Invitation' })
+      }
+    } catch {}
+  }, [pet?.id, currentUser?.id])
 
   const isOwner = currentUser?.id === pet.ownerId
   const privacyLabelMap: Record<PrivacyLevel, string> = {
@@ -539,6 +596,34 @@ export default function PetProfilePage({ params }: { params: Promise<{ username:
                 }}>
                   <Share2 className="h-4 w-4 mr-2" /> Share Profile
                 </Button>
+                {isOwner && (
+                  <>
+                    <Button type="button" variant="secondary" data-testid="secure-share-button" onClick={() => setShareOpen(true)}>
+                      <Share2 className="h-4 w-4 mr-2" /> Secure Share
+                    </Button>
+                    <Dialog open={shareOpen} onOpenChange={setShareOpen}>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Generate Secure Share Link</DialogTitle>
+                          <DialogDescription>Choose what the recipient can access</DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-3">
+                          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={shareViewHealth} onChange={(e) => setShareViewHealth(e.target.checked)} /> Allow viewing health data</label>
+                          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={shareCoOwner} onChange={(e) => setShareCoOwner(e.target.checked)} /> Invite as co-owner (can edit)</label>
+                          <div className="flex items-center gap-2">
+                            <Button onClick={generateShare} data-testid="generate-share-link">Generate Link</Button>
+                            {shareLink && (
+                              <>
+                                <input className="flex-1 border rounded px-2 py-1 text-xs" value={shareLink} readOnly data-testid="share-link" />
+                                <Button variant="outline" onClick={() => navigator.clipboard?.writeText(shareLink)} data-testid="copy-share-link">Copy</Button>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
+                  </>
+                )}
                 {isOwner ? (
                   <Link href={`/user/${owner.username}/pet/${slug}/edit`}>
                     <EditButton>Edit Profile</EditButton>
@@ -561,6 +646,31 @@ export default function PetProfilePage({ params }: { params: Promise<{ username:
           </div>
         </div>
       </section>
+
+      {coOwnerOffer && currentUser && (
+        <div className="container mx-auto px-4 mt-4">
+          <Card className="border-amber-300">
+            <CardHeader>
+              <CardTitle className="text-base">Co-owner invitation</CardTitle>
+              <CardDescription>You have been invited to co-own this pet. Accept to edit and manage health data.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-2">
+                <Button data-testid="accept-coowner" onClick={() => {
+                  if (!coOwnerOffer || !currentUser) return
+                  const inv = redeemShareInvite(coOwnerOffer.token, currentUser.id)
+                  if (inv) {
+                    acceptCoOwnerInvite(pet.id, currentUser.id, inv.permissions)
+                    setCoOwnerOffer(null)
+                    loadPetData()
+                  }
+                }}>Accept</Button>
+                <Button variant="outline" onClick={() => setCoOwnerOffer(null)}>Dismiss</Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Profile Stats Bar */}
       <section className="mt-4">
@@ -1339,6 +1449,16 @@ export default function PetProfilePage({ params }: { params: Promise<{ username:
                           {medication.endDate && ` • Ended: ${formatDate(medication.endDate)}`}
                         </p>
                         {medication.notes && <p className="text-sm mt-2">{medication.notes}</p>}
+                        {viewerId === owner.id && !medication.endDate && (
+                          <div className="mt-2 flex items-center gap-2">
+                            <Button size="sm" variant="secondary" data-testid={`mark-given-${medication.id}`} onClick={() => {
+                              markMedicationDoseGivenToday(pet.id, medication.id)
+                              // Refresh
+                              loadPetData()
+                            }}>Mark Given Today</Button>
+                            <span className="text-xs text-muted-foreground">This month: {getMedicationAdherenceCountThisMonth(pet, medication.id)}</span>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>

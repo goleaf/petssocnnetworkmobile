@@ -30,6 +30,7 @@ export function PostContent({ content, post, className }: PostContentProps) {
   const [isTranslating, setIsTranslating] = React.useState(false)
   const [translated, setTranslated] = React.useState<string | null>(null)
   const [showOriginal, setShowOriginal] = React.useState<boolean>(true)
+  const [expanded, setExpanded] = React.useState<boolean>(false)
 
   React.useEffect(() => {
     if (prefs?.autoTranslate && showTranslateControls && !translated) {
@@ -70,15 +71,126 @@ export function PostContent({ content, post, className }: PostContentProps) {
     )
   }
 
-  // Otherwise, process wiki links for plain text content
-  const segments = React.useMemo(() => {
-    if (!isWikiLinkingEnabled || !content) {
-      return [{ type: "text" as const, content }]
-    }
-    return processWikiLinks(content)
-  }, [content, isWikiLinkingEnabled])
+  // Tokenization utilities for links/mentions/hashtags with linebreaks preserved
+  type Token =
+    | { t: "text"; v: string }
+    | { t: "br" }
+    | { t: "url"; v: string }
+    | { t: "mention"; v: string }
+    | { t: "hashtag"; v: string }
 
-  // Render segments (with optional translation controls)
+  const URL_RE = /((?:https?:\/\/|www\.)[^\s<]+)(?![^<]*>)/gi
+  const MENTION_RE = /@([A-Za-z0-9_.-]+)/g
+  const HASHTAG_RE = /#([A-Za-z0-9_]+)/g
+
+  function tokenizeText(input: string): Token[] {
+    if (!input) return []
+    const tokens: Token[] = []
+    const parts = input.split(/\n/)
+    parts.forEach((line, lineIndex) => {
+      if (line.length === 0) {
+        // Empty line still creates a break
+        if (lineIndex > 0) tokens.push({ t: "br" })
+        return
+      }
+      let cursor = 0
+      const combined = new RegExp(`${URL_RE.source}|${MENTION_RE.source}|${HASHTAG_RE.source}`, "gi")
+      let match: RegExpExecArray | null
+      while ((match = combined.exec(line)) !== null) {
+        const start = match.index
+        if (start > cursor) {
+          tokens.push({ t: "text", v: line.slice(cursor, start) })
+        }
+        const full = match[0]
+        const urlCandidate = match[1]
+        const mention = match[2]
+        const hashtag = match[3]
+        if (urlCandidate) {
+          tokens.push({ t: "url", v: urlCandidate })
+        } else if (mention) {
+          tokens.push({ t: "mention", v: mention })
+        } else if (hashtag) {
+          tokens.push({ t: "hashtag", v: hashtag })
+        } else {
+          tokens.push({ t: "text", v: full })
+        }
+        cursor = start + full.length
+      }
+      if (cursor < line.length) {
+        tokens.push({ t: "text", v: line.slice(cursor) })
+      }
+      if (lineIndex < parts.length - 1) tokens.push({ t: "br" })
+    })
+    return tokens
+  }
+
+  function truncateTokens(tokens: Token[], charLimit = 280, maxLineBreaks = 4): { tokens: Token[]; truncated: boolean } {
+    let chars = 0
+    let lineBreaks = 0
+    const out: Token[] = []
+    let truncated = false
+    for (const tok of tokens) {
+      if (tok.t === "br") {
+        lineBreaks += 1
+        if (lineBreaks >= maxLineBreaks) {
+          truncated = true
+          break
+        }
+        out.push(tok)
+        continue
+      }
+      const textLen = tok.t === "text" || tok.t === "url" || tok.t === "mention" || tok.t === "hashtag" ? tok.v.length : 0
+      if (chars + textLen > charLimit) {
+        // Slice only plain text; for special tokens, stop before adding
+        if (tok.t === "text") {
+          const remain = Math.max(0, charLimit - chars)
+          if (remain > 0) out.push({ t: "text", v: tok.v.slice(0, remain) })
+        }
+        truncated = true
+        break
+      }
+      out.push(tok)
+      chars += textLen
+    }
+    return { tokens: out, truncated }
+  }
+
+  function renderTokens(tokens: Token[]): React.ReactNode {
+    return tokens.map((tok, i) => {
+      switch (tok.t) {
+        case "br":
+          return <br key={`br-${i}`} />
+        case "text":
+          return <React.Fragment key={`t-${i}`}>{tok.v}</React.Fragment>
+        case "url": {
+          const href = tok.v.startsWith("http") ? tok.v : `https://${tok.v}`
+          return (
+            <a key={`u-${i}`} href={href} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline break-words">
+              {tok.v}
+            </a>
+          )
+        }
+        case "mention":
+          return (
+            <a key={`m-${i}`} href={`/profile/${encodeURIComponent(tok.v)}`} className="text-primary hover:underline">
+              @{tok.v}
+            </a>
+          )
+        case "hashtag":
+          return (
+            <a
+              key={`h-${i}`}
+              href={`/search?q=${encodeURIComponent(`#${tok.v}`)}&tab=blogs`}
+              className="text-primary hover:underline"
+            >
+              #{tok.v}
+            </a>
+          )
+      }
+    })
+  }
+
+  // Render segments with optional translation and expandable truncation
   return (
     <div className={className}>
       {showTranslateControls && (
@@ -95,25 +207,74 @@ export function PostContent({ content, post, className }: PostContentProps) {
           )}
         </div>
       )}
-      {translated && !showOriginal && (
-        <div className="whitespace-pre-wrap">
-          {translated}
-        </div>
-      )}
-      {(!translated || showOriginal) && (
-        <>
-          {segments.map((segment, index) => {
-            if (segment.type === "link" && segment.article) {
-              return (
-                <WikiLink key={index} article={segment.article}>
-                  {segment.content}
-                </WikiLink>
-              )
+      {(() => {
+        const active = translated && !showOriginal ? translated : content
+        // For originals, apply wiki-link processing before tokenization; translations skip wiki linking.
+        const baseSegments = (!translated || showOriginal)
+          ? (isWikiLinkingEnabled && active
+              ? processWikiLinks(active)
+              : [{ type: "text" as const, content: active }])
+          : [{ type: "text" as const, content: active }]
+
+        // Flatten segments into tokens
+        const tokens: Token[] = []
+        baseSegments.forEach((seg, idx) => {
+          if ((seg as any).type === "link" && (seg as any).article) {
+            // Keep wiki links intact as a single text token; we'll render as WikiLink later
+            tokens.push({ t: "text", v: `[[${(seg as any).content}]]` })
+          } else {
+            tokens.push(...tokenizeText((seg as any).content))
+          }
+          // Preserve segment boundaries without forcing breaks
+        })
+
+        // Determine truncation
+        const { tokens: clipped, truncated } = truncateTokens(tokens)
+        const shouldTruncate = !expanded && truncated
+
+        // Render function that re-inserts wiki links if present
+        function renderWithWiki(ts: Token[]): React.ReactNode {
+          // Replace the placeholder wiki tokens back to <WikiLink/>
+          const out: React.ReactNode[] = []
+          ts.forEach((t, i) => {
+            if (t.t === "text" && /\[\[[^\]]+\]\]/.test(t.v)) {
+              const parts = t.v.split(/(\[\[[^\]]+\]\])/)
+              parts.forEach((p, j) => {
+                const m = p.match(/^\[\[([^\]]+)\]\]$/)
+                if (m) {
+                  const label = m[1]
+                  out.push(
+                    <WikiLink key={`wk-${i}-${j}`} article={label}>
+                      {label}
+                    </WikiLink>
+                  )
+                } else if (p) {
+                  out.push(<React.Fragment key={`wkf-${i}-${j}`}>{p}</React.Fragment>)
+                }
+              })
+            } else {
+              out.push(renderTokens([t]) as any)
             }
-            return <React.Fragment key={index}>{segment.content}</React.Fragment>
-          })}
-        </>
-      )}
+          })
+          return out
+        }
+
+        return (
+          <div className="whitespace-pre-wrap">
+            {shouldTruncate ? (
+              <>
+                {renderWithWiki(clipped)}
+                <span>… </span>
+                <button type="button" className="text-primary hover:underline" onClick={() => setExpanded(true)}>
+                  Read more
+                </button>
+              </>
+            ) : (
+              renderWithWiki(tokens)
+            )}
+          </div>
+        )
+      })()}
       {callouts.length > 0 && <MDXCalloutsRenderer callouts={callouts} />}
     </div>
   )

@@ -55,7 +55,13 @@ export function canUserModerate(user: User | null | undefined): boolean {
 
 export function canUserEditComment(comment: Comment, user: User | null | undefined): boolean {
   if (!user) return false
-  return comment.userId === user.id || canUserModerate(user)
+  if (canUserModerate(user)) return true
+  if (comment.userId !== user.id) return false
+  // Allow editing own comment within 5 minutes of posting
+  const created = new Date(comment.createdAt).getTime()
+  const now = Date.now()
+  const withinFiveMinutes = now - created < 5 * 60 * 1000
+  return withinFiveMinutes
 }
 
 export function canUserDeleteComment(comment: Comment, user: User | null | undefined): boolean {

@@ -6,7 +6,10 @@ import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { BackButton } from "@/components/ui/back-button"
 import { PetForm, type PetFormData } from "@/components/pet-form"
-import { getPetByUsernameAndSlug, updatePet, generatePetSlug, getUsers } from "@/lib/storage"
+import { getPetByUsernameAndSlug } from "@/lib/storage"
+import { updatePetEncrypted, getPetByUsernameAndSlugForViewer } from "@/lib/pet-health-storage"
+import { generatePetSlug, getUsers } from "@/lib/storage"
+import type { Pet } from "@/lib/types"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { Save } from "lucide-react"
 import { getPetUrlFromPet } from "@/lib/utils/pet-url"
@@ -30,8 +33,10 @@ export default function EditPetPage({ params }: { params: Promise<{ username: st
       return
     }
 
-    // Check if user owns the pet
-    if (fetchedPet.ownerId !== user.id) {
+    // Check if user owns the pet or is a co-owner with edit permission
+    const isOwner = fetchedPet.ownerId === user.id
+    const canCoOwnerEdit = Array.isArray(fetchedPet.coOwners) && fetchedPet.coOwners.some((c: any) => c.userId === user.id && (c.permissions?.editProfile || c.permissions?.editHealth))
+    if (!isOwner && !canCoOwnerEdit) {
       const owner = getUsers().find((u) => u.id === fetchedPet.ownerId)
       if (owner) {
         const petUrl = getPetUrlFromPet(fetchedPet, owner.username)
@@ -42,8 +47,11 @@ export default function EditPetPage({ params }: { params: Promise<{ username: st
       return
     }
 
-    setPet(fetchedPet)
-    setIsLoading(false)
+    // Load decrypted view for editor
+    getPetByUsernameAndSlugForViewer(username, slug, user.id).then((decrypted) => {
+      setPet((decrypted as Pet) || fetchedPet)
+      setIsLoading(false)
+    })
   }, [username, slug, user, router])
 
   const handleSubmit = async (formData: PetFormData) => {
@@ -104,7 +112,7 @@ export default function EditPetPage({ params }: { params: Promise<{ username: st
       },
     }
 
-    updatePet(updatedPet)
+    await updatePetEncrypted(updatedPet as Pet)
     
     // Redirect to pet profile with potentially new slug after a short delay to show success message
     setTimeout(() => {

@@ -172,6 +172,18 @@
   scroll-margin-top: 1rem;
 }
 
+/* Subtle blue left-border highlight for newly viewed posts */
+.new-post-highlight {
+  border-left: 3px solid rgba(56, 189, 248, 0.6); /* sky-400 */
+  padding-left: 0.75rem; /* pl-3 to offset content */
+  animation: newPostBorderFade 10s forwards;
+}
+
+@keyframes newPostBorderFade {
+  0% { border-left-color: rgba(56, 189, 248, 0.6); }
+  100% { border-left-color: transparent; }
+}
+
 /* Motor accessibility: large touch targets (mobile) */
 @media (pointer: coarse) {
   body.a11y-large-targets a,

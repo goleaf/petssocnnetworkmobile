@@ -146,6 +146,9 @@ export function canViewFollowing(profileUser: User, viewerId: string | null): bo
 export function canViewPost(post: BlogPost, profileUser: User, viewerId: string | null): boolean {
   // Check post privacy first
   if (!viewerId) {
+    // Public only for signed-out
+    if (post.visibilityMode === 'custom') return false
+    if (post.visibilityMode === 'friends') return false
     return post.privacy === "public" || !post.privacy
   }
 
@@ -164,6 +167,18 @@ export function canViewPost(post: BlogPost, profileUser: User, viewerId: string 
   }
 
   const isFollower = profileUser.followers.includes(viewerId)
+  // Custom allow list
+  if (post.visibilityMode === 'custom') {
+    const list = new Set(post.allowedUserIds || [])
+    return list.has(viewerId)
+  }
+
+  // Mutual friends (mutual followers)
+  if (post.visibilityMode === 'friends') {
+    const mutual = profileUser.followers.includes(viewerId) && profileUser.following.includes(viewerId)
+    return mutual
+  }
+
   const postPrivacy = post.privacy || profileUser.privacy?.posts || "public"
   return canViewContent(postPrivacy as PrivacyLevel, viewerId, post.authorId, isFollower)
 }

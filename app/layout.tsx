@@ -9,6 +9,9 @@ import { DeepLinkHandler } from "@/components/deep-link-handler"
 import { TierComputationProvider } from "@/components/tier-computation-provider"
 import { LinkCheckerScheduler } from "@/components/link-checker-scheduler"
 import { PetReminderScheduler } from "@/components/pet-reminder-scheduler"
+import { DraftRetentionScheduler } from "@/components/draft-retention-scheduler"
+import { ContentPublishScheduler } from "@/components/content-publish-scheduler"
+import { StoryExpiryScheduler } from "@/components/stories/story-expiry-scheduler"
 import { getLocale } from 'next-intl/server'
 import { NavigationLoadingIndicator } from "@/components/ui/navigation-loading-indicator"
 import { ScreenReaderProvider } from "@/components/a11y/screen-reader-provider"
@@ -42,9 +45,12 @@ export default async function RootLayout({
                 <DeepLinkHandler />
                 <LinkCheckerScheduler />
                 <PetReminderScheduler />
+                <DraftRetentionScheduler />
+                <ContentPublishScheduler />
+                <StoryExpiryScheduler />
                 <NavigationLoadingIndicator />
                 <Navigation />
-                <main id="main-content" role="main" className="min-h-[60vh]">
+                <main id="main-content" role="main" className="min-h-[60vh] pb-16 md:pb-0">
                   {children}
                 </main>
               </MotorAccessibilityProvider>

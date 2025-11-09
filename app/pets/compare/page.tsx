@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { useAuth } from "@/lib/auth"
 import { getPetsByOwnerId } from "@/lib/storage"
+import { getPetsByOwnerIdDecrypted } from "@/lib/pet-health-storage"
 import type { Pet } from "@/lib/types"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -50,7 +51,7 @@ export default function ComparePetsPage() {
 
   useEffect(() => {
     if (!user) return
-    setPets(getPetsByOwnerId(user.id))
+    getPetsByOwnerIdDecrypted(user.id).then(setPets)
   }, [user?.id])
 
   const selectedPets = useMemo(() => pets.filter((p) => selectedIds.includes(p.id)), [pets, selectedIds])
@@ -172,4 +173,3 @@ export default function ComparePetsPage() {
     </div>
   )
 }
-
