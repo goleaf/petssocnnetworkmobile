@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
 import { broadcastEvent } from '@/lib/server/sse'
+import { deleteCached } from '@/lib/scalability/cache-layer'
+import { getServerUserById, updateServerUser } from '@/lib/storage-server'
+import { computeProfileCompletionForServer } from '@/lib/utils/profile-compute'
 
 export const runtime = 'nodejs'
 
@@ -36,7 +39,15 @@ async function resizeVariants(buffer: Buffer): Promise<{ original: Buffer; large
 
 async function putToS3(key: string, body: Buffer, contentType: string): Promise<string> {
   const client = getS3Client()
-  await client.send(new PutObjectCommand({ Bucket: BUCKET_NAME, Key: key, Body: body, ContentType: contentType }))
+  await client.send(
+    new PutObjectCommand({
+      Bucket: BUCKET_NAME,
+      Key: key,
+      Body: body,
+      ContentType: contentType,
+      CacheControl: 'public, max-age=31536000, immutable',
+    }),
+  )
   const publicBase = process.env.AWS_S3_PUBLIC_URL
   if (publicBase) return `${publicBase}/${key}`
   const region = process.env.AWS_REGION || 'us-east-1'
@@ -82,7 +93,11 @@ export async function POST(request: NextRequest, { params }: { params: { userId:
     const bust = `?v=${ts}`
     const urls = { original: `${originalUrl}${bust}`, large: `${largeUrl}${bust}`, medium: `${mediumUrl}${bust}`, small: `${smallUrl}${bust}` }
 
+    // Update cached completion (cover affects it)
+    const u = getServerUserById(userId)
+    if (u) updateServerUser(userId, { cachedCompletionPercent: computeProfileCompletionForServer({ ...(u as any), coverPhoto: urls.large } as any) } as any)
     broadcastEvent({ type: 'coverPhotoUpdated', userId, largeUrl: urls.large, allSizes: urls, ts })
+    try { await deleteCached(`profile:${userId}`) } catch {}
 
     return NextResponse.json({ coverPhotoUrl: urls.large, urls })
   } catch (error) {

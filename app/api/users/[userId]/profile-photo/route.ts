@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
+import { getCurrentUser } from '@/lib/auth-server'
+import { S3Client, PutObjectCommand, DeleteObjectCommand, CopyObjectCommand } from '@aws-sdk/client-s3'
 import { broadcastEvent } from '@/lib/server/sse'
+import { getServerUserById, updateServerUser } from '@/lib/storage-server'
+import { deleteCached } from '@/lib/scalability/cache-layer'
+import { computeProfileCompletionForServer } from '@/lib/utils/profile-compute'
 
 export const runtime = 'nodejs'
 
@@ -69,7 +73,15 @@ async function resizeVariants(buffer: Buffer): Promise<{
 
 async function putToS3(key: string, body: Buffer, contentType: string): Promise<string> {
   const client = getS3Client()
-  await client.send(new PutObjectCommand({ Bucket: BUCKET_NAME, Key: key, Body: body, ContentType: contentType }))
+  await client.send(
+    new PutObjectCommand({
+      Bucket: BUCKET_NAME,
+      Key: key,
+      Body: body,
+      ContentType: contentType,
+      CacheControl: 'public, max-age=31536000, immutable',
+    }),
+  )
   // Construct public URL via AWS_S3_PUBLIC_URL if provided, else default S3 URL
   const publicBase = process.env.AWS_S3_PUBLIC_URL
   if (publicBase) return `${publicBase}/${key}`
@@ -82,6 +94,8 @@ async function putToS3(key: string, body: Buffer, contentType: string): Promise<
 export async function POST(request: NextRequest, { params }: { params: { userId: string } }) {
   try {
     const userId = params.userId
+    const existingUser = getServerUserById(userId)
+    if (!existingUser) return NextResponse.json({ error: 'User not found' }, { status: 404 })
     const form = await request.formData()
     const file = form.get('photo') as unknown as File | null
     if (!file) {
@@ -112,11 +126,11 @@ export async function POST(request: NextRequest, { params }: { params: { userId:
     const baseKey = `users/${userId}/profile/${ts}`
 
     const [originalUrl, largeUrl, mediumUrl, smallUrl, thumbnailUrl] = await Promise.all([
-      putToS3(`${baseKey}/original.jpg`, original, outType),
-      putToS3(`${baseKey}/large.jpg`, large, outType),
-      putToS3(`${baseKey}/medium.jpg`, medium, outType),
-      putToS3(`${baseKey}/small.jpg`, small, outType),
-      putToS3(`${baseKey}/thumb.jpg`, thumbnail, outType),
+      putToS3(`${baseKey}_original.jpg`, original, outType),
+      putToS3(`${baseKey}_large.jpg`, large, outType),
+      putToS3(`${baseKey}_medium.jpg`, medium, outType),
+      putToS3(`${baseKey}_small.jpg`, small, outType),
+      putToS3(`${baseKey}_thumb.jpg`, thumbnail, outType),
     ])
 
     // Cache-bust query param
@@ -129,6 +143,63 @@ export async function POST(request: NextRequest, { params }: { params: { userId:
       thumbnail: `${thumbnailUrl}${bust}`,
     }
 
+    // Update user record with new large avatar URL (canonical)
+    const updatedAvatar = `${largeUrl}${bust}`
+    const u = getServerUserById(userId)
+    updateServerUser(userId, { avatar: updatedAvatar, cachedCompletionPercent: u ? computeProfileCompletionForServer({ ...(u as any), avatar: updatedAvatar } as any) : undefined } as any)
+    try { await deleteCached(`profile:${userId}`) } catch {}
+
+    // Attempt to delete previous avatar objects if they match expected path
+    try {
+      const prev = existingUser.avatar
+      if (prev) {
+        const client = getS3Client()
+        const keyFromUrl = (u: string) => {
+          try {
+            const url = new URL(u)
+            const pathname = url.pathname.startsWith('/') ? url.pathname.slice(1) : url.pathname
+            return pathname
+          } catch {
+            // handle path-like endpoint style
+            return u.replace(/^https?:\/\//, '').replace(/^.*?\//, '')
+          }
+        }
+        const prevPath = keyFromUrl(prev)
+        // Support both folder-style and underscore-style keys
+        const matchUnderscore = prevPath.match(/^(.*\/users\/[^/]+\/profile\/)\d+_(original|large|medium|small|thumb)\.jpg/)
+        const matchFolder = prevPath.match(/^(.*\/users\/[^/]+\/profile\/)\d+\/(original|large|medium|small|thumb)\.jpg/)
+        let prefix = ''
+        if (matchUnderscore) {
+          // strip trailing size segment
+          prefix = prevPath.replace(/_(original|large|medium|small|thumb)\.jpg.*$/, '')
+        } else if (matchFolder) {
+          prefix = prevPath.replace(/\/(original|large|medium|small|thumb)\.jpg.*$/, '')
+        }
+        if (prefix) {
+          const keys = [
+            `${prefix}_original.jpg`,
+            `${prefix}_large.jpg`,
+            `${prefix}_medium.jpg`,
+            `${prefix}_small.jpg`,
+            `${prefix}_thumb.jpg`,
+            // legacy folder-style fallbacks
+            `${prefix}/original.jpg`,
+            `${prefix}/large.jpg`,
+            `${prefix}/medium.jpg`,
+            `${prefix}/small.jpg`,
+            `${prefix}/thumb.jpg`,
+          ]
+          await Promise.all(
+            keys.map((Key) =>
+              client
+                .send(new DeleteObjectCommand({ Bucket: BUCKET_NAME, Key }))
+                .catch(() => undefined),
+            ),
+          )
+        }
+      }
+    } catch {}
+
     // Broadcast to SSE listeners
     broadcastEvent({
       type: 'profilePhotoUpdated',
@@ -138,13 +209,98 @@ export async function POST(request: NextRequest, { params }: { params: { userId:
       ts,
     })
 
-    // Return URLs; updating user record is done client-side in this demo app
-    return NextResponse.json({
-      profilePhotoUrl: urls.large,
-      urls,
-    })
+    // Return URLs
+    return NextResponse.json({ profilePhotoUrl: urls.large, urls })
   } catch (error) {
     console.error('Profile photo upload failed', error)
     return NextResponse.json({ error: 'Upload failed' }, { status: 500 })
+  }
+}
+
+export async function DELETE(request: NextRequest, { params }: { params: { userId: string } }) {
+  try {
+    const userId = params.userId
+    const viewer = await getCurrentUser()
+    if (!viewer || viewer.id !== userId) {
+      return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
+    }
+    const user = getServerUserById(userId)
+    if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
+
+    // Archive previous avatar variants if present
+    const prev = user.avatar
+    const client = getS3Client()
+    let archivedUrls: string[] = []
+    if (prev) {
+      const keyFromUrl = (u: string) => {
+        try {
+          const url = new URL(u)
+          const pathname = url.pathname.startsWith('/') ? url.pathname.slice(1) : url.pathname
+          return pathname
+        } catch {
+          return u.replace(/^https?:\/\//, '').replace(/^.*?\//, '')
+        }
+      }
+      const prevPath = keyFromUrl(prev)
+      const matchUnderscore = prevPath.match(/^(.*\/users\/[^/]+\/profile\/)\d+_(original|large|medium|small|thumb)\.jpg/)
+      const matchFolder = prevPath.match(/^(.*\/users\/[^/]+\/profile\/)\d+\/(original|large|medium|small|thumb)\.jpg/)
+      let prefix = ''
+      let isFolder = false
+      if (matchUnderscore) {
+        prefix = prevPath.replace(/_(original|large|medium|small|thumb)\.jpg.*$/, '')
+        isFolder = false
+      } else if (matchFolder) {
+        prefix = prevPath.replace(/\/(original|large|medium|small|thumb)\.jpg.*$/, '')
+        isFolder = true
+      }
+      if (prefix) {
+        const ts = Date.now()
+        const sizes = ['original','large','medium','small','thumb']
+        const keys = isFolder
+          ? sizes.map((s) => `${prefix}/${s}.jpg`)
+          : sizes.map((s) => `${prefix}_${s}.jpg`)
+        // Copy to archive and then delete originals
+        const archiveBase = `archive/users/${userId}/profile/${ts}`
+        await Promise.all(
+          keys.map(async (Key, idx) => {
+            const destKey = `${archiveBase}_${sizes[idx]}.jpg`
+            try {
+              await client.send(new CopyObjectCommand({ Bucket: BUCKET_NAME, CopySource: `${BUCKET_NAME}/${Key}`, Key: destKey }))
+              archivedUrls.push(process.env.AWS_S3_PUBLIC_URL ? `${process.env.AWS_S3_PUBLIC_URL}/${destKey}` : (process.env.AWS_ENDPOINT ? `${process.env.AWS_ENDPOINT}/${BUCKET_NAME}/${destKey}` : `https://${BUCKET_NAME}.s3.${process.env.AWS_REGION || 'us-east-1'}.amazonaws.com/${destKey}`))
+            } catch {}
+            try { await client.send(new DeleteObjectCommand({ Bucket: BUCKET_NAME, Key })) } catch {}
+          })
+        )
+      }
+    }
+
+    // Generate default avatar (SVG with first initial)
+    const initial = (user.fullName || user.username || 'U').trim().charAt(0).toUpperCase() || 'U'
+    const bg = '#e5e7eb' // gray-200
+    const fg = '#111827' // gray-900
+    const svg = `<?xml version="1.0" encoding="UTF-8"?>\n<svg width="400" height="400" viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg">\n  <rect width="400" height="400" fill="${bg}"/>\n  <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="180" fill="${fg}">${initial}</text>\n</svg>`
+    const buf = Buffer.from(svg, 'utf-8')
+    const ts = Date.now()
+    const defKey = `users/${userId}/profile/default_${ts}.svg`
+    const client2 = getS3Client()
+    await client2.send(new PutObjectCommand({ Bucket: BUCKET_NAME, Key: defKey, Body: buf, ContentType: 'image/svg+xml' }))
+    const defaultUrl = process.env.AWS_S3_PUBLIC_URL
+      ? `${process.env.AWS_S3_PUBLIC_URL}/${defKey}`
+      : (process.env.AWS_ENDPOINT ? `${process.env.AWS_ENDPOINT}/${BUCKET_NAME}/${defKey}` : `https://${BUCKET_NAME}.s3.${process.env.AWS_REGION || 'us-east-1'}.amazonaws.com/${defKey}`)
+
+    // Update user avatar to default and refresh cached completion
+    const u2 = getServerUserById(userId)
+    updateServerUser(userId, { avatar: defaultUrl, cachedCompletionPercent: u2 ? computeProfileCompletionForServer({ ...(u2 as any), avatar: defaultUrl } as any) : undefined } as any)
+
+    // Broadcast event so clients update immediately
+    broadcastEvent({ type: 'profilePhotoUpdated', userId, largeUrl: defaultUrl, allSizes: { original: defaultUrl, large: defaultUrl, medium: defaultUrl, small: defaultUrl, thumbnail: defaultUrl }, ts })
+
+    // Invalidate profile cache
+    try { await deleteCached(`profile:${userId}`) } catch {}
+
+    return NextResponse.json({ profilePhotoUrl: defaultUrl, archived: archivedUrls })
+  } catch (error) {
+    console.error('Profile photo delete failed', error)
+    return NextResponse.json({ error: 'Delete failed' }, { status: 500 })
   }
 }

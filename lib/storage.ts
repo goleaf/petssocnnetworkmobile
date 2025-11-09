@@ -1974,6 +1974,29 @@ export function searchMessagesForUser(
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
 }
 
+// Analytics helpers ---------------------------------------------------------
+
+/**
+ * Count direct messages received by a user in the last N days.
+ * A message counts if:
+ *  - It belongs to a conversation where the user is a participant
+ *  - The sender is not the user
+ *  - The createdAt timestamp is within the window
+ */
+export function countMessagesReceived(userId: string, days: number): number {
+  const conversations = getConversationsForUser(userId, { includeArchived: true })
+  if (conversations.length === 0) return 0
+  const convIds = new Set(conversations.map((c) => c.id))
+  const cutoff = Date.now() - days * 24 * 60 * 60 * 1000
+  return getDirectMessages()
+    .filter((m) => convIds.has(m.conversationId))
+    .filter((m) => m.senderId !== userId)
+    .filter((m) => {
+      const t = new Date(m.createdAt).getTime()
+      return Number.isFinite(t) && t >= cutoff
+    }).length
+}
+
 // Friend request operations --------------------------------------------------
 
 interface FriendRequestActionResult {

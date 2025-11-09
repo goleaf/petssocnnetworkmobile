@@ -103,6 +103,7 @@ function getFollowSuggestions(
     if (candidate.blockedUsers?.includes(currentUser.id)) continue
     if (candidate.mutedUsers?.includes(currentUser.id)) continue
     if (candidate.privacy?.searchable === false) continue
+    if ((candidate.privacy as any)?.showInRecommendations === false) continue
 
     let score = 0
     const reasons: string[] = []
@@ -201,4 +202,3 @@ function getFollowSuggestions(
 
   return suggestions.slice(0, limit)
 }
-

@@ -28,6 +28,7 @@ import {
   clearSession,
   getCurrentUser as getServerUser,
 } from "../auth-server"
+import { registerSession } from "../session-store"
 import type { User, UserRole } from "../types"
 import { validateEmailAddress, describeCorporateEmail } from "../registration-policy"
 import { createEmailVerificationRecord, consumeEmailVerificationToken } from "../email-verification-store"
@@ -139,6 +140,15 @@ export async function loginAction(input: LoginInput): Promise<AuthResult> {
   // Create session
   const sessionToken = createSession(user)
   await setSessionCookie(sessionToken)
+
+  // Register session in session store with metadata
+  try {
+    const requestHeaders = headers()
+    const userAgent = requestHeaders.get("user-agent") || undefined
+    const forwarded = requestHeaders.get("x-forwarded-for")
+    const ip = forwarded ? forwarded.split(",")[0].trim() : requestHeaders.get("x-real-ip") || undefined
+    registerSession(sessionToken, user.id, userAgent, ip)
+  } catch {}
 
   // Revalidate pages that depend on auth
   revalidatePath("/")
@@ -452,6 +462,12 @@ export async function verifyMagicLink(
     // Create session
     const sessionToken = createSession(user)
     await setSessionCookie(sessionToken)
+    try {
+      const userAgent = headersList.get("user-agent") || undefined
+      const forwarded = headersList.get("x-forwarded-for")
+      const ip = forwarded ? forwarded.split(",")[0].trim() : headersList.get("x-real-ip") || undefined
+      registerSession(sessionToken, user.id, userAgent, ip)
+    } catch {}
 
     revalidatePath("/")
     return { success: true }

@@ -8,6 +8,7 @@
  */
 
 import { cookies } from "next/headers"
+import { isSessionRevoked, updateSessionActivity } from "./session-store"
 import { getServerUsers, getServerUserById } from "./storage-server"
 import type { User, UserRole } from "./types"
 
@@ -86,6 +87,12 @@ export async function getSession(): Promise<SessionData | null> {
     return null
   }
 
+  // Check if token has been revoked in the session store
+  if (isSessionRevoked(sessionToken)) {
+    cookieStore.delete(SESSION_COOKIE_NAME)
+    return null
+  }
+
   const session = validateSession(sessionToken)
   
   if (!session) {
@@ -93,6 +100,9 @@ export async function getSession(): Promise<SessionData | null> {
     cookieStore.delete(SESSION_COOKIE_NAME)
     return null
   }
+
+  // Bump activity timestamp
+  updateSessionActivity(sessionToken)
 
   return session
 }

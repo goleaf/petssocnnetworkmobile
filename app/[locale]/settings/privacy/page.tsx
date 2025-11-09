@@ -23,6 +23,12 @@ import {
   blockUser,
   unblockUser,
   unrestrictUser,
+  getConversationsForUser,
+  getDirectMessages,
+  updateConversation,
+  setConversationArchiveState,
+  muteUser,
+  unmuteUser,
 } from "@/lib/storage"
 import type { PrivacyLevel, Pet } from "@/lib/types"
 import { formatDate } from "@/lib/utils/date"
@@ -109,6 +115,12 @@ export default function PrivacySettingsPage() {
     lastActiveVisibility: "followers-only" as PrivacyLevel | "hidden",
     messagePermissions: "public" as any,
     likesVisibility: "followers-only" as PrivacyLevel,
+    readReceipts: true,
+    typingIndicators: true,
+    allowMessageForwarding: true,
+    mentionPermissions: "public" as "public" | "followers-only" | "none",
+    tagReviewRequired: false,
+    tagNotifications: true,
 
     // Content & lists
     pets: "public" as PrivacyLevel,
@@ -118,6 +130,8 @@ export default function PrivacySettingsPage() {
 
     // Controls
     searchable: true,
+    externalIndexing: true,
+    showInRecommendations: true,
     allowFollowRequests: "public" as PrivacyLevel,
     allowTagging: "public" as PrivacyLevel,
     secureMessages: true,
@@ -130,12 +144,27 @@ export default function PrivacySettingsPage() {
     },
   })
   const [blockedUsers, setBlockedUsers] = useState<any[]>([])
+  const [mutedUsersList, setMutedUsersList] = useState<any[]>([])
+  const [blockedSearch, setBlockedSearch] = useState("")
+  const [mutedSearch, setMutedSearch] = useState("")
+  const [bulkBlockOpen, setBulkBlockOpen] = useState(false)
+  const [bulkBlockInput, setBulkBlockInput] = useState("")
+  const [blockTimestamps, setBlockTimestamps] = useState<Record<string, string>>({})
   const [restrictedUsers, setRestrictedUsers] = useState<any[]>([])
   const [petControls, setPetControls] = useState<PetControl[]>([])
   const [postControls, setPostControls] = useState<PostControl[]>([])
   const [isCustomOpen, setIsCustomOpen] = useState(false)
   const [saving, setSaving] = useState<Record<string, boolean>>({})
   const [saved, setSaved] = useState<Record<string, boolean>>({})
+  const [messageRequests, setMessageRequests] = useState<Array<{
+    conversationId: string
+    otherUserId: string
+    name: string
+    username: string
+    avatar?: string
+    preview: string
+    receivedAt: string
+  }>>([])
 
   const savePrivacyField = async (field: string, value: any) => {
     if (!user) return
@@ -249,6 +278,7 @@ export default function PrivacySettingsPage() {
       setPetControls([])
       setPostControls([])
       setBlockedUsers([])
+      setMutedUsersList([])
       return
     }
 
@@ -270,11 +300,19 @@ export default function PrivacySettingsPage() {
         followers: user.privacy.followers || "public",
         following: user.privacy.following || "public",
         searchable: user.privacy.searchable !== false,
+        externalIndexing: (user.privacy as any).externalIndexing !== false,
+        showInRecommendations: (user.privacy as any).showInRecommendations !== false,
         allowFollowRequests: user.privacy.allowFollowRequests || "public",
         allowTagging: user.privacy.allowTagging || "public",
         secureMessages: user.privacy.secureMessages !== false,
         messagePermissions: (user.privacy as any).messagePermissions || "public",
         likesVisibility: (user.privacy as any).likesVisibility || "followers-only",
+        readReceipts: (user.privacy as any).readReceipts !== false,
+        typingIndicators: (user.privacy as any).typingIndicators !== false,
+        allowMessageForwarding: (user.privacy as any).allowMessageForwarding !== false,
+        mentionPermissions: (user.privacy as any).mentionPermissions || "public",
+        tagReviewRequired: (user.privacy as any).tagReviewRequired || false,
+        tagNotifications: (user.privacy as any).tagNotifications ?? true,
         sections: {
           basics: user.privacy.sections?.basics || user.privacy.profile || "public",
           statistics: user.privacy.sections?.statistics || user.privacy.profile || "public",
@@ -336,7 +374,125 @@ export default function PrivacySettingsPage() {
     } else {
       setRestrictedUsers([])
     }
+    // Load blocked + muted lists
+    const allUsers = getUsers()
+    const blocked = (user.blockedUsers ?? []).map((id) => allUsers.find((u) => u.id === id)).filter(Boolean)
+    setBlockedUsers(blocked)
+    const muted = (user.mutedUsers ?? []).map((id) => allUsers.find((u) => u.id === id)).filter(Boolean)
+    setMutedUsersList(muted)
+
+    // Load block timestamps
+    try {
+      const key = `pet_social_blocked_meta_${user.id}`
+      const raw = typeof window !== 'undefined' ? localStorage.getItem(key) : null
+      setBlockTimestamps(raw ? JSON.parse(raw) : {})
+    } catch {}
   }, [user])
+
+  // Derive message requests (non-friends incoming DMs)
+  useEffect(() => {
+    if (!user) return
+    try {
+      const convs = getConversationsForUser(user.id, { includeArchived: false })
+      const all = getDirectMessages()
+      const requests: Array<{
+        conversationId: string
+        otherUserId: string
+        name: string
+        username: string
+        avatar?: string
+        preview: string
+        receivedAt: string
+      }> = []
+
+      convs.forEach((c) => {
+        // Only 1:1 conversations
+        const others = c.participantIds.filter((pid) => pid !== user.id)
+        if (others.length !== 1) return
+        const otherId = others[0]
+        const me = getUsers().find((u) => u.id === user.id)
+        const other = getUsers().find((u) => u.id === otherId)
+        if (!me || !other) return
+        const mutual = me.followers.includes(otherId) && me.following.includes(otherId)
+        if (mutual) return
+        // Find last incoming message from other
+        const msgs = all.filter((m) => m.conversationId === c.id)
+        const lastIncoming = [...msgs].reverse().find((m) => m.senderId === otherId)
+        if (!lastIncoming) return
+        const preview = (c.snippet || lastIncoming.content || "").slice(0, 120)
+        requests.push({
+          conversationId: c.id,
+          otherUserId: otherId,
+          name: other.fullName,
+          username: other.username,
+          avatar: other.avatar,
+          preview,
+          receivedAt: lastIncoming.createdAt,
+        })
+      })
+
+      setMessageRequests(requests)
+    } catch {}
+  }, [user])
+
+  const handleAcceptRequest = (conversationId: string) => {
+    updateConversation(conversationId, { tags: ['accepted'] })
+    setMessageRequests((prev) => prev.filter((r) => r.conversationId !== conversationId))
+  }
+
+  const persistBlockTimestamps = (userId: string, map: Record<string, string>) => {
+    if (typeof window === 'undefined') return
+    localStorage.setItem(`pet_social_blocked_meta_${userId}`, JSON.stringify(map))
+  }
+
+  const handleUnblock = (unblockUserId: string) => {
+    if (!user) return
+    unblockUser(user.id, unblockUserId)
+    setBlockedUsers(blockedUsers.filter((u) => u.id !== unblockUserId))
+    const next = { ...blockTimestamps }
+    delete next[unblockUserId]
+    setBlockTimestamps(next)
+    persistBlockTimestamps(user.id, next)
+  }
+
+  const handleUnmute = (unmuteUserId: string) => {
+    if (!user) return
+    unmuteUser(user.id, unmuteUserId)
+    setMutedUsersList(mutedUsersList.filter((u) => u.id !== unmuteUserId))
+  }
+
+  const handleBulkBlock = () => {
+    if (!user) return
+    const usernames = Array.from(new Set(bulkBlockInput.split(/[,\s\n]+/).map((s) => s.trim().toLowerCase()).filter(Boolean)))
+    if (usernames.length === 0) return
+    const all = getUsers()
+    const found = all.filter((u) => usernames.includes(u.username.toLowerCase()))
+    const nextTimestamps = { ...blockTimestamps }
+    found.forEach((target) => {
+      blockUser(user.id, target.id)
+      nextTimestamps[target.id] = new Date().toISOString()
+    })
+    setBlockTimestamps(nextTimestamps)
+    persistBlockTimestamps(user.id, nextTimestamps)
+    // refresh list
+    const blocked = (getUsers().find((u) => u.id === user.id)?.blockedUsers ?? [])
+      .map((id) => all.find((u) => u.id === id)).filter(Boolean)
+    setBlockedUsers(blocked)
+    setBulkBlockInput("")
+    setBulkBlockOpen(false)
+  }
+
+  const handleDeclineRequest = (conversationId: string) => {
+    setConversationArchiveState(conversationId, true)
+    setMessageRequests((prev) => prev.filter((r) => r.conversationId !== conversationId))
+  }
+
+  const handleBlockRequest = (otherUserId: string, conversationId: string) => {
+    if (!user) return
+    blockUser(user.id, otherUserId)
+    setConversationArchiveState(conversationId, true)
+    setMessageRequests((prev) => prev.filter((r) => r.conversationId !== conversationId))
+  }
 
   const handleSave = async () => {
     if (!user) return
@@ -482,11 +638,42 @@ export default function PrivacySettingsPage() {
                 </Select>
               </div>
 
+              {/* Message Requests */}
+              <div className="space-y-2">
+                <Label>Message requests</Label>
+                <p className="text-sm text-muted-foreground">Pending messages from people who aren’t your friends</p>
+                {messageRequests.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No pending requests</p>
+                ) : (
+                  <div className="space-y-2">
+                    {messageRequests.map((req) => (
+                      <div key={req.conversationId} className="flex items-center justify-between gap-3 rounded-md border p-3">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <Avatar className="h-8 w-8">
+                            <AvatarImage src={req.avatar} alt={req.name} />
+                            <AvatarFallback>{req.name.charAt(0)}</AvatarFallback>
+                          </Avatar>
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium truncate">{req.name} <span className="text-muted-foreground">@{req.username}</span></p>
+                            <p className="text-xs text-muted-foreground truncate">{req.preview || 'New message'}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <Button size="sm" variant="outline" onClick={() => handleDeclineRequest(req.conversationId)}>Decline</Button>
+                          <Button size="sm" variant="outline" onClick={() => handleBlockRequest(req.otherUserId, req.conversationId)}>Block</Button>
+                          <Button size="sm" onClick={() => handleAcceptRequest(req.conversationId)}>Accept</Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               <div className="space-y-2">
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <Label>Who can tag me in posts</Label>
-                    <p className="text-sm text-muted-foreground">Only Me requires approval; No one disables tags</p>
+                    <p className="text-sm text-muted-foreground">Control who can add tags to your posts</p>
                   </div>
                   {saving['allowTagging'] ? (
                     <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
@@ -503,11 +690,136 @@ export default function PrivacySettingsPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="public">Everyone</SelectItem>
-                    <SelectItem value="followers-only">Friends</SelectItem>
-                    <SelectItem value="private">Only Me (requires approval)</SelectItem>
-                    <SelectItem value="none">No one</SelectItem>
+                    <SelectItem value="followers-only">Friends Only</SelectItem>
+                    <SelectItem value="none">No One</SelectItem>
                   </SelectContent>
                 </Select>
+                <div className="flex items-center justify-between">
+                  <div className="text-sm">
+                    <div className="font-medium">Review tags before showing on profile</div>
+                    <p className="text-xs text-muted-foreground">When enabled, tagged posts require your approval</p>
+                  </div>
+                  {saving['tagReviewRequired'] ? (
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  ) : saved['tagReviewRequired'] ? (
+                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  ) : null}
+                  <Switch
+                    checked={Boolean((settings as any).tagReviewRequired)}
+                    onCheckedChange={(checked) => savePrivacyField('tagReviewRequired', checked)}
+                  />
+                </div>
+              </div>
+
+              {/* Messaging preferences */}
+              <div className="space-y-2 pt-2">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <Label>Read receipts</Label>
+                    <p className="text-sm text-muted-foreground">When off, senders don’t see when you read their messages</p>
+                  </div>
+                  {saving['readReceipts'] ? (
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  ) : saved['readReceipts'] ? (
+                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  ) : null}
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Show read receipts</span>
+                  <Switch
+                    checked={Boolean((settings as any).readReceipts) !== false}
+                    onCheckedChange={(checked) => savePrivacyField('readReceipts', checked)}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <Label>Typing indicators</Label>
+                    <p className="text-sm text-muted-foreground">When off, others don’t see when you’re typing</p>
+                  </div>
+                  {saving['typingIndicators'] ? (
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  ) : saved['typingIndicators'] ? (
+                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  ) : null}
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Show typing indicators</span>
+                  <Switch
+                    checked={Boolean((settings as any).typingIndicators) !== false}
+                    onCheckedChange={(checked) => savePrivacyField('typingIndicators', checked)}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <Label>Allow message forwarding</Label>
+                    <p className="text-sm text-muted-foreground">When off, others can’t forward your messages</p>
+                  </div>
+                  {saving['allowMessageForwarding'] ? (
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  ) : saved['allowMessageForwarding'] ? (
+                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  ) : null}
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Forwarding enabled</span>
+                  <Switch
+                    checked={Boolean((settings as any).allowMessageForwarding) !== false}
+                    onCheckedChange={(checked) => savePrivacyField('allowMessageForwarding', checked)}
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <Label>Who can mention me</Label>
+                    <p className="text-sm text-muted-foreground">When set to No One, mentions won’t notify or link</p>
+                  </div>
+                  {saving['mentionPermissions'] ? (
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  ) : saved['mentionPermissions'] ? (
+                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  ) : null}
+                </div>
+                <Select
+                  value={(settings as any).mentionPermissions || 'public'}
+                  onValueChange={(v) => savePrivacyField('mentionPermissions', v)}
+                >
+                  <SelectTrigger className="w-full sm:w-72">
+                    <SelectValue placeholder="Select who can mention you" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="public">Everyone</SelectItem>
+                    <SelectItem value="followers-only">Friends</SelectItem>
+                    <SelectItem value="none">No One</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <Label>Notification for tags</Label>
+                    <p className="text-sm text-muted-foreground">Enable or disable notifications when tagged</p>
+                  </div>
+                  {saving['tagNotifications'] ? (
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  ) : saved['tagNotifications'] ? (
+                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  ) : null}
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Notify me when I am tagged</span>
+                  <Switch
+                    checked={Boolean((settings as any).tagNotifications) !== false}
+                    onCheckedChange={(checked) => savePrivacyField('tagNotifications', checked)}
+                  />
+                </div>
               </div>
 
               <div className="space-y-2">
@@ -601,22 +913,24 @@ export default function PrivacySettingsPage() {
               </div>
 
               <div className="space-y-2">
-                <Label>Who can see my last active status</Label>
-                <p className="text-sm text-muted-foreground mb-2">If hidden, you appear offline to everyone</p>
-                <Select
-                  value={settings.lastActiveVisibility as string}
-                  onValueChange={(v) => setSettings({ ...settings, lastActiveVisibility: v as any })}
-                >
-                  <SelectTrigger className="w-full sm:w-64">
-                    <SelectValue placeholder="Select visibility" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="public">Everyone</SelectItem>
-                    <SelectItem value="followers-only">Friends</SelectItem>
-                    <SelectItem value="private">Only Me</SelectItem>
-                    <SelectItem value="hidden">Hidden</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <Label>Show online status</Label>
+                    <p className="text-sm text-muted-foreground">When off, you always appear offline</p>
+                  </div>
+                  {saving['lastActiveVisibility'] ? (
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  ) : saved['lastActiveVisibility'] ? (
+                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  ) : null}
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Show last active</span>
+                  <Switch
+                    checked={(settings.lastActiveVisibility as any) !== 'hidden'}
+                    onCheckedChange={(checked) => savePrivacyField('lastActiveVisibility', checked ? 'public' : 'hidden')}
+                  />
+                </div>
               </div>
               <div className="space-y-2">
                 <Label>Profile Visibility</Label>
@@ -715,9 +1029,18 @@ export default function PrivacySettingsPage() {
               </div>
 
               <div className="space-y-2">
-                <Label>Who can see my email</Label>
-                <p className="text-sm text-muted-foreground mb-2">Default: Only Me</p>
-                <Select value={settings.email} onValueChange={(v) => setSettings({ ...settings, email: v as any })}>
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <Label>Show email address</Label>
+                    <p className="text-sm text-muted-foreground">Default: Only Me</p>
+                  </div>
+                  {saving['email'] ? (
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  ) : saved['email'] ? (
+                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  ) : null}
+                </div>
+                <Select value={settings.email} onValueChange={(v) => savePrivacyField('email', v)}>
                   <SelectTrigger className="w-full sm:w-64">
                     <SelectValue placeholder="Select visibility" />
                   </SelectTrigger>
@@ -725,15 +1048,23 @@ export default function PrivacySettingsPage() {
                     <SelectItem value="public">Everyone</SelectItem>
                     <SelectItem value="followers-only">Friends</SelectItem>
                     <SelectItem value="private">Only Me</SelectItem>
-                    <SelectItem value="never">Never</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="space-y-2">
-                <Label>Who can see my phone number</Label>
-                <p className="text-sm text-muted-foreground mb-2">Default: Only Me</p>
-                <Select value={settings.phone as string} onValueChange={(v) => setSettings({ ...settings, phone: v as any })}>
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <Label>Show phone number</Label>
+                    <p className="text-sm text-muted-foreground">Default: Only Me</p>
+                  </div>
+                  {saving['phone'] ? (
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  ) : saved['phone'] ? (
+                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  ) : null}
+                </div>
+                <Select value={settings.phone as string} onValueChange={(v) => savePrivacyField('phone', v)}>
                   <SelectTrigger className="w-full sm:w-64">
                     <SelectValue placeholder="Select visibility" />
                   </SelectTrigger>
@@ -741,54 +1072,91 @@ export default function PrivacySettingsPage() {
                     <SelectItem value="public">Everyone</SelectItem>
                     <SelectItem value="followers-only">Friends</SelectItem>
                     <SelectItem value="private">Only Me</SelectItem>
-                    <SelectItem value="never">Never</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="space-y-2">
-                <Label>Who can see my birthday</Label>
-                <p className="text-sm text-muted-foreground mb-2">Everyone options can show or hide your birth year</p>
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <Label>Show birthday</Label>
+                    <p className="text-sm text-muted-foreground">Choose how much detail to display</p>
+                  </div>
+                  {saving['birthdayVisibility'] ? (
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  ) : saved['birthdayVisibility'] ? (
+                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  ) : null}
+                </div>
                 <Select
                   value={settings.birthdayVisibility}
-                  onValueChange={(v) => setSettings({ ...settings, birthdayVisibility: v as any })}
+                  onValueChange={(v) => savePrivacyField('birthdayVisibility', v)}
                 >
                   <SelectTrigger className="w-full sm:w-64">
                     <SelectValue placeholder="Select visibility" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="public_show_year">Everyone (Show Year)</SelectItem>
-                    <SelectItem value="public_hide_year">Everyone (Hide Year)</SelectItem>
-                    <SelectItem value="followers-only">Friends</SelectItem>
-                    <SelectItem value="private">Only Me</SelectItem>
+                    <SelectItem value="public_show_year">Full Date</SelectItem>
+                    <SelectItem value="public_hide_year">Month/Day Only</SelectItem>
+                    <SelectItem value="private">Hidden</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="space-y-2">
-                <Label>Who can see my age</Label>
-                <p className="text-sm text-muted-foreground mb-2">Age is calculated from your birthday</p>
-                <PrivacySelector
-                  value={settings.ageVisibility as PrivacyLevel}
-                  onChange={(v) => setSettings({ ...settings, ageVisibility: v })}
-                />
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <Label>Show age</Label>
+                    <p className="text-sm text-muted-foreground">Age is calculated from your birthday</p>
+                  </div>
+                  {saving['ageVisibility'] ? (
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  ) : saved['ageVisibility'] ? (
+                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  ) : null}
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">When off, your age is hidden</span>
+                  <Switch
+                    checked={(settings.ageVisibility as PrivacyLevel) !== 'private'}
+                    onCheckedChange={(checked) => savePrivacyField('ageVisibility', checked ? 'public' : 'private')}
+                  />
+                </div>
               </div>
 
               <div className="space-y-2">
-                <Label>Who can see my location</Label>
-                <p className="text-sm text-muted-foreground mb-2">Control who can see your location</p>
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <Label>Who can see my location</Label>
+                    <p className="text-sm text-muted-foreground">Control who can see your location</p>
+                  </div>
+                  {saving['location'] ? (
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  ) : saved['location'] ? (
+                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  ) : null}
+                </div>
                 <PrivacySelector
                   value={settings.location}
-                  onChange={(value) => setSettings({ ...settings, location: value })}
+                  onChange={(value) => savePrivacyField('location', value)}
                 />
               </div>
 
               <div className="space-y-2">
-                <Label>Location detail</Label>
-                <p className="text-sm text-muted-foreground mb-2">Choose how precise your location appears</p>
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <Label>Show location</Label>
+                    <p className="text-sm text-muted-foreground">Choose how precise your location appears</p>
+                  </div>
+                  {saving['locationGranularity'] ? (
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  ) : saved['locationGranularity'] ? (
+                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  ) : null}
+                </div>
                 <Select
                   value={settings.locationGranularity}
-                  onValueChange={(v) => setSettings({ ...settings, locationGranularity: v as any })}
+                  onValueChange={(v) => savePrivacyField('locationGranularity', v)}
                 >
                   <SelectTrigger className="w-full sm:w-64">
                     <SelectValue placeholder="Select detail level" />
@@ -1098,7 +1466,7 @@ export default function PrivacySettingsPage() {
                 </div>
                 <Switch
                   checked={settings.searchable}
-                  onCheckedChange={(checked) => setSettings({ ...settings, searchable: checked })}
+                  onCheckedChange={(checked) => savePrivacyField('searchable', checked)}
                   className="flex-shrink-0"
                 />
               </div>
@@ -1173,32 +1541,60 @@ export default function PrivacySettingsPage() {
             </CardTitle>
             <CardDescription className="text-xs sm:text-sm">Manage users you have blocked</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
+            <div className="rounded-md border p-3 text-xs sm:text-sm text-muted-foreground">
+              <span className="font-medium text-foreground">When you block someone:</span> they can’t see your profile, send messages, tag you, or see your posts.
+            </div>
+            <div className="flex flex-col sm:flex-row gap-2 sm:items-center justify-between">
+              <Input
+                placeholder="Search blocked users"
+                value={blockedSearch}
+                onChange={(e) => setBlockedSearch(e.target.value)}
+                className="sm:max-w-xs"
+              />
+              <Button variant="outline" onClick={() => setBulkBlockOpen(true)}>Block multiple users</Button>
+            </div>
             {blockedUsers.length > 0 ? (
               <div className="space-y-2 sm:space-y-3">
-                {blockedUsers.map((blockedUser) => (
-                  <div key={blockedUser.id} className="flex items-center justify-between p-2 sm:p-3 rounded-lg border gap-2 sm:gap-3">
-                    <Link href={`/profile/${blockedUser.username}`} className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
-                      <Avatar className="h-8 w-8 sm:h-10 sm:w-10 flex-shrink-0">
-                        <AvatarImage src={blockedUser.avatar || "/placeholder.svg"} alt={blockedUser.fullName} />
-                        <AvatarFallback className="text-xs sm:text-sm">{blockedUser.fullName.charAt(0)}</AvatarFallback>
-                      </Avatar>
-                      <div className="min-w-0 flex-1">
-                        <p className="font-semibold text-sm sm:text-base truncate">{blockedUser.fullName}</p>
-                        <p className="text-xs sm:text-sm text-muted-foreground truncate">@{blockedUser.username}</p>
+                {blockedUsers
+                  .filter((u) => {
+                    const q = blockedSearch.trim().toLowerCase()
+                    if (!q) return true
+                    return (
+                      u.username.toLowerCase().includes(q) ||
+                      (u.fullName || "").toLowerCase().includes(q)
+                    )
+                  })
+                  .map((blockedUser) => (
+                    <div key={blockedUser.id} className="flex items-center justify-between p-2 sm:p-3 rounded-lg border gap-2 sm:gap-3">
+                      <Link href={`/profile/${blockedUser.username}`} className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                        <Avatar className="h-8 w-8 sm:h-10 sm:w-10 flex-shrink-0">
+                          <AvatarImage src={blockedUser.avatar || "/placeholder.svg"} alt={blockedUser.fullName} />
+                          <AvatarFallback className="text-xs sm:text-sm">{blockedUser.fullName.charAt(0)}</AvatarFallback>
+                        </Avatar>
+                        <div className="min-w-0 flex-1">
+                          <p className="font-semibold text-sm sm:text-base truncate">{blockedUser.fullName}</p>
+                          <p className="text-xs sm:text-sm text-muted-foreground truncate">@{blockedUser.username}</p>
+                        </div>
+                      </Link>
+                      <div className="text-xs text-muted-foreground sm:mr-3">
+                        {blockTimestamps[blockedUser.id] ? (
+                          <span>Blocked {new Date(blockTimestamps[blockedUser.id]).toLocaleDateString()}</span>
+                        ) : (
+                          <span>Blocked</span>
+                        )}
                       </div>
-                    </Link>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleUnblock(blockedUser.id)}
-                      className="flex-shrink-0"
-                    >
-                      <UserX className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
-                      <span className="hidden sm:inline">Unblock</span>
-                    </Button>
-                  </div>
-                ))}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleUnblock(blockedUser.id)}
+                        className="flex-shrink-0"
+                      >
+                        <UserX className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
+                        <span className="hidden sm:inline">Unblock</span>
+                      </Button>
+                    </div>
+                  ))}
               </div>
             ) : (
               <p className="text-xs sm:text-sm text-muted-foreground text-center py-6 sm:py-8">No blocked users</p>
@@ -1206,51 +1602,74 @@ export default function PrivacySettingsPage() {
           </CardContent>
         </Card>
 
-        {/* Restricted Accounts */}
+        {/* Muted Accounts */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
               <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-lg bg-amber-500/10 flex items-center justify-center flex-shrink-0">
                 <ShieldCheck className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-amber-600" />
               </div>
-              Restricted Accounts
+              Muted Accounts
             </CardTitle>
-            <CardDescription className="text-xs sm:text-sm">
-              Soft-block users without notifying them. Their comments are hidden from others until you approve.
-            </CardDescription>
+            <CardDescription className="text-xs sm:text-sm">Muted users’ posts don’t appear in your feed. They are not notified.</CardDescription>
           </CardHeader>
-          <CardContent>
-            {restrictedUsers.length > 0 ? (
+          <CardContent className="space-y-3">
+            <Input
+              placeholder="Search muted users"
+              value={mutedSearch}
+              onChange={(e) => setMutedSearch(e.target.value)}
+              className="sm:max-w-xs"
+            />
+            {mutedUsersList.length > 0 ? (
               <div className="space-y-2 sm:space-y-3">
-                {restrictedUsers.map((restricted) => (
-                  <div key={restricted.id} className="flex items-center justify-between p-2 sm:p-3 rounded-lg border gap-2 sm:gap-3">
-                    <Link href={`/profile/${restricted.username}`} className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
-                      <Avatar className="h-8 w-8 sm:h-10 sm:w-10 flex-shrink-0">
-                        <AvatarImage src={restricted.avatar || "/placeholder.svg"} alt={restricted.fullName} />
-                        <AvatarFallback className="text-xs sm:text-sm">{restricted.fullName.charAt(0)}</AvatarFallback>
-                      </Avatar>
-                      <div className="min-w-0 flex-1">
-                        <p className="font-semibold text-sm sm:text-base truncate">{restricted.fullName}</p>
-                        <p className="text-xs sm:text-sm text-muted-foreground truncate">@{restricted.username}</p>
-                      </div>
-                    </Link>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleUnrestrict(restricted.id)}
-                      className="flex-shrink-0"
-                    >
-                      <UserX className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
-                      <span className="hidden sm:inline">Unrestrict</span>
-                    </Button>
-                  </div>
-                ))}
+                {mutedUsersList
+                  .filter((u) => {
+                    const q = mutedSearch.trim().toLowerCase()
+                    if (!q) return true
+                    return (
+                      u.username.toLowerCase().includes(q) || (u.fullName || '').toLowerCase().includes(q)
+                    )
+                  })
+                  .map((muted) => (
+                    <div key={muted.id} className="flex items-center justify-between p-2 sm:p-3 rounded-lg border gap-2 sm:gap-3">
+                      <Link href={`/profile/${muted.username}`} className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                        <Avatar className="h-8 w-8 sm:h-10 sm:w-10 flex-shrink-0">
+                          <AvatarImage src={muted.avatar || "/placeholder.svg"} alt={muted.fullName} />
+                          <AvatarFallback className="text-xs sm:text-sm">{muted.fullName.charAt(0)}</AvatarFallback>
+                        </Avatar>
+                        <div className="min-w-0 flex-1">
+                          <p className="font-semibold text-sm sm:text-base truncate">{muted.fullName}</p>
+                          <p className="text-xs sm:text-sm text-muted-foreground truncate">@{muted.username}</p>
+                        </div>
+                      </Link>
+                      <Button variant="outline" size="sm" onClick={() => handleUnmute(muted.id)} className="flex-shrink-0">
+                        Unmute
+                      </Button>
+                    </div>
+                  ))}
               </div>
             ) : (
-              <p className="text-xs sm:text-sm text-muted-foreground text-center py-6 sm:py-8">No restricted accounts</p>
+              <p className="text-xs sm:text-sm text-muted-foreground text-center py-6 sm:py-8">No muted users</p>
             )}
           </CardContent>
         </Card>
+
+        {/* Bulk Block Dialog */}
+        <Dialog open={bulkBlockOpen} onOpenChange={setBulkBlockOpen}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Block multiple users</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">Paste usernames (comma, space, or newline separated).</p>
+              <Textarea rows={6} value={bulkBlockInput} onChange={(e) => setBulkBlockInput(e.target.value)} placeholder="username1, username2, username3" />
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setBulkBlockOpen(false)}>Cancel</Button>
+              <Button onClick={handleBulkBlock}>Block users</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
         {/* Custom Advanced Modal */}
         <Dialog open={isCustomOpen} onOpenChange={setIsCustomOpen}>
           <DialogContent className="max-w-2xl">
@@ -1301,12 +1720,42 @@ export default function PrivacySettingsPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="flex items-center justify-between rounded-lg border p-3">
                   <div className="space-y-1">
-                    <Label>Searchable</Label>
-                    <p className="text-xs text-muted-foreground">Allow your profile to be discoverable in search</p>
+                    <Label>Show profile in user search</Label>
+                    <p className="text-xs text-muted-foreground">When off, your profile won’t appear in internal search results</p>
                   </div>
                   <Switch
                     checked={settings.searchable}
-                    onCheckedChange={(checked) => setSettings((prev) => ({ ...prev, searchable: checked }))}
+                    onCheckedChange={(checked) => savePrivacyField('searchable', checked)}
+                  />
+                </div>
+                <div className="flex items-center justify-between rounded-lg border p-3">
+                  <div className="space-y-1">
+                    <Label>Allow search engines to index my profile</Label>
+                    <p className="text-xs text-muted-foreground">Adds noindex when disabled (search engines won’t index your profile)</p>
+                  </div>
+                  {saving['externalIndexing'] ? (
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  ) : saved['externalIndexing'] ? (
+                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  ) : null}
+                  <Switch
+                    checked={Boolean((settings as any).externalIndexing) !== false}
+                    onCheckedChange={(checked) => savePrivacyField('externalIndexing', checked)}
+                  />
+                </div>
+                <div className="flex items-center justify-between rounded-lg border p-3">
+                  <div className="space-y-1">
+                    <Label>Show in recommendations</Label>
+                    <p className="text-xs text-muted-foreground">When off, you won’t be suggested as “People you may know”</p>
+                  </div>
+                  {saving['showInRecommendations'] ? (
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  ) : saved['showInRecommendations'] ? (
+                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  ) : null}
+                  <Switch
+                    checked={Boolean((settings as any).showInRecommendations) !== false}
+                    onCheckedChange={(checked) => savePrivacyField('showInRecommendations', checked)}
                   />
                 </div>
                 <div className="space-y-2">

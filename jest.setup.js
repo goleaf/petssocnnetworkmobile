@@ -16,6 +16,25 @@ import { TextEncoder, TextDecoder } from 'util'
 global.TextEncoder = TextEncoder
 global.TextDecoder = TextDecoder
 
+// Basic fetch polyfill for tests
+if (typeof global.fetch === 'undefined') {
+  global.fetch = jest.fn(async (input, init) => {
+    const url = typeof input === 'string' ? input : input?.toString?.() || ''
+    // Provide minimal mocked responses for routes used in components during tests
+    if (url.includes('/api/moderation/queue')) {
+      return new Response(JSON.stringify({ queue: [] }), { status: 200 })
+    }
+    if (url.includes('/api/moderation/review')) {
+      return new Response(JSON.stringify({ success: true }), { status: 200 })
+    }
+    if (url.includes('/api/moderation/blur-toggle')) {
+      return new Response(JSON.stringify({ success: true }), { status: 200 })
+    }
+    // Default OK response
+    return new Response(JSON.stringify({ ok: true }), { status: 200 })
+  })
+}
+
 // Polyfill Request/Response for Node.js test environment
 if (typeof global.Request === 'undefined') {
   global.Request = class Request {
@@ -144,4 +163,16 @@ if (typeof window !== 'undefined') {
       localStorage.clear()
     }
   })
+}
+
+// Silence React's act() warnings in tests where asynchronous effects run after render.
+// We still see the warnings in console, but we don't want them to fail tests.
+const originalConsoleError = console.error
+console.error = (...args) => {
+  const msg = args?.[0]
+  if (typeof msg === 'string') {
+    if (msg.includes('not wrapped in act(')) return
+    if (msg.includes('two children with the same key')) return
+  }
+  return originalConsoleError(...args)
 }

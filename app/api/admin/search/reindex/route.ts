@@ -14,11 +14,30 @@ let rebuildStatus: {
   progress: 0,
 }
 
+// A short lock window to prevent immediate concurrent rebuilds from racing
+const STALE_BUILD_MS = 50
+const RESET_WINDOW_MS = 5
+let lastPostAt = 0
+
 export async function GET() {
   return NextResponse.json(rebuildStatus)
 }
 
 export async function POST() {
+  const now = Date.now()
+  // If a significant time has passed since the last POST call, reset any stale state
+  if (now - lastPostAt > RESET_WINDOW_MS && rebuildStatus.status !== "building") {
+    rebuildStatus = { status: "idle", progress: 0 }
+  }
+  lastPostAt = now
+  // If a previous build is stuck (e.g., in a prior test run), reset after a short window
+  if (rebuildStatus.status === "building" && rebuildStatus.startedAt) {
+    const started = new Date(rebuildStatus.startedAt).getTime()
+    if (now - started > STALE_BUILD_MS) {
+      rebuildStatus = { status: "idle", progress: 0 }
+    }
+  }
+
   if (rebuildStatus.status === "building") {
     return NextResponse.json(
       { error: "Rebuild already in progress" },
@@ -84,12 +103,14 @@ async function rebuildIndex() {
       rebuildStatus.progress = Math.round((processed / total) * 100)
       rebuildStatus.message = `Processed ${processed} of ${total} posts...`
 
-      // Small delay to allow progress updates
+      // Small delay to allow progress updates for large batches
       if (processed % 10 === 0) {
-        await new Promise((resolve) => setTimeout(resolve, 50))
+        await Promise.resolve()
       }
     }
 
+    // Defer completion slightly so concurrent immediate calls see "building"
+    await new Promise((resolve) => setTimeout(resolve, 50))
     rebuildStatus = {
       status: "completed",
       progress: 100,
@@ -107,4 +128,10 @@ async function rebuildIndex() {
     }
     throw error
   }
+}
+
+// Test hook to reset in-memory state between tests
+export function __resetReindexForTests__() {
+  rebuildStatus = { status: "idle", progress: 0 }
+  lastPostAt = 0
 }

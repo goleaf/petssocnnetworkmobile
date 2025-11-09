@@ -1,6 +1,7 @@
 "use client"
 
 import { use } from "react"
+import Head from "next/head"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -12,7 +13,7 @@ import { useAuth } from "@/lib/auth"
 import { MapPin, Calendar, Users, Heart, PawPrint, FileText, Lock, Activity as ActivityIcon, Camera, CheckCircle2, Award } from "lucide-react"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import Link from "next/link"
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useState, useRef } from "react"
 import { formatCommentDate, formatDate } from "@/lib/utils/date"
 import { getPetUrlFromPet } from "@/lib/utils/pet-url"
 import { CompactStatBlock, ProfileStats } from "@/components/profile-stats"
@@ -34,6 +35,8 @@ import { getPrivacyNotice } from "@/lib/utils/privacy-messages"
 import { useStorageListener } from "@/lib/hooks/use-storage-listener"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Progress } from "@/components/ui/progress"
+import { AudienceInsights } from "@/components/profile/audience-insights"
+import { recordMediaView } from "@/lib/profile-analytics"
 
 const STORAGE_KEYS_TO_WATCH = ["pet_social_users", "pet_social_pets", "pet_social_blog_posts", "pet_social_activities"]
 
@@ -47,6 +50,8 @@ export default function ProfilePage({ params }: { params: Promise<{ username: st
   const [activities, setActivities] = useState<UserActivity[]>([])
   const [isFollowing, setIsFollowing] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  const avatarRef = useRef<HTMLDivElement | null>(null)
+  const coverRef = useRef<HTMLDivElement | null>(null)
 
   const loadProfile = useCallback(() => {
     setIsLoading(true)
@@ -146,6 +151,48 @@ export default function ProfilePage({ params }: { params: Promise<{ username: st
     setIsFollowing(!isCurrentlyFollowing)
     loadProfile()
   }
+
+  // Record media views when visible (exclude owner)
+  useEffect(() => {
+    if (!user) return
+    if (currentUser?.id === user.id) return
+    // Avatar
+    const aKey = `media_viewed_session_${user.id}_avatar`
+    const aEl = avatarRef.current
+    let aObs: IntersectionObserver | null = null
+    if (aEl && !sessionStorage.getItem(aKey)) {
+      aObs = new IntersectionObserver((entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            try { recordMediaView(user.id, 'avatar'); sessionStorage.setItem(aKey, '1') } catch {}
+            aObs && aObs.disconnect()
+            break
+          }
+        }
+      }, { threshold: 0.5 })
+      aObs.observe(aEl)
+    }
+    // Cover
+    const cKey = `media_viewed_session_${user.id}_cover`
+    const cEl = coverRef.current
+    let cObs: IntersectionObserver | null = null
+    if (cEl && !sessionStorage.getItem(cKey)) {
+      cObs = new IntersectionObserver((entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            try { recordMediaView(user.id, 'cover'); sessionStorage.setItem(cKey, '1') } catch {}
+            cObs && cObs.disconnect()
+            break
+          }
+        }
+      }, { threshold: 0.3 })
+      cObs.observe(cEl)
+    }
+    return () => {
+      try { aObs && aObs.disconnect() } catch {}
+      try { cObs && cObs.disconnect() } catch {}
+    }
+  }, [user?.id, currentUser?.id])
 
   if (isLoading) {
     return <LoadingSpinner fullScreen />
@@ -271,6 +318,12 @@ export default function ProfilePage({ params }: { params: Promise<{ username: st
   ]
 
   return (
+      <>
+      {user?.privacy && (user.privacy as any).externalIndexing === false && (
+        <Head>
+          <meta name="robots" content="noindex, nofollow" />
+        </Head>
+      )}
       <div className="container mx-auto px-4 py-8 max-w-7xl">
         {typeof window !== 'undefined' && (new URLSearchParams(window.location.search).get('renamed_from')) && (
           <div className="mb-4 rounded-md border bg-amber-50 text-amber-900 border-amber-200 p-3 text-sm">
@@ -278,7 +331,7 @@ export default function ProfilePage({ params }: { params: Promise<{ username: st
           </div>
         )}
       <section className="rounded-3xl border border-border/60 bg-card shadow-sm overflow-hidden">
-        <div className="relative h-[220px] sm:h-[260px] lg:h-[400px] w-full group">
+        <div ref={coverRef} className="relative h-[220px] sm:h-[260px] lg:h-[400px] w-full group">
           <img src={coverPhoto} alt={`${user.fullName}'s cover`} className="h-full w-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/25 to-black/50" />
           {isOwnProfile && (
@@ -292,7 +345,7 @@ export default function ProfilePage({ params }: { params: Promise<{ username: st
           <div className="-mt-20 sm:-mt-24 flex flex-col gap-6">
             <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
               <div className="flex flex-col gap-6 sm:flex-row">
-                <div className="relative group self-start">
+                <div className="relative group self-start" ref={avatarRef}>
                   <Avatar className="h-[200px] w-[200px] border-4 border-background shadow-2xl">
                     {canViewBasics ? (
                       <>
@@ -453,8 +506,9 @@ export default function ProfilePage({ params }: { params: Promise<{ username: st
                         </div>
                       )}
                       {currentUser?.id === user.id && (
-                        <div className="mt-4">
+                        <div className="mt-4 space-y-4">
                           <ProfileInsights profileId={user.id} />
+                          <AudienceInsights profileId={user.id} />
                         </div>
                       )}
                     </div>
@@ -685,5 +739,6 @@ export default function ProfilePage({ params }: { params: Promise<{ username: st
         </TabsContent>
       </Tabs>
     </div>
+    </>
   )
 }

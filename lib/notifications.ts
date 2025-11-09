@@ -59,6 +59,12 @@ const DEFAULT_CHANNEL_PREFERENCES: Record<NotificationChannel, NotificationChann
     categories: ["social", "community", "promotions", "reminders"],
     priorityThreshold: "low",
   },
+  sms: {
+    enabled: false,
+    frequency: "real-time",
+    categories: ["system"],
+    priorityThreshold: "urgent",
+  },
 }
 
 const DEFAULT_TYPE_PREFERENCES: Partial<Record<NotificationType, NotificationTypePreference>> = {
@@ -79,6 +85,7 @@ const DEFAULT_DIGEST_PREFERENCES: NotificationDigestPreferences = {
   enabled: true,
   interval: "daily",
   timeOfDay: "08:00",
+  dayOfWeek: "monday",
   categories: ["social", "community", "promotions", "reminders"],
   includeUnreadOnly: true,
 }
@@ -210,6 +217,14 @@ export function createDefaultNotificationSettings(userId: string): NotificationS
       categories: [...DEFAULT_DIGEST_PREFERENCES.categories],
     },
     mutedCategories: [...DEFAULT_MUTED_CATEGORIES],
+    quietHours: {
+      enabled: false,
+      start: "22:00",
+      end: "07:00",
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
+      days: ["monday","tuesday","wednesday","thursday","friday","saturday","sunday"],
+      allowCritical: true,
+    },
     updatedAt: nowIso(),
   }
 }

@@ -72,11 +72,24 @@ export interface User {
     searchable: boolean
     allowFollowRequests: "public" | "followers-only"
     allowTagging: "public" | "followers-only" | "private" | "none"
+    mentionPermissions?: "public" | "followers-only" | "none"
+    tagReviewRequired?: boolean
+    tagNotifications?: boolean
     secureMessages?: boolean
     joinDateVisibility?: "public" | "followers-only" | "private"
     lastActiveVisibility?: "public" | "followers-only" | "private" | "hidden"
     messagePermissions?: "public" | "friends" | "friends-of-friends" | "following" | "none"
     likesVisibility?: "public" | "followers-only" | "private"
+    // Messaging privacy
+    readReceipts?: boolean
+    typingIndicators?: boolean
+    allowMessageForwarding?: boolean
+    // Search & Indexing
+    externalIndexing?: boolean
+    showInRecommendations?: boolean
+    mentionPermissions?: "public" | "followers-only" | "none"
+    tagReviewRequired?: boolean
+    tagNotifications?: boolean
     sections?: ProfileSectionPrivacy
   }
   blockedUsers?: string[] // User IDs that are blocked
@@ -100,6 +113,18 @@ export interface User {
   requirePhoneVerification?: boolean
   requireEmailVerification?: boolean
   verificationResubmitAt?: string
+  deletion?: {
+    status: "scheduled" | "deleted" | "restored" | "cancelled"
+    requestedAt: string
+    scheduledFor: string
+    reason?: string
+    otherReason?: string
+    restoreToken?: string
+    restoredAt?: string
+  }
+  // Cached computed fields (server-side convenience)
+  cachedCompletionPercent?: number
+  cachedCounts?: { followers: number; following: number; updatedAt: string }
 }
 
 export interface Pet {
@@ -775,7 +800,7 @@ export type NotificationPriority = "low" | "normal" | "high" | "urgent"
 
 export type NotificationCategory = "social" | "community" | "system" | "promotions" | "reminders"
 
-export type NotificationChannel = "in_app" | "email" | "push" | "digest"
+export type NotificationChannel = "in_app" | "email" | "push" | "digest" | "sms"
 
 export interface NotificationAction {
   id: string
@@ -853,17 +878,20 @@ export interface NotificationTypePreference {
 
 export interface NotificationDigestPreferences {
   enabled: boolean
-  interval: "daily" | "weekly"
+  interval: "hourly" | "daily" | "weekly"
   timeOfDay: string
+  dayOfWeek?: "monday" | "tuesday" | "wednesday" | "thursday" | "friday" | "saturday" | "sunday"
   categories: NotificationCategory[]
   includeUnreadOnly: boolean
 }
 
 export interface NotificationQuietHours {
   enabled: boolean
-  start: string
-  end: string
+  start: string // HH:mm
+  end: string   // HH:mm
   timezone: string
+  days?: Array<"monday"|"tuesday"|"wednesday"|"thursday"|"friday"|"saturday"|"sunday">
+  allowCritical?: boolean
 }
 
 export interface NotificationSettings {

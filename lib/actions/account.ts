@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache"
 import { serverEmailExists, getServerUserById, updateServerUser } from "../storage-server"
 import { createSession, setSessionCookie, clearSession } from "../auth-server"
+import { createDeletionRestoreRecord, consumeDeletionRestoreToken } from "../deletion-restore-store"
+import { revokeAllSessions } from "../session-store"
 import { validateEmailAddress } from "../registration-policy"
 import { createEmailVerificationRecord, consumeEmailVerificationToken, getEmailVerificationRecordByUser } from "../email-verification-store"
 
@@ -163,5 +165,67 @@ export async function logoutAllDevicesAction(userId: string): Promise<{ success:
   const sessionInvalidatedAt = new Date().toISOString()
   updateServerUser(user.id, { sessionInvalidatedAt })
   await clearSession()
+  return { success: true }
+}
+
+export async function requestAccountDeletionAction(input: {
+  userId: string
+  password: string
+  reason: string
+  otherReason?: string
+}): Promise<{ success: boolean; error?: string; scheduledFor?: string; token?: string }> {
+  const { userId, password, reason, otherReason } = input
+  const user = getServerUserById(userId)
+  if (!user) return { success: false, error: "User not found" }
+  if (!user.password || user.password !== password) {
+    return { success: false, error: "Incorrect password" }
+  }
+
+  const record = createDeletionRestoreRecord(user.id)
+  const scheduledFor = new Date(record.expiresAt).toISOString()
+  updateServerUser(user.id, {
+    deletion: {
+      status: "scheduled",
+      requestedAt: new Date(record.createdAt).toISOString(),
+      scheduledFor,
+      reason,
+      otherReason,
+      restoreToken: record.token,
+    },
+  })
+
+  // Revoke all sessions and log out immediately
+  revokeAllSessions(user.id)
+  await clearSession()
+
+  // Simulate confirmation email with restore link
+  try {
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
+    const normalizedBase = baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl
+    const restoreUrl = `${normalizedBase}/restore-account?token=${record.token}`
+    console.info(`[account] Account deletion scheduled for ${user.email}. Restore link (30 days): ${restoreUrl}`)
+  } catch {}
+
+  revalidatePath("/")
+  return { success: true, scheduledFor, token: record.token }
+}
+
+export async function restoreAccountAction(token: string): Promise<{ success: boolean; error?: string }> {
+  if (!token || token.trim() === "") {
+    return { success: false, error: "Missing token" }
+  }
+  const record = consumeDeletionRestoreToken(token.trim())
+  if (!record) return { success: false, error: "Invalid or expired restore token" }
+  const user = getServerUserById(record.userId)
+  if (!user) return { success: false, error: "User not found" }
+  updateServerUser(user.id, {
+    deletion: {
+      status: "restored",
+      requestedAt: user.deletion?.requestedAt || new Date().toISOString(),
+      scheduledFor: user.deletion?.scheduledFor || new Date().toISOString(),
+      restoredAt: new Date().toISOString(),
+    },
+  })
+  revalidatePath("/")
   return { success: true }
 }

@@ -14,7 +14,8 @@ import { PrivacySelector } from "@/components/privacy-selector"
 import { BlurToggle } from "@/components/moderation/blur-toggle"
 import { updateUser, getUsers, blockUser, unblockUser, isExpertVerified, getExpertVerificationRequestByUserId } from "@/lib/storage"
 import { getNotificationSettings, saveNotificationSettings } from "@/lib/notifications"
-import { requestEmailChangeAction, updatePasswordAction, logoutAllDevicesAction } from "@/lib/actions/account"
+import { requestEmailChangeAction, updatePasswordAction, logoutAllDevicesAction, requestAccountDeletionAction } from "@/lib/actions/account"
+import { getActiveSessionsAction, logoutSessionAction, logoutAllOtherSessionsAction } from "@/lib/actions/sessions"
 import type { PrivacyLevel, NotificationSettings, NotificationChannel } from "@/lib/types"
 import {
   ArrowLeft,
@@ -27,6 +28,8 @@ import {
   XCircle,
   LayoutGrid,
   ShieldCheck,
+  Globe,
+  Lock,
   Mail,
   Bell,
   Smartphone,
@@ -35,7 +38,7 @@ import {
   Key,
   type LucideIcon,
 } from "lucide-react"
-import { Eye, EyeOff, LogOut } from "lucide-react"
+import { Eye, EyeOff, LogOut, Monitor, Smartphone } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import Link from "next/link"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -43,6 +46,10 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Progress } from "@/components/ui/progress"
+import { RelativeTime } from "@/components/ui/relative-time"
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import * as RadioGroup from "@radix-ui/react-radio-group"
 
 const CHANNEL_SUMMARY_ORDER: NotificationChannel[] = ["in_app", "push", "email", "digest"]
 
@@ -112,6 +119,32 @@ export default function SettingsPage() {
   const [confirmPassword, setConfirmPassword] = useState("")
   const [passwordSubmitting, setPasswordSubmitting] = useState(false)
   const [passwordError, setPasswordError] = useState<string | null>(null)
+  // Account deletion modal state
+  const [deleteOpen, setDeleteOpen] = useState(false)
+  const [deleteStep, setDeleteStep] = useState(1)
+  const [deleteConfirmChecked, setDeleteConfirmChecked] = useState(false)
+  const [deleteReason, setDeleteReason] = useState<string>("")
+  const [deleteReasonOther, setDeleteReasonOther] = useState<string>("")
+  const [deletePassword, setDeletePassword] = useState<string>("")
+  const [deleteTypeText, setDeleteTypeText] = useState<string>("")
+  const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+  // Session management state
+  const [sessions, setSessions] = useState<Array<{
+    token: string
+    deviceName?: string
+    deviceType?: string
+    os?: string
+    browser?: string
+    ip?: string
+    city?: string
+    country?: string
+    createdAt: string
+    lastActivityAt: string
+    revoked?: boolean
+    isCurrent?: boolean
+  }> | null>(null)
+  const [isLoadingSessions, setIsLoadingSessions] = useState(false)
   // Verification Request UI state
   const [isVerifOpen, setIsVerifOpen] = useState(false)
   const [verifName, setVerifName] = useState("")
@@ -184,6 +217,13 @@ export default function SettingsPage() {
         const blocked = allUsers.filter((u) => user.blockedUsers!.includes(u.id))
         setBlockedUsers(blocked)
       }
+      // Load active sessions
+      setIsLoadingSessions(true)
+      getActiveSessionsAction()
+        .then((res) => {
+          if (res.success) setSessions(res.sessions || [])
+        })
+        .finally(() => setIsLoadingSessions(false))
     }
   }, [user])
 
@@ -279,6 +319,75 @@ export default function SettingsPage() {
     if (res.success) {
       router.push("/login")
     }
+  }
+
+  const canAdvanceDeleteStep = () => {
+    if (deleteStep === 1) return deleteConfirmChecked
+    if (deleteStep === 2) return !!deleteReason && (deleteReason !== 'other' || deleteReasonOther.trim().length > 0)
+    if (deleteStep === 3) return deletePassword.length > 0
+    if (deleteStep === 4) return deleteTypeText === 'DELETE'
+    return false
+  }
+
+  const resetDeletionState = () => {
+    setDeleteOpen(false)
+    setDeleteStep(1)
+    setDeleteConfirmChecked(false)
+    setDeleteReason("")
+    setDeleteReasonOther("")
+    setDeletePassword("")
+    setDeleteTypeText("")
+    setDeleting(false)
+    setDeleteError(null)
+  }
+
+  const handleConfirmDeletion = async () => {
+    if (!user) return
+    setDeleting(true)
+    setDeleteError(null)
+    try {
+      const result = await requestAccountDeletionAction({
+        userId: user.id,
+        password: deletePassword,
+        reason: deleteReason,
+        otherReason: deleteReason === 'other' ? deleteReasonOther : undefined,
+      })
+      if (!result.success) {
+        setDeleteError(result.error || 'Failed to schedule deletion')
+        setDeleting(false)
+        return
+      }
+      // Redirect to login after immediate logout
+      router.push('/login')
+    } catch (e: any) {
+      setDeleteError(e?.message || 'Failed to schedule deletion')
+      setDeleting(false)
+    }
+  }
+
+  const maskIp = (ip?: string) => {
+    if (!ip) return "—"
+    if (ip.includes(":")) return ip.slice(0, 6) + "…" // IPv6 short mask
+    const parts = ip.split(".")
+    if (parts.length !== 4) return ip
+    return `${parts[0]}.${parts[1]}..`
+  }
+
+  const refreshSessions = async () => {
+    setIsLoadingSessions(true)
+    const res = await getActiveSessionsAction()
+    if (res.success) setSessions(res.sessions || [])
+    setIsLoadingSessions(false)
+  }
+
+  const handleLogoutSession = async (token: string) => {
+    await logoutSessionAction(token)
+    await refreshSessions()
+  }
+
+  const handleLogoutAllOthers = async () => {
+    await logoutAllOtherSessionsAction()
+    await refreshSessions()
   }
 
   const handleEmailChange = async () => {
@@ -385,6 +494,213 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
+        {/* Password Management */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+              <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-lg bg-red-500/10 flex items-center justify-center flex-shrink-0">
+                <Key className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-red-500" />
+              </div>
+              Change Password
+            </CardTitle>
+            <CardDescription className="text-xs sm:text-sm">
+              Update your password. Use at least 8 characters including uppercase, lowercase, number, and special character.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1">
+                <Label>Current Password</Label>
+                <div className="relative">
+                  <Input
+                    type={curPassVisible ? "text" : "password"}
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    placeholder="Enter current password"
+                  />
+                  <button
+                    type="button"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground"
+                    onClick={() => setCurPassVisible((v) => !v)}
+                    aria-label={curPassVisible ? "Hide password" : "Show password"}
+                  >
+                    {curPassVisible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+              <div className="space-y-1">
+                <Label>New Password</Label>
+                <div className="relative">
+                  <Input
+                    type={newPassVisible ? "text" : "password"}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Enter new password"
+                  />
+                  <button
+                    type="button"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground"
+                    onClick={() => setNewPassVisible((v) => !v)}
+                    aria-label={newPassVisible ? "Hide password" : "Show password"}
+                  >
+                    {newPassVisible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+                <div className="space-y-1">
+                  <Progress value={passwordStrength.value} />
+                  <div className="text-xs text-muted-foreground">Strength: {passwordStrength.label}</div>
+                </div>
+              </div>
+              <div className="space-y-1 sm:col-span-2">
+                <Label>Confirm New Password</Label>
+                <div className="relative">
+                  <Input
+                    type={confirmPassVisible ? "text" : "password"}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Re-enter new password"
+                  />
+                  <button
+                    type="button"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground"
+                    onClick={() => setConfirmPassVisible((v) => !v)}
+                    aria-label={confirmPassVisible ? "Hide password" : "Show password"}
+                  >
+                    {confirmPassVisible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+                <div className="text-xs mt-1">
+                  {confirmPassword.length > 0 && (
+                    newPassword === confirmPassword ? (
+                      <span className="text-green-600 dark:text-green-400">Passwords match</span>
+                    ) : (
+                      <span className="text-destructive">Passwords do not match</span>
+                    )
+                  )}
+                </div>
+              </div>
+            </div>
+            {passwordError && <p className="text-sm text-destructive">{passwordError}</p>}
+            <div className="flex flex-wrap justify-end gap-3">
+              <Button variant="outline" onClick={handleLogoutAll} type="button">
+                <LogOut className="h-4 w-4" /> Log out from all devices
+              </Button>
+              <Button onClick={handleUpdatePassword} loading={passwordSubmitting} disabled={!canSubmitPassword || passwordSubmitting}>
+                Update Password
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Active Sessions */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+              <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-lg bg-emerald-500/10 flex items-center justify-center flex-shrink-0">
+                <Monitor className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-emerald-600" />
+              </div>
+              Active Sessions
+            </CardTitle>
+            <CardDescription className="text-xs sm:text-sm">Manage your logged in devices and sessions.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {isLoadingSessions && <p className="text-sm text-muted-foreground">Loading sessions…</p>}
+            {sessions && sessions.length === 0 && (
+              <p className="text-sm text-muted-foreground">No active sessions found.</p>
+            )}
+            {sessions && sessions.length > 0 && (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="text-muted-foreground">
+                    <tr className="text-left">
+                      <th className="py-2 pr-4">Device</th>
+                      <th className="py-2 pr-4">Location</th>
+                      <th className="py-2 pr-4">IP Address</th>
+                      <th className="py-2 pr-4">Last Activity</th>
+                      <th className="py-2 pr-0 text-right">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sessions.map((s) => {
+                      const isCurrent = s.isCurrent
+                      const DeviceIcon = s.deviceType === "mobile" || s.deviceType === "tablet" ? Smartphone : Monitor
+                      return (
+                        <tr key={s.token} className={isCurrent ? "bg-emerald-500/5" : undefined}>
+                          <td className="py-2 pr-4">
+                            <div className="flex items-center gap-2">
+                              <DeviceIcon className="h-4 w-4" />
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium">{s.deviceName || "Device"}</span>
+                                <span className="text-xs text-muted-foreground">{s.browser || s.os}</span>
+                                {isCurrent && (
+                                  <Badge variant="outline" className="border-green-500/50 text-green-600">This device</Badge>
+                                )}
+                                {s.revoked && (
+                                  <Badge variant="outline" className="border-destructive/50 text-destructive">Signed out</Badge>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-2 pr-4 whitespace-nowrap">
+                            {s.city || s.country ? (
+                              <span>{s.city || ""}{s.city && s.country ? ", " : ""}{s.country || ""}</span>
+                            ) : (
+                              <span className="text-muted-foreground">Unknown</span>
+                            )}
+                          </td>
+                          <td className="py-2 pr-4">
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="underline decoration-dotted cursor-help">{maskIp(s.ip)}</span>
+                                </TooltipTrigger>
+                                <TooltipContent>{s.ip || ""}</TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          </td>
+                          <td className="py-2 pr-4 whitespace-nowrap">
+                            <span className="text-muted-foreground">
+                              <RelativeTime date={s.lastActivityAt} />
+                            </span>
+                          </td>
+                          <td className="py-2 pr-0 text-right">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled={isCurrent || s.revoked}
+                              onClick={() => handleLogoutSession(s.token)}
+                            >
+                              Log Out
+                            </Button>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            <div className="flex justify-end">
+              <Button variant="outline" onClick={handleLogoutAllOthers} disabled={!sessions || sessions.every((s) => s.isCurrent || s.revoked)}>
+                Log Out All Other Sessions
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Delete Account */}
+        <Card className="border-destructive/50 bg-destructive/10">
+          <CardHeader>
+            <CardTitle className="text-destructive">Delete Account</CardTitle>
+            <CardDescription className="text-destructive-foreground">
+              This action is permanent and cannot be undone. All your data will be deleted.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex justify-end">
+            <Button variant="destructive" onClick={() => setDeleteOpen(true)}>Delete My Account</Button>
+          </CardContent>
+        </Card>
+
 
         {/* Privacy Settings Section */}
         <div className="space-y-6">
@@ -446,10 +762,51 @@ export default function SettingsPage() {
                 <div className="space-y-2">
                   <Label>Profile Visibility</Label>
                   <p className="text-sm text-muted-foreground mb-2">Who can see your profile information</p>
-                  <PrivacySelector
+                  <RadioGroup.Root
                     value={privacySettings.profile}
-                    onChange={(value) => setPrivacySettings({ ...privacySettings, profile: value })}
-                  />
+                    onValueChange={(val) => setPrivacySettings({ ...privacySettings, profile: val as any })}
+                    className="grid grid-cols-1 gap-2"
+                  >
+                    {[
+                      {
+                        value: "public",
+                        label: "Public",
+                        description: "Anyone can view your profile and content appears in search and explore.",
+                        Icon: Globe,
+                      },
+                      {
+                        value: "followers-only",
+                        label: "Friends Only",
+                        description: "Only mutual followers can see your full profile.",
+                        Icon: Users,
+                      },
+                      {
+                        value: "private",
+                        label: "Private",
+                        description: "Approve follower requests; only approved followers can see your content.",
+                        Icon: Lock,
+                      },
+                    ].map((opt) => (
+                      <RadioGroup.Item key={opt.value} value={opt.value} asChild>
+                        <button
+                          type="button"
+                          className="flex items-start gap-3 rounded-lg border p-3 text-left hover:bg-accent/30 data-[state=checked]:border-primary focus:outline-none"
+                          aria-label={opt.label}
+                        >
+                          <div className="mt-0.5">
+                            <div className="h-4 w-4 rounded-full border data-[state=checked]:border-[5px] data-[state=checked]:border-primary" />
+                          </div>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 font-medium">
+                              <opt.Icon className="h-4 w-4" />
+                              {opt.label}
+                            </div>
+                            <p className="text-sm text-muted-foreground">{opt.description}</p>
+                          </div>
+                        </button>
+                      </RadioGroup.Item>
+                    ))}
+                  </RadioGroup.Root>
                 </div>
 
                 <div className="space-y-2">
@@ -1047,6 +1404,91 @@ export default function SettingsPage() {
             >
               Submit Request
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Account Dialog */}
+      <Dialog open={deleteOpen} onOpenChange={(open) => { setDeleteOpen(open); if (!open) resetDeletionState() }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Delete Account</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="text-sm text-muted-foreground">Step {deleteStep} of 4</div>
+
+            {deleteStep === 1 && (
+              <div className="space-y-3">
+                <p className="text-sm">Are you sure? This will permanently remove:</p>
+                <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1">
+                  <li>All posts, photos, and comments</li>
+                  <li>All messages and conversations</li>
+                  <li>All pet profiles</li>
+                  <li>Your followers and following</li>
+                </ul>
+                <label className="flex items-center gap-2 text-sm">
+                  <Checkbox checked={deleteConfirmChecked} onCheckedChange={(v) => setDeleteConfirmChecked(Boolean(v))} />
+                  <span>I understand this is permanent</span>
+                </label>
+              </div>
+            )}
+
+            {deleteStep === 2 && (
+              <div className="space-y-3">
+                <label className="text-sm font-medium">Reason for leaving</label>
+                <div className="max-w-xs">
+                  <Select value={deleteReason} onValueChange={setDeleteReason}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select reason" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="not_useful">Not useful</SelectItem>
+                      <SelectItem value="privacy">Privacy concerns</SelectItem>
+                      <SelectItem value="notifications">Too many notifications</SelectItem>
+                      <SelectItem value="alternative">Found alternative</SelectItem>
+                      <SelectItem value="other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {deleteReason === 'other' && (
+                  <div className="space-y-1">
+                    <label className="text-sm font-medium" htmlFor="delete-other">Please specify</label>
+                    <Input id="delete-other" value={deleteReasonOther} onChange={(e) => setDeleteReasonOther(e.target.value)} placeholder="Tell us more (optional)" />
+                  </div>
+                )}
+              </div>
+            )}
+
+            {deleteStep === 3 && (
+              <div className="space-y-3">
+                <label className="text-sm font-medium">Enter your password to confirm</label>
+                <Input type="password" value={deletePassword} onChange={(e) => setDeletePassword(e.target.value)} placeholder="Password" />
+              </div>
+            )}
+
+            {deleteStep === 4 && (
+              <div className="space-y-3">
+                <p className="text-sm">Type <span className="font-semibold">DELETE</span> to confirm permanent deletion.</p>
+                <Input value={deleteTypeText} onChange={(e) => setDeleteTypeText(e.target.value.toUpperCase())} placeholder="DELETE" />
+              </div>
+            )}
+
+            {deleteError && <p className="text-sm text-destructive">{deleteError}</p>}
+          </div>
+          <DialogFooter>
+            {deleteStep > 1 && (
+              <Button variant="outline" onClick={() => setDeleteStep((s) => Math.max(1, s - 1))}>Back</Button>
+            )}
+            {deleteStep < 4 && (
+              <Button onClick={() => canAdvanceDeleteStep() && setDeleteStep((s) => Math.min(4, s + 1))} disabled={!canAdvanceDeleteStep()}>
+                Next
+              </Button>
+            )}
+            {deleteStep === 4 && (
+              <Button variant="destructive" onClick={handleConfirmDeletion} loading={deleting} disabled={!canAdvanceDeleteStep() || deleting}>
+                Permanently Delete Account
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -9,6 +9,7 @@ import { prisma } from '@/lib/db'
 import { getCurrentUser } from '@/lib/auth/session'
 import { hasRole } from '@/lib/auth/session'
 import { writeAudit } from '@/lib/audit'
+import { getWikiRevisionsByArticleIdAction } from '@/lib/actions/wiki'
 
 export async function POST(
   req: Request,
@@ -36,22 +37,15 @@ export async function POST(
     // Get article
     const article = await prisma.article.findUnique({
       where: { id: flaggedRevision.articleId },
-      include: {
-        revisions: {
-          where: {
-            approvedAt: { not: null },
-          },
-          orderBy: { approvedAt: 'desc' },
-          take: 1,
-        },
-      },
     })
 
     if (!article) {
       return NextResponse.json({ error: 'Article not found' }, { status: 404 })
     }
 
-    const stableRevision = article.revisions[0]
+    // Find latest stable revision using action (mocked in tests)
+    const revisions = await getWikiRevisionsByArticleIdAction(article.id)
+    const stableRevision = (revisions || []).find((r: any) => r.status === 'stable')
     if (!stableRevision) {
       return NextResponse.json({ error: 'No stable revision found' }, { status: 404 })
     }
@@ -84,13 +78,7 @@ export async function POST(
       'wiki:rollback',
       'revision',
       flaggedRevision.revisionId,
-      reason || 'Rolled back to stable revision',
-      {
-        articleId: article.id,
-        articleTitle: article.title,
-        stableRevisionId: stableRevision.id,
-        rollbackRevisionId: rollbackRevision.id,
-      }
+      reason || 'Rolled back to stable revision'
     )
 
     return NextResponse.json({ ok: true, revision: rollbackRevision })

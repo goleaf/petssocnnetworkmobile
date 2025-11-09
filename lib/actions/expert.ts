@@ -5,7 +5,7 @@
  * Handles expert verification workflow: application → verify → expire → revoke
  */
 
-import { prisma } from "@/lib/prisma"
+import { prisma } from "@/lib/db"
 import type { ExpertProfile } from "@/lib/types"
 
 /**
@@ -313,4 +313,3 @@ function mapPrismaExpertToExpertProfile(profile: any): ExpertProfile {
     updatedAt: profile.updatedAt.toISOString(),
   }
 }
-

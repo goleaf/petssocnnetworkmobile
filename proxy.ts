@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { validateSession, SESSION_COOKIE_NAME } from "./lib/auth-server"
+import { getServerUserByUsername } from "./lib/storage-server"
+import { getServerUsernameHistory } from "./lib/server-username-history"
 import type { UserRole } from "./lib/types"
 import createIntlMiddleware from 'next-intl/middleware'
 import { routing } from './i18n/routing'
@@ -132,6 +134,43 @@ export async function proxy(request: NextRequest) {
     return intlResponse || NextResponse.next()
   }
 
+  // Username redirect (migrated from legacy middleware.ts)
+  // If user/profile path uses an old username that was recently changed, redirect to the new one
+  try {
+    const segments = pathname.split("/") // e.g., ['', 'en', 'user', 'bob', 'edit']
+    const findIndex = (key: string) => segments.findIndex((s) => s === key)
+    let typeIndex = findIndex("user")
+    if (typeIndex === -1) typeIndex = findIndex("profile")
+    if (typeIndex !== -1) {
+      const usernameIndex = typeIndex + 1
+      const candidate = segments[usernameIndex]
+      if (candidate) {
+        const existing = getServerUserByUsername(candidate)
+        if (!existing) {
+          const history = getServerUsernameHistory()
+          const record = history
+            .filter((r) => r.previousUsername.toLowerCase() === candidate.toLowerCase())
+            .sort((a, b) => new Date(b.changedAt).getTime() - new Date(a.changedAt).getTime())[0]
+          if (record) {
+            const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000
+            const changedAt = new Date(record.changedAt).getTime()
+            if (Date.now() - changedAt <= THIRTY_DAYS_MS) {
+              const newSegments = [...segments]
+              newSegments[usernameIndex] = record.newUsername
+              const url = new URL(request.url)
+              url.pathname = newSegments.join("/") || "/"
+              // Preserve existing query and add banner param
+              url.searchParams.set("renamed_from", candidate)
+              return NextResponse.redirect(url, 308)
+            }
+          }
+        }
+      }
+    }
+  } catch {
+    // Best-effort; ignore errors and continue
+  }
+
   const routeConfig = getRouteConfig(pathname)
   
   // If route is not in protected routes config, allow access
@@ -225,4 +264,3 @@ export const config = {
     "/((?!api|_next/static|_next/image|favicon.ico).*)",
   ],
 }
-

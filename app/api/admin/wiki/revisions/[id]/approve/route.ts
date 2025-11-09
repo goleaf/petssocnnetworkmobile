@@ -38,6 +38,9 @@ export async function POST(
       }
     }
 
+    // Lookup the flagged revision to resolve revisionId for audit
+    const existing = await prisma.flaggedRevision.findUnique({ where: { id } })
+
     const fr = await prisma.flaggedRevision.update({
       where: { id },
       data: {
@@ -47,13 +50,13 @@ export async function POST(
       },
     })
 
-    await writeAudit({
-      actorId: user!.id,
-      action: 'wiki:approve-stable',
-      targetType: 'revision',
-      targetId: fr.revisionId,
-      reason: `Approved flagged revision ${id}`,
-    })
+    await writeAudit(
+      user!.id,
+      'wiki:approve-stable',
+      'revision',
+      existing?.revisionId || fr.revisionId || id,
+      `Approved flagged revision ${id}`
+    )
 
     return NextResponse.json({ ok: true, revision: fr })
   } catch (error) {
@@ -64,4 +67,3 @@ export async function POST(
     )
   }
 }
-

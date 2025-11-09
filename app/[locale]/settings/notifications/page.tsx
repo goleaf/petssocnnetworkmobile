@@ -11,8 +11,9 @@ import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
+import * as RadioGroup from "@radix-ui/react-radio-group"
 import { useAuth } from "@/components/auth/auth-provider"
-import { Bell, Smartphone, Mail, CalendarClock, ShieldCheck, type LucideIcon } from "lucide-react"
+import { Bell, Smartphone, Mail, CalendarClock, ShieldCheck, MessageSquare, type LucideIcon } from "lucide-react"
 import {
   createDefaultNotificationSettings,
   getNotificationSettings,
@@ -30,7 +31,7 @@ import type {
   NotificationTypePreference,
 } from "@/lib/types"
 
-const CHANNEL_ORDER: NotificationChannel[] = ["in_app", "push", "email", "digest"]
+const CHANNEL_ORDER: NotificationChannel[] = ["in_app", "push", "email", "digest", "sms"]
 
 const CHANNEL_META: Record<NotificationChannel, { label: string; description: string; icon: LucideIcon }> = {
   in_app: {
@@ -52,6 +53,11 @@ const CHANNEL_META: Record<NotificationChannel, { label: string; description: st
     label: "Digest",
     description: "Scheduled recap delivered at configured intervals",
     icon: CalendarClock,
+  },
+  sms: {
+    label: "SMS",
+    description: "Text alerts (charges may apply)",
+    icon: MessageSquare,
   },
 }
 
@@ -183,6 +189,7 @@ export default function NotificationSettingsPage() {
   const [pushStatus, setPushStatus] = useState<NotificationPermission | "unsupported">("unsupported")
   const [isCheckingPushSupport, setIsCheckingPushSupport] = useState(true)
   const [isRequestingPermission, setIsRequestingPermission] = useState(false)
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
     if (!user) return
@@ -266,9 +273,372 @@ export default function NotificationSettingsPage() {
     return null
   }
 
+  const NON_CRITICAL_TYPES: NotificationType[] = [
+    "follow",
+    "like",
+    "comment",
+    "mention",
+    "post",
+    "friend_request",
+    "friend_request_accepted",
+    "friend_request_declined",
+    "friend_request_cancelled",
+    "message",
+  ]
+
+  const currentEmailMode: "realtime" | "hourly" | "daily" | "weekly" = (() => {
+    if (!settings.digestSchedule.enabled) return "realtime"
+    if (settings.digestSchedule.interval === "hourly") return "hourly"
+    if (settings.digestSchedule.interval === "weekly") return "weekly"
+    return "daily"
+  })()
+
+  const setEmailMode = (mode: "realtime" | "hourly" | "daily" | "weekly") => {
+    setSettings((prev) => {
+      let next = { ...prev }
+      if (mode === "realtime") {
+        next = {
+          ...next,
+          digestSchedule: { ...next.digestSchedule, enabled: false },
+        }
+        NON_CRITICAL_TYPES.forEach((t) => {
+          const base = ensureTypePreference(next, t)
+          next = {
+            ...next,
+            typePreferences: {
+              ...next.typePreferences,
+              [t]: {
+                ...base,
+                enabled: base.enabled,
+                channels: Array.from(new Set([...(base.channels || []).filter((c) => c !== "digest"), "email"])) ,
+              },
+            },
+          }
+        })
+      } else {
+        next = {
+          ...next,
+          digestSchedule: {
+            ...next.digestSchedule,
+            enabled: true,
+            interval: mode,
+            timeOfDay: next.digestSchedule.timeOfDay || "08:00",
+          },
+        }
+        NON_CRITICAL_TYPES.forEach((t) => {
+          const base = ensureTypePreference(next, t)
+          next = {
+            ...next,
+            typePreferences: {
+              ...next.typePreferences,
+              [t]: {
+                ...base,
+                enabled: base.enabled,
+                channels: Array.from(new Set([...(base.channels || []).filter((c) => c !== "email"), "digest"])) ,
+              },
+            },
+          }
+        })
+      }
+      return next
+    })
+  }
+
+  const CATEGORY_DEFS: Array<{
+    key:
+      | "interactions"
+      | "social"
+      | "messages"
+      | "posts"
+      | "pets"
+      | "events"
+      | "marketplace"
+      | "community"
+      | "system"
+    label: string
+    description: string
+    types: NotificationType[]
+    placeholders?: Array<{ label: string }>
+  }> = [
+    {
+      key: "interactions",
+      label: "Interactions",
+      description: "Likes, comments, and shares",
+      types: ["like", "comment"],
+      placeholders: [{ label: "Shares" }],
+    },
+    {
+      key: "social",
+      label: "Social",
+      description: "Followers, requests, mentions, tags",
+      types: [
+        "follow",
+        "friend_request",
+        "friend_request_accepted",
+        "friend_request_declined",
+        "friend_request_cancelled",
+        "mention",
+      ],
+      placeholders: [{ label: "Tags" }],
+    },
+    {
+      key: "messages",
+      label: "Messages",
+      description: "New DMs and conversations",
+      types: ["message"],
+      placeholders: [{ label: "Group messages" }],
+    },
+    {
+      key: "posts",
+      label: "Posts",
+      description: "New posts and tags in posts",
+      types: ["post"],
+      placeholders: [{ label: "Posts you are tagged in" }],
+    },
+    { key: "pets", label: "Pets", description: "Reminders and pet care", types: [], placeholders: [
+      { label: "Vet appointments" }, { label: "Medication" }
+    ] },
+    { key: "events", label: "Events", description: "Invitations and reminders", types: [], placeholders: [
+      { label: "Event invitations" }, { label: "Event reminders" }, { label: "Event updates" }
+    ] },
+    { key: "marketplace", label: "Marketplace", description: "Orders and payments", types: [], placeholders: [
+      { label: "Order updates" }, { label: "Payment confirmations" }, { label: "Messages from sellers" }
+    ] },
+    { key: "community", label: "Community", description: "Groups and forums", types: [], placeholders: [
+      { label: "Group posts" }, { label: "Forum replies" }, { label: "Group invitations" }
+    ] },
+    { key: "system", label: "System", description: "Security and updates", types: [], placeholders: [
+      { label: "Account security" }, { label: "Policy updates" }, { label: "New features" }
+    ] },
+  ]
+
+  const isCategoryEnabled = (def: (typeof CATEGORY_DEFS)[number]) => {
+    if (def.types.length === 0) return true
+    return def.types.some((t) => ensureTypePreference(settings, t).enabled)
+  }
+
+  const toggleCategory = (def: (typeof CATEGORY_DEFS)[number], enabled: boolean) => {
+    if (def.types.length === 0) return
+    def.types.forEach((t) => {
+      setSettings((prev) => {
+        const base = ensureTypePreference(prev, t)
+        return {
+          ...prev,
+          typePreferences: {
+            ...prev.typePreferences,
+            [t]: { ...base, enabled },
+          },
+        }
+      })
+    })
+  }
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl space-y-6">
       <SettingsHeader description="Choose how and when you’re notified." />
+
+      {/* Do Not Disturb Schedule */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg">Do Not Disturb Schedule</CardTitle>
+          <CardDescription>Silence push and sounds during selected times. In‑app notifications remain visible.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <Label>Enable quiet hours</Label>
+              <p className="text-xs text-muted-foreground">No push notifications, no sounds; emails are queued</p>
+            </div>
+            <Switch
+              checked={Boolean(settings.quietHours?.enabled)}
+              onCheckedChange={(checked) =>
+                setSettings((prev) => ({
+                  ...prev,
+                  quietHours: {
+                    ...(prev.quietHours || ({} as any)),
+                    enabled: Boolean(checked),
+                    start: prev.quietHours?.start || "22:00",
+                    end: prev.quietHours?.end || "07:00",
+                    timezone: prev.quietHours?.timezone || (Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"),
+                    days:
+                      prev.quietHours?.days || [
+                        "monday",
+                        "tuesday",
+                        "wednesday",
+                        "thursday",
+                        "friday",
+                        "saturday",
+                        "sunday",
+                      ],
+                    allowCritical: prev.quietHours?.allowCritical ?? true,
+                  },
+                }))
+              }
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <Label className="text-xs uppercase text-muted-foreground">Start time</Label>
+              <Input
+                type="time"
+                value={settings.quietHours?.start || "22:00"}
+                onChange={(e) =>
+                  setSettings((prev) => ({
+                    ...prev,
+                    quietHours: { ...(prev.quietHours || ({} as any)), start: e.target.value, enabled: true, timezone: prev.quietHours?.timezone || (Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC") },
+                  }))
+                }
+                disabled={!settings.quietHours?.enabled}
+              />
+            </div>
+            <div>
+              <Label className="text-xs uppercase text-muted-foreground">End time</Label>
+              <Input
+                type="time"
+                value={settings.quietHours?.end || "07:00"}
+                onChange={(e) =>
+                  setSettings((prev) => ({
+                    ...prev,
+                    quietHours: { ...(prev.quietHours || ({} as any)), end: e.target.value, enabled: true, timezone: prev.quietHours?.timezone || (Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC") },
+                  }))
+                }
+                disabled={!settings.quietHours?.enabled}
+              />
+            </div>
+            <div>
+              <Label className="text-xs uppercase text-muted-foreground">Timezone</Label>
+              <Input type="text" value={settings.quietHours?.timezone || (Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC")} disabled />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-xs uppercase text-muted-foreground">Days</Label>
+            <div className="flex flex-wrap gap-2">
+              {(
+                [
+                  { k: "monday", l: "Mon" },
+                  { k: "tuesday", l: "Tue" },
+                  { k: "wednesday", l: "Wed" },
+                  { k: "thursday", l: "Thu" },
+                  { k: "friday", l: "Fri" },
+                  { k: "saturday", l: "Sat" },
+                  { k: "sunday", l: "Sun" },
+                ] as const
+              ).map(({ k, l }) => {
+                const isChecked = (settings.quietHours?.days || []).includes(k as any)
+                return (
+                  <label key={k} className="flex items-center gap-2 rounded-full border px-3 py-1 text-xs">
+                    <Checkbox
+                      checked={isChecked}
+                      onCheckedChange={(checked) =>
+                        setSettings((prev) => {
+                          const days = new Set(prev.quietHours?.days || [])
+                          if (checked) days.add(k as any)
+                          else days.delete(k as any)
+                          return {
+                            ...prev,
+                            quietHours: {
+                              ...(prev.quietHours || ({} as any)),
+                              enabled: true,
+                              days: Array.from(days) as any,
+                              timezone: prev.quietHours?.timezone || (Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"),
+                            },
+                          }
+                        })
+                      }
+                      disabled={!settings.quietHours?.enabled}
+                    />
+                    {l}
+                  </label>
+                )
+              })}
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <Label>Allow critical notifications during quiet hours</Label>
+              <p className="text-xs text-muted-foreground">Security alerts, emergency reminders are always delivered</p>
+            </div>
+            <Switch
+              checked={Boolean(settings.quietHours?.allowCritical) !== false}
+              onCheckedChange={(checked) =>
+                setSettings((prev) => ({
+                  ...prev,
+                  quietHours: { ...(prev.quietHours || ({} as any)), allowCritical: Boolean(checked) },
+                }))
+              }
+              disabled={!settings.quietHours?.enabled}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Categories overview */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg">Notification categories</CardTitle>
+          <CardDescription>Enable or disable groups of notifications at once.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {CATEGORY_DEFS.map((def) => {
+            const catEnabled = isCategoryEnabled(def)
+            const open = expanded[def.key]
+            return (
+              <div key={def.key} className="rounded-lg border">
+                <button
+                  type="button"
+                  className="w-full flex items-center justify-between px-4 py-3 hover:bg-accent/40"
+                  onClick={() => setExpanded((prev) => ({ ...prev, [def.key]: !open }))}
+                  aria-expanded={open}
+                >
+                  <div className="text-left">
+                    <div className="font-medium">{def.label}</div>
+                    <div className="text-xs text-muted-foreground">{def.description}</div>
+                  </div>
+                  <Switch
+                    checked={catEnabled}
+                    onCheckedChange={(checked) => toggleCategory(def, Boolean(checked))}
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                </button>
+                {open && (
+                  <div className="px-4 pb-3 pt-2 space-y-2">
+                    {def.types.map((t) => {
+                      const pref = ensureTypePreference(settings, t)
+                      return (
+                        <div key={t} className="flex items-center justify-between">
+                          <div className="text-sm">
+                            <div className="font-medium">{TYPE_LABELS[t].label}</div>
+                            <div className="text-xs text-muted-foreground">{TYPE_LABELS[t].description}</div>
+                          </div>
+                          <Switch
+                            checked={pref.enabled}
+                            onCheckedChange={(checked) =>
+                              updateTypePreference(t, (current) => ({ ...current, enabled: checked }))
+                            }
+                          />
+                        </div>
+                      )
+                    })}
+                    {def.placeholders && def.placeholders.length > 0 && (
+                      <div className="text-xs text-muted-foreground">
+                        {def.placeholders.map((p, idx) => (
+                          <div key={idx} className="flex items-center justify-between opacity-70">
+                            <div>{p.label}</div>
+                            <Switch disabled checked={false} />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader className="pb-3">
@@ -436,6 +806,119 @@ export default function NotificationSettingsPage() {
               </div>
             )
           })}
+        </CardContent>
+      </Card>
+
+      {/* Email Digest Settings */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg">Email Digest Settings</CardTitle>
+          <CardDescription>Applies to non-critical notifications. Security alerts always send immediately.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <RadioGroup.Root
+            value={currentEmailMode}
+            onValueChange={(v) => setEmailMode(v as any)}
+            className="grid gap-2"
+          >
+            <RadioGroup.Item value="realtime" asChild>
+              <button className="flex items-start gap-3 rounded-lg border p-3 text-left hover:bg-accent/30">
+                <div className="mt-0.5">
+                  <div className="h-4 w-4 rounded-full border data-[state=checked]:border-[5px] data-[state=checked]:border-primary" />
+                </div>
+                <div>
+                  <div className="font-medium">Real-time</div>
+                  <div className="text-xs text-muted-foreground">Immediate email for each notification</div>
+                </div>
+              </button>
+            </RadioGroup.Item>
+            <RadioGroup.Item value="hourly" asChild>
+              <button className="flex items-start gap-3 rounded-lg border p-3 text-left hover:bg-accent/30">
+                <div className="mt-0.5">
+                  <div className="h-4 w-4 rounded-full border data-[state=checked]:border-[5px] data-[state=checked]:border-primary" />
+                </div>
+                <div>
+                  <div className="font-medium">Hourly Digest</div>
+                  <div className="text-xs text-muted-foreground">One email per hour with all notifications</div>
+                </div>
+              </button>
+            </RadioGroup.Item>
+            <RadioGroup.Item value="daily" asChild>
+              <button className="flex items-start gap-3 rounded-lg border p-3 text-left hover:bg-accent/30">
+                <div className="mt-0.5">
+                  <div className="h-4 w-4 rounded-full border data-[state=checked]:border-[5px] data-[state=checked]:border-primary" />
+                </div>
+                <div className="flex-1">
+                  <div className="font-medium">Daily Digest</div>
+                  <div className="text-xs text-muted-foreground">One email per day at your preferred time</div>
+                  <div className="mt-2">
+                    <Label className="text-xs uppercase text-muted-foreground">Delivery time</Label>
+                    <Input
+                      type="time"
+                      value={settings.digestSchedule.timeOfDay}
+                      onChange={(e) =>
+                        setSettings((prev) => ({
+                          ...prev,
+                          digestSchedule: { ...prev.digestSchedule, timeOfDay: e.target.value },
+                        }))
+                      }
+                      className="max-w-[160px]"
+                      disabled={currentEmailMode !== 'daily'}
+                    />
+                  </div>
+                </div>
+              </button>
+            </RadioGroup.Item>
+            <RadioGroup.Item value="weekly" asChild>
+              <button className="flex items-start gap-3 rounded-lg border p-3 text-left hover:bg-accent/30">
+                <div className="mt-0.5">
+                  <div className="h-4 w-4 rounded-full border data-[state=checked]:border-[5px] data-[state=checked]:border-primary" />
+                </div>
+                <div className="flex-1">
+                  <div className="font-medium">Weekly Summary</div>
+                  <div className="text-xs text-muted-foreground">One email per week on your selected day</div>
+                  <div className="mt-2 flex items-center gap-3">
+                    <div>
+                      <Label className="text-xs uppercase text-muted-foreground">Day</Label>
+                      <Select
+                        value={settings.digestSchedule.dayOfWeek || 'monday'}
+                        onValueChange={(v) => setSettings((prev) => ({ ...prev, digestSchedule: { ...prev.digestSchedule, dayOfWeek: v as any } }))}
+                        disabled={currentEmailMode !== 'weekly'}
+                      >
+                        <SelectTrigger className="w-40 h-8 text-sm">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="monday">Monday</SelectItem>
+                          <SelectItem value="tuesday">Tuesday</SelectItem>
+                          <SelectItem value="wednesday">Wednesday</SelectItem>
+                          <SelectItem value="thursday">Thursday</SelectItem>
+                          <SelectItem value="friday">Friday</SelectItem>
+                          <SelectItem value="saturday">Saturday</SelectItem>
+                          <SelectItem value="sunday">Sunday</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label className="text-xs uppercase text-muted-foreground">Delivery time</Label>
+                      <Input
+                        type="time"
+                        value={settings.digestSchedule.timeOfDay}
+                        onChange={(e) =>
+                          setSettings((prev) => ({
+                            ...prev,
+                            digestSchedule: { ...prev.digestSchedule, timeOfDay: e.target.value },
+                          }))
+                        }
+                        className="max-w-[160px]"
+                        disabled={currentEmailMode !== 'weekly'}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </button>
+            </RadioGroup.Item>
+          </RadioGroup.Root>
         </CardContent>
       </Card>
 
@@ -634,23 +1117,61 @@ export default function NotificationSettingsPage() {
                     </td>
                     {CHANNEL_ORDER.map((channel) => {
                       const channelEnabled = ensureChannelPreference(settings, channel).enabled
+                      const isSms = channel === "sms"
+                      const isEmail = channel === "email"
+                      const isDigest = channel === "digest"
+
+                      // Allow SMS only for critical types (placeholder: none), keep disabled with cost notice
+                      const SMS_ALLOWED: NotificationType[] = []
+                      const smsDisabled = isSms && !SMS_ALLOWED.includes(type)
+
                       return (
-                        <td key={`${type}-${channel}`} className="py-3 pr-4">
-                          <Checkbox
-                            checked={preference.channels.includes(channel)}
-                            onCheckedChange={(checked) =>
-                              updateTypePreference(type, (current) => {
-                                const nextChannels = checked
-                                  ? Array.from(new Set([...current.channels, channel]))
-                                  : current.channels.filter((item) => item !== channel)
-                                return {
-                                  ...current,
-                                  channels: nextChannels,
-                                }
-                              })
-                            }
-                            disabled={!preference.enabled || !channelEnabled}
-                          />
+                        <td key={`${type}-${channel}`} className="py-3 pr-4 align-top">
+                          <div className="space-y-1">
+                            <Checkbox
+                              checked={preference.channels.includes(channel)}
+                              onCheckedChange={(checked) =>
+                                updateTypePreference(type, (current) => {
+                                  const nextChannels = checked
+                                    ? Array.from(new Set([...current.channels, channel]))
+                                    : current.channels.filter((item) => item !== channel)
+                                  return {
+                                    ...current,
+                                    channels: nextChannels,
+                                  }
+                                })
+                              }
+                              disabled={!preference.enabled || !channelEnabled || smsDisabled}
+                            />
+                            {isEmail && (
+                              <div className="mt-1">
+                                <Select
+                                  value={preference.channels.includes("digest") ? "digest" : "instant"}
+                                  onValueChange={(value) =>
+                                    updateTypePreference(type, (current) => {
+                                      const withoutEmail = current.channels.filter((c) => c !== "email" && c !== "digest")
+                                      return {
+                                        ...current,
+                                        channels: value === "instant" ? [...withoutEmail, "email"] : [...withoutEmail, "digest"],
+                                      }
+                                    })
+                                  }
+                                  disabled={!preference.enabled || !channelEnabled}
+                                >
+                                  <SelectTrigger size="sm" className="h-7 text-xs">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="instant">Instant</SelectItem>
+                                    <SelectItem value="digest">Daily Digest</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            )}
+                            {isSms && (
+                              <div className="text-[11px] text-muted-foreground">Critical alerts only • Charges may apply</div>
+                            )}
+                          </div>
                         </td>
                       )
                     })}

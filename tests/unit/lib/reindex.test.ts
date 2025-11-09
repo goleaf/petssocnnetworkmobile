@@ -52,7 +52,7 @@ jest.mock('@/lib/db', () => ({
 }))
 
 import { db } from '@/lib/db'
-import { GET, POST } from '@/app/api/admin/search/reindex/route'
+import { GET, POST, __resetReindexForTests__ } from '@/app/api/admin/search/reindex/route'
 
 const mockDb = db as jest.Mocked<typeof db>
 
@@ -60,6 +60,7 @@ describe('Admin Search Reindex API', () => {
   beforeEach(() => {
     jest.clearAllMocks()
     jest.useFakeTimers()
+    __resetReindexForTests__()
   })
 
   afterEach(() => {
@@ -138,9 +139,8 @@ describe('Admin Search Reindex API', () => {
       mockDb.blogPostSearchIndex.upsert.mockResolvedValue({} as any)
 
       await POST()
-
-      // Wait for async processing
-      await new Promise(resolve => setTimeout(resolve, 100))
+      // Fast-forward processing
+      jest.advanceTimersByTime(100)
 
       expect(mockDb.blogPost.findMany).toHaveBeenCalledWith({
         where: { deletedAt: null },
@@ -165,4 +165,3 @@ describe('Admin Search Reindex API', () => {
     })
   })
 })
-

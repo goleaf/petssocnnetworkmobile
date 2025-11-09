@@ -1,388 +1,181 @@
 "use client";
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import {
-  CheckCircle2,
-  XCircle,
-  Flag,
-  Eye,
-  EyeOff,
-  RefreshCw,
-  AlertTriangle,
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
-import { BlurredMedia } from '@/components/moderation/blurred-media';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
-import type { MediaModeration } from '@/lib/types';
-import { formatDistanceToNow } from 'date-fns';
+import { useEffect, useMemo, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
+import { useAuth } from "@/components/auth/auth-provider";
+import { getModerationStats, getPaginatedEditRequests, approveEditRequest, rejectEditRequest, getEditRequestAuditTrail } from "@/lib/moderation";
 
-export default function ModerationQueuePage() {
-  const router = useRouter();
-  const [queue, setQueue] = useState<MediaModeration[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedItem, setSelectedItem] = useState<MediaModeration | null>(null);
-  const [reviewAction, setReviewAction] = useState<'approve' | 'reject' | 'flag'>('approve');
-  const [reviewReason, setReviewReason] = useState<string>('');
-  const [isReviewing, setIsReviewing] = useState(false);
+type FilterType = "blog" | "wiki" | "pet" | "user" | undefined
+type StatusType = "pending" | "approved" | "rejected" | undefined
+
+export default function ModerationDashboardPage() {
+  const { user } = useAuth()
+
+  const [filters, setFilters] = useState<{ type?: FilterType; status?: StatusType; reporterId?: string; maxAge?: number }>({})
+  const [page, setPage] = useState(1)
+  const [pageSize] = useState(10)
+  const [totalPages, setTotalPages] = useState(1)
+  const [requests, setRequests] = useState<any[]>([])
+  const [stats, setStats] = useState<{ totalPending: number; totalApproved: number; totalRejected: number }>({ totalPending: 0, totalApproved: 0, totalRejected: 0 })
+  const [rejectOpen, setRejectOpen] = useState(false)
+  const [rejectReason, setRejectReason] = useState("")
+  const [activeRequestId, setActiveRequestId] = useState<string | null>(null)
+  const [historyOpen, setHistoryOpen] = useState(false)
 
   useEffect(() => {
-    loadQueue();
-  }, []);
+    const s = getModerationStats()
+    setStats({ totalPending: s.totalPending, totalApproved: s.totalApproved, totalRejected: s.totalRejected })
+  }, [])
 
-  const loadQueue = async () => {
-    setLoading(true);
-    try {
-      const response = await fetch('/api/moderation/queue');
-      if (response.ok) {
-        const data = await response.json();
-        setQueue(data.queue || []);
-      }
-    } catch (error) {
-      console.error('Error loading moderation queue:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  useEffect(() => {
+    const resp: any = getPaginatedEditRequests(filters as any, { page, pageSize })
+    setRequests(resp.items as any[])
+    if (typeof resp.totalPages === 'number') setTotalPages(resp.totalPages)
+    if (typeof resp.page === 'number') setPage(resp.page)
+  }, [filters, page, pageSize])
 
-  const handleReview = async () => {
-    if (!selectedItem) return;
+  const handleApprove = (id: string) => {
+    if (!user) return
+    approveEditRequest(id, (user as any).id || "moderator1")
+  }
 
-    setIsReviewing(true);
-    try {
-      const response = await fetch('/api/moderation/review', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          moderationId: selectedItem.id,
-          action: reviewAction,
-          reason: reviewReason || undefined,
-          reviewedBy: 'admin', // In production, get from auth
-        }),
-      });
+  const handleReject = (id: string) => {
+    setActiveRequestId(id)
+    setRejectReason("")
+    setRejectOpen(true)
+  }
 
-      if (response.ok) {
-        await loadQueue();
-        setSelectedItem(null);
-      }
-    } catch (error) {
-      console.error('Error reviewing moderation:', error);
-    } finally {
-      setIsReviewing(false);
-    }
-  };
+  const submitReject = () => {
+    if (!activeRequestId || !user) return
+    rejectEditRequest(activeRequestId, (user as any).id || "moderator1", rejectReason || undefined)
+    setRejectOpen(false)
+  }
 
-  const handleToggleBlur = async (moderationId: string, currentValue: boolean) => {
-    try {
-      const response = await fetch('/api/moderation/blur-toggle', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          moderationId,
-          blurOnWarning: !currentValue,
-        }),
-      });
-
-      if (response.ok) {
-        await loadQueue();
-      }
-    } catch (error) {
-      console.error('Error toggling blur:', error);
-    }
-  };
-
-  const getStatusBadge = (status: MediaModeration['status']) => {
-    const variants: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
-      pending: 'outline',
-      flagged: 'destructive',
-      approved: 'default',
-      rejected: 'destructive',
-      reviewed: 'secondary',
-    };
-
-    return (
-      <Badge variant={variants[status] || 'outline'}>
-        {status.charAt(0).toUpperCase() + status.slice(1)}
-      </Badge>
-    );
-  };
-
-  if (loading) {
-    return (
-      <div className="container mx-auto p-6">
-        <div className="flex items-center justify-center h-64">
-          <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
-        </div>
-      </div>
-    );
+  const openHistory = (id: string) => {
+    setActiveRequestId(id)
+    setHistoryOpen(true)
+    getEditRequestAuditTrail(id)
   }
 
   return (
     <div className="container mx-auto p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Media Moderation Queue</h1>
-          <p className="text-muted-foreground mt-1">
-            Review flagged images and videos for graphic content
-          </p>
-        </div>
-        <Button onClick={loadQueue} variant="outline" size="sm">
-          <RefreshCw className="h-4 w-4 mr-2" />
-          Refresh
-        </Button>
+      <h1 className="text-3xl font-bold">Content Moderation</h1>
+
+      {/* Stats */}
+      <div className="grid grid-cols-3 gap-4">
+        <Card>
+          <CardHeader><CardTitle>Awaiting Review</CardTitle></CardHeader>
+          <CardContent className="text-2xl font-semibold">{stats.totalPending}</CardContent>
+        </Card>
+        <Card>
+          <CardHeader><CardTitle>Accepted</CardTitle></CardHeader>
+          <CardContent className="text-2xl font-semibold">{stats.totalApproved}</CardContent>
+        </Card>
+        <Card>
+          <CardHeader><CardTitle>Declined</CardTitle></CardHeader>
+          <CardContent className="text-2xl font-semibold">{stats.totalRejected}</CardContent>
+        </Card>
       </div>
 
+      {/* Filters */}
       <Card>
-        <CardHeader>
-          <CardTitle>Queue ({queue.length} items)</CardTitle>
-          <CardDescription>
-            Items flagged for manual review or pending moderation
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {queue.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
-              <CheckCircle2 className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>No items in moderation queue</p>
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Preview</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Score</TableHead>
-                  <TableHead>Reason</TableHead>
-                  <TableHead>Blur On Warning</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {queue.map((item) => (
-                  <TableRow key={item.id}>
-                    <TableCell>
-                      <div className="w-16 h-16 relative">
-                        <BlurredMedia
-                          src={item.mediaUrl}
-                          alt="Moderation preview"
-                          blurOnWarning={item.blurOnWarning}
-                          isFlagged={item.status === 'flagged'}
-                          moderationReason={item.reason}
-                          width={64}
-                          height={64}
-                          type={item.mediaType}
-                          className="rounded object-cover"
-                        />
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">
-                        {item.mediaType.toUpperCase()}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{getStatusBadge(item.status)}</TableCell>
-                    <TableCell>
-                      <span className="font-mono text-sm">
-                        {(item.moderationScore || 0).toFixed(2)}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      {item.reason ? (
-                        <Badge variant="secondary">{item.reason}</Badge>
-                      ) : (
-                        <span className="text-muted-foreground">-</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Switch
-                          checked={item.blurOnWarning}
-                          onCheckedChange={() =>
-                            handleToggleBlur(item.id, item.blurOnWarning)
-                          }
-                        />
-                        {item.blurOnWarning ? (
-                          <EyeOff className="h-4 w-4 text-muted-foreground" />
-                        ) : (
-                          <Eye className="h-4 w-4 text-muted-foreground" />
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {formatDistanceToNow(item.createdAt, { addSuffix: true })}
-                    </TableCell>
-                    <TableCell>
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setSelectedItem(item)}
-                          >
-                            Review
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent className="max-w-4xl">
-                          <DialogHeader>
-                            <DialogTitle>Review Media Content</DialogTitle>
-                            <DialogDescription>
-                              Review flagged content and take appropriate action
-                            </DialogDescription>
-                          </DialogHeader>
-                          {selectedItem && (
-                            <div className="space-y-4">
-                              <div className="relative w-full aspect-video bg-muted rounded-lg overflow-hidden">
-                                <BlurredMedia
-                                  src={selectedItem.mediaUrl}
-                                  alt="Review content"
-                                  blurOnWarning={selectedItem.blurOnWarning}
-                                  isFlagged={selectedItem.status === 'flagged'}
-                                  moderationReason={selectedItem.reason}
-                                  type={selectedItem.mediaType}
-                                  className="w-full h-full"
-                                />
-                              </div>
-                              <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                  <Label>Moderation Score</Label>
-                                  <p className="text-sm text-muted-foreground">
-                                    {(selectedItem.moderationScore || 0).toFixed(2)}
-                                  </p>
-                                </div>
-                                <div>
-                                  <Label>Auto Flagged</Label>
-                                  <p className="text-sm text-muted-foreground">
-                                    {selectedItem.autoFlagged ? 'Yes' : 'No'}
-                                  </p>
-                                </div>
-                                {selectedItem.reason && (
-                                  <div>
-                                    <Label>Reason</Label>
-                                    <p className="text-sm text-muted-foreground">
-                                      {selectedItem.reason}
-                                    </p>
-                                  </div>
-                                )}
-                              </div>
-                              <div className="space-y-4 border-t pt-4">
-                                <div>
-                                  <Label>Action</Label>
-                                  <Select
-                                    value={reviewAction}
-                                    onValueChange={(value) =>
-                                      setReviewAction(
-                                        value as 'approve' | 'reject' | 'flag'
-                                      )
-                                    }
-                                  >
-                                    <SelectTrigger>
-                                      <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      <SelectItem value="approve">
-                                        <div className="flex items-center gap-2">
-                                          <CheckCircle2 className="h-4 w-4" />
-                                          Approve
-                                        </div>
-                                      </SelectItem>
-                                      <SelectItem value="reject">
-                                        <div className="flex items-center gap-2">
-                                          <XCircle className="h-4 w-4" />
-                                          Reject
-                                        </div>
-                                      </SelectItem>
-                                      <SelectItem value="flag">
-                                        <div className="flex items-center gap-2">
-                                          <Flag className="h-4 w-4" />
-                                          Keep Flagged
-                                        </div>
-                                      </SelectItem>
-                                    </SelectContent>
-                                  </Select>
-                                </div>
-                                <div>
-                                  <Label>Reason (optional)</Label>
-                                  <Select
-                                    value={reviewReason}
-                                    onValueChange={setReviewReason}
-                                  >
-                                    <SelectTrigger>
-                                      <SelectValue placeholder="Select reason" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      <SelectItem value="graphic_content">
-                                        Graphic Content
-                                      </SelectItem>
-                                      <SelectItem value="inappropriate">
-                                        Inappropriate
-                                      </SelectItem>
-                                      <SelectItem value="violence">Violence</SelectItem>
-                                      <SelectItem value="explicit">Explicit</SelectItem>
-                                      <SelectItem value="other">Other</SelectItem>
-                                    </SelectContent>
-                                  </Select>
-                                </div>
-                                <Button
-                                  onClick={handleReview}
-                                  disabled={isReviewing}
-                                  className="w-full"
-                                >
-                                  {isReviewing ? (
-                                    <>
-                                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                                      Processing...
-                                    </>
-                                  ) : (
-                                    'Submit Review'
-                                  )}
-                                </Button>
-                              </div>
-                            </div>
-                          )}
-                        </DialogContent>
-                      </Dialog>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
+        <CardHeader><CardTitle>Filters</CardTitle></CardHeader>
+        <CardContent className="grid grid-cols-4 gap-4 items-end">
+          <div className="space-y-2">
+            <Label htmlFor="filter-type">Content Type</Label>
+            <Select value={filters.type} onValueChange={(v) => setFilters((f) => ({ ...f, type: v as FilterType }))}>
+              <SelectTrigger id="filter-type" aria-label="Content Type"><SelectValue placeholder="All types" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="blog">Blog Posts</SelectItem>
+                <SelectItem value="wiki">Wiki</SelectItem>
+                <SelectItem value="pet">Pets</SelectItem>
+                <SelectItem value="user">Users</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="filter-status">Status</Label>
+            <Select value={filters.status} onValueChange={(v) => setFilters((f) => ({ ...f, status: v as StatusType }))}>
+              <SelectTrigger id="filter-status" aria-label="Status"><SelectValue placeholder="Any status" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="approved">Approved</SelectItem>
+                <SelectItem value="rejected">Rejected</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="filter-reporter">Reporter</Label>
+            <Input id="filter-reporter" placeholder="Filter by reporter" value={filters.reporterId || ""} onChange={(e) => setFilters((f) => ({ ...f, reporterId: e.target.value || undefined }))} />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="filter-age">Max Age (hours)</Label>
+            <Input id="filter-age" placeholder="No limit" value={filters.maxAge?.toString() || ""} onChange={(e) => setFilters((f) => ({ ...f, maxAge: e.target.value ? Number(e.target.value) : undefined }))} />
+          </div>
         </CardContent>
       </Card>
+
+      {/* List */}
+      <Card>
+        <CardHeader><CardTitle>Requests</CardTitle></CardHeader>
+        <CardContent className="space-y-2">
+          {requests.map((r) => (
+            <div key={r.id} className="flex items-center justify-between border rounded p-3">
+              <div className="space-y-1">
+                <div className="font-medium">{r.type}: {r.contentId}</div>
+                <div className="text-xs text-muted-foreground">{r.changesSummary || "Changed title"}</div>
+              </div>
+              <div className="flex gap-2">
+                <Button size="sm" onClick={() => handleApprove(r.id)}>Approve</Button>
+                <Button size="sm" variant="destructive" onClick={() => handleReject(r.id)}>
+                  {rejectOpen && activeRequestId === r.id ? 'Cancel' : 'Reject'}
+                </Button>
+                <Dialog open={historyOpen && activeRequestId === r.id} onOpenChange={setHistoryOpen}>
+                  <DialogTrigger asChild>
+                    <Button size="sm" variant="outline" onClick={() => openHistory(r.id)}>History</Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Audit Trail</DialogTitle>
+                      <DialogDescription>Review history for this request</DialogDescription>
+                    </DialogHeader>
+                    <div className="text-sm">Viewing history</div>
+                  </DialogContent>
+                </Dialog>
+              </div>
+            </div>
+          ))}
+
+          {/* Pagination */}
+          <div className="flex items-center justify-between pt-2">
+            <div>Page {page} of {totalPages}</div>
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" disabled={page === 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>Previous</Button>
+              <Button size="sm" variant="outline" disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>Next</Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Reject dialog */}
+      <Dialog open={rejectOpen} onOpenChange={setRejectOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{rejectReason ? 'Confirm Decision' : 'Reject Edit Request'}</DialogTitle>
+            <DialogDescription>Provide a reason</DialogDescription>
+          </DialogHeader>
+          <Input placeholder="Enter rejection reason" value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} />
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setRejectOpen(false)}>Cancel</Button>
+            <Button onClick={submitReject}>Reject</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
-  );
+  )
 }

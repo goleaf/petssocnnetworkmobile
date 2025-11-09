@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useState, useRef } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth"
 import { useMemo } from "react"
@@ -101,8 +101,9 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Award } from "lucide-react"
 import { usePinnedItems } from "@/lib/pinned-items"
 import { useProfileUpdates } from "@/lib/profile-updates"
-import { recordProfileView, classifyReferrer } from "@/lib/profile-analytics"
+import { recordProfileView, classifyReferrer, recordMediaView, recordLinkClick } from "@/lib/profile-analytics"
 import { ProfileInsights } from "@/components/profile/profile-insights"
+import { AudienceInsights } from "@/components/profile/audience-insights"
 
 const STORAGE_KEYS_TO_WATCH = ["pet_social_users", "pet_social_pets", "pet_social_blog_posts"]
 
@@ -121,6 +122,7 @@ export default function UserProfilePage() {
   const [editPostContent, setEditPostContent] = useState("")
   const [editingBlogPostId, setEditingBlogPostId] = useState<string | null>(null)
   const [blockActionPending, setBlockActionPending] = useState(false)
+  const avatarRef = useRef<HTMLDivElement | null>(null)
 
   const loadProfile = useCallback(() => {
     const usernameParam = params.username as string
@@ -223,6 +225,26 @@ export default function UserProfilePage() {
     const src = classifyReferrer(typeof document !== 'undefined' ? document.referrer : '')
     recordProfileView(user.id, currentUser?.id || null, src)
   }, [user?.id, currentUser?.id])
+
+  // Record avatar media view when visible once per session
+  useEffect(() => {
+    if (!user) return
+    const key = `media_viewed_session_${user.id}_avatar`
+    if (sessionStorage.getItem(key)) return
+    const el = avatarRef.current
+    if (!el) return
+    const obs = new IntersectionObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.isIntersecting) {
+          try { recordMediaView(user.id, 'avatar'); sessionStorage.setItem(key, '1') } catch {}
+          obs.disconnect()
+          break
+        }
+      }
+    }, { threshold: 0.5 })
+    obs.observe(el)
+    return () => { try { obs.disconnect() } catch {} }
+  }, [user?.id])
 
   const handleBlockUser = () => {
     if (!currentUser || !user) return
@@ -384,7 +406,7 @@ export default function UserProfilePage() {
           <CardContent className="p-6 sm:p-8 lg:p-10">
             <div className="flex flex-col sm:flex-row gap-6 sm:gap-8">
               {/* Profile Picture */}
-              <div className="flex justify-center sm:justify-start">
+              <div className="flex justify-center sm:justify-start" ref={avatarRef}>
                 <Avatar className="h-28 w-28 sm:h-32 sm:w-32 lg:h-36 lg:w-36 border-4 border-background shadow-lg ring-2 ring-primary/20">
                   <AvatarImage src={user.avatar || "/placeholder.svg"} alt={user.fullName} />
                   <AvatarFallback className="text-3xl sm:text-4xl lg:text-5xl bg-primary/10 text-primary">
@@ -636,8 +658,9 @@ export default function UserProfilePage() {
                   </div>
                 )}
                 {isOwnProfile && (
-                  <div className="pt-4">
+                  <div className="pt-4 space-y-4">
                     <ProfileInsights profileId={user.id} />
+                    <AudienceInsights profileId={user.id} />
                   </div>
                 )}
               </div>
@@ -967,6 +990,7 @@ export default function UserProfilePage() {
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-primary hover:underline"
+                          onClick={() => { try { recordLinkClick(user.id, 'website') } catch {} }}
                         >
                           {user.website}
                         </a>
