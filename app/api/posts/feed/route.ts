@@ -68,6 +68,8 @@ export async function GET(request: NextRequest) {
     const allPets = getPets()
     const places: Place[] = getPlaces()
     const placesMap = new Map<string, Place>(places.map((p) => [p.id, p]))
+    const userMap = new Map(allUsers.map((u) => [u.id, u]))
+    const petMap = new Map(allPets.map((p) => [p.id, p]))
     const viewer = allUsers.find((u) => u.id === viewerId)
 
     if (!viewer) {
@@ -85,12 +87,12 @@ export async function GET(request: NextRequest) {
       const followedPosts = allPosts.filter((post) => {
         // Exclude soft-deleted posts
         if ((post as any).deletedAt) return false
-        const author = allUsers.find((u) => u.id === post.authorId)
+        const author = userMap.get(post.authorId)
         if (!author) return false
         if (hiddenIds.includes(post.id)) return false
         if (mutedUserIds.has(post.authorId)) return false
         if (areUsersBlocked(viewerId, post.authorId)) return false
-        const pet = allPets.find((p) => p.id === post.petId)
+        const pet = petMap.get(post.petId || "")
         const isFollowingUser = viewer.following?.includes(post.authorId) ?? false
         const isFollowingPet = pet?.followers?.includes(viewerId) ?? false
 
@@ -105,7 +107,7 @@ export async function GET(request: NextRequest) {
       visiblePosts = allPosts.filter((post) => {
         // Exclude soft-deleted posts
         if ((post as any).deletedAt) return false
-        const author = allUsers.find((u) => u.id === post.authorId)
+        const author = userMap.get(post.authorId)
         if (!author) return false
         if (hiddenIds.includes(post.id)) return false
         if (mutedUserIds.has(post.authorId)) return false
@@ -220,8 +222,8 @@ export async function GET(request: NextRequest) {
 
     // Enrich posts with author and pet info (for client-side use)
     const enrichedPosts = posts.map((post) => {
-      const author = allUsers.find((u) => u.id === post.authorId)
-      const pet = allPets.find((p) => p.id === post.petId)
+      const author = userMap.get(post.authorId)
+      const pet = petMap.get(post.petId || "")
       return {
         ...post,
         author: author

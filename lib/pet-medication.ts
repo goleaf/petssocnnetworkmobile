@@ -1,5 +1,5 @@
 import type { Pet } from './types'
-import { getPetById } from './storage'
+import { getPetById, updatePet } from './storage'
 import { updatePetEncrypted } from './pet-health-storage'
 
 function todayIsoDate(): string {
@@ -16,7 +16,9 @@ export function markMedicationDoseGivenToday(petId: string, medicationId: string
   const today = todayIsoDate()
   if (!dates.includes(today)) dates.push(today)
   const updated: Pet = { ...pet, medicationAdherence: { ...log, [medicationId]: dates } }
-  // Persist with encryption preserved
+  // Persist synchronously for immediate reads in tests/UI
+  updatePet(updated)
+  // Also persist via encrypted path when available (non-blocking)
   // eslint-disable-next-line @typescript-eslint/no-floating-promises
   updatePetEncrypted(updated)
   return updated

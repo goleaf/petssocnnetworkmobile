@@ -32,13 +32,14 @@ export default function DashboardContent({ user }: { user: User }) {
     const allPosts = getBlogPosts()
     const allUsers = getUsers()
     const allPets = getPets()
+    const userMap = new Map(allUsers.map((u) => [u.id, u]))
+    const petMap = new Map(allPets.map((p) => [p.id, p]))
     const viewerId = user.id
 
     const followedPosts = allPosts.filter((post) => {
-      const author = allUsers.find((candidate) => candidate.id === post.authorId)
+      const author = userMap.get(post.authorId)
       if (!author) return false
-
-      const pet = allPets.find((candidatePet) => candidatePet.id === post.petId)
+      const pet = post.petId ? petMap.get(post.petId) : undefined
       const isFollowingUser = user.following?.includes(post.authorId) ?? false
       const isFollowingPet = pet?.followers?.includes(user.id) ?? false
 
@@ -49,7 +50,7 @@ export default function DashboardContent({ user }: { user: User }) {
     setRecentPosts(followedPosts.slice(0, 5))
 
     const visiblePosts = allPosts.filter((post) => {
-      const author = allUsers.find((candidate) => candidate.id === post.authorId)
+      const author = userMap.get(post.authorId)
       if (!author) return false
       return canViewPost(post, author, viewerId)
     })

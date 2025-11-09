@@ -269,10 +269,11 @@ export default function HomePage() {
   const refreshFeatured = useCallback(() => {
     const posts = getBlogPosts()
     const users = getUsers()
+    const userMap = new Map(users.map((u) => [u.id, u]))
     const viewerId = user?.id || null
 
     const visiblePosts = posts.filter((post) => {
-      const author = users.find((candidate) => candidate.id === post.authorId)
+      const author = userMap.get(post.authorId)
       if (!author) return false
       
       // Only show published or scheduled posts
@@ -333,6 +334,8 @@ export default function HomePage() {
     const allPosts = getBlogPosts()
     const allUsers = getUsers()
     const allPets = getPets()
+    const userMap = new Map(allUsers.map((u) => [u.id, u]))
+    const petMap = new Map(allPets.map((p) => [p.id, p]))
     const hidden = getHiddenPostIds(user.id)
     const seenSet = new Set<string>(getSeenPostIds(user.id))
 
@@ -351,7 +354,7 @@ export default function HomePage() {
 
     // Visible posts per privacy
     const visiblePosts = allPosts.filter((post) => {
-      const author = allUsers.find((candidate) => candidate.id === post.authorId)
+      const author = userMap.get(post.authorId)
       if (!author) return false
       if (!canViewPost(post, author, user.id)) return false
       if (hidden.includes(post.id)) return false
@@ -381,7 +384,7 @@ export default function HomePage() {
     // Build personalized context for ranking: affinity, content-type, topics
     const followingIds = new Set<string>(user.following || [])
     const mutualFollowingIds = new Set<string>((user.following || []).filter((fid) => {
-      const other = allUsers.find((u) => u.id === fid)
+      const other = userMap.get(fid)
       return other?.following?.includes(user.id)
     }))
 
@@ -454,7 +457,7 @@ export default function HomePage() {
 
     // Home Feed: followed users/pets ranked algorithmically
     const homeCandidates = visiblePosts.filter((post) => {
-      const pet = allPets.find((p) => p.id === post.petId)
+      const pet = post.petId ? petMap.get(post.petId) : undefined
       const isFollowingUser = followedUserIds.has(post.authorId)
       const isFollowingPet = pet ? pet.followers?.includes(user.id) || followedPetIds.has(pet.id) : false
       if (!(isFollowingUser || isFollowingPet)) return false
@@ -527,7 +530,7 @@ export default function HomePage() {
 
     // Following Feed: strictly chronological from followed users/pets
     const followingCandidates = visiblePosts.filter((post) => {
-      const pet = allPets.find((p) => p.id === post.petId)
+      const pet = post.petId ? petMap.get(post.petId) : undefined
       const isFollowingUser = followedUserIds.has(post.authorId)
       const isFollowingPet = pet ? pet.followers?.includes(user.id) || followedPetIds.has(pet.id) : false
       return isFollowingUser || isFollowingPet
@@ -759,11 +762,12 @@ export default function HomePage() {
 
     const allPosts = getBlogPosts()
     const allUsers = getUsers()
+    const userMap = new Map(allUsers.map((u) => [u.id, u]))
 
     const showSponsored = user.displayPreferences?.showSponsoredPosts !== false
     const mutedUserIds = new Set<string>(user.mutedUsers || [])
     let visiblePosts = allPosts.filter((post) => {
-      const author = allUsers.find((candidate) => candidate.id === post.authorId)
+      const author = userMap.get(post.authorId)
       if (!author) return false
       if (!canViewPost(post, author, user.id)) return false
       if (mutedUserIds.has(post.authorId)) return false

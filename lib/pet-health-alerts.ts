@@ -1,5 +1,5 @@
 import type { Pet } from './types'
-import { getPetById } from './storage'
+import { getPetById, updatePet } from './storage'
 import { updatePetEncrypted } from './pet-health-storage'
 import { createNotification } from './notifications'
 
@@ -12,6 +12,9 @@ export function logWeight(petId: string, dateIso: string, weight: number): Pet |
   if (idx !== -1) history[idx] = { date: dateIso, weight }
   else history.push({ date: dateIso, weight })
   const updated: Pet = { ...pet, weightHistory: history }
+  // Persist synchronously so subsequent reads reflect the change immediately
+  updatePet(updated)
+  // Also persist via encrypted path when available (non-blocking)
   // eslint-disable-next-line @typescript-eslint/no-floating-promises
   updatePetEncrypted(updated)
   return updated
@@ -42,4 +45,3 @@ export function checkRapidWeightChangeAndAlert(pet: Pet, userId: string, percent
   }
   return false
 }
-
