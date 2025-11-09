@@ -94,8 +94,8 @@ async function putToS3(key: string, body: Buffer, contentType: string): Promise<
 export async function POST(request: NextRequest, { params }: { params: { userId: string } }) {
   try {
     const userId = params.userId
+    // Best-effort lookup for previous avatar cleanup; may be undefined for new users
     const existingUser = getServerUserById(userId)
-    if (!existingUser) return NextResponse.json({ error: 'User not found' }, { status: 404 })
     const form = await request.formData()
     const file = form.get('photo') as unknown as File | null
     if (!file) {
@@ -151,7 +151,7 @@ export async function POST(request: NextRequest, { params }: { params: { userId:
 
     // Attempt to delete previous avatar objects if they match expected path
     try {
-      const prev = existingUser.avatar
+      const prev = existingUser?.avatar
       if (prev) {
         const client = getS3Client()
         const keyFromUrl = (u: string) => {

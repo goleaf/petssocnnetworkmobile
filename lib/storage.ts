@@ -3902,6 +3902,51 @@ export function getPhotoReactions(
   return { [photoKey]: allReactions[photoKey] }
 }
 
+// Timeline Reaction operations (for pet activity timeline)
+export function toggleTimelineReaction(petId: string, entryId: string, userId: string, reactionType: ReactionType) {
+  if (typeof window === "undefined") return
+  const entryKey = `${petId}:${entryId}`
+  const pet = getPetById(petId)
+  if (!pet) return
+
+  if (areUsersBlocked(userId, pet.ownerId)) {
+    return
+  }
+
+  const storageKey = "pet_social_timeline_reactions"
+  const allReactions = readData<Record<string, Record<ReactionType, string[]>>>(storageKey, {})
+  const reactions = allReactions[entryKey] || { ...DEFAULT_REACTIONS }
+  const reactionArray = reactions[reactionType] || []
+  const hasReacted = reactionArray.includes(userId)
+
+  if (hasReacted) {
+    reactions[reactionType] = reactionArray.filter((id) => id !== userId)
+  } else {
+    Object.keys(reactions).forEach((key) => {
+      if (key !== reactionType) {
+        reactions[key as ReactionType] = reactions[key as ReactionType].filter((id) => id !== userId)
+      }
+    })
+    reactions[reactionType] = [...reactionArray, userId]
+  }
+
+  allReactions[entryKey] = reactions
+  writeData(storageKey, allReactions)
+}
+
+export function getTimelineReactions(
+  petId: string,
+  entryId: string
+): Record<string, Record<ReactionType, string[]>> {
+  const entryKey = `${petId}:${entryId}`
+  const storageKey = "pet_social_timeline_reactions"
+  const allReactions = readData<Record<string, Record<ReactionType, string[]>>>(storageKey, {})
+  if (!allReactions[entryKey]) {
+    allReactions[entryKey] = { ...DEFAULT_REACTIONS }
+  }
+  return { [entryKey]: allReactions[entryKey] }
+}
+
 export function flagComment(
   commentId: string,
   userId: string,

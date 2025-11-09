@@ -81,6 +81,7 @@
     "date-fns": "latest",
     "diff": "^8.0.2",
     "embla-carousel-react": "8.5.1",
+    "fflate": "^0.8.2",
     "immer": "latest",
     "input-otp": "1.4.1",
     "lucide-react": "^0.454.0",

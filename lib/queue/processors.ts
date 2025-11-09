@@ -10,6 +10,8 @@ import type {
   NotifyUserJobResult,
   RebuildSearchIndexJobPayload,
   RebuildSearchIndexJobResult,
+  TranscodeVideoJobPayload,
+  TranscodeVideoJobResult,
 } from "@/lib/types/queue"
 import { updateJob } from "./queue"
 
@@ -361,3 +363,39 @@ export async function processRebuildSearchIndex(
   }
 }
 
+/**
+ * Stub processor: Transcode video job
+ * In a real system, invoke a transcoder (FFmpeg/Lambda/MediaConvert), then update the URL.
+ */
+export async function processTranscodeVideo(
+  jobId: string,
+  payload: TranscodeVideoJobPayload
+): Promise<TranscodeVideoJobResult> {
+  const start = Date.now()
+  await updateJob(jobId, {
+    status: "processing",
+    progress: 10,
+    progressMessage: `Queuing transcode (${payload.preset})...`,
+    startedAt: new Date(),
+  })
+
+  // Simulate work
+  await new Promise((r) => setTimeout(r, 300))
+
+  const result: TranscodeVideoJobResult = {
+    success: true,
+    preset: payload.preset,
+    outputUrl: payload.fileUrl, // In a real system this points to the transcoded asset
+    durationMs: Date.now() - start,
+  }
+
+  await updateJob(jobId, {
+    progress: 100,
+    progressMessage: "Transcode complete (stub)",
+    status: "completed",
+    result: result as unknown as Record<string, unknown>,
+    completedAt: new Date(),
+  })
+
+  return result
+}

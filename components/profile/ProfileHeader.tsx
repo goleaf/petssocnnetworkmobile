@@ -1,18 +1,20 @@
 "use client"
 
-import Image from "next/image"
 import Link from "next/link"
 import { Camera, CheckCircle2, MapPin, Calendar, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import type { User } from "@/lib/types"
 import { useMemo, useRef, useState } from "react"
+import { useMediaPolicy } from "@/lib/hooks/use-media-policy"
+import { getOptimizedImageUrl } from "@/lib/performance/cdn"
 
 export interface ProfileHeaderProps {
   user: User
   isOwnProfile?: boolean
   postsCount?: number
   className?: string
+  petsCount?: number
 }
 
 export default function ProfileHeader({
@@ -20,11 +22,13 @@ export default function ProfileHeader({
   isOwnProfile = false,
   postsCount = 0,
   className,
+  petsCount,
 }: ProfileHeaderProps): JSX.Element {
   const fileAvatarRef = useRef<HTMLInputElement | null>(null)
   const fileCoverRef = useRef<HTMLInputElement | null>(null)
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const [uploadingCover, setUploadingCover] = useState(false)
+  const { reducedQuality, minimalBlocked, allowOnce } = useMediaPolicy()
 
   const joinedLabel = useMemo((): string => {
     try {
@@ -68,12 +72,28 @@ export default function ProfileHeader({
       {/* Cover Photo */}
       <div className="relative w-full h-[220px] sm:h-[280px] md:h-[400px] bg-muted overflow-hidden group rounded-b-xl">
         {user.coverPhoto ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={user.coverPhoto}
-            alt={`${user.fullName} cover`}
-            className="absolute inset-0 size-full object-cover"
-          />
+          minimalBlocked ? (
+            <div className="absolute inset-0 flex items-center justify-center bg-muted/70 text-center">
+              <div>
+                <div className="mb-2 text-sm">Media blocked on cellular (Minimal)</div>
+                <button
+                  type="button"
+                  className="rounded bg-primary px-3 py-1.5 text-primary-foreground"
+                  onClick={allowOnce}
+                >
+                  Load image
+                </button>
+              </div>
+            </div>
+          ) : (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={reducedQuality ? getOptimizedImageUrl(user.coverPhoto, { quality: 60 }) : user.coverPhoto}
+              alt={`${user.fullName} cover`}
+              className="absolute inset-0 size-full object-cover"
+              loading="lazy"
+            />
+          )
         ) : (
           <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
             <span className="text-sm">No cover photo</span>
@@ -120,7 +140,11 @@ export default function ProfileHeader({
           <div className="relative shrink-0 group/avatar">
             <div className="relative h-[200px] w-[200px] rounded-full border-4 border-background overflow-hidden shadow-xl">
               <Avatar className="h-full w-full">
-                <AvatarImage src={user.avatar || "/placeholder.svg"} alt={user.fullName} className="object-cover" />
+                <AvatarImage
+                  src={reducedQuality && user.avatar ? getOptimizedImageUrl(user.avatar, { quality: 60 }) : (user.avatar || "/placeholder.svg")}
+                  alt={user.fullName}
+                  className="object-cover"
+                />
                 <AvatarFallback className="text-4xl">{user.fullName.charAt(0)}</AvatarFallback>
               </Avatar>
               {isOwnProfile && (
@@ -160,7 +184,14 @@ export default function ProfileHeader({
           <div className="flex-1 min-w-0 grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
             {/* Name and metadata */}
             <div className="col-span-2 min-w-0">
-              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold truncate">{user.fullName}</h1>
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold truncate flex items-center gap-2">
+                <span className="truncate">{user.fullName}</span>
+                {typeof petsCount === 'number' && (
+                  <span className="text-xs sm:text-sm font-medium rounded-full bg-primary/10 text-primary px-2 py-0.5 whitespace-nowrap">
+                    {petsCount} {petsCount === 1 ? 'pet' : 'pets'}
+                  </span>
+                )}
+              </h1>
               <div className="mt-1 flex items-center gap-2 text-muted-foreground">
                 <span className="truncate text-base sm:text-lg">@{user.username}</span>
                 {user.badge === "verified" && (

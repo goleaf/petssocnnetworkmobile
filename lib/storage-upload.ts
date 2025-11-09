@@ -305,6 +305,35 @@ export function getImageDimensions(file: File): Promise<{ width: number; height:
 }
 
 /**
+ * Upload video and enqueue server-side transcode when HQ uploads are disabled.
+ */
+export async function uploadVideoWithSettings(
+  file: File,
+  userId: string,
+  folder: string = "videos",
+  preset: 'mobile' | 'sd' | 'hd' = 'mobile',
+) {
+  const { getMediaSettings } = await import('./media-settings')
+  const settings = getMediaSettings(userId)
+  const result = await uploadVideo(file, folder)
+
+  if (!settings.highQualityUploads) {
+    try {
+      await fetch('/api/upload/transcode-video', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, fileUrl: result.url, preset }),
+      })
+    } catch (e) {
+      // non-fatal
+      console.error('Failed to enqueue transcode', e)
+    }
+  }
+
+  return result
+}
+
+/**
  * Get video duration from a file
  */
 export function getVideoDuration(file: File): Promise<number> {

@@ -7,6 +7,8 @@ import { Badge } from "@/components/ui/badge"
 import { Heart, Eye, Clock, TrendingUp } from "lucide-react"
 import type { CareGuide } from "@/lib/types"
 import { cn } from "@/lib/utils"
+import { useMediaPolicy } from "@/lib/hooks/use-media-policy"
+import { getOptimizedImageUrl } from "@/lib/performance/cdn"
 
 interface CareGuideCardProps {
   guide: CareGuide
@@ -28,17 +30,33 @@ const difficultyColors: Record<string, string> = {
 }
 
 export function CareGuideCard({ guide, className }: CareGuideCardProps) {
+  const { reducedQuality, minimalBlocked, allowOnce } = useMediaPolicy()
   return (
     <Link href={`/care-guides/${guide.slug}`}>
       <Card className={cn("hover:shadow-lg transition-shadow h-full flex flex-col", className)}>
         {guide.coverImage && (
           <div className="relative w-full h-48 overflow-hidden rounded-t-lg">
-            <Image
-              src={guide.coverImage}
-              alt={guide.title}
-              fill
-              className="object-cover"
-            />
+            {minimalBlocked ? (
+              <div className="absolute inset-0 flex items-center justify-center bg-muted/70 text-center">
+                <div>
+                  <div className="mb-2 text-xs">Media blocked on cellular (Minimal)</div>
+                  <button
+                    type="button"
+                    className="rounded bg-primary px-3 py-1 text-primary-foreground"
+                    onClick={allowOnce}
+                  >
+                    Load image
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <Image
+                src={reducedQuality ? getOptimizedImageUrl(guide.coverImage, { quality: 60 }) : guide.coverImage}
+                alt={guide.title}
+                fill
+                className="object-cover"
+              />
+            )}
           </div>
         )}
         <CardHeader>
@@ -92,4 +110,3 @@ export function CareGuideCard({ guide, className }: CareGuideCardProps) {
     </Link>
   )
 }
-

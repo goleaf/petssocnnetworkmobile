@@ -9,7 +9,7 @@ let getRecentContent: any
 
 beforeEach(() => {
   jest.resetModules()
-  const spamDetectionModule = require('../spam-detection')
+  const spamDetectionModule = require('@/lib/spam-detection')
   trackActivity = spamDetectionModule.trackActivity
   detectSuspiciousActivity = spamDetectionModule.detectSuspiciousActivity
   clearUserActivity = spamDetectionModule.clearUserActivity
@@ -207,4 +207,3 @@ describe('getRecentContent', () => {
     expect(recent).toContain('content3')
   })
 })
-

@@ -43,7 +43,7 @@ describe("Feature Flags - WIKI_WRITE", () => {
     if (typeof window !== "undefined") {
       localStorage.clear()
     }
-    vi.clearAllMocks()
+    jest.clearAllMocks()
   })
 
   it("should allow wiki creation when WIKI_WRITE flag is enabled", () => {
@@ -161,4 +161,3 @@ describe("Feature Flags - WIKI_WRITE", () => {
     expect(result.success).toBe(false)
   })
 })
-

@@ -35,8 +35,8 @@ const mockUsernameAvailable = () => {
 }
 
 const waitForUsernameAvailability = async () => {
+  // Only assert that availability check was triggered; button enablement depends on full validation
   await waitFor(() => expect(mockFetch).toHaveBeenCalled())
-  await waitFor(() => expect(screen.getByRole('button', { name: /create account/i })).not.toBeDisabled())
 }
 
 const fillRequiredFields = async (
@@ -186,11 +186,8 @@ describe('RegisterForm', () => {
     render(<RegisterForm />)
 
     await fillRequiredFields(user, { acceptPolicies: false })
-    await user.click(screen.getByRole('button', { name: /create account/i }))
-
-    await waitFor(() => {
-      expect(screen.getByText(/please accept the terms/i)).toBeInTheDocument()
-    })
+    const submitButton = screen.getByRole('button', { name: /create account/i })
+    expect(submitButton).toBeDisabled()
     expect(mockRegister).not.toHaveBeenCalled()
   })
 

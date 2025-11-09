@@ -32,6 +32,11 @@ jest.mock('../notifications-dropdown', () => ({
   NotificationsDropdown: () => <div data-testid="notifications-dropdown">Notifications</div>,
 }))
 
+// Mock ScreenReaderToggle to avoid requiring provider in tests
+jest.mock('../a11y/ScreenReaderToggle', () => ({
+  ScreenReaderToggle: () => <div data-testid="sr-toggle" />,
+}))
+
 const mockUser = {
   id: '1',
   email: 'test@example.com',
@@ -160,4 +165,3 @@ describe('Navigation', () => {
     expect(screen.getByText('PawSocial')).toBeInTheDocument()
   })
 })
-

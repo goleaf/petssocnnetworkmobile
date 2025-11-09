@@ -50,6 +50,10 @@ import { PetBreedSummary } from "@/components/pet-breed-summary"
 import { PetCareChecklist } from "@/components/pet-care-checklist"
 import { PinButton } from "@/components/ui/pin-button"
 import { PetNetworkView } from "@/components/friendship-network/pet-network-view"
+import { useMediaPolicy } from "@/lib/hooks/use-media-policy"
+import { getOptimizedImageUrl } from "@/lib/performance/cdn"
+import { PetNotificationSettingsCard } from "@/components/pets/pet-notification-settings"
+import { setCurrentPetId } from "@/lib/pets/current-pet"
 
 const formatSpecies = (species: string) => species.charAt(0).toUpperCase() + species.slice(1)
 
@@ -67,6 +71,7 @@ export default function PetProfilePage({ params }: { params: Promise<{ id: strin
   const [selectedPhotoIndex, setSelectedPhotoIndex] = useState(0)
   const [allPets, setAllPets] = useState<Pet[]>([])
   const [users, setUsers] = useState<User[]>([])
+  const { reducedQuality, minimalBlocked, allowOnce } = useMediaPolicy()
 
   const loadPetData = useCallback(async () => {
     const fetchedPet = await getPetById(id)
@@ -114,6 +119,13 @@ export default function PetProfilePage({ params }: { params: Promise<{ id: strin
     }
 
     fetch()
+
+    // Mark this pet as current for the pet switcher
+    if (id) {
+      try {
+        setCurrentPetId(id)
+      } catch {}
+    }
 
     return () => {
       isActive = false
@@ -791,6 +803,8 @@ export default function PetProfilePage({ params }: { params: Promise<{ id: strin
         </TabsContent>
 
         <TabsContent value="health" className="space-y-6">
+          {/* Per-pet notification preferences */}
+          <PetNotificationSettingsCard pet={pet} />
           {canViewMedicalRecords ? (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Vaccinations */}
@@ -1168,12 +1182,29 @@ export default function PetProfilePage({ params }: { params: Promise<{ id: strin
                 <Link key={post.id} href={`/blog/${post.id}`}>
                   <Card className="hover:shadow-lg transition-shadow cursor-pointer overflow-hidden p-0">
                     {post.coverImage && (
-                      <div className="aspect-video w-full overflow-hidden">
-                        <img
-                          src={post.coverImage || "/placeholder.svg"}
-                          alt={post.title}
-                          className="w-full h-full object-cover"
-                        />
+                      <div className="aspect-video w-full overflow-hidden relative">
+                        {minimalBlocked ? (
+                          <div className="absolute inset-0 flex items-center justify-center bg-muted/70 text-center">
+                            <div>
+                              <div className="mb-2 text-xs">Media blocked on cellular (Minimal)</div>
+                              <button
+                                type="button"
+                                className="rounded bg-primary px-3 py-1 text-primary-foreground"
+                                onClick={allowOnce}
+                              >
+                                Load image
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={reducedQuality ? getOptimizedImageUrl(post.coverImage, { quality: 60 }) : (post.coverImage || "/placeholder.svg")}
+                            alt={post.title}
+                            className="w-full h-full object-cover"
+                            loading="lazy"
+                          />
+                        )}
                       </div>
                     )}
                     <CardContent className="p-4">

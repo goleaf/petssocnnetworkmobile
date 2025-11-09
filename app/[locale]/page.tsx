@@ -122,7 +122,7 @@ export default function HomePage() {
     const allPets = getPets()
 
     if (filter === "following") {
-      const followedPosts = allPosts.filter((post) => {
+      let followedPosts = allPosts.filter((post) => {
         const author = allUsers.find((candidate) => candidate.id === post.authorId)
         if (!author) return false
 
@@ -134,6 +134,19 @@ export default function HomePage() {
 
         return canViewPost(post, author, user.id)
       })
+      const preferred = user.displayPreferences?.preferredContentLanguages || []
+      const strict = Boolean(user.displayPreferences?.strictLanguageFilter)
+      if (strict && preferred.length > 0) {
+        followedPosts = followedPosts.filter((p) => isPreferredLanguage(detectPostLanguage(p), preferred))
+      }
+      if (preferred.length > 0) {
+        followedPosts = [...followedPosts].sort((a, b) => {
+          const aPref = isPreferredLanguage(detectPostLanguage(a), preferred) ? 1 : 0
+          const bPref = isPreferredLanguage(detectPostLanguage(b), preferred) ? 1 : 0
+          if (aPref !== bPref) return bPref - aPref
+          return 0
+        })
+      }
       setFeedPosts(followedPosts)
       return
     }
@@ -143,8 +156,14 @@ export default function HomePage() {
       if (!author) return false
       return canViewPost(post, author, user.id)
     })
-    // Prioritize posts matching preferred content languages
     const preferred = user.displayPreferences?.preferredContentLanguages || []
+    const strict = Boolean(user.displayPreferences?.strictLanguageFilter)
+    if (strict && preferred.length > 0) {
+      visiblePosts = visiblePosts.filter((p) => {
+        const code = detectPostLanguage(p)
+        return isPreferredLanguage(code, preferred)
+      })
+    }
     if (preferred.length > 0) {
       visiblePosts = [...visiblePosts].sort((a, b) => {
         const aLang = detectPostLanguage(a)
@@ -173,6 +192,13 @@ export default function HomePage() {
       return canViewPost(post, author, user.id)
     })
     const preferred = user.displayPreferences?.preferredContentLanguages || []
+    const strict = Boolean(user.displayPreferences?.strictLanguageFilter)
+    if (strict && preferred.length > 0) {
+      visiblePosts = visiblePosts.filter((p) => {
+        const code = detectPostLanguage(p)
+        return isPreferredLanguage(code, preferred)
+      })
+    }
     if (preferred.length > 0) {
       visiblePosts = [...visiblePosts].sort((a, b) => {
         const aLang = detectPostLanguage(a)
@@ -184,7 +210,6 @@ export default function HomePage() {
       })
     }
 
-    const preferred = user.displayPreferences?.preferredContentLanguages || []
     const trending = [...visiblePosts].sort((a, b) => {
       const aLikes = a.reactions
         ? Object.values(a.reactions).reduce((sum, arr) => sum + (arr?.length || 0), 0)

@@ -9,6 +9,7 @@ import { POST as POSTRequestChanges } from '@/app/api/admin/wiki/revisions/[id]/
 jest.mock('@/lib/db', () => ({
   prisma: {
     flaggedRevision: {
+      findUnique: jest.fn(),
       update: jest.fn(),
     },
   },
@@ -153,7 +154,7 @@ describe('Admin Wiki Revisions API', () => {
       const data = await response.json()
 
       expect(response.status).toBe(403)
-      expect(data.error).toBe('Forbidden')
+      expect(data.error).toContain('Experts and Moderators')
     })
   })
 
@@ -265,4 +266,3 @@ describe('Admin Wiki Revisions API', () => {
     })
   })
 })
-

@@ -7,6 +7,7 @@ import {
   processLinkCheck,
   processNotifyUser,
   processRebuildSearchIndex,
+  processTranscodeVideo,
 } from "./processors"
 import type {
   LinkCheckJobPayload,
@@ -52,6 +53,11 @@ async function processJob(): Promise<void> {
       case "rebuildSearchIndex": {
         const payload = job.payload as RebuildSearchIndexJobPayload
         await processRebuildSearchIndex(job.id, payload)
+        break
+      }
+
+      case "transcodeVideo": {
+        await processTranscodeVideo(job.id, job.payload as any)
         break
       }
 
@@ -131,4 +137,3 @@ export async function processJobNow(): Promise<void> {
 export function isWorkerRunning(): boolean {
   return isRunning
 }
-

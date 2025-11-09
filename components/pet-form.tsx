@@ -49,6 +49,7 @@ import {
   User,
   Loader2,
   FileText,
+  Image as ImageIcon,
   Brain,
   Star,
   Utensils,
@@ -77,9 +78,17 @@ import {
   Info,
   Eye,
   Lock,
+  AlertTriangle,
+  Tag,
 } from "lucide-react"
-import { useUnitSystem } from "@/lib/i18n/hooks"
+import { useUnitSystem, useFormatNumber } from "@/lib/i18n/hooks"
+import { convertWeight } from "@/lib/i18n/formatting"
 import { getWikiArticlesByCategory } from "@/lib/storage"
+import { AvatarEditor } from "@/components/ui/avatar-editor"
+import { Progress } from "@/components/ui/progress"
+import { uploadImageWithProgress } from "@/lib/utils/upload-signed"
+import { compressDataUrl, dataUrlToBlob } from "@/lib/utils/image-compress"
+import { BlockEditor } from "@/components/editor/block-editor"
 
 // Label with Tooltip Component
 interface LabelWithTooltipProps {
@@ -210,7 +219,7 @@ export interface PetFormData {
   breed: string
   breedId?: string
   age: string
-  gender: Pet["gender"]
+  gender: Pet["gender"] | "unknown"
   bio: string
   privacyVisibility: PrivacyLevel
   privacyInteractions: PrivacyLevel
@@ -218,10 +227,21 @@ export interface PetFormData {
   weight: string
   color: string
   microchipId: string
+  microchipCompany?: string
+  microchipCompanyOther?: string
+  microchipRegistrationStatus?: 'registered' | 'not_registered' | 'unknown'
+  microchipCertificateUrl?: string
+  collarTagId?: string
   adoptionDate: string
   specialNeeds: string
+  dislikes?: string
   spayedNeutered: boolean
+  avatar?: string
+  photos: string[]
+  photoCaptions: Record<string, string>
+  isFeatured?: boolean
   allergies: string[]
+  allergySeverities: Record<string, 'mild' | 'moderate' | 'severe'>
   personality: PersonalityTraits
   favoriteThings: FavoriteThings
   dietInfo: DietInfo
@@ -230,6 +250,7 @@ export interface PetFormData {
   healthRecords: HealthRecord[]
   vaccinations: Vaccination[]
   medications: Medication[]
+  conditions: Array<{ id: string; name: string; diagnosedAt?: string; notes?: string }>
   achievements: Achievement[]
   trainingProgress: TrainingProgress[]
 }
@@ -249,6 +270,132 @@ interface ValidationErrors {
 
 export function PetForm({ mode, initialData, onSubmit, onCancel, petName }: PetFormProps) {
   const unitSystem = useUnitSystem()
+  const formatNumber = useFormatNumber()
+
+  // Weight local state with unit handling
+  const [weightUnit, setWeightUnit] = useState<'kg' | 'lb'>(unitSystem === 'imperial' ? 'lb' : 'kg')
+  const [weightValue, setWeightValue] = useState<number | ''>('')
+
+  // Age handling: exact birth date vs approximate age (declared after formData)
+
+  useEffect(() => {
+    // Initialize from existing weight string (e.g., "70 lbs" or "5 kg")
+    const raw = initialData?.weight || ''
+    const match = raw.match(/([0-9]+(?:\.[0-9]+)?)\s*(kg|kgs|kilograms|lb|lbs|pounds)?/i)
+    if (match) {
+      const val = Number(match[1])
+      const unit = (match[2] || (unitSystem === 'imperial' ? 'lb' : 'kg')).toLowerCase()
+      setWeightValue(Number.isNaN(val) ? '' : val)
+      setWeightUnit(unit.startsWith('k') ? 'kg' : 'lb')
+    } else {
+      setWeightValue('')
+      setWeightUnit(unitSystem === 'imperial' ? 'lb' : 'kg')
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  useEffect(() => {
+    // Sync display weight back to formData as a formatted string
+    if (weightValue === '') {
+      setFormData((prev) => ({ ...prev, weight: '' }))
+      return
+    }
+    const v = typeof weightValue === 'number' ? weightValue : Number(weightValue)
+    const display = `${formatNumber(v, { minimumFractionDigits: 0, maximumFractionDigits: 1 })} ${weightUnit}`
+    setFormData((prev) => ({ ...prev, weight: display }))
+  }, [weightValue, weightUnit, formatNumber])
+
+  useEffect(() => {
+    if (ageMode === 'approx') {
+      const totalMonths = approxYears * 12 + approxMonths
+      const ageYears = totalMonths / 12
+      setFormData((prev) => ({ ...prev, birthday: prev.birthday && prev.birthday, age: ageYears ? ageYears.toFixed(2) : '' }))
+    }
+  }, [ageMode, approxYears, approxMonths])
+
+  const currentAgeString = (() => {
+    if (ageMode === 'exact' && formData.birthday) {
+      const now = new Date()
+      const dob = new Date(formData.birthday)
+      let months = (now.getFullYear() - dob.getFullYear()) * 12 + (now.getMonth() - dob.getMonth())
+      if (now.getDate() < dob.getDate()) months -= 1
+      const yrs = Math.max(0, Math.floor(months / 12))
+      const mos = Math.max(0, months % 12)
+      return `${yrs} year${yrs === 1 ? '' : 's'}, ${mos} month${mos === 1 ? '' : 's'} old`
+    }
+    const total = approxYears * 12 + approxMonths
+    const yrs = Math.floor(total / 12)
+    const mos = total % 12
+    if (yrs === 0 && mos === 0) return ''
+    return `${yrs} year${yrs === 1 ? '' : 's'}, ${mos} month${mos === 1 ? '' : 's'} old`
+  })()
+
+  // Personality: predefined traits and helpers
+  const MAX_TRAITS = 10
+  const PREDEFINED_TRAITS: Array<{ key: string; label: string; color: string; warn?: boolean }> = [
+    { key: 'friendly', label: 'Friendly', color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200' },
+    { key: 'shy', label: 'Shy', color: 'bg-slate-100 text-slate-800 dark:bg-slate-900/30 dark:text-slate-200' },
+    { key: 'energetic', label: 'Energetic', color: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200' },
+    { key: 'calm', label: 'Calm', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200' },
+    { key: 'playful', label: 'Playful', color: 'bg-pink-100 text-pink-800 dark:bg-pink-900/30 dark:text-pink-200' },
+    { key: 'curious', label: 'Curious', color: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-200' },
+    { key: 'protective', label: 'Protective', color: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-200' },
+    { key: 'independent', label: 'Independent', color: 'bg-zinc-100 text-zinc-800 dark:bg-zinc-900/30 dark:text-zinc-200' },
+    { key: 'affectionate', label: 'Affectionate', color: 'bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-200' },
+    { key: 'vocal', label: 'Vocal', color: 'bg-fuchsia-100 text-fuchsia-800 dark:bg-fuchsia-900/30 dark:text-fuchsia-200' },
+    { key: 'quiet', label: 'Quiet', color: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-200' },
+    { key: 'intelligent', label: 'Intelligent', color: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-200' },
+    { key: 'stubborn', label: 'Stubborn', color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-200' },
+    { key: 'loyal', label: 'Loyal', color: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-200' },
+    { key: 'anxious', label: 'Anxious', color: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-200' },
+    { key: 'confident', label: 'Confident', color: 'bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-200' },
+    { key: 'gentle', label: 'Gentle', color: 'bg-sky-100 text-sky-800 dark:bg-sky-900/30 dark:text-sky-200' },
+    { key: 'aggressive', label: 'Aggressive', color: 'bg-red-200 text-red-900 dark:bg-red-900/50 dark:text-red-200', warn: true },
+    { key: 'good-with-kids', label: 'Good with Kids', color: 'bg-lime-100 text-lime-800 dark:bg-lime-900/30 dark:text-lime-200' },
+    { key: 'good-with-pets', label: 'Good with Other Pets', color: 'bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-200' },
+  ]
+
+  const addTrait = (label: string) => {
+    const trimmed = label.trim()
+    if (!trimmed) return
+    const exists = formData.personality.traits.some((t) => t.toLowerCase() === trimmed.toLowerCase())
+    if (exists) return
+    if (formData.personality.traits.length >= MAX_TRAITS) return
+    setFormData({ ...formData, personality: { ...formData.personality, traits: [...formData.personality.traits, trimmed] } })
+  }
+
+  const removeTrait = (label: string) => {
+    setFormData({
+      ...formData,
+      personality: {
+        ...formData.personality,
+        traits: formData.personality.traits.filter((t) => t.toLowerCase() !== label.toLowerCase()),
+      },
+    })
+  }
+
+  const toggleTrait = (label: string) => {
+    const selected = formData.personality.traits.some((t) => t.toLowerCase() === label.toLowerCase())
+    if (selected) removeTrait(label)
+    else addTrait(label)
+  }
+
+  // Conditions helpers
+  const COMMON_CONDITIONS = [
+    'Diabetes', 'Arthritis', 'Heart disease', 'Kidney disease', 'Hip dysplasia', 'Epilepsy', 'Anxiety'
+  ]
+  const hasCondition = (name: string) => formData.conditions.some((c) => c.name.toLowerCase() === name.toLowerCase())
+  const addCondition = (name: string) => {
+    const trimmed = name.trim()
+    if (!trimmed || hasCondition(trimmed)) return
+    setFormData((prev) => ({ ...prev, conditions: [...prev.conditions, { id: `cond-${Date.now()}-${Math.random().toString(36).slice(2)}`, name: trimmed }] }))
+  }
+  const removeCondition = (id: string) => {
+    setFormData((prev) => ({ ...prev, conditions: prev.conditions.filter((c) => c.id !== id) }))
+  }
+  const updateCondition = (id: string, field: 'diagnosedAt' | 'notes', value: string) => {
+    setFormData((prev) => ({ ...prev, conditions: prev.conditions.map((c) => c.id === id ? { ...c, [field]: value } : c) }))
+  }
   const resolvedPrivacy = (() => {
     const rawPrivacy = initialData?.privacy
     if (
@@ -278,7 +425,7 @@ export function PetForm({ mode, initialData, onSubmit, onCancel, petName }: PetF
     breed: initialData?.breed || "",
     breedId: initialData?.breedId || undefined,
     age: initialData?.age?.toString() || "",
-    gender: initialData?.gender || "male",
+    gender: (initialData?.gender as PetFormData["gender"]) || "unknown",
     bio: initialData?.bio || "",
     privacyVisibility: resolvedPrivacy.visibility,
     privacyInteractions: resolvedPrivacy.interactions,
@@ -286,10 +433,21 @@ export function PetForm({ mode, initialData, onSubmit, onCancel, petName }: PetF
     weight: initialData?.weight || "",
     color: initialData?.color || "",
     microchipId: initialData?.microchipId || "",
+    microchipCompany: (initialData as any)?.microchipCompany || undefined,
+    microchipCompanyOther: undefined,
+    microchipRegistrationStatus: (initialData as any)?.microchipRegistrationStatus || 'unknown',
+    microchipCertificateUrl: (initialData as any)?.microchipCertificateUrl || undefined,
+    collarTagId: (initialData as any)?.collarTagId || "",
     adoptionDate: initialData?.adoptionDate || "",
     specialNeeds: initialData?.specialNeeds || "",
+    dislikes: (initialData as any)?.dislikes || "",
     spayedNeutered: initialData?.spayedNeutered || false,
+    avatar: initialData?.avatar || undefined,
+    photos: initialData?.photos || [],
+    photoCaptions: (initialData as any)?.photoCaptions || {},
+    isFeatured: (initialData as any)?.isFeatured || false,
     allergies: initialData?.allergies || [],
+    allergySeverities: ((initialData as any)?.allergySeverities as Record<string,'mild'|'moderate'|'severe'>) || {},
     personality: initialData?.personality || {
       energyLevel: 3,
       friendliness: 3,
@@ -328,9 +486,14 @@ export function PetForm({ mode, initialData, onSubmit, onCancel, petName }: PetF
     healthRecords: initialData?.healthRecords || [],
     vaccinations: initialData?.vaccinations || [],
     medications: initialData?.medications || [],
+    conditions: ((initialData as any)?.conditions as Array<{ id: string; name: string; diagnosedAt?: string; notes?: string }>) || [],
     achievements: initialData?.achievements || [],
     trainingProgress: initialData?.trainingProgress || [],
   })
+
+  const [ageMode, setAgeMode] = useState<'exact' | 'approx'>(formData.birthday ? 'exact' : 'approx')
+  const [approxYears, setApproxYears] = useState<number>(0)
+  const [approxMonths, setApproxMonths] = useState<number>(0)
 
   const [errors, setErrors] = useState<ValidationErrors>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -357,6 +520,94 @@ export function PetForm({ mode, initialData, onSubmit, onCancel, petName }: PetF
     if (!q) return pool.slice(0, 10)
     return pool.filter((a) => a.title.toLowerCase().includes(q)).slice(0, 10)
   }, [allBreedArticles, formData.breed, formData.species, formData.speciesId])
+
+  // Step 2: Photos & Gallery state
+  const [isPrimaryEditorOpen, setIsPrimaryEditorOpen] = useState(false)
+  const [tempPrimarySrc, setTempPrimarySrc] = useState<string>("")
+  const [primaryUploadProgress, setPrimaryUploadProgress] = useState<number>(0)
+  const [uploadingItems, setUploadingItems] = useState<Array<{ id: string; name: string; preview?: string; progress: number; error?: string }>>([])
+  const maxPhotos = 20
+
+  const canAddMorePhotos = formData.photos.length + uploadingItems.length < maxPhotos
+
+  const openPrimaryEditorFromFile = (file: File) => {
+    // HEIC/HEIF preview isn't supported broadly; handle by direct upload without cropping
+    if (/(heic|heif)$/i.test(file.name) || /image\/(heic|heif)/i.test(file.type)) {
+      // Direct upload with progress, set as avatar when done
+      const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`
+      setUploadingItems((prev) => [...prev, { id, name: file.name, progress: 0 }])
+      uploadImageWithProgress({ file, folder: 'pets', onProgress: (p) => setUploadingItems((prev) => prev.map((it) => it.id === id ? { ...it, progress: p } : it)) })
+        .then(({ url }) => {
+          setFormData((prev) => ({ ...prev, avatar: url, photos: [url, ...prev.photos] }))
+        })
+        .catch((e) => setUploadingItems((prev) => prev.map((it) => it.id === id ? { ...it, error: e?.message || 'Upload failed' } : it)))
+        .finally(() => setUploadingItems((prev) => prev.filter((it) => it.id !== id)))
+      return
+    }
+
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      setTempPrimarySrc(e.target?.result as string)
+      setIsPrimaryEditorOpen(true)
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const handlePrimaryCroppedSave = async (dataUrl: string) => {
+    // Enforce ~500x500 minimum and <10MB
+    try {
+      const blob = await compressDataUrl(dataUrl, { maxBytes: 10 * 1024 * 1024, maxDimension: 1000, outputType: 'image/jpeg' })
+      const file = new File([blob], `primary-${Date.now()}.jpg`, { type: 'image/jpeg' })
+      setPrimaryUploadProgress(0)
+      const { url } = await uploadImageWithProgress({ file, folder: 'pets', onProgress: setPrimaryUploadProgress })
+      setFormData((prev) => ({ ...prev, avatar: url, photos: prev.photos.includes(url) ? prev.photos : [url, ...prev.photos] }))
+    } catch (e: any) {
+      alert(e?.message || 'Failed to save primary photo')
+    } finally {
+      setIsPrimaryEditorOpen(false)
+      setTempPrimarySrc('')
+      setPrimaryUploadProgress(0)
+    }
+  }
+
+  const handleAdditionalFiles = (files: FileList) => {
+    const selected = Array.from(files)
+    const allow = Math.max(0, maxPhotos - formData.photos.length - uploadingItems.length)
+    const queue = selected.slice(0, allow)
+    queue.forEach((file) => {
+      const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        setUploadingItems((prev) => [...prev, { id, name: file.name, preview: e.target?.result as string, progress: 0 }])
+      }
+      reader.readAsDataURL(file)
+      uploadImageWithProgress({ file, folder: 'pets', onProgress: (p) => setUploadingItems((prev) => prev.map((it) => it.id === id ? { ...it, progress: p } : it)) })
+        .then(({ url }) => setFormData((prev) => ({ ...prev, photos: [...prev.photos, url] })))
+        .catch((e) => setUploadingItems((prev) => prev.map((it) => it.id === id ? { ...it, error: e?.message || 'Upload failed' } : it)))
+        .finally(() => setUploadingItems((prev) => prev.filter((it) => it.id !== id)))
+    })
+  }
+
+  const movePhoto = (from: number, to: number) => {
+    setFormData((prev) => {
+      const arr = [...prev.photos]
+      const [moved] = arr.splice(from, 1)
+      arr.splice(to, 0, moved)
+      const avatar = arr[0] || prev.avatar
+      return { ...prev, photos: arr, avatar }
+    })
+  }
+
+  const removePhoto = (idx: number) => {
+    setFormData((prev) => {
+      const arr = prev.photos.filter((_, i) => i !== idx)
+      const avatar = idx === 0 ? arr[0] : prev.avatar
+      const captions = { ...prev.photoCaptions }
+      const removedUrl = prev.photos[idx]
+      if (removedUrl) delete captions[removedUrl]
+      return { ...prev, photos: arr, avatar, photoCaptions: captions }
+    })
+  }
 
   useEffect(() => {
     if (!formData.birthday) {
@@ -419,16 +670,25 @@ export function PetForm({ mode, initialData, onSubmit, onCancel, petName }: PetF
           return "Age must be between 0 and 50"
         }
         break
-      case "microchipId":
-        if (value && value.length > 20) {
-          return "Microchip ID must be less than 20 characters"
-        }
-        break
+      
       case "bio":
         if (value && value.length > 1000) {
           return "Bio must be less than 1000 characters"
         }
         break
+      case "microchipId": {
+        const v = (value || '').toString().trim()
+        if (!v) return undefined
+        if (!/^\d{15}$/.test(v)) return "Microchip ID should be a 15-digit number"
+        break
+      }
+      case "microchipCompanyOther": {
+        if (formData.microchipCompany === 'Other') {
+          const v = (value || '').toString().trim()
+          if (v.length < 2) return "Please specify the microchip company"
+        }
+        break
+      }
     }
     return undefined
   }
@@ -462,6 +722,11 @@ export function PetForm({ mode, initialData, onSubmit, onCancel, petName }: PetF
 
     const bioError = validateField("bio", formData.bio)
     if (bioError) newErrors.bio = bioError
+
+    // Require primary photo
+    if (!formData.avatar && (!formData.photos || formData.photos.length === 0)) {
+      newErrors.avatar = 'Please upload a primary photo'
+    }
 
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
@@ -692,10 +957,18 @@ export function PetForm({ mode, initialData, onSubmit, onCancel, petName }: PetF
         )}
 
         <Tabs defaultValue="basic" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2 h-auto p-2">
+          <TabsList className="grid w-full grid-cols-2 md:grid-cols-7 lg:grid-cols-12 gap-2 h-auto p-2">
             <TabsTrigger value="basic" className="flex items-center gap-2">
               <FileText className="h-4 w-4" />
               <span className="hidden sm:inline">Basic</span>
+            </TabsTrigger>
+            <TabsTrigger value="photos" className="flex items-center gap-2">
+              <ImageIcon className="h-4 w-4" />
+              <span className="hidden sm:inline">Photos</span>
+            </TabsTrigger>
+            <TabsTrigger value="id" className="flex items-center gap-2">
+              <Tag className="h-4 w-4" />
+              <span className="hidden sm:inline">ID</span>
             </TabsTrigger>
             <TabsTrigger value="personality" className="flex items-center gap-2">
               <Brain className="h-4 w-4" />
@@ -720,6 +993,14 @@ export function PetForm({ mode, initialData, onSubmit, onCancel, petName }: PetF
             <TabsTrigger value="training" className="flex items-center gap-2">
               <GraduationCap className="h-4 w-4" />
               <span className="hidden sm:inline">Training</span>
+            </TabsTrigger>
+            <TabsTrigger value="bio" className="flex items-center gap-2">
+              <FileText className="h-4 w-4" />
+              <span className="hidden sm:inline">Bio</span>
+            </TabsTrigger>
+            <TabsTrigger value="review" className="flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4" />
+              <span className="hidden sm:inline">Review</span>
             </TabsTrigger>
           </TabsList>
 
@@ -856,39 +1137,44 @@ export function PetForm({ mode, initialData, onSubmit, onCancel, petName }: PetF
                   </div>
 
                   <div className="space-y-2">
-                    <LabelWithTooltip 
-                      htmlFor="gender"
-                      tooltip="Select your pet's gender."
-                    >
+                    <LabelWithTooltip htmlFor="gender" tooltip="Select your pet's gender. If unknown, choose Unknown.">
                       Gender
                     </LabelWithTooltip>
-                    <Select
-                      value={formData.gender}
-                      onValueChange={(value: Pet["gender"]) => handleFieldChange("gender", value)}
-                    >
-                      <SelectTrigger className="h-10 w-full">
-                        <SelectValue>
-                          <div className="flex items-center gap-2">
-                            <User className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
-                            <span className="truncate capitalize">{formData.gender}</span>
-                          </div>
-                        </SelectValue>
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="male">
-                          <div className="flex items-center gap-2">
-                            <User className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
-                            <span>Male</span>
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="female">
-                          <div className="flex items-center gap-2">
-                            <User className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
-                            <span>Female</span>
-                          </div>
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <div className="flex items-center gap-4">
+                      <label className="inline-flex items-center gap-2">
+                        <input
+                          type="radio"
+                          name="gender"
+                          value="male"
+                          checked={formData.gender === 'male'}
+                          onChange={() => handleFieldChange('gender', 'male')}
+                          className="h-4 w-4"
+                        />
+                        <span>Male</span>
+                      </label>
+                      <label className="inline-flex items-center gap-2">
+                        <input
+                          type="radio"
+                          name="gender"
+                          value="female"
+                          checked={formData.gender === 'female'}
+                          onChange={() => handleFieldChange('gender', 'female')}
+                          className="h-4 w-4"
+                        />
+                        <span>Female</span>
+                      </label>
+                      <label className="inline-flex items-center gap-2">
+                        <input
+                          type="radio"
+                          name="gender"
+                          value="unknown"
+                          checked={formData.gender === 'unknown'}
+                          onChange={() => handleFieldChange('gender', 'unknown')}
+                          className="h-4 w-4"
+                        />
+                        <span>Unknown</span>
+                      </label>
+                    </div>
                   </div>
                 </div>
 
@@ -973,140 +1259,177 @@ export function PetForm({ mode, initialData, onSubmit, onCancel, petName }: PetF
                   })()}
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <LabelWithTooltip 
-                      htmlFor="age"
-                      tooltip="Age is calculated automatically when a birthday is provided."
-                    >
-                      Age (years)
-                    </LabelWithTooltip>
-                    <Input
-                      id="age"
-                      type="number"
-                      min="0"
-                      max="50"
-                      value={formData.age}
-                      onChange={(e) => {
-                        if (!formData.birthday) {
-                          handleFieldChange("age", e.target.value)
-                        }
-                      }}
-                      readOnly={Boolean(formData.birthday)}
-                      placeholder="0"
-                      className={`h-10 ${errors.age ? "border-destructive" : ""}`}
-                    />
-                    {formData.birthday && (
-                      <p className="text-xs text-muted-foreground">
-                        Age updates automatically from the selected birthday.
-                      </p>
-                    )}
-                    {errors.age && <ErrorText>{errors.age}</ErrorText>}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-4">
+                    <label className="inline-flex items-center gap-2">
+                      <input type="radio" name="ageMode" value="exact" className="h-4 w-4" checked={ageMode==='exact'} onChange={() => setAgeMode('exact')} />
+                      <span>Exact birth date</span>
+                    </label>
+                    <label className="inline-flex items-center gap-2">
+                      <input type="radio" name="ageMode" value="approx" className="h-4 w-4" checked={ageMode==='approx'} onChange={() => setAgeMode('approx')} />
+                      <span>Approximate age</span>
+                    </label>
                   </div>
-
-                  <div className="space-y-2">
-                    <LabelWithTooltip 
-                      htmlFor="birthday"
-                      tooltip="Enter your pet's birthday if known. This helps celebrate their special day!"
-                    >
-                      <Calendar className="h-4 w-4" />
-                      Birthday
-                    </LabelWithTooltip>
-                    <Input
-                      id="birthday"
-                      type="date"
-                      value={formData.birthday}
-                      onChange={(e) => {
-                        const value = e.target.value
-                        handleFieldChange("birthday", value)
-                        if (!value) {
-                          setFormData((prev) => ({ ...prev, age: "" }))
-                          setErrors((prev) => {
-                            if (!prev.age) {
-                              return prev
+                  {ageMode === 'exact' ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <LabelWithTooltip htmlFor="birthday" tooltip="Enter your pet's birthday if known. This helps celebrate their special day!">
+                          <Calendar className="h-4 w-4" />
+                          Birthday
+                        </LabelWithTooltip>
+                        <Input
+                          id="birthday"
+                          type="date"
+                          value={formData.birthday}
+                          onChange={(e) => {
+                            const value = e.target.value
+                            handleFieldChange('birthday', value)
+                            if (!value) {
+                              setFormData((prev) => ({ ...prev, age: '' }))
                             }
-                            const { age, ...rest } = prev
-                            return rest
-                          })
-                        }
-                      }}
-                      className="h-10"
-                    />
-                  </div>
+                          }}
+                          className="h-10"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Current Age</Label>
+                        <div className="text-sm text-muted-foreground h-10 flex items-center">{currentAgeString || '—'}</div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <Label>Years</Label>
+                        <Select value={String(approxYears)} onValueChange={(v) => setApproxYears(Number(v))}>
+                          <SelectTrigger className="h-10 w-full"><SelectValue placeholder="0" /></SelectTrigger>
+                          <SelectContent>
+                            {Array.from({ length: 31 }, (_, i) => (
+                              <SelectItem key={i} value={String(i)}>{i}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Months</Label>
+                        <Select value={String(approxMonths)} onValueChange={(v) => setApproxMonths(Number(v))}>
+                          <SelectTrigger className="h-10 w-full"><SelectValue placeholder="0" /></SelectTrigger>
+                          <SelectContent>
+                            {Array.from({ length: 12 }, (_, i) => (
+                              <SelectItem key={i} value={String(i)}>{i}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Current Age</Label>
+                        <div className="text-sm text-muted-foreground h-10 flex items-center">{currentAgeString || '—'}</div>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <LabelWithTooltip 
-                      htmlFor="weight"
-                      tooltip={
-                        unitSystem === "imperial"
-                          ? "Enter your pet's weight (e.g., 70 lbs). Useful for health tracking."
-                          : "Enter your pet's weight (e.g., 5 kg). Useful for health tracking."
-                      }
-                    >
+                    <LabelWithTooltip htmlFor="weight" tooltip="Enter your pet's weight and unit. We'll convert automatically when you change units.">
                       <Weight className="h-4 w-4" />
                       Weight
                     </LabelWithTooltip>
-                    <Input
-                      id="weight"
-                      value={formData.weight}
-                      onChange={(e) => handleFieldChange("weight", e.target.value)}
-                      onBlur={(e) => {
-                        const val = e.target.value.trim()
-                        if (!val) return
-                        // If numeric without unit, append the preferred unit suffix
-                        const numeric = Number(val)
-                        const containsUnit = /[a-zA-Z]/.test(val)
-                        if (!Number.isNaN(numeric) && !containsUnit) {
-                          const suffix = unitSystem === "imperial" ? " lbs" : " kg"
-                          handleFieldChange("weight", `${numeric}${suffix}`)
+                    <div className="flex gap-2">
+                      <Input
+                        id="weight"
+                        type="number"
+                        step="0.1"
+                        min="0"
+                        value={weightValue}
+                        onChange={(e) => setWeightValue(e.target.value === '' ? '' : Number(e.target.value))}
+                        placeholder={weightUnit === 'lb' ? 'e.g., 70' : 'e.g., 5.0'}
+                        className="h-10"
+                      />
+                      <Select
+                        value={weightUnit}
+                        onValueChange={(unit: 'kg' | 'lb') => {
+                          if (weightValue === '' || weightValue === 0) {
+                            setWeightUnit(unit)
+                            return
+                          }
+                          // Convert value when switching units
+                          const fromSys = weightUnit === 'kg' ? 'metric' : 'imperial'
+                          const toSys = unit === 'kg' ? 'metric' : 'imperial'
+                          const converted = convertWeight(Number(weightValue), fromSys, toSys)
+                          setWeightValue(Number(converted.toFixed(1)))
+                          setWeightUnit(unit)
+                        }}
+                      >
+                        <SelectTrigger className="h-10 w-[120px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="lb">pounds (lb)</SelectItem>
+                          <SelectItem value="kg">kilograms (kg)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {(() => {
+                      // Healthy range indicator (if breed infobox has average weight)
+                      const breed = (() => {
+                        if (formData.breedId) {
+                          return allBreedArticles.find((a) => a.id === formData.breedId)
                         }
-                      }}
-                      placeholder={unitSystem === "imperial" ? "e.g., 70 lbs" : "e.g., 5 kg"}
-                      className="h-10"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Tip: enter a number and we’ll add {unitSystem === "imperial" ? "lbs" : "kg"} for you.
-                    </p>
+                        if (formData.breed) {
+                          return allBreedArticles.find((a) => a.title.toLowerCase() === formData.breed.toLowerCase())
+                        }
+                        return undefined
+                      })()
+                      const avgKg = (() => {
+                        if (!breed?.breedData) return undefined
+                        const male = breed.breedData.maleAvgWeightKg
+                        const female = breed.breedData.femaleAvgWeightKg
+                        if (formData.gender === 'male' && male) return male
+                        if (formData.gender === 'female' && female) return female
+                        if (male && female) return (male + female) / 2
+                        return male || female
+                      })()
+                      if (!avgKg || weightValue === '') return null
+                      const valueKg = weightUnit === 'kg' ? Number(weightValue) : convertWeight(Number(weightValue), 'imperial', 'metric')
+                      const low = avgKg * 0.85
+                      const high = avgKg * 1.15
+                      const status = valueKg >= low && valueKg <= high ? 'green' : (valueKg >= avgKg * 0.75 && valueKg <= avgKg * 1.25 ? 'yellow' : 'red')
+                      const toDisplay = (kg: number) => weightUnit === 'kg' ? kg : convertWeight(kg, 'metric', 'imperial')
+                      const lowDisp = toDisplay(low)
+                      const highDisp = toDisplay(high)
+                      const unitLabel = weightUnit
+                      return (
+                        <div className="text-xs mt-2 flex items-center gap-2">
+                          <span className={`inline-block h-2.5 w-2.5 rounded-full ${status === 'green' ? 'bg-green-500' : status === 'yellow' ? 'bg-yellow-500' : 'bg-red-500'}`} />
+                          <span className="text-muted-foreground">Healthy range for this breed:</span>
+                          <span className="font-medium">
+                            {formatNumber(lowDisp, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}–{formatNumber(highDisp, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} {unitLabel}
+                          </span>
+                        </div>
+                      )
+                    })()}
                   </div>
 
                   <div className="space-y-2">
-                    <LabelWithTooltip 
-                      htmlFor="color"
-                      tooltip="Describe your pet's primary colors or coat pattern."
-                    >
+                    <LabelWithTooltip htmlFor="color" tooltip="Describe your pet's appearance. Max 200 characters.">
                       <Palette className="h-4 w-4" />
-                      Color
+                      Color / Markings
                     </LabelWithTooltip>
-                    <Input
-                      id="color"
-                      value={formData.color}
-                      onChange={(e) => handleFieldChange("color", e.target.value)}
-                      placeholder="e.g., Golden, Black"
-                      className="h-10"
-                    />
+                    <div className="relative">
+                      <Textarea
+                        id="color"
+                        value={formData.color}
+                        onChange={(e) => handleFieldChange('color', e.target.value.slice(0, 200))}
+                        placeholder={'e.g., "Black and white tuxedo", "Golden retriever with white chest patch", "Tabby with orange stripes"'}
+                        rows={3}
+                        className="pr-14"
+                      />
+                      <span className="absolute bottom-2 right-2 text-[11px] text-muted-foreground">{charCount(formData.color)}/200</span>
+                    </div>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <LabelWithTooltip 
-                      htmlFor="microchipId"
-                      tooltip="Microchip ID is useful for identification if your pet gets lost."
-                    >
-                      Microchip ID
-                    </LabelWithTooltip>
-                    <Input
-                      id="microchipId"
-                      value={formData.microchipId}
-                      onChange={(e) => handleFieldChange("microchipId", e.target.value)}
-                      placeholder="Enter microchip ID if available"
-                      className={`h-10 ${errors.microchipId ? "border-destructive" : ""}`}
-                    />
-                    {errors.microchipId && <ErrorText>{errors.microchipId}</ErrorText>}
-                  </div>
-
                   <div className="space-y-2">
                     <LabelWithTooltip 
                       htmlFor="adoptionDate"
@@ -1145,34 +1468,129 @@ export function PetForm({ mode, initialData, onSubmit, onCancel, petName }: PetF
                 </div>
 
                 <div className="space-y-2">
-                  <LabelWithTooltip 
-                    htmlFor="specialNeeds"
-                    tooltip="List any special care requirements or medical conditions your pet has."
-                  >
-                    Special Needs
+                  <LabelWithTooltip htmlFor="dislikes" tooltip="Helps caregivers/pet sitters know potential triggers.">
+                    Dislikes
                   </LabelWithTooltip>
-                  <Input
-                    id="specialNeeds"
-                    value={formData.specialNeeds}
-                    onChange={(e) => handleFieldChange("specialNeeds", e.target.value)}
-                    placeholder="Any special care requirements"
-                    className="h-10"
-                  />
+                  <div className="relative">
+                    <Textarea
+                      id="dislikes"
+                      rows={3}
+                      value={formData.dislikes || ''}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, dislikes: e.target.value.slice(0, 300) }))}
+                      placeholder="Loud noises, vacuum cleaner, baths, car rides"
+                      className="pr-14"
+                    />
+                    <span className="absolute bottom-2 right-2 text-[11px] text-muted-foreground">{Array.from(formData.dislikes || '').length}/300</span>
+                  </div>
                 </div>
 
                 <div className="space-y-2">
-                  <LabelWithTooltip 
-                    htmlFor="allergies"
-                    tooltip="List any known allergies your pet has. Press Enter or comma to add each allergy."
-                  >
-                    <AlertCircle className="h-4 w-4" />
-                    Allergies
+                  <LabelWithTooltip htmlFor="specialNeeds" tooltip="Important for emergencies: meds, mobility aids, sensory issues, etc.">
+                    Special Needs
                   </LabelWithTooltip>
-                  <ArrayTagInput
-                    value={formData.allergies}
-                    onChange={(value) => handleFieldChange("allergies", value)}
-                    placeholder="Add allergies (press Enter or comma to add)"
-                  />
+                  <div className="relative">
+                    <Textarea
+                      id="specialNeeds"
+                      rows={4}
+                      value={formData.specialNeeds}
+                      onChange={(e) => handleFieldChange('specialNeeds', e.target.value.slice(0, 500))}
+                      placeholder="Requires daily medication for arthritis, needs ramp for stairs, hearing impaired — approach slowly"
+                      className="pr-14"
+                    />
+                    <span className="absolute bottom-2 right-2 text-[11px] text-muted-foreground">{charCount(formData.specialNeeds)}/500</span>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <LabelWithTooltip htmlFor="allergies" tooltip="Select common allergies and assign severity. Add rare allergies with the custom field.">
+                    <AlertCircle className="h-4 w-4" /> Allergies & Severity
+                  </LabelWithTooltip>
+                  <div className="flex flex-wrap gap-2">
+                    {['Chicken','Beef','Dairy','Wheat','Corn','Soy','Flea allergies','Environmental allergies'].map((name) => {
+                      const selected = formData.allergies.some((a) => a.toLowerCase() === name.toLowerCase())
+                      return (
+                        <button
+                          key={name}
+                          type="button"
+                          className={`px-2.5 py-1 rounded-full text-xs font-medium border ${selected ? 'bg-primary text-primary-foreground border-transparent' : 'border-input hover:bg-accent'}`}
+                          onClick={() => {
+                            const exists = formData.allergies.some((a) => a.toLowerCase() === name.toLowerCase())
+                            if (exists) {
+                              const next = formData.allergies.filter((a) => a.toLowerCase() !== name.toLowerCase())
+                              const severities = { ...formData.allergySeverities }
+                              delete severities[name]
+                              setFormData({ ...formData, allergies: next, allergySeverities: severities })
+                            } else {
+                              setFormData({ ...formData, allergies: [...formData.allergies, name], allergySeverities: { ...formData.allergySeverities, [name]: 'mild' } })
+                            }
+                          }}
+                        >
+                          {name}
+                        </button>
+                      )
+                    })}
+                  </div>
+                  <div className="flex gap-2 mt-2">
+                    <Input
+                      placeholder="Add custom allergy (e.g., Lamb)"
+                      value={(formData as any)._customAllergy || ''}
+                      onChange={(e) => setFormData((prev) => ({ ...(prev as any), _customAllergy: e.target.value }))}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault()
+                          const val = ((formData as any)._customAllergy || '').trim()
+                          if (val) {
+                            const exists = formData.allergies.some((a) => a.toLowerCase() === val.toLowerCase())
+                            if (!exists) setFormData({ ...formData, allergies: [...formData.allergies, val], allergySeverities: { ...formData.allergySeverities, [val]: 'mild' }, _customAllergy: '' } as any)
+                          }
+                        }
+                      }}
+                      className="max-w-sm"
+                    />
+                    <Button type="button" onClick={() => {
+                      const val = ((formData as any)._customAllergy || '').trim()
+                      if (!val) return
+                      const exists = formData.allergies.some((a) => a.toLowerCase() === val.toLowerCase())
+                      if (!exists) setFormData({ ...formData, allergies: [...formData.allergies, val], allergySeverities: { ...formData.allergySeverities, [val]: 'mild' }, _customAllergy: '' } as any)
+                    }}>
+                      <Plus className="h-4 w-4 mr-1" /> Add
+                    </Button>
+                  </div>
+                  {formData.allergies.length > 0 && (
+                    <div className="space-y-2 mt-2">
+                      {formData.allergies.map((name) => {
+                        const sev = formData.allergySeverities[name] || 'mild'
+                        const color = sev === 'severe' ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-200' : sev === 'moderate' ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200' : 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200'
+                        return (
+                          <div key={name} className={`flex items-center justify-between p-2 rounded ${color}`}>
+                            <div className="flex items-center gap-2 text-xs font-medium">
+                              {name}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Select value={sev} onValueChange={(v: 'mild'|'moderate'|'severe') => setFormData((prev) => ({ ...prev, allergySeverities: { ...prev.allergySeverities, [name]: v } }))}>
+                                <SelectTrigger className="h-8 w-[130px] bg-background">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="mild">Mild</SelectItem>
+                                  <SelectItem value="moderate">Moderate</SelectItem>
+                                  <SelectItem value="severe">Severe</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <Button type="button" variant="ghost" size="icon" onClick={() => {
+                                const next = formData.allergies.filter((a) => a.toLowerCase() !== name.toLowerCase())
+                                const severities = { ...formData.allergySeverities }
+                                delete severities[name]
+                                setFormData({ ...formData, allergies: next, allergySeverities: severities })
+                              }}>
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-2">
@@ -1551,14 +1969,376 @@ export function PetForm({ mode, initialData, onSubmit, onCancel, petName }: PetF
                 <div className="space-y-2">
                   <LabelWithTooltip 
                     htmlFor="traits"
-                    tooltip="Add personality traits that describe your pet (e.g., Energetic, Friendly, Loyal)."
+                    tooltip="Select up to 10 traits that best describe your pet. Add your own custom traits if needed."
                   >
-                    Personality Traits
+                    Personality & Temperament (max {MAX_TRAITS})
                   </LabelWithTooltip>
-                  <ArrayTagInput
-                    value={formData.personality.traits}
-                    onChange={(value) => setFormData({ ...formData, personality: { ...formData.personality, traits: value } })}
-                    placeholder="Add personality traits (e.g., Energetic, Friendly, Loyal)"
+
+                  {/* Predefined trait chips */}
+                  <div className="flex flex-wrap gap-2">
+                    {PREDEFINED_TRAITS.map((t) => {
+                      const selected = formData.personality.traits.some((v) => v.toLowerCase() === t.label.toLowerCase())
+                      return (
+                        <button
+                          key={t.key}
+                          type="button"
+                          onClick={() => toggleTrait(t.label)}
+                          className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${selected ? `${t.color} border-transparent` : 'border-input hover:bg-accent'} ${formData.personality.traits.length >= MAX_TRAITS && !selected ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          aria-pressed={selected}
+                          disabled={formData.personality.traits.length >= MAX_TRAITS && !selected}
+                          title={t.warn ? 'Aggressive — consider adding context' : t.label}
+                        >
+                          <span className="inline-flex items-center gap-1">
+                            {t.warn && <AlertTriangle className="h-3 w-3" />}
+                            {t.label}
+                          </span>
+                        </button>
+                      )
+                    })}
+                  </div>
+
+                  {/* Custom trait input */}
+                  <div className="flex gap-2 mt-2">
+                    <Input
+                      placeholder="Add custom trait (e.g., Water-loving)"
+                      value={(formData as any)._customTrait || ''}
+                      onChange={(e) => setFormData((prev) => ({ ...(prev as any), _customTrait: e.target.value }))}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault()
+                          const val = ((formData as any)._customTrait || '').trim()
+                          if (val) {
+                            addTrait(val)
+                            setFormData((prev) => ({ ...(prev as any), _customTrait: '' }))
+                          }
+                        }
+                      }}
+                      disabled={formData.personality.traits.length >= MAX_TRAITS}
+                      className="max-w-sm"
+                    />
+                    <Button
+                      type="button"
+                      onClick={() => {
+                        const val = ((formData as any)._customTrait || '').trim()
+                        if (val) {
+                          addTrait(val)
+                          setFormData((prev) => ({ ...(prev as any), _customTrait: '' }))
+                        }
+                      }}
+                      disabled={formData.personality.traits.length >= MAX_TRAITS}
+                    >
+                      <Plus className="h-4 w-4 mr-1" /> Add
+                    </Button>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">Tip: Select up to {MAX_TRAITS} traits. Add unique traits with the custom field.</p>
+
+                  {/* Selected traits display */}
+                  {formData.personality.traits.length > 0 && (
+                    <div className="flex flex-wrap gap-2 pt-2">
+                      {formData.personality.traits.map((trait) => {
+                        const preset = PREDEFINED_TRAITS.find((t) => t.label.toLowerCase() === trait.toLowerCase())
+                        const color = preset?.color || 'bg-secondary text-secondary-foreground'
+                        return (
+                          <span key={trait} className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${color}`}>
+                            {preset?.warn && <AlertTriangle className="h-3 w-3" />}
+                            {trait}
+                            <button type="button" onClick={() => removeTrait(trait)} className="ml-1 rounded-full hover:bg-black/10 dark:hover:bg-white/10 p-0.5" aria-label={`Remove ${trait}`}>
+                              <X className="h-3 w-3" />
+                            </button>
+                          </span>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Photos & Gallery Tab */}
+          <TabsContent value="photos" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <ImageIcon className="h-5 w-5" />
+                  Primary Photo
+                </CardTitle>
+                <CardDescription>Upload a square photo (500x500px minimum). This will be your pet's main profile photo.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex flex-col sm:flex-row gap-4 items-start">
+                  <div className="w-[200px] h-[200px] rounded-lg overflow-hidden bg-muted border flex items-center justify-center">
+                    {formData.avatar ? (
+                      <img src={formData.avatar} alt="Primary" className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-xs text-muted-foreground">No primary photo</span>
+                    )}
+                  </div>
+                  <div className="flex-1 space-y-3">
+                    <div className="flex gap-2 flex-wrap">
+                      <Button type="button" variant="outline" onClick={() => document.getElementById('pet-primary-upload')?.click()}>
+                        Choose Photo
+                      </Button>
+                      {formData.avatar && (
+                        <Button type="button" variant="outline" onClick={() => setIsPrimaryEditorOpen(true)}>
+                          Edit & Crop
+                        </Button>
+                      )}
+                      {formData.avatar && (
+                        <Button type="button" variant="ghost" onClick={() => setFormData((p) => ({ ...p, avatar: undefined }))}>
+                          Remove
+                        </Button>
+                      )}
+                    </div>
+                    {primaryUploadProgress > 0 && primaryUploadProgress < 100 && (
+                      <div className="space-y-1 w-full max-w-sm">
+                        <div className="flex items-center justify-between text-xs text-muted-foreground">
+                          <span>Uploading primary photo…</span>
+                          <span aria-live="polite">{primaryUploadProgress}%</span>
+                        </div>
+                        <Progress value={primaryUploadProgress} />
+                      </div>
+                    )}
+                    <input id="pet-primary-upload" type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" className="hidden" onChange={(e) => {
+                      const file = e.target.files?.[0]
+                      if (!file) return
+                      // open editor for supported formats, otherwise direct upload
+                      openPrimaryEditorFromFile(file)
+                      e.currentTarget.value = ''
+                    }} />
+                    <p className="text-xs text-muted-foreground">JPEG, PNG, WebP, or HEIC up to 10MB.</p>
+                  </div>
+                  {errors.avatar && (
+                    <div className="text-sm text-destructive">{errors.avatar}</div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Avatar Editor */}
+            {isPrimaryEditorOpen && tempPrimarySrc && (
+              <AvatarEditor
+                imageSrc={tempPrimarySrc}
+                isOpen={isPrimaryEditorOpen}
+                onClose={() => { setIsPrimaryEditorOpen(false); setTempPrimarySrc('') }}
+                onSave={handlePrimaryCroppedSave}
+                minWidth={500}
+                minHeight={500}
+              />
+            )}
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <ImageIcon className="h-5 w-5" />
+                  Upload More Photos
+                </CardTitle>
+                <CardDescription>Up to {maxPhotos} photos per pet. Drag to reorder; first photo becomes primary.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <Button type="button" variant="outline" onClick={() => document.getElementById('pet-gallery-upload')?.click()} disabled={!canAddMorePhotos}>
+                    Select Photos
+                  </Button>
+                  {!canAddMorePhotos && (
+                    <span className="text-xs text-muted-foreground">Maximum reached</span>
+                  )}
+                </div>
+                <input id="pet-gallery-upload" type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" multiple className="hidden" onChange={(e) => { if (e.target.files) handleAdditionalFiles(e.target.files); e.currentTarget.value = '' }} />
+
+                {/* Upload queue */}
+                {uploadingItems.length > 0 && (
+                  <div className="space-y-2">
+                    {uploadingItems.map((it) => (
+                      <div key={it.id} className="flex items-center gap-3">
+                        <div className="h-10 w-10 rounded bg-muted overflow-hidden flex items-center justify-center">
+                          {it.preview ? <img src={it.preview} alt="preview" className="h-full w-full object-cover" /> : <span className="text-[10px] text-muted-foreground">img</span>}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between text-xs text-muted-foreground">
+                            <span className="truncate">{it.name}</span>
+                            <span>{it.progress}%</span>
+                          </div>
+                          <Progress value={it.progress} />
+                          {it.error && <p className="text-xs text-destructive mt-1">{it.error}</p>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Gallery grid with drag-and-drop */}
+                {formData.photos.length > 0 && (
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    {formData.photos.map((url, idx) => (
+                      <div key={url} className="border rounded-lg p-2 space-y-2 bg-card" draggable onDragStart={(e) => e.dataTransfer.setData('text/plain', String(idx))} onDragOver={(e) => e.preventDefault()} onDrop={(e) => { const from = Number(e.dataTransfer.getData('text/plain')); if (!Number.isNaN(from)) movePhoto(from, idx) }}>
+                        <div className="aspect-square rounded overflow-hidden relative">
+                          <img src={url} alt={`Photo ${idx + 1}`} className="w-full h-full object-cover" />
+                          {idx === 0 && (
+                            <span className="absolute top-1 left-1 text-[10px] bg-primary text-white px-1.5 py-0.5 rounded">Primary</span>
+                          )}
+                        </div>
+                        <div className="flex gap-2">
+                          <Button type="button" size="sm" variant="outline" className="flex-1" onClick={() => movePhoto(idx, 0)}>Set Primary</Button>
+                          <Button type="button" size="sm" variant="ghost" onClick={() => removePhoto(idx)}>Remove</Button>
+                        </div>
+                        <div className="space-y-1">
+                          <Label htmlFor={`caption-${idx}`} className="text-xs">Caption</Label>
+                          <Input id={`caption-${idx}`} value={formData.photoCaptions[url] || ''} onChange={(e) => setFormData((prev) => ({ ...prev, photoCaptions: { ...prev.photoCaptions, [url]: e.target.value.slice(0, 120) } }))} placeholder='e.g., "First day home!"' />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Identification Tab */}
+          <TabsContent value="id" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Tag className="h-5 w-5" /> Microchip & Identification
+                </CardTitle>
+                <CardDescription>Identification details to help with recovery and vet visits</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <LabelWithTooltip htmlFor="microchipId" tooltip="Optional but recommended. Typically a 15-digit number.">
+                      Microchip ID
+                    </LabelWithTooltip>
+                    <Input
+                      id="microchipId"
+                      inputMode="numeric"
+                      pattern="\\d*"
+                      value={formData.microchipId}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/[^0-9]/g, '')
+                        handleFieldChange('microchipId', val)
+                      }}
+                      placeholder="15-digit number"
+                      className={`h-10 ${errors.microchipId ? 'border-destructive' : ''}`}
+                    />
+                    {errors.microchipId && <ErrorText>{errors.microchipId}</ErrorText>}
+                  </div>
+
+                  <div className="space-y-2">
+                    <LabelWithTooltip htmlFor="microchipCompany" tooltip="Select the microchip manufacturer.">
+                      Microchip Company
+                    </LabelWithTooltip>
+                    <Select
+                      value={formData.microchipCompany || ''}
+                      onValueChange={(value) => setFormData((prev) => ({ ...prev, microchipCompany: value }))}
+                    >
+                      <SelectTrigger className="h-10 w-full">
+                        <SelectValue placeholder="Select company" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {['Avid','HomeAgain','AKC Reunite','PetLink','24PetWatch','Other'].map((opt) => (
+                          <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {formData.microchipCompany === 'Other' && (
+                      <div className="mt-2">
+                        <Input
+                          placeholder="Enter company name"
+                          value={formData.microchipCompanyOther || ''}
+                          onChange={(e) => {
+                            setFormData((prev) => ({ ...prev, microchipCompanyOther: e.target.value }))
+                            const err = validateField('microchipCompanyOther', e.target.value)
+                            setErrors((prev) => ({ ...prev, microchipCompanyOther: err }))
+                          }}
+                          className={`${errors.microchipCompanyOther ? 'border-destructive' : ''}`}
+                        />
+                        {errors.microchipCompanyOther && <ErrorText>{errors.microchipCompanyOther}</ErrorText>}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <LabelWithTooltip htmlFor="registrationStatus" tooltip="Is the microchip registered in a recovery database?">
+                      Registration Status
+                    </LabelWithTooltip>
+                    <Select
+                      value={formData.microchipRegistrationStatus || 'unknown'}
+                      onValueChange={(value: 'registered' | 'not_registered' | 'unknown') => setFormData((prev) => ({ ...prev, microchipRegistrationStatus: value }))}
+                    >
+                      <SelectTrigger className="h-10 w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="registered">Registered</SelectItem>
+                        <SelectItem value="not_registered">Not Registered</SelectItem>
+                        <SelectItem value="unknown">Unknown</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <LabelWithTooltip htmlFor="collarTagId" tooltip="Custom identifier engraved on your pet's collar tag.">
+                      Collar Tag ID
+                    </LabelWithTooltip>
+                    <Input
+                      id="collarTagId"
+                      value={formData.collarTagId || ''}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, collarTagId: e.target.value }))}
+                      placeholder="e.g., REX-2025"
+                      className="h-10"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <LabelWithTooltip htmlFor="microchipCert" tooltip="Upload a PDF or image of the official microchip certificate.">
+                    Microchip Certificate
+                  </LabelWithTooltip>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Button type="button" variant="outline" onClick={() => document.getElementById('microchip-cert-input')?.click()}>
+                      Choose File
+                    </Button>
+                    {formData.microchipCertificateUrl && (
+                      <a href={formData.microchipCertificateUrl} target="_blank" rel="noreferrer" className="text-sm underline">
+                        View current certificate
+                      </a>
+                    )}
+                  </div>
+                  <input
+                    id="microchip-cert-input"
+                    type="file"
+                    accept="application/pdf,image/*"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0]
+                      if (!file) return
+                      try {
+                        const { uploadFileWithProgress } = await import('@/lib/utils/upload-signed')
+                        const res = await uploadFileWithProgress({ file, folder: 'pets/docs' })
+                        setFormData((prev) => ({ ...prev, microchipCertificateUrl: res.url }))
+                      } catch (err: any) {
+                        alert(err?.message || 'Failed to upload certificate')
+                      } finally {
+                        e.currentTarget.value = ''
+                      }
+                    }}
+                  />
+                  <p className="text-[11px] text-muted-foreground">Accepted: PDF, JPG, PNG. Max 10MB.</p>
+                </div>
+
+                <div className="space-y-2">
+                  <LabelWithTooltip htmlFor="policyNumberIdTab" tooltip="Optional policy number for quick reference during vet visits.">
+                    Insurance Policy Number
+                  </LabelWithTooltip>
+                  <Input
+                    id="policyNumberIdTab"
+                    value={formData.insurance.policyNumber}
+                    onChange={(e) => setFormData({ ...formData, insurance: { ...formData.insurance, policyNumber: e.target.value } })}
+                    placeholder="Policy number"
+                    className="h-10"
                   />
                 </div>
               </CardContent>
@@ -1577,33 +2357,80 @@ export function PetForm({ mode, initialData, onSubmit, onCancel, petName }: PetF
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="space-y-2">
-                  <LabelWithTooltip 
-                    htmlFor="toys"
-                    tooltip="List your pet's favorite toys."
-                  >
-                    <Gamepad2 className="h-4 w-4" />
-                    Favorite Toys
+                  <LabelWithTooltip htmlFor="fav-toys" tooltip="List toys separated by commas (max 200 chars). Examples: Squeaky ball, rope toy, laser pointer">
+                    <Gamepad2 className="h-4 w-4" /> Favorite Toys
                   </LabelWithTooltip>
-                  <ArrayTagInput
-                    value={formData.favoriteThings.toys}
-                    onChange={(value) => setFormData({ ...formData, favoriteThings: { ...formData.favoriteThings, toys: value } })}
-                    placeholder="Add favorite toys"
-                  />
+                  <div className="relative">
+                    <Input
+                      id="fav-toys"
+                      value={((formData as any)._toysText) ?? (formData.favoriteThings.toys.join(', '))}
+                      onChange={(e) => {
+                        const text = e.target.value.slice(0, 200)
+                        setFormData((prev) => {
+                          const parts = text.split(',').map((s) => s.trim()).filter(Boolean)
+                          return { ...prev, favoriteThings: { ...prev.favoriteThings, toys: parts }, _toysText: text } as any
+                        })
+                      }}
+                      placeholder="Squeaky ball, rope toy, laser pointer"
+                      className="h-10 pr-14"
+                    />
+                    <span className="absolute inset-y-0 right-2 flex items-center text-xs text-muted-foreground">{Array.from((((formData as any)._toysText) ?? (formData.favoriteThings.toys.join(', ')))).length}/200</span>
+                  </div>
                 </div>
 
                 <div className="space-y-2">
-                  <LabelWithTooltip 
-                    htmlFor="activities"
-                    tooltip="What activities does your pet enjoy most?"
-                  >
-                    <Activity className="h-4 w-4" />
-                    Favorite Activities
+                  <LabelWithTooltip htmlFor="activities" tooltip="Select your pet's favorite activities. Add custom ones if needed.">
+                    <Activity className="h-4 w-4" /> Favorite Activities
                   </LabelWithTooltip>
-                  <ArrayTagInput
-                    value={formData.favoriteThings.activities}
-                    onChange={(value) => setFormData({ ...formData, favoriteThings: { ...formData.favoriteThings, activities: value } })}
-                    placeholder="Add favorite activities"
-                  />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                    {[
+                      'Playing fetch', 'Going for walks', 'Swimming', 'Cuddling', 'Chasing toys', 'Watching TV', 'Sunbathing', 'Exploring', 'Running', 'Hiding', 'Climbing', 'Playing with other pets',
+                    ].map((label) => {
+                      const checked = formData.favoriteThings.activities.some((a) => a.toLowerCase() === label.toLowerCase())
+                      return (
+                        <label key={label} className="flex items-center gap-2 text-sm">
+                          <input
+                            type="checkbox"
+                            className="h-4 w-4"
+                            checked={checked}
+                            onChange={(e) => {
+                              const next = new Set(formData.favoriteThings.activities)
+                              if (e.target.checked) next.add(label)
+                              else next.delete(label)
+                              setFormData({ ...formData, favoriteThings: { ...formData.favoriteThings, activities: Array.from(next) } })
+                            }}
+                          />
+                          <span>{label}</span>
+                        </label>
+                      )
+                    })}
+                  </div>
+                  <div className="flex gap-2 mt-2">
+                    <Input
+                      placeholder="Add custom activity (e.g., Agility)"
+                      value={(formData as any)._customActivity || ''}
+                      onChange={(e) => setFormData((prev) => ({ ...(prev as any), _customActivity: e.target.value }))}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault()
+                          const val = ((formData as any)._customActivity || '').trim()
+                          if (val) {
+                            const exists = formData.favoriteThings.activities.some((a) => a.toLowerCase() === val.toLowerCase())
+                            if (!exists) setFormData({ ...formData, favoriteThings: { ...formData.favoriteThings, activities: [...formData.favoriteThings.activities, val] }, _customActivity: '' } as any)
+                          }
+                        }
+                      }}
+                      className="max-w-sm"
+                    />
+                    <Button type="button" onClick={() => {
+                      const val = ((formData as any)._customActivity || '').trim()
+                      if (!val) return
+                      const exists = formData.favoriteThings.activities.some((a) => a.toLowerCase() === val.toLowerCase())
+                      if (!exists) setFormData({ ...formData, favoriteThings: { ...formData.favoriteThings, activities: [...formData.favoriteThings.activities, val] }, _customActivity: '' } as any)
+                    }}>
+                      <Plus className="h-4 w-4 mr-1" /> Add
+                    </Button>
+                  </div>
                 </div>
 
                 <div className="space-y-2">
@@ -1622,18 +2449,25 @@ export function PetForm({ mode, initialData, onSubmit, onCancel, petName }: PetF
                 </div>
 
                 <div className="space-y-2">
-                  <LabelWithTooltip 
-                    htmlFor="foods"
-                    tooltip="What foods does your pet enjoy?"
-                  >
-                    <Apple className="h-4 w-4" />
-                    Favorite Foods
+                  <LabelWithTooltip htmlFor="fav-treats" tooltip="List favorite treats separated by commas (max 200 chars). Examples: Peanut butter, carrots, dental chews">
+                    <Apple className="h-4 w-4" /> Favorite Treats
                   </LabelWithTooltip>
-                  <ArrayTagInput
-                    value={formData.favoriteThings.foods}
-                    onChange={(value) => setFormData({ ...formData, favoriteThings: { ...formData.favoriteThings, foods: value } })}
-                    placeholder="Add favorite foods"
-                  />
+                  <div className="relative">
+                    <Input
+                      id="fav-treats"
+                      value={((formData as any)._treatsText) ?? (formData.favoriteThings.foods.join(', '))}
+                      onChange={(e) => {
+                        const text = e.target.value.slice(0, 200)
+                        setFormData((prev) => {
+                          const parts = text.split(',').map((s) => s.trim()).filter(Boolean)
+                          return { ...prev, favoriteThings: { ...prev.favoriteThings, foods: parts }, _treatsText: text } as any
+                        })
+                      }}
+                      placeholder="Peanut butter, carrots, dental chews"
+                      className="h-10 pr-14"
+                    />
+                    <span className="absolute inset-y-0 right-2 flex items-center text-xs text-muted-foreground">{Array.from((((formData as any)._treatsText) ?? (formData.favoriteThings.foods.join(', ')))).length}/200</span>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -2048,6 +2882,15 @@ export function PetForm({ mode, initialData, onSubmit, onCancel, petName }: PetF
                           />
                         </div>
                         <div className="space-y-2">
+                          <Label>Purpose</Label>
+                          <Input
+                            value={medication.purpose || ''}
+                            onChange={(e) => updateMedication(index, 'purpose', e.target.value)}
+                            placeholder="e.g., Heartworm prevention"
+                            className="h-10"
+                          />
+                        </div>
+                        <div className="space-y-2">
                           <Label>Frequency</Label>
                           <Input
                             value={medication.frequency}
@@ -2101,6 +2944,103 @@ export function PetForm({ mode, initialData, onSubmit, onCancel, petName }: PetF
                   <Plus className="h-4 w-4 mr-2" />
                   Add Medication
                 </Button>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <AlertCircle className="h-5 w-5" />
+                  Pre-existing Conditions
+                </CardTitle>
+                <CardDescription>Select relevant conditions and add diagnosis details</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                  {COMMON_CONDITIONS.map((label) => {
+                    const selected = hasCondition(label)
+                    return (
+                      <label key={label} className="flex items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4"
+                          checked={selected}
+                          onChange={(e) => {
+                            if (e.target.checked) addCondition(label)
+                            else {
+                              const c = formData.conditions.find((x) => x.name.toLowerCase() === label.toLowerCase())
+                              if (c) removeCondition(c.id)
+                            }
+                          }}
+                        />
+                        <span>{label}</span>
+                      </label>
+                    )
+                  })}
+                </div>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Add other condition (e.g., Hypothyroidism)"
+                    value={(formData as any)._customCondition || ''}
+                    onChange={(e) => setFormData((prev) => ({ ...(prev as any), _customCondition: e.target.value }))}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        const val = ((formData as any)._customCondition || '').trim()
+                        if (val) {
+                          addCondition(val)
+                          setFormData((prev) => ({ ...(prev as any), _customCondition: '' }))
+                        }
+                      }
+                    }}
+                    className="max-w-sm"
+                  />
+                  <Button type="button" onClick={() => {
+                    const val = ((formData as any)._customCondition || '').trim()
+                    if (!val) return
+                    addCondition(val)
+                    setFormData((prev) => ({ ...(prev as any), _customCondition: '' }))
+                  }}>
+                    <Plus className="h-4 w-4 mr-1" /> Add
+                  </Button>
+                </div>
+
+                {formData.conditions.length > 0 && (
+                  <div className="space-y-3">
+                    {formData.conditions.map((cond, i) => (
+                      <Card key={cond.id} className="border-l-4 border-amber-400">
+                        <CardContent className="pt-4 space-y-3">
+                          <div className="flex items-start justify-between">
+                            <h4 className="font-semibold">{cond.name}</h4>
+                            <Button type="button" variant="ghost" size="icon" onClick={() => removeCondition(cond.id)}>
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label>Date Diagnosed</Label>
+                              <Input
+                                type="date"
+                                value={cond.diagnosedAt || ''}
+                                onChange={(e) => updateCondition(cond.id, 'diagnosedAt', e.target.value)}
+                                className="h-10"
+                              />
+                            </div>
+                            <div className="space-y-2 md:col-span-2">
+                              <Label>Notes</Label>
+                              <Textarea
+                                rows={2}
+                                value={cond.notes || ''}
+                                onChange={(e) => updateCondition(cond.id, 'notes', e.target.value)}
+                                placeholder="Additional details, flare-up patterns, vet recommendations"
+                              />
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -2186,6 +3126,145 @@ export function PetForm({ mode, initialData, onSubmit, onCancel, petName }: PetF
                   <Plus className="h-4 w-4 mr-2" />
                   Add Health Record
                 </Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Bio & Story Tab */}
+          <TabsContent value="bio" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="h-5 w-5" /> Bio & Story
+                </CardTitle>
+                <CardDescription>Tell your pet's story (how you met, rescue story, funny quirks, favorite memories)</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <LabelWithTooltip htmlFor="bioRich" tooltip="Supports bold, italic, emoji, line breaks, @mentions and #hashtags. Max 1000 characters (plain text).">
+                    Pet Bio
+                  </LabelWithTooltip>
+                  <div className="space-y-1">
+                    <BlockEditor
+                      content={formData.bio || ''}
+                      onChange={(html) => {
+                        // derive plain text length for 1000 char limit
+                        const text = html.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim()
+                        const limited = Array.from(text).slice(0, 1000).join('')
+                        // If exceeded, trim and also trim html to prevent runaway
+                        const overLimit = Array.from(text).length > 1000
+                        setFormData((prev) => ({ ...prev, bio: overLimit ? limited : text }))
+                      }}
+                      placeholder="Write your pet's story... Use @ to mention friends and # for hashtags like #rescuedog"
+                    />
+                    <div className="flex items-center justify-end text-xs text-muted-foreground">
+                      <span>{charCount(formData.bio || '')}/1000</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="flex items-center justify-between border rounded-lg p-3">
+                    <div>
+                      <div className="text-sm font-medium">Public Profile</div>
+                      <div className="text-xs text-muted-foreground">Make this pet visible to others</div>
+                    </div>
+                    <Switch
+                      checked={formData.privacyVisibility === 'public'}
+                      onCheckedChange={(checked) => setFormData((prev) => ({ ...prev, privacyVisibility: checked ? 'public' : 'private' }))}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between border rounded-lg p-3">
+                    <div>
+                      <div className="text-sm font-medium">Featured Pet</div>
+                      <div className="text-xs text-muted-foreground">Highlight this pet on your profile</div>
+                    </div>
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4"
+                      checked={Boolean(formData.isFeatured)}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, isFeatured: e.target.checked }))}
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Review Tab */}
+          <TabsContent value="review" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <CheckCircle2 className="h-5 w-5" /> Review & Submit
+                </CardTitle>
+                <CardDescription>Check your details before creating the pet profile</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <div className="text-sm text-muted-foreground">Name</div>
+                    <div className="font-medium">{formData.name || '—'}</div>
+                  </div>
+                  <div className="space-y-1">
+                    <div className="text-sm text-muted-foreground">Species / Breed</div>
+                    <div className="font-medium">{formData.species}{formData.breed ? ` • ${formData.breed}` : ''}</div>
+                  </div>
+                  <div className="space-y-1">
+                    <div className="text-sm text-muted-foreground">Gender & Age</div>
+                    <div className="font-medium capitalize">{formData.gender || 'unknown'}{formData.age ? ` • ${formData.age}y` : ''}</div>
+                  </div>
+                  <div className="space-y-1">
+                    <div className="text-sm text-muted-foreground">Color / Markings</div>
+                    <div className="font-medium">{formData.color || '—'}</div>
+                  </div>
+                  <div className="space-y-1">
+                    <div className="text-sm text-muted-foreground">Microchip</div>
+                    <div className="font-medium">{formData.microchipId || '—'}{formData.microchipCompany ? ` • ${formData.microchipCompany}` : ''}</div>
+                  </div>
+                  <div className="space-y-1">
+                    <div className="text-sm text-muted-foreground">Vet Clinic</div>
+                    <div className="font-medium">{formData.vetInfo.clinicName || '—'}{formData.vetInfo.phone ? ` • ${formData.vetInfo.phone}` : ''}</div>
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <div className="text-sm text-muted-foreground">Allergies</div>
+                  <div className="flex flex-wrap gap-1">
+                    {formData.allergies.length > 0 ? formData.allergies.map((a) => (
+                      <span key={a} className="px-2 py-0.5 rounded bg-secondary text-secondary-foreground text-xs">{a} ({formData.allergySeverities[a] || 'mild'})</span>
+                    )) : <span className="text-sm">—</span>}
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <div className="text-sm text-muted-foreground">Medications</div>
+                  <div className="text-sm">{formData.medications.length} item(s)</div>
+                </div>
+                <div className="space-y-1">
+                  <div className="text-sm text-muted-foreground">Conditions</div>
+                  <div className="flex flex-wrap gap-1">
+                    {formData.conditions.length > 0 ? formData.conditions.map((c) => (
+                      <span key={c.id} className="px-2 py-0.5 rounded bg-secondary text-secondary-foreground text-xs">{c.name}</span>
+                    )) : <span className="text-sm">—</span>}
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <div className="text-sm text-muted-foreground">Photos</div>
+                  <div className="flex items-center gap-2">
+                    {formData.avatar ? (
+                      <img src={formData.avatar} alt="Primary" className="h-12 w-12 rounded object-cover" />
+                    ) : (
+                      <span className="text-sm">—</span>
+                    )}
+                    {formData.photos.length > 1 && (
+                      <span className="text-xs text-muted-foreground">+{formData.photos.length - 1} more</span>
+                    )}
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <div className="text-sm text-muted-foreground">Visibility</div>
+                  <div className="text-sm capitalize">{formData.privacyVisibility}</div>
+                </div>
+                <div className="text-xs text-muted-foreground">When ready, click “Create Pet” to finish.</div>
               </CardContent>
             </Card>
           </TabsContent>

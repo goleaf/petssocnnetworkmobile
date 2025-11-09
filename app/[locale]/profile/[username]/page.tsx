@@ -580,6 +580,21 @@ export default function ProfilePage({ params }: { params: Promise<{ username: st
                       : typeof rawPrivacy === "string"
                         ? (rawPrivacy as PrivacyLevel)
                         : ownerPrivacyFallback
+                  const withYouLabel = (() => {
+                    if (!pet.adoptionDate) return null
+                    const adopt = new Date(pet.adoptionDate)
+                    if (Number.isNaN(adopt.getTime())) return null
+                    const now = new Date()
+                    let months = (now.getFullYear() - adopt.getFullYear()) * 12 + (now.getMonth() - adopt.getMonth())
+                    if (now.getDate() < adopt.getDate()) months -= 1
+                    if (months < 0) months = 0
+                    const years = Math.floor(months / 12)
+                    const remMonths = months % 12
+                    if (years > 0) {
+                      return `With you for ${years} year${years === 1 ? "" : "s"}${remMonths ? `, ${remMonths} month${remMonths === 1 ? "" : "s"}` : ""}`
+                    }
+                    return `With you for ${months} month${months === 1 ? "" : "s"}`
+                  })()
 
                   return (
                     <Link key={pet.id} href={getPetUrlFromPet(pet, user.username)}>
@@ -604,6 +619,9 @@ export default function ProfilePage({ params }: { params: Promise<{ username: st
                                 {pet.age && ` • ${pet.age} ${pet.age === 1 ? "year" : "years"} old`}
                               </p>
                               {pet.bio && <p className="text-sm mt-2 line-clamp-2">{pet.bio}</p>}
+                              {withYouLabel && (
+                                <p className="text-xs text-muted-foreground mt-1">{withYouLabel}</p>
+                              )}
                               <div className="flex flex-wrap gap-2 mt-2">
                                 <Badge variant="outline" className="text-[10px] font-semibold">
                                   Visibility: {privacyLabelMap[visibilitySetting]}

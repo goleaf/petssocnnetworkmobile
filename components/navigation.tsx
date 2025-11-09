@@ -38,6 +38,7 @@ import { cn } from "@/lib/utils"
 import { NotificationsDropdown } from "@/components/notifications-dropdown"
 import { useApplyProfilePhotoUpdates } from "@/lib/profile-updates"
 import { ScreenReaderToggle } from "@/components/a11y/ScreenReaderToggle"
+import { PetSwitcher } from "@/components/pets/pet-switcher"
 
 export function Navigation() {
   const { user, isAuthenticated, logout, isAdmin, isModerator } = useAuth()
@@ -100,6 +101,7 @@ export function Navigation() {
           <div className="hidden md:flex items-center gap-2">
             {isAuthenticated && user ? (
               <>
+                <PetSwitcher />
                 <Link href="/blog/create">
                   <Button size="sm">
                     <PenSquare className="h-4 w-4 mr-2" />
@@ -247,6 +249,12 @@ export function Navigation() {
                   <div>
                     <ScreenReaderToggle />
                   </div>
+                  {/* Pet switcher (mobile) */}
+                  {isAuthenticated && user && (
+                    <div>
+                      <PetSwitcher />
+                    </div>
+                  )}
                   {isAuthenticated && user && (
                     <div className="flex items-center gap-3 pb-4 border-b">
                       <Avatar className="h-12 w-12">

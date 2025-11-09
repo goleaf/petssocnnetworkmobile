@@ -5,7 +5,7 @@ import Cropper, { Area, Point } from "react-easy-crop"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Slider } from "@/components/ui/slider"
-import { ZoomIn, RotateCw, RotateCcw, Check, X as XIcon, Sun, Contrast as ContrastIcon } from "lucide-react"
+import { ZoomIn, RotateCw, RotateCcw, Check, X as XIcon, Sun, Contrast as ContrastIcon, Image as ImageIcon } from "lucide-react"
 import { getCroppedImg } from "@/lib/utils/image-crop"
 
 interface AvatarEditorProps {
@@ -37,6 +37,7 @@ export function AvatarEditor({
   const [brightness, setBrightness] = useState(1) // 1 = 100%
   const [contrast, setContrast] = useState(1) // 1 = 100%
   const [previewDataUrl, setPreviewDataUrl] = useState<string>("")
+  const [preset, setPreset] = useState<'none' | 'bw' | 'vintage' | 'warm' | 'cool'>('none')
   const cropContainerRef = useRef<HTMLDivElement | null>(null)
   const instructionsId = "avatar-editor-instructions"
 
@@ -53,7 +54,7 @@ export function AvatarEditor({
         imageSrc,
         croppedAreaPixels,
         rotation,
-        { brightness, contrast }
+        { brightness, contrast, preset: preset === 'none' ? undefined : preset }
       )
 
       // Validate cropped image dimensions
@@ -99,7 +100,7 @@ export function AvatarEditor({
     const generate = async () => {
       if (!imageSrc || !croppedAreaPixels) return
       try {
-        const dataUrl = await getCroppedImg(imageSrc, croppedAreaPixels, rotation, { brightness, contrast })
+        const dataUrl = await getCroppedImg(imageSrc, croppedAreaPixels, rotation, { brightness, contrast, preset: preset === 'none' ? undefined : preset })
         if (!cancelled) setPreviewDataUrl(dataUrl)
       } catch {
         /* ignore preview errors */
@@ -115,7 +116,7 @@ export function AvatarEditor({
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Edit Avatar</DialogTitle>
+          <DialogTitle>Edit Image</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
@@ -161,7 +162,14 @@ export function AvatarEditor({
                   position: "relative",
                 },
                 mediaStyle: {
-                  filter: `brightness(${brightness}) contrast(${contrast})`,
+                  filter: (() => {
+                    const filters = [`brightness(${brightness})`, `contrast(${contrast})`]
+                    if (preset === 'bw') filters.push('grayscale(1)')
+                    else if (preset === 'vintage') filters.push('sepia(0.35)', 'saturate(1.1)')
+                    else if (preset === 'warm') filters.push('sepia(0.15)', 'saturate(1.05)')
+                    else if (preset === 'cool') filters.push('hue-rotate(180deg)', 'saturate(1.05)')
+                    return filters.join(' ')
+                  })(),
                 },
               }}
             />
@@ -251,6 +259,32 @@ export function AvatarEditor({
                 className="w-full"
                 aria-label="Contrast"
               />
+            </div>
+
+            {/* Preset Filters */}
+            <div className="space-y-2">
+              <div className="text-sm font-medium flex items-center gap-2">
+                <ImageIcon className="h-4 w-4" /> Presets
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {([
+                  { key: 'none', label: 'Original' },
+                  { key: 'bw', label: 'B&W' },
+                  { key: 'vintage', label: 'Vintage' },
+                  { key: 'warm', label: 'Warm' },
+                  { key: 'cool', label: 'Cool' },
+                ] as const).map((p) => (
+                  <Button
+                    key={p.key}
+                    type="button"
+                    size="sm"
+                    variant={preset === p.key ? 'default' : 'outline'}
+                    onClick={() => setPreset(p.key)}
+                  >
+                    {p.label}
+                  </Button>
+                ))}
+              </div>
             </div>
 
             {/* Info */}

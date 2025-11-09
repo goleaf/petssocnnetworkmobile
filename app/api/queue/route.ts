@@ -9,6 +9,7 @@ import type {
   LinkCheckJobPayload,
   NotifyUserJobPayload,
   RebuildSearchIndexJobPayload,
+  TranscodeVideoJobPayload,
 } from "@/lib/types/queue"
 
 export const runtime = "nodejs"
@@ -37,6 +38,19 @@ export async function POST(request: NextRequest) {
             { error: "Missing 'url' in payload" },
             { status: 400 }
           )
+        }
+        break
+      }
+      case "transcodeVideo": {
+        const t = payload as TranscodeVideoJobPayload
+        if (!t.fileUrl) {
+          return NextResponse.json(
+            { error: "Missing 'fileUrl' in payload" },
+            { status: 400 }
+          )
+        }
+        if (!t.preset) {
+          t.preset = "mobile"
         }
         break
       }
@@ -112,4 +126,3 @@ export async function GET(request: NextRequest) {
     )
   }
 }
-

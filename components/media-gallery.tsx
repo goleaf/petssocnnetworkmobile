@@ -20,8 +20,9 @@ import { ChevronLeft, ChevronRight, Image as ImageIcon, Play, X } from "lucide-r
 import { useAuth } from "@/components/auth/auth-provider"
 import type { MediaSettings } from "@/lib/types"
 import { getMediaSettings, resolveShouldAutoplayVideos } from "@/lib/media-settings"
-import { getOptimizedImageUrl } from "@/lib/performance/cdn"
+import { getOptimizedImageUrl, isCDNUrl } from "@/lib/performance/cdn"
 import { isLikelyCellular } from "@/lib/utils/network"
+import { extractGifFirstFrame } from "@/lib/utils/gif"
 import type { CaptionLanguagePreference } from "@/lib/types"
 
 type GalleryItem =
@@ -135,6 +136,7 @@ export function MediaGallery({
   const [metadata, setMetadata] = useState<Record<number, MediaMeta>>({})
   const [cellularOverride, setCellularOverride] = useState(false)
   const [gifPlayMap, setGifPlayMap] = useState<Record<number, boolean>>({})
+  const [gifPreviewMap, setGifPreviewMap] = useState<Record<number, string | null>>({})
 
   useEffect(() => {
     if (user) {
@@ -156,6 +158,30 @@ export function MediaGallery({
       return changed ? next : previous
     })
   }, [items])
+
+  // Generate same-origin previews for GIFs when needed (no CDN transform)
+  useEffect(() => {
+    let cancelled = false
+    async function run() {
+      await Promise.all(
+        items.map(async (item, index) => {
+          if (!(item.type === 'image' && /\.gif(\?|$)/i.test(item.url))) return
+          const shouldStatic = Boolean(mediaSettings && !mediaSettings.autoPlayGifs)
+          if (!shouldStatic) return
+          if (isCDNUrl(item.url)) return
+          // Avoid rework
+          if (gifPreviewMap[index] !== undefined) return
+          const preview = await extractGifFirstFrame(item.url)
+          if (cancelled) return
+          setGifPreviewMap((m) => ({ ...m, [index]: preview }))
+        })
+      )
+    }
+    run()
+    return () => {
+      cancelled = true
+    }
+  }, [items, mediaSettings])
 
   useEffect(() => {
     let isMounted = true
@@ -361,7 +387,7 @@ export function MediaGallery({
               <Image
                 src={
                   shouldShowGifStatic
-                    ? getOptimizedImageUrl(item.url, { format: "jpg", quality: reducedQuality ? 60 : 80 })
+                    ? gifPreviewMap[index] || getOptimizedImageUrl(item.url, { format: "jpg", quality: reducedQuality ? 60 : 80 })
                     : reducedQuality
                     ? getOptimizedImageUrl(item.url, { quality: 60 })
                     : item.url
@@ -478,7 +504,7 @@ export function MediaGallery({
                     const isGif = /\.gif(\?|$)/i.test(lightboxItem.url)
                     const shouldStatic = Boolean(mediaSettings && isGif && !mediaSettings.autoPlayGifs && !gifPlayMap[activeIndex])
                     if (shouldStatic) {
-                      const preview = getOptimizedImageUrl(lightboxItem.url, { format: "jpg", quality: reducedQuality ? 60 : 80 })
+                      const preview = gifPreviewMap[activeIndex] || getOptimizedImageUrl(lightboxItem.url, { format: "jpg", quality: reducedQuality ? 60 : 80 })
                       return (
                         <div className="relative h-full w-full">
                           <Image src={preview} alt="" fill className="object-contain" priority unoptimized />

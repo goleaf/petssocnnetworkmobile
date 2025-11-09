@@ -2578,7 +2578,7 @@ export const mockBlogPosts: BlogPost[] = [
     content:
       "Today was incredible! Max and Luna had the best time playing in the waves and running on the sand. Max discovered his love for swimming in the ocean, while Luna preferred chasing seagulls. We spent hours there and they are now completely exhausted. The beach is definitely our new favorite spot for weekend adventures!",
     coverImage: "/golden-retriever-beach.png",
-    tags: ["beach", "adventure", "swimming"],
+    tags: ["beach", "adventure", "swimming", "lang:en"],
     categories: ["Adventure"],
     media: {
       images: [
@@ -2597,6 +2597,7 @@ export const mockBlogPosts: BlogPost[] = [
       ],
     },
     likes: ["2", "3", "4"],
+    language: "en",
     createdAt: "2024-12-20",
     updatedAt: "2024-12-20",
   },
@@ -2608,7 +2609,7 @@ export const mockBlogPosts: BlogPost[] = [
     content:
       "Whiskers has found a new obsession - a simple cardboard box! I bought him an expensive cat tower, but he prefers the box it came in. Typical cat behavior! He spends hours in there, peeking out and ambushing Shadow when she walks by. Sometimes the simplest things bring the most joy.",
     coverImage: "/cat-in-box.jpg",
-    tags: ["toys", "funny", "cats"],
+    tags: ["toys", "funny", "cats", "lang:es"],
     categories: ["Funny"],
     media: {
       images: [
@@ -2624,6 +2625,7 @@ export const mockBlogPosts: BlogPost[] = [
       ],
     },
     likes: ["1", "3"],
+    language: "es",
     createdAt: "2024-12-19",
     updatedAt: "2024-12-19",
   },
@@ -2635,9 +2637,10 @@ export const mockBlogPosts: BlogPost[] = [
     content:
       "Im so proud of Kiwi! After weeks of training, he finally learned to wave hello. Every morning now, he greets me with a little wing wave and it absolutely melts my heart. Training birds requires patience, but the bond you build is so worth it. Next, were working on teaching him to ring a bell!",
     coverImage: "/parrot-waving.jpg",
-    tags: ["training", "tricks", "birds"],
+    tags: ["training", "tricks", "birds", "lang:fr"],
     categories: ["Training"],
     likes: ["1", "2", "4"],
+    language: "fr",
     createdAt: "2024-12-18",
     updatedAt: "2024-12-18",
   },
@@ -2649,9 +2652,10 @@ export const mockBlogPosts: BlogPost[] = [
     content:
       "Luna attended her first agility class today and she was a natural! She zoomed through the tunnel, jumped over hurdles, and even mastered the weave poles on her first try. The instructor said she has great potential. Max came along to watch and was very proud of his little sister. Cant wait for next weeks class!",
     coverImage: "/dog-agility-course.png",
-    tags: ["training", "agility", "exercise"],
+    tags: ["training", "agility", "exercise", "lang:de"],
     categories: ["Training"],
     likes: ["2", "3"],
+    language: "de",
     createdAt: "2024-12-17",
     updatedAt: "2024-12-17",
   },
@@ -2663,9 +2667,10 @@ export const mockBlogPosts: BlogPost[] = [
     content:
       "Finally finished bunny-proofing Thumpers room! Covered all cables, removed toxic plants, and created safe hiding spots. He now has a whole room to explore and binky around in. The joy on his face when he does his happy jumps makes all the effort worthwhile. If youre thinking about free-roaming your rabbit, I highly recommend it!",
     coverImage: "/rabbit-room-setup.jpg",
-    tags: ["care", "housing", "rabbits"],
+    tags: ["care", "housing", "rabbits", "lang:en"],
     categories: ["Care"],
     likes: ["1", "2", "3"],
+    language: "en",
     createdAt: "2024-12-16",
     updatedAt: "2024-12-16",
   },
@@ -2693,6 +2698,8 @@ export const mockBlogPosts: BlogPost[] = [
     ]
 
     const template = postTemplates[i % postTemplates.length]
+    const langs = ["en","es","fr","de"]
+    const lang = langs[i % langs.length]
     const categoryLabel = template.category.replace(/\b\w/g, (char) => char.toUpperCase())
     const likes = Array.from({ length: Math.floor(Math.random() * 5) }, (_, j) => String((j % 4) + 1))
 
@@ -2702,9 +2709,10 @@ export const mockBlogPosts: BlogPost[] = [
       authorId,
       title: `${template.title} #${i + 1}`,
       content: template.content,
-      tags: template.tags,
+      tags: [...template.tags, `lang:${lang}`],
       categories: [categoryLabel],
       likes,
+      language: lang,
       createdAt: dateStr,
       updatedAt: dateStr,
     }

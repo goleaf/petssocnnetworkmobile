@@ -19,6 +19,8 @@ import { ErrorText } from "@/components/ui/error-text"
 import { productInfoboxSchema, type ProductInfoboxInput } from "@/lib/schemas/product-infobox"
 import { ZodIssue } from "zod"
 import { useUnitSystem } from "@/lib/i18n/hooks"
+import { useLocale } from "next-intl"
+import { convertWeight, formatWeight, type UnitSystem as U } from "@/lib/i18n/formatting"
 
 interface ProductInfoboxFormProps {
   initialData?: ProductInfoboxInput
@@ -130,6 +132,7 @@ function LabelWithTooltip({ htmlFor, tooltip, required, children }: {
 
 export function ProductInfoboxForm({ initialData, onChange, errors }: ProductInfoboxFormProps) {
   const unitSystem = useUnitSystem()
+  const locale = useLocale()
   const [formData, setFormData] = useState<ProductInfoboxInput>(() => ({
     productName: initialData?.productName || "",
     brand: initialData?.brand || "",
@@ -389,6 +392,24 @@ export function ProductInfoboxForm({ initialData, onChange, errors }: ProductInf
                 className="h-10"
               />
               <p className="text-xs text-muted-foreground">Tip: enter a number and we’ll add {unitSystem === "imperial" ? "lbs" : "kg"} for you.</p>
+              {(() => {
+                const raw = (formData.weight || '').trim()
+                if (!raw) return null
+                const m = raw.match(/^([0-9]+(?:\.[0-9]+)?)\s*(kg|kgs?|kilograms?|lb|lbs?|pounds?)?$/i)
+                if (!m) return null
+                const val = parseFloat(m[1])
+                if (Number.isNaN(val)) return null
+                const u = (m[2] || '').toLowerCase()
+                let base: U
+                if (u.startsWith('kg') || u.startsWith('kilogram')) base = 'metric'
+                else if (u.startsWith('lb') || u.startsWith('pound')) base = 'imperial'
+                else base = unitSystem
+                const other: U = base === 'metric' ? 'imperial' : 'metric'
+                const converted = convertWeight(val, base, other)
+                return (
+                  <p className="text-xs text-muted-foreground">≈ {formatWeight(converted, other, locale)}</p>
+                )
+              })()}
             </div>
           </div>
 

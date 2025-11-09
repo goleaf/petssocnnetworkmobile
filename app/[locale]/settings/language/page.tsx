@@ -32,6 +32,7 @@ export default function LanguageRegionSettingsPage(): JSX.Element {
   const [showTranslations, setShowTranslations] = useState<boolean>(true)
   const [autoTranslate, setAutoTranslate] = useState<boolean>(false)
   const [primaryLanguage, setPrimaryLanguage] = useState<string>("en")
+  const [strictFilter, setStrictFilter] = useState<boolean>(false)
   const [languageOptions, setLanguageOptions] = useState(() => getCommonLanguages())
 
   useEffect(() => {
@@ -48,6 +49,7 @@ export default function LanguageRegionSettingsPage(): JSX.Element {
       if (typeof prefs.showTranslations === 'boolean') setShowTranslations(prefs.showTranslations)
       if (typeof prefs.autoTranslate === 'boolean') setAutoTranslate(prefs.autoTranslate)
       if (prefs.primaryLanguage) setPrimaryLanguage(prefs.primaryLanguage)
+      if (typeof prefs.strictLanguageFilter === 'boolean') setStrictFilter(prefs.strictLanguageFilter)
     }
     // Initialize defaults if not set
     if (!prefs?.country) {
@@ -78,6 +80,7 @@ export default function LanguageRegionSettingsPage(): JSX.Element {
           showTranslations,
           autoTranslate,
           primaryLanguage,
+          strictLanguageFilter: strictFilter,
         },
       })
       await refresh()
@@ -223,6 +226,17 @@ export default function LanguageRegionSettingsPage(): JSX.Element {
 
           {/* Translation controls */}
           <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="font-medium text-sm">Only show preferred languages</div>
+                <div className="text-xs text-muted-foreground">Strict filter hides posts that aren’t in your preferred language list.</div>
+              </div>
+              <Switch
+                checked={strictFilter}
+                onCheckedChange={(v) => setStrictFilter(Boolean(v))}
+              />
+            </div>
+
             <div className="flex items-center justify-between">
               <div>
                 <div className="font-medium text-sm">Show translations</div>

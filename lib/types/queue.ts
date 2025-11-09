@@ -2,7 +2,7 @@
  * Queue job types and interfaces
  */
 
-export type JobType = "linkCheck" | "notifyUser" | "rebuildSearchIndex" | "sendNotification"
+export type JobType = "linkCheck" | "notifyUser" | "rebuildSearchIndex" | "sendNotification" | "transcodeVideo"
 
 export type JobStatus = "pending" | "processing" | "completed" | "failed"
 
@@ -58,6 +58,19 @@ export interface RebuildSearchIndexJobResult {
   duration: number
 }
 
+export interface TranscodeVideoJobPayload {
+  fileUrl: string
+  preset: "mobile" | "sd" | "hd"
+  userId?: string
+}
+
+export interface TranscodeVideoJobResult {
+  success: boolean
+  outputUrl?: string
+  preset: "mobile" | "sd" | "hd"
+  durationMs: number
+}
+
 export interface SendNotificationJobPayload {
   templateId: string
   segment: {
@@ -75,4 +88,3 @@ export interface SendNotificationJobResult {
   totalCount: number
   sentAt: string
 }
-

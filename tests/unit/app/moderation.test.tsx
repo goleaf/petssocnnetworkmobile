@@ -1,15 +1,19 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react"
 import ModerationPage from "@/app/admin/moderation/page"
-import { useAuth } from "@/components/auth/auth-provider"
+// Use direct auth hook to ease mocking via moduleNameMapper/re-export
+import { useAuth } from "@/lib/auth"
 import * as moderationUtils from "@/lib/moderation"
 import * as storageUtils from "@/lib/storage"
 
 // Mock dependencies
-jest.mock("@/components/auth/auth-provider")
+// Mock the auth hook directly; the provider re-exports from this module
+jest.mock("@/lib/auth", () => ({
+  __esModule: true,
+  useAuth: jest.fn(),
+}))
 jest.mock("@/lib/moderation")
 jest.mock("@/lib/storage")
 
-const mockUseAuth = useAuth as jest.MockedFunction<typeof useAuth>
 const mockGetModerationStats = moderationUtils.getModerationStats as jest.MockedFunction<typeof moderationUtils.getModerationStats>
 const mockGetPaginatedEditRequests = moderationUtils.getPaginatedEditRequests as jest.MockedFunction<typeof moderationUtils.getPaginatedEditRequests>
 const mockFilterEditRequests = moderationUtils.filterEditRequests as jest.MockedFunction<typeof moderationUtils.filterEditRequests>
@@ -41,7 +45,7 @@ describe("Moderation Dashboard", () => {
 
   beforeEach(() => {
     jest.clearAllMocks()
-    mockUseAuth.mockReturnValue({
+    ;(useAuth as jest.Mock).mockReturnValue({
       user: mockUser,
       isAuthenticated: true,
       login: jest.fn(),
@@ -266,4 +270,3 @@ describe("Moderation Dashboard", () => {
     expect(nextButton).toBeDisabled()
   })
 })
-

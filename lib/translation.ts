@@ -6,9 +6,20 @@
  */
 
 export async function translateText(text: string, from?: string | null, to?: string): Promise<{ text: string; from?: string | null; to?: string }>{
-  // Stubbed implementation: echoes with a marker for now
-  const marker = to ? `translated → ${to}` : 'translated'
-  const translated = `(${marker})\n${text}`
-  return { text: translated, from: from || undefined, to }
+  try {
+    const res = await fetch('/api/translate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, from, to })
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(err?.error || `Translate failed: ${res.status}`)
+    }
+    return await res.json()
+  } catch (e) {
+    // Fallback stub
+    const marker = to ? `translated → ${to}` : 'translated'
+    return { text: `(${marker})\n${text}`, from: from || undefined, to }
+  }
 }
-

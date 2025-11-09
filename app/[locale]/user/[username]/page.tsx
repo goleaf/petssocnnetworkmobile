@@ -105,6 +105,7 @@ import { recordProfileView, classifyReferrer, recordMediaView, recordLinkClick }
 import { ProfileInsights } from "@/components/profile/profile-insights"
 import { AudienceInsights } from "@/components/profile/audience-insights"
 import ProfileHeader from "@/components/profile/ProfileHeader"
+import { CreateButton } from "@/components/ui/create-button"
 
 const STORAGE_KEYS_TO_WATCH = ["pet_social_users", "pet_social_pets", "pet_social_blog_posts"]
 
@@ -403,7 +404,7 @@ export default function UserProfilePage() {
           </div>
         )}
         {/* New unified profile header */}
-        <ProfileHeader user={user} isOwnProfile={isOwnProfile} postsCount={blogPosts.length} />
+        <ProfileHeader user={user} isOwnProfile={isOwnProfile} postsCount={blogPosts.length} petsCount={pets.length} />
 
         {/* Profile Summary */}
         <Card className="mb-6 shadow-sm border bg-card">
@@ -807,38 +808,57 @@ export default function UserProfilePage() {
                     </CardContent>
                   </Card>
                 ) : pets.length > 0 ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-                    {pets.map((pet) => (
-                      <Link key={pet.id} href={getPetUrlFromPet(pet, user.username)}>
-                        <Card className="hover:shadow-xl transition-all duration-300 cursor-pointer hover:scale-[1.02] border-0 bg-card/50">
-                          <CardContent className="p-4 sm:p-6">
-                            <div className="flex items-center gap-3 sm:gap-4">
-                              <Avatar className="h-14 w-14 sm:h-16 sm:w-16 md:h-20 md:w-20 flex-shrink-0 ring-2 ring-primary/20">
-                                <AvatarImage src={pet.avatar || "/placeholder.svg"} alt={pet.name} />
-                                <AvatarFallback className="text-lg sm:text-xl">{pet.name.charAt(0)}</AvatarFallback>
-                              </Avatar>
-                              <div className="flex-1 min-w-0">
-                                <h3 className="font-bold text-base sm:text-lg md:text-xl truncate">{pet.name}</h3>
-                                <p className="text-xs sm:text-sm text-muted-foreground capitalize truncate">
-                                  {pet.breed || pet.species}
-                                  {pet.age && ` • ${pet.age} years old`}
-                                </p>
-                                <div className="flex items-center gap-1 mt-2 text-xs sm:text-sm text-muted-foreground">
-                                  <Heart className="h-3 w-3 sm:h-4 sm:w-4" />
-                                  <span>{pet.followers.length} followers</span>
+                  <>
+                    {isOwnProfile && (
+                      <div className="flex justify-end">
+                        <Link href={`/user/${user.username}/add-pet`}>
+                          <CreateButton iconType="paw" className="h-10 px-4">Add Pet</CreateButton>
+                        </Link>
+                      </div>
+                    )}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                      {pets.map((pet) => (
+                        <Link key={pet.id} href={getPetUrlFromPet(pet, user.username)}>
+                          <Card className="hover:shadow-xl transition-all duration-300 cursor-pointer hover:scale-[1.02] border-0 bg-card/50">
+                            <CardContent className="p-4 sm:p-6">
+                              <div className="flex items-center gap-3 sm:gap-4">
+                                <Avatar className="h-14 w-14 sm:h-16 sm:w-16 md:h-20 md:w-20 flex-shrink-0 ring-2 ring-primary/20">
+                                  <AvatarImage src={pet.avatar || "/placeholder.svg"} alt={pet.name} />
+                                  <AvatarFallback className="text-lg sm:text-xl">{pet.name.charAt(0)}</AvatarFallback>
+                                </Avatar>
+                                <div className="flex-1 min-w-0">
+                                  <h3 className="font-bold text-base sm:text-lg md:text-xl truncate">{pet.name}</h3>
+                                  <p className="text-xs sm:text-sm text-muted-foreground capitalize truncate">
+                                    {pet.breed || pet.species}
+                                    {pet.age && ` • ${pet.age} years old`}
+                                  </p>
+                                  <div className="flex items-center gap-1 mt-2 text-xs sm:text-sm text-muted-foreground">
+                                    <Heart className="h-3 w-3 sm:h-4 sm:w-4" />
+                                    <span>{pet.followers.length} followers</span>
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      </Link>
-                    ))}
-                  </div>
+                            </CardContent>
+                          </Card>
+                        </Link>
+                      ))}
+                    </div>
+                  </>
                 ) : (
                   <Card>
-                    <CardContent className="p-12 text-center text-muted-foreground">
-                      <PawPrint className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                      <p>No pets added yet</p>
+                    <CardContent className="p-10 sm:p-12 text-center">
+                      <div className="flex flex-col items-center gap-3">
+                        <PawPrint className="h-16 w-16 text-primary/60" />
+                        <h3 className="text-xl font-semibold">Add your first furry friend!</h3>
+                        <p className="text-sm text-muted-foreground max-w-sm">
+                          Create a beautiful profile for your pet with photos, personality, health info, and more.
+                        </p>
+                        {isOwnProfile && (
+                          <Link href={`/user/${user.username}/add-pet`}>
+                            <CreateButton iconType="paw" className="mt-2 h-12 px-6 text-base">Add Pet</CreateButton>
+                          </Link>
+                        )}
+                      </div>
                     </CardContent>
                   </Card>
                 )}

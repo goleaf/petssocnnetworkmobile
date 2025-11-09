@@ -49,19 +49,22 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Validate file type
-    if (!fileType.startsWith("image/")) {
+    // Validate file type (allow images and videos)
+    const isImage = fileType.startsWith("image/")
+    const isVideo = fileType.startsWith("video/")
+    if (!isImage && !isVideo) {
       return NextResponse.json(
-        { error: "Only image files are allowed" },
+        { error: "Only image and video files are allowed" },
         { status: 400 }
       )
     }
 
-    // Validate file size (max 10MB)
-    const MAX_SIZE = 10 * 1024 * 1024
-    if (fileSize > MAX_SIZE) {
+    // Validate file size (images: 10MB, videos: 100MB)
+    const MAX_IMAGE_SIZE = 10 * 1024 * 1024
+    const MAX_VIDEO_SIZE = 100 * 1024 * 1024
+    if ((isImage && fileSize > MAX_IMAGE_SIZE) || (isVideo && fileSize > MAX_VIDEO_SIZE)) {
       return NextResponse.json(
-        { error: "File size must be less than 10MB" },
+        { error: isImage ? "Image size must be less than 10MB" : "Video size must be less than 100MB" },
         { status: 400 }
       )
     }
@@ -114,4 +117,3 @@ export async function POST(request: NextRequest) {
     )
   }
 }
-

@@ -65,15 +65,24 @@ export default function AddPetPage({ params }: { params: Promise<{ username: str
       breed: formData.breed || undefined,
       breedId: formData.breedId || undefined,
       age: formData.age ? Number.parseInt(formData.age) : undefined,
-      gender: formData.gender,
+      gender: (formData.gender as any) === 'unknown' ? undefined : (formData.gender as any),
       bio: formData.bio || undefined,
       birthday: formData.birthday || undefined,
       weight: formData.weight || undefined,
       color: formData.color || undefined,
       microchipId: formData.microchipId || undefined,
+      microchipCompany: (formData.microchipCompany === 'Other' ? (formData.microchipCompanyOther || 'Other') : formData.microchipCompany) || undefined,
+      microchipRegistrationStatus: formData.microchipRegistrationStatus || undefined,
+      microchipCertificateUrl: formData.microchipCertificateUrl || undefined,
+      collarTagId: formData.collarTagId || undefined,
       adoptionDate: formData.adoptionDate || undefined,
       specialNeeds: formData.specialNeeds || undefined,
+      dislikes: formData.dislikes || undefined,
       spayedNeutered: formData.spayedNeutered,
+      avatar: formData.avatar || (formData.photos && formData.photos.length > 0 ? formData.photos[0] : undefined),
+      photos: formData.photos && formData.photos.length > 0 ? formData.photos : undefined,
+      photoCaptions: Object.keys(formData.photoCaptions || {}).length > 0 ? formData.photoCaptions : undefined,
+      isFeatured: Boolean(formData.isFeatured),
       allergies: formData.allergies.length > 0 ? formData.allergies : undefined,
       personality: Object.values(formData.personality).some((v) => (Array.isArray(v) ? v.length > 0 : v !== 3 && v !== undefined)) ? formData.personality : undefined,
       favoriteThings: Object.values(formData.favoriteThings).some((v) => v.length > 0) ? formData.favoriteThings : undefined,
@@ -83,6 +92,8 @@ export default function AddPetPage({ params }: { params: Promise<{ username: str
       healthRecords: formData.healthRecords.length > 0 ? formData.healthRecords : undefined,
       vaccinations: formData.vaccinations.length > 0 ? formData.vaccinations : undefined,
       medications: formData.medications.length > 0 ? formData.medications : undefined,
+      conditions: formData.conditions.length > 0 ? formData.conditions : undefined,
+      allergySeverities: Object.keys(formData.allergySeverities || {}).length > 0 ? formData.allergySeverities : undefined,
       achievements: sanitizedAchievements.length > 0 ? sanitizedAchievements : undefined,
       trainingProgress: formData.trainingProgress.length > 0 ? formData.trainingProgress : undefined,
       privacy: {
@@ -94,6 +105,13 @@ export default function AddPetPage({ params }: { params: Promise<{ username: str
     }
 
     addPet(newPet)
+    if (formData.isFeatured) {
+      try {
+        const { getPetsByOwnerId, updatePet } = await import("@/lib/storage")
+        const others = getPetsByOwnerId(user.id).filter((p) => p.id !== newPet.id)
+        others.forEach((p) => updatePet({ ...p, isFeatured: false } as any))
+      } catch {}
+    }
     // Redirect to pets page after successful creation
     setTimeout(() => {
       router.push(`/user/${username}/pets`)

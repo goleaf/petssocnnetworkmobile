@@ -3,6 +3,7 @@ import { Area } from "react-easy-crop"
 type CropOptions = {
   brightness?: number // 1 = 100%
   contrast?: number   // 1 = 100%
+  preset?: 'bw' | 'vintage' | 'warm' | 'cool' | 'none'
 }
 
 export async function getCroppedImg(
@@ -35,10 +36,20 @@ export async function getCroppedImg(
   // Apply basic filters if provided
   const brightness = options.brightness ?? 1
   const contrast = options.contrast ?? 1
+  const preset = options.preset ?? 'none'
   try {
-    // CanvasRenderingContext2D.filter is widely supported on modern browsers
-    // Use CSS-like filters for brightness/contrast
-    ;(ctx as CanvasRenderingContext2D).filter = `brightness(${brightness}) contrast(${contrast})`
+    // Compose CSS-like filters
+    const filters: string[] = [`brightness(${brightness})`, `contrast(${contrast})`]
+    if (preset === 'bw') {
+      filters.push('grayscale(1)')
+    } else if (preset === 'vintage') {
+      filters.push('sepia(0.35)', 'saturate(1.1)')
+    } else if (preset === 'warm') {
+      filters.push('sepia(0.15)', 'saturate(1.05)')
+    } else if (preset === 'cool') {
+      filters.push('hue-rotate(180deg)', 'saturate(1.05)')
+    }
+    ;(ctx as CanvasRenderingContext2D).filter = filters.join(' ')
   } catch {
     // No-op if filter unsupported
   }

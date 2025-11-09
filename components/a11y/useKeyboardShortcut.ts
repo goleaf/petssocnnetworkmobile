@@ -44,6 +44,14 @@ export function useKeyboardShortcut(
   const keydownTimesRef = useRef<Record<string, number>>({})
   const cleanupTimerRef = useRef<number | null>(null)
 
+  const startStickyClearTimer = () => {
+    if (cleanupTimerRef.current) window.clearTimeout(cleanupTimerRef.current)
+    // Auto-clear latched modifiers after 5s of inactivity
+    cleanupTimerRef.current = window.setTimeout(() => {
+      latchedRef.current = { ctrlOrMeta: false, shift: false, alt: false }
+    }, 5000)
+  }
+
   useEffect(() => {
     if (!enabled) return
 
@@ -55,6 +63,7 @@ export function useKeyboardShortcut(
         if (k === "shift") latchedRef.current.shift = true
         if (k === "alt") latchedRef.current.alt = true
         if (k === "control" || k === "ctrl" || k === "meta") latchedRef.current.ctrlOrMeta = true
+        startStickyClearTimer()
         return
       }
 
@@ -72,6 +81,7 @@ export function useKeyboardShortcut(
         handler(e)
         // Clear latched after activation
         latchedRef.current = { ctrlOrMeta: false, shift: false, alt: false }
+        startStickyClearTimer()
       } else {
         // Record keydown time and wait for keyup to validate dwell
         keydownTimesRef.current[k] = Date.now()
@@ -98,6 +108,7 @@ export function useKeyboardShortcut(
         e.preventDefault()
         handler(e)
         latchedRef.current = { ctrlOrMeta: false, shift: false, alt: false }
+        startStickyClearTimer()
       }
       delete keydownTimesRef.current[k]
     }
@@ -112,4 +123,3 @@ export function useKeyboardShortcut(
     }
   }, [enabled, key, handler, withCtrlOrMeta, withShift, withAlt, stickyKeys, slowKeys, slowKeysDelayMs])
 }
-

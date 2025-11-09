@@ -17,6 +17,9 @@ import {
 } from "@/components/ui/tooltip"
 import { Info, X, HelpCircle, Sparkles } from "lucide-react"
 import { breedInfoboxSchema, type BreedInfoboxInput } from "@/lib/schemas/breed-infobox"
+import { useUnitSystem } from "@/lib/i18n/hooks"
+import { useLocale } from "next-intl"
+import { convertWeight, formatWeight } from "@/lib/i18n/formatting"
 import { ZodError, ZodIssue } from "zod"
 
 const UNSPECIFIED_SELECT_VALUE = "__unspecified"
@@ -132,6 +135,8 @@ function LabelWithTooltip({ htmlFor, tooltip, required, children }: {
 }
 
 export function BreedInfoboxForm({ initialData, onChange, errors }: BreedInfoboxFormProps) {
+  const unitSystem = useUnitSystem()
+  const locale = useLocale()
   const [formData, setFormData] = useState<BreedInfoboxInput>(() => ({
     species: initialData?.species || "dog",
     officialName: initialData?.officialName || "",
@@ -305,6 +310,11 @@ export function BreedInfoboxForm({ initialData, onChange, errors }: BreedInfobox
                 placeholder="e.g., 32"
                 className="h-10"
               />
+              {typeof formData.maleAvgWeightKg === 'number' && unitSystem === 'imperial' && (
+                <p className="text-xs text-muted-foreground">
+                  ≈ {formatWeight(convertWeight(formData.maleAvgWeightKg, 'metric', 'imperial'), 'imperial', locale)}
+                </p>
+              )}
               {displayErrors.maleAvgWeightKg && <ErrorText>{displayErrors.maleAvgWeightKg}</ErrorText>}
             </div>
 
@@ -321,6 +331,11 @@ export function BreedInfoboxForm({ initialData, onChange, errors }: BreedInfobox
                 placeholder="e.g., 28"
                 className="h-10"
               />
+              {typeof formData.femaleAvgWeightKg === 'number' && unitSystem === 'imperial' && (
+                <p className="text-xs text-muted-foreground">
+                  ≈ {formatWeight(convertWeight(formData.femaleAvgWeightKg, 'metric', 'imperial'), 'imperial', locale)}
+                </p>
+              )}
               {displayErrors.femaleAvgWeightKg && <ErrorText>{displayErrors.femaleAvgWeightKg}</ErrorText>}
             </div>
           </div>

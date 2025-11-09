@@ -1,11 +1,14 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react"
 import ModerationPage from "@/app/admin/moderation/page"
-import { useAuth } from "@/components/auth/auth-provider"
+import { useAuth } from "@/lib/auth"
 import * as moderationUtils from "@/lib/moderation"
 import * as storageUtils from "@/lib/storage"
 
 // Mock dependencies
-jest.mock("@/components/auth/auth-provider")
+jest.mock("@/lib/auth", () => ({
+  __esModule: true,
+  useAuth: jest.fn(),
+}))
 jest.mock("@/lib/moderation")
 jest.mock("@/lib/storage")
 
@@ -266,4 +269,3 @@ describe("Moderation Dashboard", () => {
     expect(nextButton).toBeDisabled()
   })
 })
-

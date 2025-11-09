@@ -150,6 +150,7 @@ export interface DisplayPreferences {
   showTranslations?: boolean
   autoTranslate?: boolean
   primaryLanguage?: string // Target language for auto-translate
+  strictLanguageFilter?: boolean // When true, hide posts not in preferred languages
 }
 
 export interface Pet {
@@ -170,11 +171,19 @@ export interface Pet {
   color?: string
   followers: string[]
   microchipId?: string
+  microchipCompany?: string
+  microchipRegistrationStatus?: 'registered' | 'not_registered' | 'unknown'
+  microchipCertificateUrl?: string
+  collarTagId?: string
   photos?: string[]
+  photoCaptions?: Record<string, string>
+  isFeatured?: boolean
   healthRecords?: HealthRecord[]
   vaccinations?: Vaccination[]
   medications?: Medication[]
   allergies?: string[]
+  allergySeverities?: Record<string, 'mild' | 'moderate' | 'severe'>
+  conditions?: Array<{ id: string; name: string; diagnosedAt?: string; notes?: string }>
   dietInfo?: DietInfo
   personality?: PersonalityTraits
   achievements?: Achievement[]
@@ -188,12 +197,28 @@ export interface Pet {
   adoptionDate?: string
   spayedNeutered?: boolean
   specialNeeds?: string
+  dislikes?: string
   privacy?: PrivacyLevel | PetPrivacySettings
   socialCircle?: PetSocialCircle
   // Structured data support
   tags?: string[] // Topic tags (e.g., ["species:dog", "topic:training"])
   categories?: string[] // Classification categories
   properties?: Record<string, string | number | boolean> // Key-value properties
+  // Per-pet notifications (client-side preferences)
+  notificationSettings?: PetNotificationSettings
+}
+
+export interface PetNotificationSettings {
+  // Health reminders
+  healthRemindersEnabled: boolean
+  vaccinationReminders: boolean
+  medicationReminders: boolean
+  appointmentReminders: boolean
+  // Other reminders
+  birthdayReminders: boolean // 7 days before and on the day
+  weightTrackingReminders: boolean // Monthly prompt
+  activityReminders: boolean // Occasional nudge to post
+  updatedAt?: string
 }
 
 export type PetRelationshipType =
@@ -735,6 +760,7 @@ export interface Medication {
   endDate?: string
   prescribedBy?: string
   notes?: string
+  purpose?: string
 }
 
 export interface DietInfo {

@@ -140,8 +140,8 @@ export async function validateSources(sources: Source[]): Promise<Source[]> {
       return sources
     }
 
-    const contentType = response.headers.get("content-type")
-    if (!contentType || !contentType.includes("application/json")) {
+    const contentType = response.headers?.get?.("content-type")
+    if (typeof contentType === 'string' && !contentType.includes("application/json")) {
       console.error("Invalid response format for URL validation")
       return sources
     }
@@ -177,4 +177,3 @@ function shouldRevalidate(lastChecked: string): boolean {
   // Revalidate if checked more than 7 days ago
   return daysSinceCheck > 7
 }
-
