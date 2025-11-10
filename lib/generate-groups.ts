@@ -1,4 +1,4 @@
-import type { Group } from "./types"
+import type { Group, GroupMembershipType } from "./types"
 
 // Helper function to generate slug from name
 function generateSlug(name: string): string {
@@ -541,6 +541,32 @@ export function generateGroupsForAnimal(
   }
 
   const groupTypes: Array<"open" | "closed" | "secret"> = ["open", "closed", "open", "open", "closed"]
+  const membershipOptions: GroupMembershipType[] = ["open", "request", "invite"]
+  const cityBuckets: Record<string, string[]> = {
+    dog: ["San Francisco, CA", "Portland, OR", "Denver, CO", "Austin, TX", "Seattle, WA"],
+    cat: ["Seattle, WA", "Portland, OR", "Minneapolis, MN", "Chicago, IL", "Boston, MA"],
+    bird: ["Austin, TX", "Orlando, FL", "Tampa, FL", "Nashville, TN"],
+    rabbit: ["Portland, OR", "Boulder, CO", "Madison, WI", "Asheville, NC"],
+    hamster: ["Salt Lake City, UT", "Phoenix, AZ", "Las Vegas, NV"],
+    fish: ["Tallahassee, FL", "New Orleans, LA", "Corpus Christi, TX"],
+    turtle: ["Jacksonville, FL", "Savannah, GA", "Charleston, SC"],
+    snake: ["Phoenix, AZ", "Austin, TX", "Las Vegas, NV"],
+    lizard: ["San Diego, CA", "Tucson, AZ", "Orlando, FL"],
+    "guinea-pig": ["Pittsburgh, PA", "Columbus, OH", "Cincinnati, OH"],
+    ferret: ["Portland, ME", "Burlington, VT", "Albany, NY"],
+  }
+  const defaultCities = ["New York, NY", "Los Angeles, CA", "Denver, CO", "Chicago, IL", "San Diego, CA", "Seattle, WA"]
+  const getCityForAnimal = (type: string, index: number) => {
+    const bucket = cityBuckets[type]
+    if (bucket?.length) {
+      return bucket[index % bucket.length]
+    }
+    return defaultCities[index % defaultCities.length]
+  }
+  const createTagline = (description: string) => {
+    const normalized = description.replace(/\s+/g, " ").trim()
+    return normalized.length > 90 ? `${normalized.slice(0, 90).trim()}…` : normalized
+  }
   const descriptions: Record<string, string[]> = {
     dog: [
       "Training tips, meetups, and lifestyle groups for dog people.",
@@ -690,6 +716,11 @@ export function generateGroupsForAnimal(
     const postCount = randomInt(0, 200)
     const createdAt = randomDate()
     const updatedAt = randomDate(new Date(createdAt), new Date())
+    const ownerId = randomInt(1, 10).toString()
+    const membershipType = membershipOptions[(startId + i) % membershipOptions.length]
+    const tagline = createTagline(description)
+    const city = getCityForAnimal(animalType, i)
+    const isVerified = (startId + i) % 7 === 0
 
     // Generate cover image URL - using placeholder service
     const coverImage = `https://picsum.photos/seed/${animalType}-${i}-cover/800/400`
@@ -702,7 +733,7 @@ export function generateGroupsForAnimal(
       description,
       type,
       categoryId,
-      ownerId: randomInt(1, 10).toString(),
+      ownerId,
       coverImage,
       avatar,
       memberCount,
@@ -710,6 +741,12 @@ export function generateGroupsForAnimal(
       postCount,
       tags: [animalTags[0], animalTags[1], animalTags[2]],
       rules: ["Be kind and respectful", "No sales posts", "Share helpful advice"],
+      pinnedRules: ["Keep discussions constructive", "Share sources for advice"],
+      membershipType,
+      city,
+      tagline,
+      isVerified,
+      moderators: [ownerId],
       createdAt,
       updatedAt,
       visibility: {
@@ -721,4 +758,3 @@ export function generateGroupsForAnimal(
 
   return groups
 }
-

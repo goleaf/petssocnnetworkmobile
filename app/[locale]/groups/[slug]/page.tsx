@@ -1,16 +1,29 @@
 "use client"
 
 import { use } from "react"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { GroupHeader } from "@/components/groups/GroupHeader"
+import { GroupLeaderboard } from "@/components/groups/GroupLeaderboard"
 import { PinnedRules } from "@/components/groups/PinnedRules"
 import { ModeratorsList } from "@/components/groups/ModeratorsList"
 import { LostFoundTemplateForm } from "@/components/groups/LostFoundTemplateForm"
+import { BulkEventExportButton } from "@/components/groups/EventExportButton"
+import { AnalyticsDashboard } from "@/components/groups/AnalyticsDashboard"
+import { MemberList } from "@/components/groups/MemberList"
+import { GroupSettings } from "@/components/groups/GroupSettings"
 import {
   getGroupBySlug,
   getGroupTopicsByGroupId,
@@ -27,9 +40,11 @@ import {
   canUserManageSettings,
   updateGroupMember,
   removeGroupMember,
+  getBlogPosts,
+  getUserById,
 } from "@/lib/storage"
 import { getLostFoundTemplate } from "@/lib/lost-found-templates"
-import type { Group, GroupMember } from "@/lib/types"
+import type { Group, GroupMember, User } from "@/lib/types"
 import { useAuth } from "@/lib/auth"
 import {
   MessageSquare,
@@ -42,6 +57,8 @@ import {
   FileText,
   Plus,
   Info,
+  Image,
+  Trophy,
 } from "lucide-react"
 import Link from "next/link"
 import { BulkEventExportButton } from "@/components/groups/EventExportButton"
@@ -50,13 +67,14 @@ import { MemberList } from "@/components/groups/MemberList"
 import { GroupSettings } from "@/components/groups/GroupSettings"
 
 const GROUP_TAB_VALUES = new Set([
-  "feed",
-  "topics",
-  "polls",
-  "events",
-  "resources",
+  "posts",
+  "about",
   "members",
-  "analytics",
+  "media",
+  "events",
+  "files",
+  "polls",
+  "leaderboard",
   "settings",
 ])
 
@@ -68,9 +86,13 @@ export default function GroupPage({ params }: { params: Promise<{ slug: string }
   const [group, setGroup] = useState<Group | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const requestedTab = searchParams?.get("tab") ?? undefined
-  const initialTab = requestedTab && GROUP_TAB_VALUES.has(requestedTab) ? requestedTab : "feed"
+  const initialTab = requestedTab && GROUP_TAB_VALUES.has(requestedTab) ? requestedTab : "posts"
   const [activeTab, setActiveTab] = useState(initialTab)
   const [showLostFoundForm, setShowLostFoundForm] = useState(false)
+  const [memberSearch, setMemberSearch] = useState("")
+  const [memberRoleFilter, setMemberRoleFilter] = useState<"all" | GroupMember["role"]>("all")
+  const [mediaUploaderFilter, setMediaUploaderFilter] = useState<"all" | string>("all")
+  const [mediaSortOrder, setMediaSortOrder] = useState<"newest" | "oldest">("newest")
 
   useEffect(() => {
     if (!requestedTab) return
@@ -133,8 +155,65 @@ export default function GroupPage({ params }: { params: Promise<{ slug: string }
   const resources = getGroupResourcesByGroupId(group.id)
   const activities = getGroupActivitiesByGroupId(group.id)
   const members = getGroupMembersByGroupId(group.id)
+  const memberProfiles = useMemo<User[]>(() => {
+    return members
+      .map((member) => getUserById(member.userId))
+      .filter((maybeUser): maybeUser is User => Boolean(maybeUser))
+  }, [members])
+  const groupMemberIds = useMemo(() => new Set(members.map((member) => member.userId)), [members])
+  const blogPosts = getBlogPosts()
+  type MediaItem = {
+    id: string
+    type: "image" | "video"
+    url: string
+    createdAt: string
+    title?: string
+    authorId: string
+  }
+  const mediaItems = useMemo<MediaItem[]>(() => {
+    const items: MediaItem[] = []
+    blogPosts.forEach((post) => {
+      if (!groupMemberIds.has(post.authorId) || !post.media) return
+      const timestamp = post.updatedAt || post.createdAt
+      ;(post.media.images || []).forEach((url, index) => {
+        items.push({
+          id: `${post.id}-img-${index}`,
+          type: "image",
+          url,
+          createdAt: timestamp,
+          authorId: post.authorId,
+          title: post.title,
+        })
+      })
+      ;(post.media.videos || []).forEach((url, index) => {
+        items.push({
+          id: `${post.id}-vid-${index}`,
+          type: "video",
+          url,
+          createdAt: timestamp,
+          authorId: post.authorId,
+          title: post.title,
+        })
+      })
+    })
+    return items
+  }, [blogPosts, groupMemberIds])
   const canManage = isAuthenticated && user ? canUserManageMembers(group.id, user.id) : false
   const canManageSettings = isAuthenticated && user ? canUserManageSettings(group.id, user.id) : false
+
+  const filteredMembers = useMemo(() => {
+    const searchTerm = memberSearch.trim().toLowerCase()
+    return members.filter((member) => {
+      const profile = getUserById(member.userId)
+      if (!profile) return false
+      const matchesRole = memberRoleFilter === "all" || member.role === memberRoleFilter
+      const matchesSearch =
+        !searchTerm ||
+        profile.fullName.toLowerCase().includes(searchTerm) ||
+        profile.username?.toLowerCase().includes(searchTerm)
+      return matchesRole && matchesSearch
+    })
+  }, [memberRoleFilter, memberSearch, members])
 
   const handleRoleChange = (memberId: string, newRole: GroupMember["role"]) => {
     if (!canManage || !user) return
@@ -164,7 +243,7 @@ export default function GroupPage({ params }: { params: Promise<{ slug: string }
   return (
     <div className="min-h-screen bg-background">
       {/* Group Header */}
-      <GroupHeader group={group} />
+      <GroupHeader group={group} members={members} />
 
       {/* Main Content */}
       <div className="container mx-auto px-4 max-w-7xl py-6 md:py-8">

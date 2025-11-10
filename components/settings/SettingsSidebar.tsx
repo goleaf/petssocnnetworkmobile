@@ -14,6 +14,7 @@ import {
   HelpCircle,
   Accessibility,
   Compass,
+  Star,
   type LucideIcon,
 } from "lucide-react"
 
@@ -38,6 +39,7 @@ export default function SettingsSidebar({ locale, showBilling = false }: { local
     { href: `${base}/accessibility`, label: "Accessibility", icon: Accessibility },
     { href: `${base}/language`, label: "Language & Region", icon: Globe },
     { href: `${base}/data-storage`, label: "Data & Storage", icon: Database },
+    { href: `${base}/starred`, label: "Starred Messages", icon: Star },
     { href: `${base}/billing`, label: "Billing", icon: CreditCard, hidden: !showBilling },
     { href: `${base}/help`, label: "Help & Support", icon: HelpCircle },
   ]

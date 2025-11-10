@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "name": "Test Runner & Auto-Fixer",
+  "description": "Automatically runs relevant tests after code changes and attempts to fix any failures found",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "app/**/*.{ts,tsx,js,jsx}",
+      "components/**/*.{ts,tsx,js,jsx}",
+      "lib/**/*.{ts,tsx,js,jsx}"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "A source file has been modified. Follow this workflow:\n\n## Step 1: Identify Test Scope\nAnalyze the changed file(s) and determine which tests to run:\n- If it's in `app/api/`, run related API tests from `tests/active/api/`\n- If it's in `components/`, run component tests from `tests/active/components/`\n- If it's in `lib/`, run utility tests from `tests/active/lib/`\n- If it's a shared utility, run all unit tests\n\n## Step 2: Run Tests\nExecute the appropriate test command:\n- For unit tests: Run `npm test -- <test-file-pattern>` to run specific tests\n- For full suite: Run `npm test` if changes affect multiple areas\n- Use `npm run typecheck` to catch TypeScript errors first\n\n## Step 3: Analyze Results\nIf tests fail:\n1. Read the error messages carefully\n2. Identify the root cause (syntax error, type error, logic error, missing mock, etc.)\n3. Check if the failure is due to:\n   - Outdated test expectations\n   - Missing imports or dependencies\n   - Type mismatches\n   - Mock/stub issues\n   - Logic errors in the implementation\n\n## Step 4: Apply Fixes\nBased on the failure type, apply appropriate fixes:\n\n**For Type Errors:**\n- Add missing type annotations\n- Fix type mismatches\n- Update interfaces/types\n- Add proper generic constraints\n\n**For Test Failures:**\n- Update test expectations if implementation changed intentionally\n- Fix mocks to match new signatures\n- Add missing test setup/teardown\n- Update snapshots if UI changed\n\n**For Import/Dependency Issues:**\n- Add missing imports\n- Fix import paths\n- Update mock configurations in jest.config.js\n\n**For Logic Errors:**\n- Fix the implementation bug\n- Add defensive checks\n- Handle edge cases\n- Improve error handling\n\n## Step 5: Verify Fixes\nAfter applying fixes:\n1. Run the tests again to confirm they pass\n2. Run `npm run typecheck` to ensure no type errors\n3. Run `npm run lint` to check code style\n4. If tests still fail, analyze the new error and iterate\n\n## Step 6: Report\nProvide a summary:\n- Which tests were run\n- What failures were found\n- What fixes were applied\n- Current test status (passing/failing)\n- Any remaining issues that need manual attention\n\n## Important Guidelines:\n- Preserve existing functionality - don't change behavior unless it's a bug\n- Follow the project's TypeScript and React conventions\n- Maintain test coverage - don't delete tests to make them pass\n- Use the project's existing patterns (hooks, utilities, components)\n- Keep fixes minimal and focused on the specific failure\n- If a fix requires significant refactoring, explain why and get confirmation\n\n## Example Workflow:\n```\n1. File changed: lib/utils/privacy.ts\n2. Running: npm test -- privacy.test.ts\n3. Found: Type error - Property 'userId' missing\n4. Fix: Added userId parameter to function signature\n5. Re-running tests...\n6. ✓ All tests passing\n7. Running typecheck...\n8. ✓ No type errors\n```\n\nBegin the workflow now."
+  }
+}

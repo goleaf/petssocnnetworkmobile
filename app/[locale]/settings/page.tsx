@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useRouter, useSearchParams, usePathname } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Label } from "@/components/ui/label"
@@ -30,6 +30,7 @@ import {
   LayoutGrid,
   ShieldCheck,
   Globe,
+  Star,
   Lock,
   Mail,
   Bell,
@@ -83,6 +84,9 @@ export default function SettingsPage() {
   const { feedAutoLoad, setFeedAutoLoad } = usePreferences((s) => ({ feedAutoLoad: s.feedAutoLoad, setFeedAutoLoad: s.setFeedAutoLoad }))
   const router = useRouter()
   const searchParams = useSearchParams()
+  const pathname = usePathname()
+  const localePath = pathname?.split("/")[1] || "en"
+  const starredHref = `/${localePath}/settings/starred`
   const [isLoading, setIsLoading] = useState(false)
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
   const [privacySettings, setPrivacySettings] = useState({

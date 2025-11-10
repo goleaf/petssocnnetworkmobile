@@ -1204,6 +1204,7 @@ export interface PromotedPost {
 }
 
 export type GroupType = "open" | "closed" | "secret"
+export type GroupMembershipType = "open" | "request" | "invite"
 
 export type GroupContentVisibility = "everyone" | "members"
 
@@ -1240,6 +1241,12 @@ export interface Group {
   postCount: number
   tags?: string[]
   rules?: string[]
+  pinnedRules?: string[]
+  membershipType?: GroupMembershipType
+  city?: string
+  moderators?: string[]
+  tagline?: string
+  isVerified?: boolean
   createdAt: string
   updatedAt: string
   isFeatured?: boolean

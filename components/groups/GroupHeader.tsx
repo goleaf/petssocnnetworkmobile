@@ -1,31 +1,16 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
-import {
-  Users,
-  Settings,
-  Lock,
-  Eye,
-  EyeOff,
-  UserPlus,
-  UserMinus,
-  MessageSquare,
-  Calendar,
-  FileText,
-  FolderOpen,
-  BarChart3,
-  Shield,
-  MoreVertical,
-  GraduationCap,
-  Heart,
-  HeartHandshake,
-  UtensilsCrossed,
-} from "lucide-react"
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -34,108 +19,167 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { useAuth } from "@/lib/auth"
-import type { Group } from "@/lib/types"
+import type { Group, GroupMember, User } from "@/lib/types"
 import {
   getGroupCategoryById,
-  getGroupMember,
+  getUserById,
   isUserMemberOfGroup,
-  addGroupMember,
   removeGroupMember,
   canUserManageSettings,
-  getUserRoleInGroup,
   getDefaultGroupVisibility,
+  getUserRoleInGroup,
 } from "@/lib/storage"
 import { joinGroup } from "@/lib/groups"
-import { useRouter } from "next/navigation"
 import { getAnimalConfigLucide } from "@/lib/animal-types"
+import {
+  Users,
+  Settings,
+  Lock,
+  Eye,
+  EyeOff,
+  UserPlus as UserPlusIcon,
+  Share2,
+  Clock,
+  Flag,
+  BellOff,
+  LogOut,
+  Check,
+  CheckCircle,
+  MoreHorizontal,
+  UserCheck,
+} from "lucide-react"
 
 interface GroupHeaderProps {
   group: Group
+  members: GroupMember[]
   onJoin?: () => void
   onLeave?: () => void
 }
 
-// Map category IDs to animal types or custom icons
 const getCategoryIcon = (categoryId: string) => {
-  // Map specific categories to animal types
   const categoryToAnimalMap: Record<string, string> = {
     "cat-dogs": "dog",
     "cat-cats": "cat",
     "cat-birds": "bird",
     "cat-small-pets": "rabbit",
   }
-  
+
   const animalType = categoryToAnimalMap[categoryId]
   if (animalType) {
     return getAnimalConfigLucide(animalType)
   }
-  
-  // Map non-animal categories to icons
+
   const customIconMap: Record<string, { icon: any; color: string }> = {
-    "cat-training": { icon: GraduationCap, color: "text-red-500" },
-    "cat-health": { icon: Heart, color: "text-pink-500" },
-    "cat-adoption": { icon: HeartHandshake, color: "text-orange-500" },
-    "cat-nutrition": { icon: UtensilsCrossed, color: "text-cyan-500" },
+    "cat-training": { icon: CheckCircle, color: "text-red-500" },
+    "cat-health": { icon: Check, color: "text-pink-500" },
+    "cat-adoption": { icon: Flag, color: "text-orange-500" },
+    "cat-nutrition": { icon: UserPlusIcon, color: "text-emerald-500" },
   }
-  
+
   return customIconMap[categoryId]
 }
 
-export function GroupHeader({ group, onJoin, onLeave }: GroupHeaderProps) {
+const getCoverImage = (group: Group) => {
+  if (group.coverImage) return group.coverImage
+  const seed = group.id.replace(/[^a-zA-Z0-9]/g, "").substring(0, 10) || "default"
+  return `https://picsum.photos/seed/${seed}/1500/500`
+}
+
+const getAvatarImage = (group: Group) => {
+  if (group.avatar) return group.avatar
+  const name = encodeURIComponent(group.name)
+  const color = group.visibility?.content === "members" ? "2563eb" : "10b981"
+  return `https://ui-avatars.com/api/?name=${name}&background=${color}&color=fff&size=200`
+}
+
+export function GroupHeader({ group, members, onJoin, onLeave }: GroupHeaderProps) {
   const { user, isAuthenticated } = useAuth()
   const router = useRouter()
   const [isJoining, setIsJoining] = useState(false)
-  
+  const [isMuted, setIsMuted] = useState(false)
+  const [shareLink, setShareLink] = useState("")
+  const [copyLabel, setCopyLabel] = useState("Copy link")
+  const [inviteRecipient, setInviteRecipient] = useState("")
+  const [inviteNote, setInviteNote] = useState("")
+  const [inviteStatus, setInviteStatus] = useState("")
+  const [supportsNativeShare, setSupportsNativeShare] = useState(false)
+
   const category = getGroupCategoryById(group.categoryId)
   const iconConfig = category ? getCategoryIcon(category.id) : undefined
   const IconComponent = iconConfig?.icon
+
   const isMember = user ? isUserMemberOfGroup(group.id, user.id) : false
   const userRole = user ? getUserRoleInGroup(group.id, user.id) : null
   const canManage = user ? canUserManageSettings(group.id, user.id) : false
+
   const visibility = group.visibility ?? getDefaultGroupVisibility(group.type)
   const isContentMembersOnly = visibility.content === "members"
   const isHiddenFromDiscovery = !visibility.discoverable && group.type !== "secret"
 
-  // Generate placeholder images using free services
-  const getCoverImage = () => {
-    if (group.coverImage) return group.coverImage
-    // Use Picsum Photos with seed for consistent random images per group
-    const seed = group.id.replace(/[^a-zA-Z0-9]/g, "").substring(0, 10) || "default"
-    return `https://picsum.photos/seed/${seed}/1200/256`
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setShareLink(`${window.location.origin}/groups/${group.slug}`)
+      setSupportsNativeShare(typeof navigator !== "undefined" && typeof navigator.share === "function")
+    }
+  }, [group.slug])
+
+  const handleCopyLink = async () => {
+    if (!shareLink || typeof navigator === "undefined" || !navigator.clipboard) return
+    try {
+      await navigator.clipboard.writeText(shareLink)
+      setCopyLabel("Copied!")
+      setTimeout(() => setCopyLabel("Copy link"), 2000)
+    } catch (error) {
+      console.error("Copy failed", error)
+    }
   }
 
-  const getAvatarImage = () => {
-    if (group.avatar) return group.avatar
-    // Use UI Avatars for placeholder avatars
-    const name = encodeURIComponent(group.name)
-    const bgColor = category?.color?.replace("#", "") || "3b82f6"
-    return `https://ui-avatars.com/api/?name=${name}&background=${bgColor}&color=fff&size=96`
+  const handleNativeShare = async () => {
+    if (!supportsNativeShare || !shareLink) return
+    try {
+      await navigator.share({
+        title: group.name,
+        text: group.tagline || group.description,
+        url: shareLink,
+      })
+    } catch (error) {
+      console.error("Native share cancelled", error)
+    }
+  }
+
+  const handleInvite = () => {
+    const target = inviteRecipient.trim() || "friends"
+    setInviteStatus(`Invite queued for ${target}`)
+  }
+
+  const handleMuteToggle = () => {
+    setIsMuted((prev) => !prev)
+  }
+
+  const handleReport = () => {
+    alert("Thanks for flagging this group—moderators will review the report.")
   }
 
   const handleJoin = async () => {
     if (!user || isJoining) return
-    
+
     setIsJoining(true)
     try {
       const result = joinGroup({
         groupId: group.id,
         userId: user.id,
       })
-      
+
       if (result.success) {
         if (onJoin) {
           onJoin()
         } else {
           router.refresh()
         }
-        
-        // Show success/status message
         if (result.status === "pending") {
-          // Could show a toast notification here
-          console.log("Join request submitted. Waiting for approval.")
+          console.log("Join request submitted")
         }
       } else {
-        // Show error message
         console.error(result.message || "Failed to join group")
       }
     } finally {
@@ -143,13 +187,11 @@ export function GroupHeader({ group, onJoin, onLeave }: GroupHeaderProps) {
     }
   }
 
-  const handleLeave = async () => {
+  const handleLeave = () => {
     if (!user || !isMember || isJoining) return
-    
     setIsJoining(true)
     try {
       removeGroupMember(group.id, user.id)
-      
       if (onLeave) {
         onLeave()
       } else {
@@ -160,250 +202,295 @@ export function GroupHeader({ group, onJoin, onLeave }: GroupHeaderProps) {
     }
   }
 
-  const getTypeIcon = () => {
-    switch (group.type) {
-      case "closed":
-        return <Lock className="h-4 w-4" />
-      case "secret":
-        return <EyeOff className="h-4 w-4" />
-      default:
-        return <Eye className="h-4 w-4" />
-    }
-  }
+  const memberUsers = useMemo<User[]>(() => {
+    return members
+      .map((member) => getUserById(member.userId))
+      .filter((maybeUser): maybeUser is User => Boolean(maybeUser))
+  }, [members])
 
-  const getTypeLabel = () => {
-    switch (group.type) {
-      case "closed":
-        return "Closed Group"
-      case "secret":
-        return "Secret Group"
-      default:
-        return "Open Group"
+  const featuredMembers = useMemo(() => {
+    const pool = [...memberUsers]
+    for (let i = pool.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(Math.random() * (i + 1))
+      ;[pool[i], pool[j]] = [pool[j], pool[i]]
     }
-  }
+    return pool.slice(0, 10)
+  }, [memberUsers])
+
+  const overflowCount = Math.max(0, memberUsers.length - featuredMembers.length)
+
+  const joinLabel =
+    group.membershipType === "request"
+      ? "Request to Join"
+      : group.membershipType === "invite"
+      ? "Request Invite"
+      : "Join"
+
+  const requestIcon =
+    group.membershipType === "request" || group.membershipType === "invite" ? (
+      <Clock className="h-4 w-4" />
+    ) : (
+      <UserPlusIcon className="h-4 w-4" />
+    )
 
   return (
-    <div className="relative">
-      {/* Cover Image - Always show */}
-      <div className="relative h-48 md:h-64 w-full overflow-hidden bg-muted">
+    <div className="relative bg-slate-950">
+      <div className="relative h-[320px] md:h-[420px] w-full overflow-hidden">
         <Image
-          src={getCoverImage()}
+          src={getCoverImage(group)}
           alt={group.name}
           fill
-          className="object-cover"
           priority
+          className="object-cover"
+          sizes="(max-width: 768px) 100vw, 100vw"
           unoptimized
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent" />
-      </div>
-
-      <div className="container mx-auto px-4 max-w-7xl relative -mt-12 md:-mt-16 pb-4 md:pb-6">
-        <div className="bg-card rounded-lg border shadow-lg p-4 md:p-6">
-          <div className="flex flex-col md:flex-row gap-4 md:gap-6">
-            {/* Avatar */}
-            <div className="flex-shrink-0 flex justify-center md:justify-start">
-              <Avatar className="h-20 w-20 md:h-24 md:w-24 border-4 border-background shadow-lg">
-                <AvatarImage src={getAvatarImage()} alt={group.name} />
-                <AvatarFallback className="text-2xl md:text-3xl">
-                  {group.name.charAt(0).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              {category && IconComponent && (
-                <div
-                  className="mt-2 inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium"
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/30 to-transparent" />
+        <div className="absolute inset-0 bg-black/40" />
+        <div className="absolute left-6 bottom-6 flex flex-wrap items-end gap-6">
+          <div className="relative">
+            <div className="absolute -inset-1 rounded-2xl bg-gradient-to-br from-emerald-500/40 to-emerald-500/10 blur-3xl" />
+            <Avatar className="relative h-40 w-40 border-4 border-white shadow-2xl">
+              <AvatarImage src={getAvatarImage(group)} alt={group.name} />
+              <AvatarFallback>{group.name.charAt(0)}</AvatarFallback>
+            </Avatar>
+          </div>
+          <div className="space-y-2 text-white/90 max-w-3xl">
+            <div className="flex flex-wrap items-center gap-3">
+              <h1 className="text-3xl md:text-4xl font-bold drop-shadow-lg tracking-tight">
+                {group.name}
+              </h1>
+              {group.isVerified && (
+                <Badge variant="secondary" className="flex items-center gap-1 text-xs">
+                  <CheckCircle className="h-4 w-4" />
+                  Verified
+                </Badge>
+              )}
+            </div>
+            <p className="text-sm md:text-base text-white/80">
+              {group.tagline || group.description}
+            </p>
+            <div className="flex flex-wrap items-center gap-3 text-xs md:text-sm text-white/70">
+              <div className="flex items-center gap-1">
+                <Users className="h-4 w-4" />
+                <span className="font-semibold">{group.memberCount} members</span>
+              </div>
+              {isContentMembersOnly && (
+                <Badge variant="outline" className="gap-1 border-white/40 text-white/80">
+                  <Lock className="h-3 w-3" />
+                  Members-only content
+                </Badge>
+              )}
+              {isHiddenFromDiscovery && (
+                <Badge variant="outline" className="gap-1 border-white/40 text-white/80">
+                  <EyeOff className="h-3 w-3" />
+                  Hidden from search
+                </Badge>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-2 text-xs">
+              {category && (
+                <Badge
                   style={{
                     backgroundColor: `${category.color || "#3b82f6"}20`,
                     color: category.color || "#3b82f6",
                   }}
+                  className="gap-1"
                 >
-                  <IconComponent className={`h-3 w-3 ${iconConfig.color || ""}`} />
-                  <span>{category.name}</span>
-                </div>
+                  {IconComponent && <IconComponent className={`h-3 w-3 ${iconConfig?.color || ""}`} />}
+                  {category.name}
+                </Badge>
               )}
+              {group.tags?.map((tag) => (
+                <Badge key={tag} variant="outline" className="text-xs">
+                  #{tag}
+                </Badge>
+              ))}
             </div>
+          </div>
+        </div>
+      </div>
 
-            {/* Content */}
-            <div className="flex-1 min-w-0">
-              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 md:gap-4 mb-2">
-                <div className="flex-1 min-w-0">
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
-                    <h1 className="text-2xl md:text-3xl font-bold">{group.name}</h1>
-                    {group.type !== "open" && (
-                      <Badge variant="secondary" className="gap-1 w-fit">
-                        {getTypeIcon()}
-                        <span className="hidden sm:inline">{getTypeLabel()}</span>
-                      </Badge>
-                    )}
-                    {isContentMembersOnly && (
-                      <Badge variant="outline" className="gap-1 w-fit">
-                        <Lock className="h-3 w-3" />
-                        <span className="hidden sm:inline">Members-only content</span>
-                      </Badge>
-                    )}
-                    {isHiddenFromDiscovery && (
-                      <Badge variant="outline" className="gap-1 w-fit">
-                        <EyeOff className="h-3 w-3" />
-                        <span className="hidden sm:inline">Hidden from search</span>
-                      </Badge>
+      <div className="container mx-auto px-4 max-w-7xl">
+        <div className="-mt-20 rounded-3xl border bg-background/90 p-6 shadow-2xl backdrop-blur">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="text-sm text-muted-foreground">
+                Organized community tools, moderation, and engagement for pet owners.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {isAuthenticated ? (
+                isMember ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled
+                    className="flex items-center gap-2 border-muted-foreground text-muted-foreground"
+                  >
+                    <UserCheck className="h-4 w-4" />
+                    You&apos;re a member
+                  </Button>
+                ) : (
+                  <Button
+                    size="sm"
+                    className="bg-emerald-600 text-white hover:bg-emerald-500 focus-visible:ring-2 focus-visible:ring-emerald-400"
+                    onClick={handleJoin}
+                    disabled={isJoining}
+                  >
+                    <span className="flex items-center gap-1">
+                      {requestIcon}
+                      {isJoining ? "Processing..." : joinLabel}
+                    </span>
+                  </Button>
+                )
+              ) : (
+                <Button size="sm" onClick={() => router.push("/auth/login")}>
+                  <UserPlusIcon className="h-4 w-4" />
+                  Join Group
+                </Button>
+              )}
+              {canManage && (
+                <Link href={`/groups/${group.slug}/settings`}>
+                  <Button variant="outline" size="sm" className="flex items-center gap-1">
+                    <Settings className="h-4 w-4" />
+                    Settings
+                  </Button>
+                </Link>
+              )}
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm" className="flex items-center gap-1">
+                    <UserPlusIcon className="h-4 w-4" />
+                    Invite Members
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-lg">
+                  <DialogHeader>
+                    <DialogTitle>Invite members</DialogTitle>
+                    <DialogDescription>
+                      Share a link or send a note to invite others into this community.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="grid gap-3 py-2">
+                    <Label htmlFor="invite-recipient">Invite by email or username</Label>
+                    <Input
+                      id="invite-recipient"
+                      value={inviteRecipient}
+                      onChange={(event) => setInviteRecipient(event.target.value)}
+                      placeholder="sarahpaws@example.com"
+                    />
+                    <Label htmlFor="invite-note">Message</Label>
+                    <Textarea
+                      id="invite-note"
+                      value={inviteNote}
+                      onChange={(event) => setInviteNote(event.target.value)}
+                      placeholder="Let me know if you need more info..."
+                      className="min-h-[80px]"
+                    />
+                    <Button
+                      className="w-full"
+                      onClick={handleInvite}
+                      disabled={!inviteRecipient.trim()}
+                      size="sm"
+                    >
+                      Send invite
+                    </Button>
+                    {inviteStatus && (
+                      <p className="text-xs text-muted-foreground">{inviteStatus}</p>
                     )}
                   </div>
-                  <p className="text-sm md:text-base text-muted-foreground">{group.description}</p>
-                  {!isMember && isContentMembersOnly && (
-                    <p className="text-xs md:text-sm text-muted-foreground mt-1">
-                      {group.membershipType === "request"
-                        ? "Request to join this group to unlock posts, topics, and resources."
-                        : group.membershipType === "invite"
-                        ? "This group is invitation-only. Contact a moderator for an invite."
-                        : "Join to unlock posts, topics, and resources in this group."}
-                    </p>
-                  )}
-                  {group.membershipType && (
-                    <div className="mt-2">
-                      <Badge variant="outline" className="text-xs">
-                        {group.membershipType === "open"
-                          ? "Open - Anyone can join"
-                          : group.membershipType === "request"
-                          ? "Request - Approval required"
-                          : "Invite only"}
-                      </Badge>
-                    </div>
-                  )}
-                </div>
-
-                {/* Actions */}
-                <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
-                  {isAuthenticated ? (
-                    <>
-                      {isMember ? (
-                        <>
-                          {canManage && (
-                            <Link href={`/groups/${group.slug}/settings`}>
-                              <Button variant="outline" size="sm" className="w-full sm:w-auto">
-                                <Settings className="h-4 w-4 mr-2" />
-                                <span className="hidden sm:inline">Settings</span>
-                              </Button>
-                            </Link>
-                          )}
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={handleLeave}
-                            disabled={isJoining || userRole === "owner"}
-                            className="w-full sm:w-auto"
-                          >
-                            <UserMinus className="h-4 w-4 mr-2" />
-                            {isJoining ? "Leaving..." : "Leave Group"}
-                          </Button>
-                        </>
-                      ) : (
-                        <Button
-                          size="sm"
-                          onClick={handleJoin}
-                          disabled={isJoining}
-                          className="w-full sm:w-auto"
-                        >
-                          <UserPlus className="h-4 w-4 mr-2" />
-                          {isJoining
-                            ? "Joining..."
-                            : group.membershipType === "request"
-                            ? "Request to Join"
-                            : "Join Group"}
+                  <DialogFooter>
+                    <DialogClose asChild>
+                      <Button variant="ghost" size="sm">
+                        Close
+                      </Button>
+                    </DialogClose>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm" className="flex items-center gap-1">
+                    <Share2 className="h-4 w-4" />
+                    Share Group
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-lg">
+                  <DialogHeader>
+                    <DialogTitle>Share {group.name}</DialogTitle>
+                    <DialogDescription>
+                      Copy the invite link or use your device share sheet to spread the word.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-3 py-2">
+                    <Input readOnly value={shareLink} />
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button size="sm" onClick={handleCopyLink} disabled={!shareLink}>
+                        {copyLabel}
+                      </Button>
+                      {supportsNativeShare && (
+                        <Button size="sm" variant="outline" onClick={handleNativeShare}>
+                          Open share sheet
                         </Button>
                       )}
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm">
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem asChild>
-                            <Link href={`/groups/${group.slug}/members`}>
-                              <Users className="h-4 w-4 mr-2" />
-                              Members
-                            </Link>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem asChild>
-                            <Link href={`/groups/${group.slug}/topics`}>
-                              <MessageSquare className="h-4 w-4 mr-2" />
-                              Topics
-                            </Link>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem asChild>
-                            <Link href={`/groups/${group.slug}/events`}>
-                              <Calendar className="h-4 w-4 mr-2" />
-                              Events
-                            </Link>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem asChild>
-                            <Link href={`/groups/${group.slug}/resources`}>
-                              <FolderOpen className="h-4 w-4 mr-2" />
-                              Resources
-                            </Link>
-                          </DropdownMenuItem>
-                          {canManage && (
-                            <>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem asChild>
-                                <Link href={`/groups/${group.slug}/analytics`}>
-                                  <BarChart3 className="h-4 w-4 mr-2" />
-                                  Analytics
-                                </Link>
-                              </DropdownMenuItem>
-                              <DropdownMenuItem asChild>
-                                <Link href={`/groups/${group.slug}/moderation`}>
-                                  <Shield className="h-4 w-4 mr-2" />
-                                  Moderation
-                                </Link>
-                              </DropdownMenuItem>
-                            </>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </>
-                  ) : (
-                    <Button
-                      size="sm"
-                      onClick={() => router.push("/auth/login")}
-                    >
-                      <UserPlus className="h-4 w-4 mr-2" />
-                      Join Group
-                    </Button>
-                  )}
-                </div>
-              </div>
-
-              {/* Stats */}
-              <div className="flex flex-wrap items-center gap-4 md:gap-6 mt-3 md:mt-4 pt-3 md:pt-4 border-t">
-                <div className="flex items-center gap-2">
-                  <Users className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-semibold text-sm md:text-base">{group.memberCount}</span>
-                  <span className="text-xs md:text-sm text-muted-foreground">members</span>
-                </div>
-                {group.topicCount > 0 && (
-                  <div className="flex items-center gap-2">
-                    <MessageSquare className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-semibold text-sm md:text-base">{group.topicCount}</span>
-                    <span className="text-xs md:text-sm text-muted-foreground">topics</span>
+                    </div>
                   </div>
-                )}
-                {group.postCount > 0 && (
-                  <div className="flex items-center gap-2">
-                    <FileText className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-semibold text-sm md:text-base">{group.postCount}</span>
-                    <span className="text-xs md:text-sm text-muted-foreground">posts</span>
-                  </div>
-                )}
+                  <DialogFooter>
+                    <DialogClose asChild>
+                      <Button variant="ghost" size="sm">
+                        Done
+                      </Button>
+                    </DialogClose>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm">
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={handleReport}>
+                    <Flag className="h-4 w-4 mr-2" />
+                    Report
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleMuteToggle}>
+                    <BellOff className="h-4 w-4 mr-2" />
+                    {isMuted ? "Unmute" : "Mute"}
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleLeave} disabled={!isMember} className="flex items-center gap-2">
+                    <LogOut className="h-4 w-4" />
+                    Leave group
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </div>
+          <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1">
+              <Users className="h-4 w-4" /> {group.memberCount} members
+            </span>
+            <span className="h-1 w-1 rounded-full bg-muted" />
+            <span>{group.postCount} posts</span>
+            <span className="h-1 w-1 rounded-full bg-muted" />
+            <span>{group.topicCount} topics</span>
+          </div>
+          <div className="mt-4 border-t pt-4">
+            <div className="flex items-center gap-2">
+              <div className="flex -space-x-3">
+                {featuredMembers.map((member) => (
+                  <Avatar key={member.id} className="h-12 w-12 border-2 border-background">
+                    <AvatarImage src={member.avatar || "/placeholder.svg"} alt={member.fullName} />
+                    <AvatarFallback>{member.fullName.charAt(0)}</AvatarFallback>
+                  </Avatar>
+                ))}
               </div>
-
-              {/* Tags */}
-              {group.tags && group.tags.length > 0 && (
-                <div className="flex flex-wrap gap-2 mt-3 md:mt-4">
-                  {group.tags.map((tag, index) => (
-                    <Badge key={index} variant="outline" className="text-xs">
-                      #{tag}
-                    </Badge>
-                  ))}
+              {overflowCount > 0 && (
+                <div className="flex h-12 w-12 items-center justify-center rounded-full border border-dashed border-muted text-xs text-muted-foreground">
+                  +{overflowCount}
                 </div>
               )}
             </div>

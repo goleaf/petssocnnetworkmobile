@@ -644,6 +644,14 @@ const BASE_GROUPS: Group[] = [
     postCount: 8,
     tags: ["dogs", "hiking", "retrievers"],
     rules: ["Be kind and respectful", "No sales posts", "Use spoiler tags for injuries"],
+    pinnedRules: [
+      "Tag photos responsibly",
+      "Keep trail notes and meetups constructive",
+    ],
+    membershipType: "open",
+    tagline: "Trail-ready retriever families sharing adventures, training wins, and water safety tips.",
+    city: "San Francisco, CA",
+    isVerified: true,
     createdAt: "2024-02-01T10:00:00.000Z",
     updatedAt: "2024-12-01T09:00:00.000Z",
     visibility: {
@@ -667,6 +675,10 @@ const BASE_GROUPS: Group[] = [
     postCount: 3,
     tags: ["cats", "enrichment", "nutrition"],
     rules: ["Share constructive advice only", "No declawing advocacy"],
+    pinnedRules: ["Respect enrichment projects", "No declawing advocacy"],
+    membershipType: "request",
+    tagline: "Ideas and support for keeping indoor cats happy, enriched, and healthy.",
+    city: "Seattle, WA",
     createdAt: "2024-03-12T13:30:00.000Z",
     updatedAt: "2024-11-20T15:00:00.000Z",
     visibility: {
@@ -690,6 +702,10 @@ const BASE_GROUPS: Group[] = [
     postCount: 2,
     tags: ["birds", "training", "behavior"],
     rules: ["Cite sources when sharing medical advice", "No sale of live animals"],
+    pinnedRules: ["Keep medical discussions referenced", "No bird sales or swaps"],
+    membershipType: "open",
+    tagline: "From enrichment ideas to training breakthroughs, this is the home for serious bird keepers.",
+    city: "Austin, TX",
     createdAt: "2024-01-25T08:10:00.000Z",
     updatedAt: "2024-10-18T12:00:00.000Z",
     visibility: {
