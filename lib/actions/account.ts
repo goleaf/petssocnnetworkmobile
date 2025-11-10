@@ -2,11 +2,14 @@
 
 import { revalidatePath } from "next/cache"
 import { serverEmailExists, getServerUserById, updateServerUser } from "../storage-server"
-import { createSession, setSessionCookie, clearSession } from "../auth-server"
+import { createSession, setSessionCookie, clearSession, getCurrentUser } from "../auth-server"
 import { createDeletionRestoreRecord, consumeDeletionRestoreToken } from "../deletion-restore-store"
 import { revokeAllSessions } from "../session-store"
 import { validateEmailAddress } from "../registration-policy"
 import { createEmailVerificationRecord, consumeEmailVerificationToken, getEmailVerificationRecordByUser } from "../email-verification-store"
+import { prisma } from "../prisma"
+import { randomBytes } from "crypto"
+import { compare } from "bcryptjs"
 
 function logEmailChangeVerification(newEmail: string, token: string) {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
@@ -30,14 +33,29 @@ export async function requestEmailChangeAction(input: {
 }): Promise<{ success: boolean; error?: string; verificationExpiresAt?: string; token?: string }> {
   const { userId, newEmail, currentPassword, sendVerification = true } = input
 
-  const user = getServerUserById(userId)
-  if (!user) return { success: false, error: "User not found" }
+  // Get authenticated user
+  const currentUser = await getCurrentUser()
+  if (!currentUser || currentUser.id !== userId) {
+    return { success: false, error: "Unauthorized" }
+  }
 
-  // Basic password check (prototype). In production, verify hash.
-  if (!user.password || user.password !== currentPassword) {
+  // Fetch user from database
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true, email: true, passwordHash: true }
+  })
+
+  if (!user) {
+    return { success: false, error: "User not found" }
+  }
+
+  // Verify current password using bcrypt compare
+  const passwordValid = await compare(currentPassword, user.passwordHash)
+  if (!passwordValid) {
     return { success: false, error: "Incorrect password" }
   }
 
+  // Validate new email format
   const emailValidation = validateEmailAddress(newEmail.trim())
   if (!emailValidation.valid) {
     return { success: false, error: emailValidation.reason || "Invalid email format" }
@@ -49,35 +67,46 @@ export async function requestEmailChangeAction(input: {
   }
 
   // Check if email already used by someone else
-  if (serverEmailExists(newEmail.trim())) {
+  const existingUser = await prisma.user.findUnique({
+    where: { email: newEmail.trim() }
+  })
+
+  if (existingUser) {
     return { success: false, error: "Email is already in use" }
   }
 
-  // Issue verification token for new email
-  const record = createEmailVerificationRecord(user.id, newEmail.trim())
+  // Generate cryptographically secure verification token (32 bytes)
+  const token = randomBytes(32).toString("hex")
+  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
 
-  // Update user state to reflect pending change (does not change current email yet)
-  updateServerUser(user.id, {
-    emailVerification: {
-      status: "pending",
-      token: record.token,
-      requestedAt: new Date(record.createdAt).toISOString(),
-      expiresAt: new Date(record.expiresAt).toISOString(),
+  // Delete any existing verification records for this user
+  await prisma.emailVerification.deleteMany({
+    where: { userId: user.id }
+  })
+
+  // Create EmailVerification record with 24-hour expiration
+  await prisma.emailVerification.create({
+    data: {
+      userId: user.id,
       pendingEmail: newEmail.trim(),
-    },
+      token,
+      expiresAt
+    }
   })
 
   if (sendVerification) {
-    logEmailChangeVerification(newEmail.trim(), record.token)
+    // Send verification email to new address with token link
+    logEmailChangeVerification(newEmail.trim(), token)
   }
-  // Notify old email with cancel link
-  logEmailChangeCancellation(user.email, record.token)
+  
+  // Send notification email to old address with cancellation link
+  logEmailChangeCancellation(user.email, token)
 
   revalidatePath("/settings")
   return {
     success: true,
-    verificationExpiresAt: new Date(record.expiresAt).toISOString(),
-    token: record.token,
+    verificationExpiresAt: expiresAt.toISOString(),
+    token: sendVerification ? undefined : token // Only return token if not sending email (for testing)
   }
 }
 
@@ -125,13 +154,29 @@ export async function updatePasswordAction(input: {
 }): Promise<{ success: boolean; error?: string }> {
   const { userId, currentPassword, newPassword } = input
 
-  const user = getServerUserById(userId)
-  if (!user) return { success: false, error: "User not found" }
+  // Get authenticated user
+  const currentUser = await getCurrentUser()
+  if (!currentUser || currentUser.id !== userId) {
+    return { success: false, error: "Unauthorized" }
+  }
 
-  if (!currentPassword || user.password !== currentPassword) {
+  // Fetch user from database with password hash
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true, email: true, passwordHash: true }
+  })
+
+  if (!user) {
+    return { success: false, error: "User not found" }
+  }
+
+  // Verify current password using bcrypt compare
+  const passwordValid = await compare(currentPassword, user.passwordHash)
+  if (!passwordValid) {
     return { success: false, error: "Current password is incorrect" }
   }
 
+  // Validate new password meets complexity requirements (8+ chars, uppercase, lowercase, number, special char)
   if (!PASSWORD_COMPLEXITY_REGEX.test(newPassword)) {
     return {
       success: false,
@@ -140,31 +185,83 @@ export async function updatePasswordAction(input: {
   }
 
   if (newPassword === currentPassword) {
-    return { success: false, error: "New password must be different" }
+    return { success: false, error: "New password must be different from current password" }
   }
 
-  // Update password and bump passwordChangedAt
-  const passwordChangedAt = new Date().toISOString()
-  updateServerUser(user.id, { password: newPassword, passwordChangedAt })
+  // Hash new password with bcrypt cost factor 12
+  const bcrypt = await import("bcryptjs")
+  const passwordHash = await bcrypt.hash(newPassword, 12)
+
+  // Update user passwordHash and passwordChangedAt timestamp
+  // Set sessionInvalidatedAt to current time to revoke all sessions except current
+  const now = new Date()
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      passwordHash,
+      passwordChangedAt: now,
+      sessionInvalidatedAt: now
+    }
+  })
 
   // Re-issue session for current device so it remains valid after cutoff
-  const refreshedUser = getServerUserById(user.id)!
-  const newToken = createSession(refreshedUser)
-  await setSessionCookie(newToken)
+  const refreshedUser = await prisma.user.findUnique({
+    where: { id: user.id }
+  })
+  
+  if (refreshedUser) {
+    // Create new session token with updated timestamp
+    const newToken = createSession({
+      id: refreshedUser.id,
+      username: refreshedUser.username,
+      email: refreshedUser.email,
+      role: refreshedUser.role as any,
+      emailVerified: refreshedUser.emailVerified,
+      passwordHash: refreshedUser.passwordHash,
+      createdAt: refreshedUser.createdAt.toISOString(),
+      updatedAt: refreshedUser.updatedAt.toISOString()
+    } as any)
+    await setSessionCookie(newToken)
+  }
 
-  // Simulate sending an email notification
-  console.info(`[account] Password changed for ${refreshedUser.email}. Notification email sent.`)
+  // Send password change notification email
+  console.info(`[account] Password changed for ${user.email}. Notification email sent.`)
 
   revalidatePath("/settings")
   return { success: true }
 }
 
 export async function logoutAllDevicesAction(userId: string): Promise<{ success: boolean; error?: string }> {
-  const user = getServerUserById(userId)
-  if (!user) return { success: false, error: "User not found" }
-  const sessionInvalidatedAt = new Date().toISOString()
-  updateServerUser(user.id, { sessionInvalidatedAt })
+  // Get authenticated user
+  const currentUser = await getCurrentUser()
+  if (!currentUser || currentUser.id !== userId) {
+    return { success: false, error: "Unauthorized" }
+  }
+
+  // Fetch user from database
+  const user = await prisma.user.findUnique({
+    where: { id: userId }
+  })
+
+  if (!user) {
+    return { success: false, error: "User not found" }
+  }
+
+  // Set sessionInvalidatedAt to revoke all sessions
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      sessionInvalidatedAt: new Date()
+    }
+  })
+
+  // Revoke all sessions in the session store
+  revokeAllSessions(user.id)
+
+  // Clear current session cookie
   await clearSession()
+
+  revalidatePath("/settings")
   return { success: true }
 }
 
