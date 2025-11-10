@@ -1,206 +1,252 @@
-import { NextRequest, NextResponse } from "next/server"
-import { z } from "zod"
-import {
-  getBlogPostById,
-  updateBlogPost,
-  areUsersBlocked,
-  togglePostReaction,
-  getCommentsByPostId,
-  getUsers,
-  isPostSaved,
-} from "@/lib/storage"
-import type { BlogPost, ReactionType } from "@/lib/types"
-import { broadcastEvent } from "@/lib/server/sse"
-import { getNotifications, deleteNotification } from "@/lib/notifications"
+import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
+import { postRepository } from '@/lib/repositories/post-repository';
+import { createNotification } from '@/lib/notifications';
+import { invalidateContentCache } from '@/lib/scalability/cache-layer';
 
-const bodySchema = z.object({
-  userId: z.string().min(1),
-  reaction: z
-    .enum(["like", "love", "laugh", "wow", "sad", "angry", "paw"]) // default if missing
-    .optional(),
-})
-
-type ReactionCounts = Record<ReactionType, number> & { total: number }
-
-function countReactions(post: BlogPost): ReactionCounts {
-  const base: ReactionCounts = {
-    like: 0,
-    love: 0,
-    laugh: 0,
-    wow: 0,
-    sad: 0,
-    angry: 0,
-    paw: 0,
-    total: 0,
-  }
-  const r = post.reactions || ({} as NonNullable<BlogPost["reactions"]>)
-  for (const k of Object.keys(base) as (keyof ReactionCounts)[]) {
-    if (k === "total") continue
-    const arr = (r as any)[k]
-    base[k as ReactionType] = Array.isArray(arr) ? arr.length : 0
-  }
-  base.total = (Object.keys(r) as (keyof typeof r)[]).reduce((acc, key) => acc + ((r[key]?.length) || 0), 0)
-  return base
-}
-
-export async function POST(request: NextRequest, context: { params: Promise<{ postId: string }> }) {
+/**
+ * POST /api/posts/{postId}/like - Like a post
+ * Creates a like record, increments counter, notifies author
+ */
+export async function POST(
+  request: NextRequest,
+  { params }: { params: { postId: string } }
+) {
   try {
-    const { postId } = await context.params
-    const parsed = bodySchema.safeParse(await request.json())
-    if (!parsed.success) {
-      return NextResponse.json({ error: "Invalid request" }, { status: 400 })
+    const { postId } = params;
+    
+    // Get authenticated user from session
+    // TODO: Replace with actual auth check
+    const userId = request.headers.get('x-user-id');
+    
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
     }
-
-    const { userId } = parsed.data
-    const reaction: ReactionType = (parsed.data.reaction as ReactionType) || "like"
-
-    const post = getBlogPostById(postId)
-    if (!post || (post as any).deletedAt) {
-      return NextResponse.json({ error: "Post not found" }, { status: 404 })
+    
+    // Get reaction type from body (default to 'like')
+    const body = await request.json().catch(() => ({}));
+    const reactionType = body.reactionType || 'like';
+    
+    // Validate reaction type
+    const validReactions = ['like', 'love', 'haha', 'wow', 'sad', 'angry', 'paw'];
+    if (!validReactions.includes(reactionType)) {
+      return NextResponse.json(
+        { error: 'Invalid reaction type' },
+        { status: 400 }
+      );
     }
-
-    // Blocked check
-    if (areUsersBlocked(userId, post.authorId)) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    
+    // Check if post exists
+    const post = await postRepository.getPost(postId);
+    if (!post) {
+      return NextResponse.json(
+        { error: 'Post not found' },
+        { status: 404 }
+      );
     }
-
-    // Determine if user already reacted and with what type
-    const current = post.reactions || ({} as NonNullable<BlogPost["reactions"]>)
-    let previous: ReactionType | null = null
-    for (const key of Object.keys(current) as ReactionType[]) {
-      const arr = current[key] || []
-      if (arr.includes(userId)) {
-        previous = key
-        break
+    
+    // Check if user already liked this post
+    const existingLike = await prisma.postLike.findUnique({
+      where: {
+        postId_userId: {
+          postId,
+          userId,
+        },
+      },
+    });
+    
+    if (existingLike) {
+      // Update reaction type if different
+      if (existingLike.reactionType !== reactionType) {
+        await prisma.postLike.update({
+          where: { id: existingLike.id },
+          data: { reactionType },
+        });
+        
+        // Invalidate cache
+        await invalidateContentCache('post', postId);
+        
+        return NextResponse.json({
+          success: true,
+          message: 'Reaction updated',
+          reactionType,
+        });
       }
+      
+      return NextResponse.json(
+        { error: 'Already liked this post' },
+        { status: 409 }
+      );
     }
-
-    // If same reaction requested, keep as-is (no-op); else update to new type using toggle helper
-    if (previous !== reaction) {
-      // togglePostReaction removes other reactions and adds the desired one
-      togglePostReaction(post.id, userId, reaction)
-    }
-
-    // Refresh updated post from storage to compute counts
-    const updated = getBlogPostById(post.id) || post
-    const counts = countReactions(updated)
-
-    // Broadcast to viewers listening
-    try {
-      broadcastEvent({
-        type: "postReactionUpdated",
-        postId: updated.id,
+    
+    // Create like record
+    await prisma.postLike.create({
+      data: {
+        postId,
         userId,
-        reaction,
-        counts,
-        ts: Date.now(),
-      })
-    } catch {}
-
-    // Optionally include comment count to help clients
-    const commentCount = getCommentsByPostId(updated.id).length
-
-    return NextResponse.json({
-      postId: updated.id,
-      reactions: counts,
-      commentCount,
-    })
-  } catch (error) {
-    console.error("Error updating reaction:", error)
-    return NextResponse.json(
-      { error: "Internal server error", message: error instanceof Error ? error.message : "Unknown error" },
-      { status: 500 }
-    )
-  }
-}
-
-export async function DELETE(request: NextRequest, context: { params: Promise<{ postId: string }> }) {
-  try {
-    const { postId } = await context.params
-    const parsed = bodySchema.safeParse(await request.json())
-    if (!parsed.success) {
-      return NextResponse.json({ error: "Invalid request" }, { status: 400 })
+        reactionType,
+      },
+    });
+    
+    // Increment likes counter
+    await postRepository.incrementLikesCount(postId);
+    
+    // Update reactions breakdown
+    const reactions = (post.reactions as Record<string, number>) || {};
+    reactions[reactionType] = (reactions[reactionType] || 0) + 1;
+    
+    await prisma.post.update({
+      where: { id: postId },
+      data: { reactions },
+    });
+    
+    // Invalidate cache
+    await invalidateContentCache('post', postId);
+    
+    // Send notification to post author (throttled)
+    if (post.authorUserId !== userId) {
+      // Get author and liker info
+      const [author, liker] = await Promise.all([
+        prisma.user.findUnique({
+          where: { id: post.authorUserId },
+          select: { username: true },
+        }),
+        prisma.user.findUnique({
+          where: { id: userId },
+          select: { username: true, displayName: true },
+        }),
+      ]);
+      
+      const likerName = liker?.displayName || liker?.username || 'Someone';
+      const postPreview = post.textContent?.substring(0, 50) || 'your post';
+      
+      createNotification({
+        userId: post.authorUserId,
+        type: 'like',
+        actorId: userId,
+        targetId: postId,
+        targetType: 'post',
+        message: `${likerName} reacted to your post`,
+        priority: 'low',
+        category: 'social',
+        channels: ['in_app'],
+        metadata: {
+          actorName: likerName,
+          targetTitle: postPreview,
+          targetTypeLabel: 'post',
+          reactionType,
+        },
+        batchKey: `like_${post.authorUserId}_post`,
+      });
     }
-    const { userId } = parsed.data
-
-    const post = getBlogPostById(postId)
-    if (!post || (post as any).deletedAt) {
-      return NextResponse.json({ error: "Post not found" }, { status: 404 })
-    }
-
-    // Blocked check
-    if (areUsersBlocked(userId, post.authorId)) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-    }
-
-    // Find existing reaction type
-    const current = post.reactions || ({} as NonNullable<BlogPost["reactions"]>)
-    let previous: ReactionType | null = null
-    for (const key of Object.keys(current) as ReactionType[]) {
-      const arr = current[key] || []
-      if (arr.includes(userId)) {
-        previous = key
-        break
-      }
-    }
-
-    // If none, nothing to remove; respond success (idempotent)
-    if (!previous) {
-      const counts = countReactions(post)
-      return NextResponse.json({
-        success: true,
-        postId: post.id,
-        reactions: counts,
-        commentCount: getCommentsByPostId(post.id).length,
-      })
-    }
-
-    // Toggle off the previous reaction
-    togglePostReaction(post.id, userId, previous)
-
-    const updated = getBlogPostById(post.id) || post
-    const counts = countReactions(updated)
-
-    // Remove unread like notification if present
-    try {
-      const notifs = getNotifications().filter(
-        (n) =>
-          n.type === "like" &&
-          n.userId === updated.authorId &&
-          n.actorId === userId &&
-          n.targetType === "post" &&
-          n.targetId === updated.id &&
-          !n.read,
-      )
-      for (const n of notifs) {
-        deleteNotification(n.id)
-      }
-    } catch {}
-
-    // Broadcast update
-    try {
-      broadcastEvent({
-        type: "postReactionUpdated",
-        postId: updated.id,
-        userId,
-        reaction: null,
-        removed: true,
-        counts,
-        ts: Date.now(),
-      })
-    } catch {}
-
+    
+    // TODO: Broadcast real-time update via WebSocket
+    console.log(`[WebSocket] Broadcasting like on post ${postId} by user ${userId}`);
+    
     return NextResponse.json({
       success: true,
-      postId: updated.id,
-      reactions: counts,
-      commentCount: getCommentsByPostId(updated.id).length,
-    })
+      message: 'Post liked successfully',
+      reactionType,
+      likesCount: post.likesCount + 1,
+    });
+    
   } catch (error) {
-    console.error("Error removing reaction:", error)
+    console.error('Error liking post:', error);
     return NextResponse.json(
-      { error: "Internal server error", message: error instanceof Error ? error.message : "Unknown error" },
+      { error: 'Internal server error' },
       { status: 500 }
-    )
+    );
+  }
+}
+
+/**
+ * DELETE /api/posts/{postId}/like - Unlike a post
+ * Removes like record, decrements counter
+ */
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { postId: string } }
+) {
+  try {
+    const { postId } = params;
+    
+    // Get authenticated user from session
+    // TODO: Replace with actual auth check
+    const userId = request.headers.get('x-user-id');
+    
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+    
+    // Check if post exists
+    const post = await postRepository.getPost(postId);
+    if (!post) {
+      return NextResponse.json(
+        { error: 'Post not found' },
+        { status: 404 }
+      );
+    }
+    
+    // Check if user has liked this post
+    const existingLike = await prisma.postLike.findUnique({
+      where: {
+        postId_userId: {
+          postId,
+          userId,
+        },
+      },
+    });
+    
+    if (!existingLike) {
+      return NextResponse.json(
+        { error: 'Like not found' },
+        { status: 404 }
+      );
+    }
+    
+    // Delete like record
+    await prisma.postLike.delete({
+      where: { id: existingLike.id },
+    });
+    
+    // Decrement likes counter
+    await postRepository.decrementLikesCount(postId);
+    
+    // Update reactions breakdown
+    const reactions = (post.reactions as Record<string, number>) || {};
+    const reactionType = existingLike.reactionType;
+    if (reactions[reactionType]) {
+      reactions[reactionType] = Math.max(0, reactions[reactionType] - 1);
+    }
+    
+    await prisma.post.update({
+      where: { id: postId },
+      data: { reactions },
+    });
+    
+    // Invalidate cache
+    await invalidateContentCache('post', postId);
+    
+    // TODO: Broadcast real-time update via WebSocket
+    console.log(`[WebSocket] Broadcasting unlike on post ${postId} by user ${userId}`);
+    
+    return NextResponse.json({
+      success: true,
+      message: 'Post unliked successfully',
+      likesCount: Math.max(0, post.likesCount - 1),
+    });
+    
+  } catch (error) {
+    console.error('Error unliking post:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
   }
 }

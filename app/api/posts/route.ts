@@ -1,244 +1,322 @@
-import { NextRequest, NextResponse } from "next/server"
-import { z } from "zod"
-import {
-  addBlogPost,
-  getUserById,
-  getUserByUsername,
-  getPets,
-  getUsers,
-} from "@/lib/storage"
-import type { BlogPost, BlogPostMedia, PostPoll, PrivacyLevel } from "@/lib/types"
-import { linkifyEntities } from "@/lib/utils/linkify-entities"
-import { createMentionNotification } from "@/lib/notifications"
-import { broadcastEvent } from "@/lib/server/sse"
+import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
+import { postRepository } from '@/lib/repositories/post-repository';
+import { prisma } from '@/lib/prisma';
+import { createNotification } from '@/lib/notifications';
 
-// Simple in-memory rate limiter (server-process scoped)
-// key: userId -> timestamps (ms)
-const POST_RATE: Map<string, number[]> = new Map()
-const ONE_HOUR_MS = 60 * 60 * 1000
+// Validation schema for post creation
+const createPostSchema = z.object({
+  textContent: z.string().max(5000).optional(),
+  postType: z.enum(['standard', 'photo_album', 'video', 'poll', 'shared', 'question', 'event', 'marketplace']).default('standard'),
+  media: z.array(z.object({
+    id: z.string().optional(),
+    url: z.string(),
+    type: z.enum(['photo', 'video', 'gif']),
+    thumbnail: z.string().optional(),
+    caption: z.string().optional(),
+    order: z.number(),
+  })).max(10).optional(),
+  petTags: z.array(z.string()).optional(),
+  location: z.object({
+    name: z.string(),
+    lat: z.number(),
+    lng: z.number(),
+    placeId: z.string().optional(),
+  }).optional(),
+  visibility: z.enum(['public', 'friends', 'private', 'custom', 'followers_only']).default('public'),
+  visibilityUserIds: z.array(z.string()).optional(),
+  commentsEnabled: z.boolean().default(true),
+  sharesEnabled: z.boolean().default(true),
+  pollOptions: z.array(z.object({
+    id: z.string(),
+    text: z.string().max(50),
+    votes: z.number().default(0),
+  })).min(2).max(4).optional(),
+  eventData: z.object({
+    title: z.string(),
+    date: z.string(),
+    time: z.string().optional(),
+    location: z.string(),
+    rsvps: z.object({
+      going: z.array(z.string()).default([]),
+      interested: z.array(z.string()).default([]),
+      cantGo: z.array(z.string()).default([]),
+    }).optional(),
+  }).optional(),
+  marketplaceData: z.object({
+    title: z.string(),
+    price: z.number(),
+    condition: z.string(),
+    category: z.string(),
+    isSold: z.boolean().default(false),
+  }).optional(),
+  sharedPostId: z.string().optional(),
+  scheduledPublishAt: z.string().datetime().optional(),
+});
 
-function checkRateLimit(userId: string, isPro?: boolean): { ok: boolean; remaining: number } {
-  const now = Date.now()
-  const windowStart = now - ONE_HOUR_MS
-  const limit = isPro ? 50 : 10
-  const arr = (POST_RATE.get(userId) || []).filter((t) => t > windowStart)
-  if (arr.length >= limit) return { ok: false, remaining: 0 }
-  arr.push(now)
-  POST_RATE.set(userId, arr)
-  return { ok: true, remaining: Math.max(0, limit - arr.length) }
+/**
+ * Extract @mentions from text content
+ * Returns array of usernames without @ symbol
+ */
+function extractMentions(text: string): string[] {
+  const mentionRegex = /@(\w+)/g;
+  const mentions: string[] = [];
+  let match;
+  
+  while ((match = mentionRegex.exec(text)) !== null) {
+    if (match[1]) {
+      mentions.push(match[1]);
+    }
+  }
+  
+  return Array.from(new Set(mentions)); // Remove duplicates
 }
 
-// Input schema
-const mediaItemSchema = z.object({
-  type: z.enum(["image", "video", "link"]).optional(),
-  url: z.string().url().optional(),
-  title: z.string().optional(),
-  // Allow data URLs for base64 inline uploads
-  dataUrl: z.string().startsWith("data:").optional(),
-})
-
-const visibilitySchema = z.object({
-  mode: z.enum(["public", "followers", "friends", "private", "custom"]).default("public"),
-  allowedUserIds: z.array(z.string()).optional(),
-})
-
-const locationSchema = z.object({
-  name: z.string().optional(),
-  lat: z.number().optional(),
-  lng: z.number().optional(),
-  placeId: z.string().optional(),
-})
-
-const createPostSchema = z.object({
-  text: z.string().min(1).max(5000),
-  mediaIds: z.array(z.string()).max(10).optional(),
-  media: z.array(mediaItemSchema).max(10).optional(),
-  petTags: z.array(z.string()).max(10).optional(),
-  location: locationSchema.optional(),
-  visibility: visibilitySchema.optional(),
-  pollOptions: z.array(z.string().min(1).max(50)).min(2).max(4).optional(),
-  pollAllowMultiple: z.boolean().optional(),
-  pollExpiresAt: z.string().optional(),
-  scheduledPublishAt: z.string().optional(),
-  // Legacy compatibility fields used elsewhere in the app
-  placeId: z.string().optional(),
-  poll: z
-    .object({
-      question: z.string().min(1).max(280),
-      options: z.array(z.object({ text: z.string().min(1).max(50) })).min(2).max(4),
-      allowMultiple: z.boolean().optional(),
-      expiresAt: z.string().optional(),
-    })
-    .optional(),
-  // Auth/context (until full server auth flows are wired everywhere)
-  authorId: z.string().min(1),
-  petId: z.string().min(1),
-})
-
-export async function POST(request: NextRequest) {
-  try {
-    const json = await request.json()
-    const parsed = createPostSchema.safeParse(json)
-    if (!parsed.success) {
-      return NextResponse.json(
-        { error: "Invalid data", details: parsed.error.errors },
-        { status: 400 }
-      )
+/**
+ * Extract #hashtags from text content
+ * Returns array of hashtags without # symbol
+ */
+function extractHashtags(text: string): string[] {
+  const hashtagRegex = /#(\w+)/g;
+  const hashtags: string[] = [];
+  let match;
+  
+  while ((match = hashtagRegex.exec(text)) !== null) {
+    if (match[1]) {
+      hashtags.push(match[1].toLowerCase());
     }
+  }
+  
+  return Array.from(new Set(hashtags)); // Remove duplicates
+}
 
-    const data = parsed.data
-    const author = getUserById(data.authorId)
-    if (!author) {
-      return NextResponse.json({ error: "Author not found" }, { status: 404 })
-    }
-    const pet = getPets().find((p) => p.id === data.petId)
-    if (!pet) {
-      return NextResponse.json({ error: "Pet not found" }, { status: 404 })
-    }
+/**
+ * Validate mentioned users exist and return their IDs
+ */
+async function validateAndResolveMentions(usernames: string[]): Promise<{ userIds: string[]; validUsernames: string[] }> {
+  if (usernames.length === 0) {
+    return { userIds: [], validUsernames: [] };
+  }
+  
+  const users = await prisma.user.findMany({
+    where: {
+      username: {
+        in: usernames,
+        mode: 'insensitive',
+      },
+    },
+    select: {
+      id: true,
+      username: true,
+    },
+  });
+  
+  return {
+    userIds: users.map((u: { id: string; username: string }) => u.id),
+    validUsernames: users.map((u: { id: string; username: string }) => u.username),
+  };
+}
 
-    // Rate limit
-    const { ok, remaining } = checkRateLimit(author.id, author.isPro)
-    if (!ok) {
-      return NextResponse.json(
-        { error: "Rate limit exceeded", message: `Post limit reached. Try again later.`, remaining },
-        { status: 429 }
-      )
-    }
-
-    // Entities extraction
-    const entities = linkifyEntities(data.text)
-
-    // Mentions: notify mentioned users (best-effort)
-    // Extract @username via entity ranges
-    const mentionedUsernames = new Set(
-      entities.ranges.filter((r) => r.type === "mention").map((r) => r.text.replace(/^@/, ""))
-    )
-    const allUsers = getUsers()
-    const usernameToUser = new Map<string, { id: string; fullName: string }>()
-    for (const u of allUsers) {
-      usernameToUser.set(u.username, { id: u.id, fullName: u.fullName })
-    }
-
-    // Hashtags extraction and counting
-    const hashtagMatches = data.text.match(/#[a-zA-Z0-9_]+/g) || []
-    const hashtags = [...new Set(hashtagMatches.map((t) => t.substring(1).toLowerCase()))]
-    try {
-      // Persist hashtag usage counts in localStorage when available
-      if (typeof window !== "undefined" && window.localStorage) {
-        const RAW_KEY = "pet_social_hashtag_counts"
-        const raw = window.localStorage.getItem(RAW_KEY)
-        const counts: Record<string, { count: number; lastUsedAt: string }> = raw ? JSON.parse(raw) : {}
-        const nowIso = new Date().toISOString()
-        for (const tag of hashtags) {
-          const prev = counts[tag] || { count: 0, lastUsedAt: nowIso }
-          counts[tag] = { count: prev.count + 1, lastUsedAt: nowIso }
-        }
-        window.localStorage.setItem(RAW_KEY, JSON.stringify(counts))
-      }
-    } catch {
-      // ignore
-    }
-
-    // Media organization
-    const mediaInput = data.media || []
-    const organizedMedia: BlogPostMedia = {
-      images: mediaInput
-        .filter((m) => (m.type === "image" || m.dataUrl) && (m.url || m.dataUrl))
-        .map((m) => (m.url || m.dataUrl!) as string),
-      videos: mediaInput.filter((m) => m.type === "video" && m.url).map((m) => m.url!) || [],
-      links: mediaInput
-        .filter((m) => m.type === "link" && m.url)
-        .map((m) => ({ url: m.url!, title: m.title })),
-    }
-
-    // Compose poll
-    let postPoll: PostPoll | undefined
-    if (data.poll) {
-      postPoll = {
-        question: data.poll.question,
-        options: data.poll.options.map((opt, i) => ({ id: `opt-${i}`, text: opt.text, voteCount: 0 })),
-        allowMultiple: data.poll.allowMultiple,
-        expiresAt: data.poll.expiresAt,
-        isClosed: false,
-      }
-    } else if (data.pollOptions) {
-      postPoll = {
-        question: "",
-        options: data.pollOptions.map((t, i) => ({ id: `opt-${i}`, text: t, voteCount: 0 })),
-        allowMultiple: data.pollAllowMultiple,
-        expiresAt: data.pollExpiresAt,
-        isClosed: false,
-      }
-    }
-
-    // Visibility mapping
-    const mode = data.visibility?.mode || "public"
-    const allowedUserIds = data.visibility?.allowedUserIds || []
-    const privacy: PrivacyLevel = mode === "public" ? "public" : mode === "followers" ? "followers-only" : mode === "private" ? "private" : "public"
-
-    // Scheduling
-    const nowIso = new Date().toISOString()
-    const scheduledAt = data.scheduledPublishAt
-    const isScheduled = scheduledAt ? new Date(scheduledAt).getTime() > Date.now() : false
-
-    const title = data.text.substring(0, 50) + (data.text.length > 50 ? "..." : "")
-
-    const newPost: BlogPost = {
-      id: `post-${Date.now()}`,
-      petId: data.petId,
-      authorId: data.authorId,
-      title,
-      content: data.text,
-      tags: [],
-      categories: [],
-      likes: [],
-      reactions: { like: [], love: [], laugh: [], wow: [], sad: [], angry: [], paw: [] },
-      createdAt: nowIso,
-      updatedAt: nowIso,
-      privacy,
-      isDraft: mode === "private" || undefined,
-      queueStatus: mode === "private" ? "draft" : isScheduled ? "scheduled" : "published",
-      scheduledAt: isScheduled ? scheduledAt : undefined,
-      hashtags,
-      media: organizedMedia,
-      poll: postPoll,
-      placeId: data.location?.placeId || data.placeId,
-      taggedPetIds: data.petTags || [],
-      visibilityMode: mode,
-      allowedUserIds: mode === "custom" ? allowedUserIds : undefined,
-    }
-
-    // Persist post (client storage; no-op on server environments)
-    addBlogPost(newPost)
-
-    // Best-effort mention notifications
-    try {
-      for (const uname of mentionedUsernames) {
-        const u = usernameToUser.get(uname)
-        if (!u || u.id === author.id) continue
-        createMentionNotification({
-          mentionerId: author.id,
-          mentionerName: author.fullName,
-          mentionedUserId: u.id,
-          threadId: newPost.id,
-          threadType: "comment",
-          postId: newPost.id,
-        })
-      }
-    } catch {/* ignore */}
-
-    // Broadcast to SSE listeners (dev/demo)
-    try {
-      broadcastEvent({ type: "postCreated", postId: newPost.id, authorId: author.id, petId: data.petId, ts: Date.now() })
-    } catch {/* ignore */}
-
-    return NextResponse.json({ post: newPost, entities })
-  } catch (error) {
-    console.error("Error creating post:", error)
-    return NextResponse.json(
-      { error: "Internal server error", message: error instanceof Error ? error.message : "Unknown error" },
-      { status: 500 }
-    )
+/**
+ * Send notifications to mentioned users
+ */
+async function notifyMentionedUsers(
+  mentionedUserIds: string[],
+  postId: string,
+  authorId: string,
+  authorName: string,
+  postPreview: string
+) {
+  for (const userId of mentionedUserIds) {
+    // Don't notify the author if they mentioned themselves
+    if (userId === authorId) continue;
+    
+    createNotification({
+      userId,
+      type: 'mention',
+      actorId: authorId,
+      targetId: postId,
+      targetType: 'post',
+      message: `${authorName} mentioned you in a post`,
+      priority: 'normal',
+      category: 'social',
+      channels: ['in_app', 'push', 'email'],
+      metadata: {
+        actorName: authorName,
+        targetTitle: postPreview,
+        targetTypeLabel: 'post',
+      },
+      batchKey: `mention_${userId}_post`,
+    });
   }
 }
 
+/**
+ * Broadcast new post to followers via WebSocket
+ * Note: This is a placeholder - actual WebSocket implementation would go here
+ */
+async function broadcastNewPost(postId: string, authorId: string) {
+  // TODO: Implement WebSocket broadcasting
+  // This would typically:
+  // 1. Get list of followers
+  // 2. Send WebSocket message to each follower's channel
+  // 3. Include post data in the message
+  
+  // For now, we'll just log it
+  console.log(`[WebSocket] Broadcasting new post ${postId} from author ${authorId}`);
+}
+
+/**
+ * POST /api/posts - Create a new post
+ */
+export async function POST(request: NextRequest) {
+  try {
+    // Get authenticated user from session
+    // TODO: Replace with actual auth check
+    const userId = request.headers.get('x-user-id');
+    
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+    
+    // Parse and validate request body
+    const body = await request.json();
+    const validatedData = createPostSchema.parse(body);
+    
+    // Extract mentions and hashtags from text content
+    const mentions = validatedData.textContent ? extractMentions(validatedData.textContent) : [];
+    const hashtags = validatedData.textContent ? extractHashtags(validatedData.textContent) : [];
+    
+    // Validate mentioned users exist
+    const { userIds: mentionedUserIds } = await validateAndResolveMentions(mentions);
+    
+    // Validate media limits based on post type
+    if (validatedData.media && validatedData.media.length > 0) {
+      const photoCount = validatedData.media.filter(m => m.type === 'photo').length;
+      const videoCount = validatedData.media.filter(m => m.type === 'video').length;
+      
+      if (videoCount > 1) {
+        return NextResponse.json(
+          { error: 'Only one video per post is allowed' },
+          { status: 400 }
+        );
+      }
+      
+      if (photoCount > 10) {
+        return NextResponse.json(
+          { error: 'Maximum 10 photos per post' },
+          { status: 400 }
+        );
+      }
+    }
+    
+    // Validate poll options if poll post
+    if (validatedData.postType === 'poll' && !validatedData.pollOptions) {
+      return NextResponse.json(
+        { error: 'Poll posts require poll options' },
+        { status: 400 }
+      );
+    }
+    
+    // Validate event data if event post
+    if (validatedData.postType === 'event' && !validatedData.eventData) {
+      return NextResponse.json(
+        { error: 'Event posts require event data' },
+        { status: 400 }
+      );
+    }
+    
+    // Validate marketplace data if marketplace post
+    if (validatedData.postType === 'marketplace' && !validatedData.marketplaceData) {
+      return NextResponse.json(
+        { error: 'Marketplace posts require marketplace data' },
+        { status: 400 }
+      );
+    }
+    
+    // Validate shared post exists if shared post
+    if (validatedData.postType === 'shared' && validatedData.sharedPostId) {
+      const sharedPost = await postRepository.getPost(validatedData.sharedPostId);
+      if (!sharedPost) {
+        return NextResponse.json(
+          { error: 'Shared post not found' },
+          { status: 404 }
+        );
+      }
+    }
+    
+    // Create post record
+    const post = await postRepository.createPost({
+      authorUserId: userId,
+      postType: validatedData.postType,
+      textContent: validatedData.textContent,
+      media: validatedData.media,
+      petTags: validatedData.petTags || [],
+      mentionedUserIds,
+      hashtags,
+      location: validatedData.location,
+      visibility: validatedData.visibility,
+      visibilityUserIds: validatedData.visibilityUserIds || [],
+      commentsEnabled: validatedData.commentsEnabled,
+      sharesEnabled: validatedData.sharesEnabled,
+      pollOptions: validatedData.pollOptions,
+      eventData: validatedData.eventData,
+      marketplaceData: validatedData.marketplaceData,
+      sharedPostId: validatedData.sharedPostId,
+      scheduledPublishAt: validatedData.scheduledPublishAt ? new Date(validatedData.scheduledPublishAt) : undefined,
+      publishedAt: validatedData.scheduledPublishAt ? undefined : new Date(),
+    });
+    
+    // Get author info for notifications
+    const author = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        username: true,
+        displayName: true,
+      },
+    });
+    
+    const authorName = author?.displayName || author?.username || 'Someone';
+    
+    // Send notifications to mentioned users
+    if (mentionedUserIds.length > 0) {
+      const postPreview = validatedData.textContent?.substring(0, 100) || 'a post';
+      await notifyMentionedUsers(mentionedUserIds, post.id, userId, authorName, postPreview);
+    }
+    
+    // Broadcast new post to followers via WebSocket
+    await broadcastNewPost(post.id, userId);
+    
+    // Return created post with engagement counts
+    const postWithCounts = await postRepository.getPostWithCounts(post.id);
+    
+    return NextResponse.json(
+      {
+        success: true,
+        post: postWithCounts,
+      },
+      { status: 201 }
+    );
+    
+  } catch (error) {
+    console.error('Error creating post:', error);
+    
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        {
+          error: 'Validation error',
+          details: error.errors,
+        },
+        { status: 400 }
+      );
+    }
+    
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}

@@ -17,7 +17,7 @@ model Article {
   type        String
   status      String
   createdById String
-  assignedTo  String?   // Expert reviewer assigned for quality review
+  assignedTo  String? // Expert reviewer assigned for quality review
   updatedAt   DateTime  @updatedAt
   createdAt   DateTime  @default(now())
   deletedAt   DateTime? @map("deleted_at")
@@ -48,7 +48,7 @@ model Revision {
   createdAt    DateTime  @default(now())
 
   // Relations
-  article      Article   @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  article Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
 
   @@unique([articleId, rev])
   @@index([articleId])
@@ -61,7 +61,7 @@ model ArticleTag {
   tag       String
 
   // Relations
-  article   Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  article Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
 
   @@id([articleId, tag])
   @@index([tag])
@@ -74,7 +74,7 @@ model ArticleProp {
   value     Json
 
   // Relations
-  article   Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  article Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
 
   @@id([articleId, key])
   @@index([articleId])
@@ -84,22 +84,22 @@ model ArticleProp {
 
 // Source model for wiki article citations
 model Source {
-  id         String   @id @default(uuid())
-  articleId  String
-  sourceId   String   // Citation ID (e.g., "1", "2")
-  title      String
-  url        String
-  publisher  String?
-  date       String?
-  license    String?
-  brokenAt   DateTime?
-  isValid    Boolean?
+  id          String    @id @default(uuid())
+  articleId   String
+  sourceId    String // Citation ID (e.g., "1", "2")
+  title       String
+  url         String
+  publisher   String?
+  date        String?
+  license     String?
+  brokenAt    DateTime?
+  isValid     Boolean?
   lastChecked DateTime?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   // Relations
-  article    Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  article Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
 
   @@unique([articleId, sourceId])
   @@index([articleId])
@@ -110,7 +110,7 @@ model Source {
 // FTS search index for articles
 // Note: tsvector type should be handled via raw SQL in migrations
 model ArticleSearchIndex {
-  articleId String @id
+  articleId String  @id
   article   Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
   content   String // tsvector in actual database, but mapped as String in Prisma
 
@@ -119,22 +119,22 @@ model ArticleSearchIndex {
 
 // Blog Post model for FTS search
 model BlogPost {
-  id          String    @id @default(uuid())
-  petId       String
-  authorId    String
-  title       String
-  content     String
-  coverImage  String?
-  tags        String[]
-  categories  String[]
-  likes       String[]
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  privacy     String    @default("public")
-  isDraft     Boolean   @default(false)
-  hashtags    String[]
-  type        String    @default("blog_post")
-  deletedAt   DateTime? @map("deleted_at")
+  id         String    @id @default(uuid())
+  petId      String
+  authorId   String
+  title      String
+  content    String
+  coverImage String?
+  tags       String[]
+  categories String[]
+  likes      String[]
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  privacy    String    @default("public")
+  isDraft    Boolean   @default(false)
+  hashtags   String[]
+  type       String    @default("blog_post")
+  deletedAt  DateTime? @map("deleted_at")
 
   // Relations
   postTags    BlogPostTag[]
@@ -149,7 +149,7 @@ model BlogPostTag {
   postId String
   tag    String
 
-  post   BlogPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  post BlogPost @relation(fields: [postId], references: [id], onDelete: Cascade)
 
   @@id([postId, tag])
   @@index([tag])
@@ -159,7 +159,7 @@ model BlogPostTag {
 // FTS search index for blog posts
 // Note: tsvector type should be handled via raw SQL in migrations
 model BlogPostSearchIndex {
-  postId  String @id
+  postId  String   @id
   post    BlogPost @relation(fields: [postId], references: [id], onDelete: Cascade)
   content String // tsvector in actual database, but mapped as String in Prisma
 
@@ -195,7 +195,7 @@ model TermBoost {
   id        String   @id @default(uuid())
   term      String   @unique
   boost     Float    @default(1.0) // 0.0 to 10.0
-  field     String?  // Optional field to boost (e.g., 'title', 'content')
+  field     String? // Optional field to boost (e.g., 'title', 'content')
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -206,16 +206,16 @@ model TermBoost {
 
 // Telemetry for search queries
 model SearchTelemetry {
-  id            String   @id @default(uuid())
-  query         String
-  resultCount   Int      @default(0)
-  hasResults    Boolean  @default(false)
-  zeroResultQuery Boolean @default(false) // Track zero-result queries specifically
-  entityTypes   String[] // Array of entity types searched (e.g., ["blog_post", "article", "place"])
-  filters       Json?    // Store filters as JSON (species, tags, etc.)
-  createdAt     DateTime @default(now())
-  ipAddress     String?
-  userAgent     String?
+  id              String   @id @default(uuid())
+  query           String
+  resultCount     Int      @default(0)
+  hasResults      Boolean  @default(false)
+  zeroResultQuery Boolean  @default(false) // Track zero-result queries specifically
+  entityTypes     String[] // Array of entity types searched (e.g., ["blog_post", "article", "place"])
+  filters         Json? // Store filters as JSON (species, tags, etc.)
+  createdAt       DateTime @default(now())
+  ipAddress       String?
+  userAgent       String?
 
   @@index([createdAt])
   @@index([hasResults])
@@ -225,20 +225,20 @@ model SearchTelemetry {
 
 // Saved searches with alert preferences
 model SavedSearch {
-  id          String   @id @default(uuid())
-  userId      String?  // Nullable - can be anonymous (stored in localStorage)
-  query       String
-  filters     Json     // Store filters as JSON (species, tags, entityTypes, etc.)
-  entityTypes String[] // Array of entity types to search (e.g., ["blog_post", "article"])
-  latLng      Json?    // Optional geo coordinates { lat: number, lng: number }
-  radius      Float?   // Optional radius in kilometers for geo search
-  alertEnabled Boolean  @default(false)
+  id            String    @id @default(uuid())
+  userId        String? // Nullable - can be anonymous (stored in localStorage)
+  query         String
+  filters       Json // Store filters as JSON (species, tags, entityTypes, etc.)
+  entityTypes   String[] // Array of entity types to search (e.g., ["blog_post", "article"])
+  latLng        Json? // Optional geo coordinates { lat: number, lng: number }
+  radius        Float? // Optional radius in kilometers for geo search
+  alertEnabled  Boolean   @default(false)
   lastCheckedAt DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   // Relations
-  alerts      SearchAlert[]
+  alerts SearchAlert[]
 
   @@index([userId])
   @@index([alertEnabled])
@@ -248,15 +248,15 @@ model SavedSearch {
 
 // Search alerts - track when new results appear for saved searches
 model SearchAlert {
-  id              String   @id @default(uuid())
-  savedSearchId   String
-  matchedEntityId String   // ID of the entity that matched
+  id                String    @id @default(uuid())
+  savedSearchId     String
+  matchedEntityId   String // ID of the entity that matched
   matchedEntityType String // Type of entity (e.g., "blog_post", "article", "place")
-  notifiedAt      DateTime?
-  createdAt       DateTime @default(now())
+  notifiedAt        DateTime?
+  createdAt         DateTime  @default(now())
 
   // Relations
-  savedSearch     SavedSearch @relation(fields: [savedSearchId], references: [id], onDelete: Cascade)
+  savedSearch SavedSearch @relation(fields: [savedSearchId], references: [id], onDelete: Cascade)
 
   @@index([savedSearchId])
   @@index([matchedEntityType, matchedEntityId])
@@ -266,17 +266,17 @@ model SearchAlert {
 
 // Breed model
 model Breed {
-  id          String   @id @default(uuid())
-  name        String   @unique
-  species     String   // dog, cat, bird, etc.
-  description String?
+  id              String   @id @default(uuid())
+  name            String   @unique
+  species         String // dog, cat, bird, etc.
+  description     String?
   characteristics Json? // JSON field for breed characteristics
-  averageWeight String?
+  averageWeight   String?
   averageLifespan String?
-  temperament String[]
-  origin      String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  temperament     String[]
+  origin          String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   @@index([species])
   @@index([name])
@@ -285,18 +285,18 @@ model Breed {
 
 // City model
 model City {
-  id          String   @id @default(uuid())
-  name        String
-  country     String
-  state       String?
-  latitude    Float?
-  longitude   Float?
-  population  Int?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id         String   @id @default(uuid())
+  name       String
+  country    String
+  state      String?
+  latitude   Float?
+  longitude  Float?
+  population Int?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   // Relations
-  places      Place[]
+  places Place[]
 
   @@unique([name, country, state])
   @@index([name])
@@ -320,7 +320,7 @@ model Place {
   deletedAt        DateTime? @map("deleted_at")
 
   // Relations
-  city             City      @relation(fields: [cityId], references: [id], onDelete: Cascade)
+  city City @relation(fields: [cityId], references: [id], onDelete: Cascade)
 
   @@index([cityId])
   @@index([moderationStatus])
@@ -331,24 +331,24 @@ model Place {
 
 // Product model
 model Product {
-  id             String   @id @default(uuid())
-  name           String
-  brand          String?
-  category       String   // food, toys, accessories, health, etc.
-  description    String?
-  price          Float?
-  currency       String   @default("USD")
-  imageUrl       String?
-  tags           String[]
-  inStock        Boolean  @default(true)
-  rating         Float?
-  reviewCount    Int      @default(0)
-  isRecalled     Boolean  @default(false)
-  recallNotice   String?
-  safetyNotices  String[]
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  deletedAt      DateTime? @map("deleted_at")
+  id            String    @id @default(uuid())
+  name          String
+  brand         String?
+  category      String // food, toys, accessories, health, etc.
+  description   String?
+  price         Float?
+  currency      String    @default("USD")
+  imageUrl      String?
+  tags          String[]
+  inStock       Boolean   @default(true)
+  rating        Float?
+  reviewCount   Int       @default(0)
+  isRecalled    Boolean   @default(false)
+  recallNotice  String?
+  safetyNotices String[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime? @map("deleted_at")
 
   @@index([category])
   @@index([brand])
@@ -362,16 +362,16 @@ model Product {
 model ReportReason {
   id          String   @id @default(uuid())
   code        String   @unique // e.g., "spam", "harassment", "misinformation"
-  name        String   // Human-readable name
+  name        String // Human-readable name
   description String?
-  category    String   // "content", "behavior", "safety", etc.
+  category    String // "content", "behavior", "safety", etc.
   severity    String   @default("medium") // low, medium, high, critical
   active      Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   // Relations
-  reports     ContentReport[]
+  reports ContentReport[]
 
   @@index([code])
   @@index([category])
@@ -381,23 +381,23 @@ model ReportReason {
 
 // Content Report model - user reports on any content
 model ContentReport {
-  id           String   @id @default(uuid())
+  id           String    @id @default(uuid())
   reporterId   String
-  contentType  String   // "blog_post", "article", "comment", "place", "product", etc.
+  contentType  String // "blog_post", "article", "comment", "place", "product", etc.
   contentId    String
-  reasonId     String   // Reference to ReportReason
-  customReason String?  // For "other" cases
+  reasonId     String // Reference to ReportReason
+  customReason String? // For "other" cases
   description  String?
-  status       String   @default("pending") // pending, investigating, resolved, dismissed
-  priority     String   @default("low") // low, medium, high, urgent
-  assignedTo   String?  // Moderator/admin assigned
+  status       String    @default("pending") // pending, investigating, resolved, dismissed
+  priority     String    @default("low") // low, medium, high, urgent
+  assignedTo   String? // Moderator/admin assigned
   notes        String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
   resolvedAt   DateTime?
-  
+
   // Relations
-  reason       ReportReason @relation(fields: [reasonId], references: [id])
+  reason ReportReason @relation(fields: [reasonId], references: [id])
 
   @@index([reporterId])
   @@index([contentType, contentId])
@@ -410,19 +410,19 @@ model ContentReport {
 
 // Moderator Queue model - tracks items awaiting moderation
 model ModerationQueue {
-  id           String   @id @default(uuid())
-  contentType  String   // Type of content
-  contentId    String
-  priority     String   @default("low") // low, medium, high, urgent
-  reportedBy   String[] // Array of user IDs who reported
-  reportCount  Int      @default(1) // Count of reports on this item
-  autoFlagged  Boolean  @default(false) // Whether auto-moderated
-  autoReason   String?  // Reason if auto-flagged
-  status       String   @default("pending") // pending, in_review, resolved
-  assignedTo   String?  // Moderator assigned
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  reviewedAt   DateTime?
+  id          String    @id @default(uuid())
+  contentType String // Type of content
+  contentId   String
+  priority    String    @default("low") // low, medium, high, urgent
+  reportedBy  String[] // Array of user IDs who reported
+  reportCount Int       @default(1) // Count of reports on this item
+  autoFlagged Boolean   @default(false) // Whether auto-moderated
+  autoReason  String? // Reason if auto-flagged
+  status      String    @default("pending") // pending, in_review, resolved
+  assignedTo  String? // Moderator assigned
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  reviewedAt  DateTime?
 
   @@unique([contentType, contentId])
   @@index([status])
@@ -434,13 +434,13 @@ model ModerationQueue {
 
 // Soft Delete Audit model - tracks all soft deletions
 model SoftDeleteAudit {
-  id          String   @id @default(uuid())
-  contentType String   // What was deleted
+  id          String    @id @default(uuid())
+  contentType String // What was deleted
   contentId   String
-  deletedBy   String   // User/moderator who deleted
-  reason      String?  // Reason for deletion
-  metadata    Json?    // Additional context
-  deletedAt   DateTime @default(now())
+  deletedBy   String // User/moderator who deleted
+  reason      String? // Reason for deletion
+  metadata    Json? // Additional context
+  deletedAt   DateTime  @default(now())
   restoredAt  DateTime? // If restored
   restoredBy  String?
 
@@ -454,12 +454,12 @@ model SoftDeleteAudit {
 // Moderation Action model - tracks moderation actions taken
 model ModerationActionLog {
   id          String   @id @default(uuid())
-  action      String   // "approve", "reject", "delete", "warn", "ban", etc.
-  contentType String   // Type of content affected
+  action      String // "approve", "reject", "delete", "warn", "ban", etc.
+  contentType String // Type of content affected
   contentId   String
-  performedBy String   // Moderator/admin
+  performedBy String // Moderator/admin
   reason      String?
-  metadata    Json?    // Additional details
+  metadata    Json? // Additional details
   createdAt   DateTime @default(now())
 
   @@index([action])
@@ -471,14 +471,14 @@ model ModerationActionLog {
 
 // Generic Audit Log model - tracks all admin actions
 model AuditLog {
-  id          String   @id @default(uuid())
-  actorId     String   // User/admin who performed the action
-  action      String   // Action type (e.g., "create", "update", "delete", "approve", etc.)
-  targetType  String   // Type of entity affected (e.g., "blog_post", "article", "user", etc.)
-  targetId    String   // ID of the affected entity
-  reason      String?  // Optional reason for the action
-  metadata    Json?    // Additional context and details
-  createdAt   DateTime @default(now())
+  id         String   @id @default(uuid())
+  actorId    String // User/admin who performed the action
+  action     String // Action type (e.g., "create", "update", "delete", "approve", etc.)
+  targetType String // Type of entity affected (e.g., "blog_post", "article", "user", etc.)
+  targetId   String // ID of the affected entity
+  reason     String? // Optional reason for the action
+  metadata   Json? // Additional context and details
+  createdAt  DateTime @default(now())
 
   @@index([actorId])
   @@index([action])
@@ -489,15 +489,15 @@ model AuditLog {
 
 // Pending audit queue - for resilience when database is unavailable
 model AuditQueue {
-  id          String   @id @default(uuid())
+  id          String    @id @default(uuid())
   actorId     String
   action      String
   targetType  String
   targetId    String
   reason      String?
   metadata    Json?
-  createdAt   DateTime @default(now())
-  attempts    Int      @default(0)
+  createdAt   DateTime  @default(now())
+  attempts    Int       @default(0)
   lastAttempt DateTime?
 
   @@index([createdAt])
@@ -509,7 +509,7 @@ model AuditQueue {
 model ModerationReport {
   id          String   @id @default(uuid())
   reporterId  String
-  subjectType String   // 'post' | 'comment' | 'media' | 'wiki'
+  subjectType String // 'post' | 'comment' | 'media' | 'wiki'
   subjectId   String
   reason      String
   status      String   @default("open") // open|triaged|closed
@@ -518,7 +518,7 @@ model ModerationReport {
   updatedAt   DateTime @updatedAt
 
   // Relations
-  actions     ModerationAction[]
+  actions ModerationAction[]
 
   @@index([reporterId])
   @@index([subjectType, subjectId])
@@ -530,16 +530,16 @@ model ModerationReport {
 
 // Moderation Action model - actions taken on reports
 model ModerationAction {
-  id         String   @id @default(uuid())
-  reportId   String
-  actorId    String
-  type       String   // warn|mute|shadowban|suspend|reject|approve
-  reason     String?
-  metadata   Json?
-  createdAt  DateTime @default(now())
+  id        String   @id @default(uuid())
+  reportId  String
+  actorId   String
+  type      String // warn|mute|shadowban|suspend|reject|approve
+  reason    String?
+  metadata  Json?
+  createdAt DateTime @default(now())
 
   // Relations
-  report     ModerationReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  report ModerationReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
 
   @@index([reportId])
   @@index([actorId])
@@ -550,15 +550,15 @@ model ModerationAction {
 
 // Expert Profile model - expert verification for wiki governance
 model ExpertProfile {
-  userId      String   @id
-  credential  String
-  licenseNo   String?
-  region      String?
-  verifiedAt  DateTime?
-  expiresAt   DateTime?
-  status      String   @default("pending") // pending|verified|revoked|expired
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  userId     String    @id
+  credential String
+  licenseNo  String?
+  region     String?
+  verifiedAt DateTime?
+  expiresAt  DateTime?
+  status     String    @default("pending") // pending|verified|revoked|expired
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 
   @@index([status])
   @@index([verifiedAt])
@@ -568,17 +568,17 @@ model ExpertProfile {
 
 // Flagged Revision model - wiki revisions flagged for expert review
 model FlaggedRevision {
-  id           String   @id @default(uuid())
-  articleId    String
-  revisionId   String
-  type         String   // 'Health'|'Regulation'
-  flaggedAt    DateTime @default(now())
-  status       String   @default("pending") // pending|approved|changes-requested|rolled-back
-  assignedTo   String?
-  approvedBy   String?
-  approvedAt   DateTime?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id         String    @id @default(uuid())
+  articleId  String
+  revisionId String
+  type       String // 'Health'|'Regulation'
+  flaggedAt  DateTime  @default(now())
+  status     String    @default("pending") // pending|approved|changes-requested|rolled-back
+  assignedTo String?
+  approvedBy String?
+  approvedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 
   @@index([articleId])
   @@index([revisionId])
@@ -590,19 +590,19 @@ model FlaggedRevision {
 
 // Notification Send Record - audit log for sent notifications
 model NotificationSendRecord {
-  id            String   @id @default(uuid())
-  templateId    String?
-  templateName  String?
-  type          String   // email, push, in_app
-  subject       String?
-  body          String
-  segment       Json     // { roles: [], locales: [], groups: [] }
-  targetCount   Int      @default(0)
-  sentCount      Int      @default(0)
-  failedCount   Int      @default(0)
-  jobId         String?  // Reference to queue job
-  sentBy        String   // Admin user ID
-  createdAt     DateTime @default(now())
+  id           String   @id @default(uuid())
+  templateId   String?
+  templateName String?
+  type         String // email, push, in_app
+  subject      String?
+  body         String
+  segment      Json // { roles: [], locales: [], groups: [] }
+  targetCount  Int      @default(0)
+  sentCount    Int      @default(0)
+  failedCount  Int      @default(0)
+  jobId        String? // Reference to queue job
+  sentBy       String // Admin user ID
+  createdAt    DateTime @default(now())
 
   @@index([templateId])
   @@index([sentBy])
@@ -613,46 +613,46 @@ model NotificationSendRecord {
 
 // User model - core user account and authentication
 model User {
-  id                    String    @id @default(uuid())
-  username              String    @unique
-  email                 String    @unique
-  emailVerified         Boolean   @default(false)
-  passwordHash          String
-  passwordChangedAt     DateTime?
-  sessionInvalidatedAt  DateTime?
-  
+  id                   String    @id @default(uuid())
+  username             String    @unique
+  email                String    @unique
+  emailVerified        Boolean   @default(false)
+  passwordHash         String
+  passwordChangedAt    DateTime?
+  sessionInvalidatedAt DateTime?
+
   // Profile information
-  displayName           String?
-  bio                   String?
-  avatarUrl             String?
-  role                  String    @default("user") // user, moderator, admin
-  
+  displayName String?
+  bio         String?
+  avatarUrl   String?
+  role        String  @default("user") // user, moderator, admin
+
   // Privacy settings (JSON field)
-  privacy               Json?
-  
+  privacy Json?
+
   // Notification preferences
-  notificationSettings  Json?
-  
+  notificationSettings Json?
+
   // Search and discoverability
-  searchIndexingEnabled Boolean   @default(true)
-  showInSearch          Boolean   @default(true)
-  showInRecommendations Boolean   @default(true)
-  
+  searchIndexingEnabled Boolean @default(true)
+  showInSearch          Boolean @default(true)
+  showInRecommendations Boolean @default(true)
+
   // Account deletion
-  deletionScheduledAt   DateTime?
-  deletionReason        String?
-  
+  deletionScheduledAt DateTime?
+  deletionReason      String?
+
   // Relations
-  emailVerifications    EmailVerification[]
-  sessions              Session[]
-  blockedUsers          BlockedUser[]       @relation("UserBlocks")
-  blockedBy             BlockedUser[]       @relation("BlockedUser")
-  mutedUsers            MutedUser[]         @relation("UserMutes")
-  mutedBy               MutedUser[]         @relation("MutedUser")
-  
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
-  
+  emailVerifications EmailVerification[]
+  sessions           Session[]
+  blockedUsers       BlockedUser[]       @relation("UserBlocks")
+  blockedBy          BlockedUser[]       @relation("BlockedUser")
+  mutedUsers         MutedUser[]         @relation("UserMutes")
+  mutedBy            MutedUser[]         @relation("MutedUser")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@index([email])
   @@index([username])
   @@index([deletionScheduledAt])
@@ -662,15 +662,15 @@ model User {
 
 // Email Verification model - tracks email change requests
 model EmailVerification {
-  id            String    @id @default(uuid())
-  userId        String
-  pendingEmail  String
-  token         String    @unique
-  expiresAt     DateTime
-  createdAt     DateTime  @default(now())
-  
-  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  id           String   @id @default(uuid())
+  userId       String
+  pendingEmail String
+  token        String   @unique
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([userId])
   @@index([token])
   @@index([expiresAt])
@@ -679,24 +679,24 @@ model EmailVerification {
 
 // Session model - tracks user login sessions
 model Session {
-  id              String    @id @default(uuid())
-  userId          String
-  token           String    @unique
-  customName      String?
-  deviceName      String?
-  deviceType      String?   // mobile, tablet, desktop
-  os              String?
-  browser         String?
-  ip              String?
-  city            String?
-  country         String?
-  revoked         Boolean   @default(false)
-  createdAt       DateTime  @default(now())
-  lastActivityAt  DateTime  @default(now())
-  expiresAt       DateTime
-  
-  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  id             String   @id @default(uuid())
+  userId         String
+  token          String   @unique
+  customName     String?
+  deviceName     String?
+  deviceType     String? // mobile, tablet, desktop
+  os             String?
+  browser        String?
+  ip             String?
+  city           String?
+  country        String?
+  revoked        Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  lastActivityAt DateTime @default(now())
+  expiresAt      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([userId])
   @@index([token])
   @@index([revoked])
@@ -706,14 +706,14 @@ model Session {
 
 // Blocked User model - tracks user blocking relationships
 model BlockedUser {
-  id          String    @id @default(uuid())
-  userId      String
-  blockedId   String
-  blockedAt   DateTime  @default(now())
-  
-  user        User      @relation("UserBlocks", fields: [userId], references: [id], onDelete: Cascade)
-  blocked     User      @relation("BlockedUser", fields: [blockedId], references: [id], onDelete: Cascade)
-  
+  id        String   @id @default(uuid())
+  userId    String
+  blockedId String
+  blockedAt DateTime @default(now())
+
+  user    User @relation("UserBlocks", fields: [userId], references: [id], onDelete: Cascade)
+  blocked User @relation("BlockedUser", fields: [blockedId], references: [id], onDelete: Cascade)
+
   @@unique([userId, blockedId])
   @@index([userId])
   @@index([blockedId])
@@ -722,22 +722,19 @@ model BlockedUser {
 
 // Muted User model - tracks user muting relationships
 model MutedUser {
-  id        String    @id @default(uuid())
-  userId    String
-  mutedId   String
-  mutedAt   DateTime  @default(now())
-  
-  user      User      @relation("UserMutes", fields: [userId], references: [id], onDelete: Cascade)
-  muted     User      @relation("MutedUser", fields: [mutedId], references: [id], onDelete: Cascade)
-  
+  id      String   @id @default(uuid())
+  userId  String
+  mutedId String
+  mutedAt DateTime @default(now())
+
+  user  User @relation("UserMutes", fields: [userId], references: [id], onDelete: Cascade)
+  muted User @relation("MutedUser", fields: [mutedId], references: [id], onDelete: Cascade)
+
   @@unique([userId, mutedId])
   @@index([userId])
   @@index([mutedId])
   @@map("muted_users")
 }
-
-
-
 
 // ============================================================================
 // CONTENT FEED & TIMELINE SYSTEM
@@ -745,61 +742,61 @@ model MutedUser {
 
 // Post model - main content posts in the feed
 model Post {
-  id                    String    @id @default(uuid())
-  authorUserId          String
-  postType              String    @default("standard") // standard, photo_album, video, poll, shared, question, event, marketplace
-  textContent           String?
-  
+  id           String  @id @default(uuid())
+  authorUserId String
+  postType     String  @default("standard") // standard, photo_album, video, poll, shared, question, event, marketplace
+  textContent  String?
+
   // Media and attachments
-  media                 Json?     // Array of media items with URLs, types, captions
-  
+  media Json? // Array of media items with URLs, types, captions
+
   // Social features
-  petTags               String[]  // Pet IDs tagged in post
-  mentionedUserIds      String[]  // User IDs mentioned with @
-  hashtags              String[]  // Hashtags without # symbol
-  location              Json?     // { name, lat, lng, placeId }
-  
+  petTags          String[] // Pet IDs tagged in post
+  mentionedUserIds String[] // User IDs mentioned with @
+  hashtags         String[] // Hashtags without # symbol
+  location         Json? // { name, lat, lng, placeId }
+
   // Engagement counters (denormalized for performance)
-  likesCount            Int       @default(0)
-  commentsCount         Int       @default(0)
-  sharesCount           Int       @default(0)
-  savesCount            Int       @default(0)
-  viewsCount            Int       @default(0)
-  
+  likesCount    Int @default(0)
+  commentsCount Int @default(0)
+  sharesCount   Int @default(0)
+  savesCount    Int @default(0)
+  viewsCount    Int @default(0)
+
   // Reactions breakdown
-  reactions             Json?     // { like: 0, love: 0, haha: 0, wow: 0, sad: 0, angry: 0, paw: 0 }
-  
+  reactions Json? // { like: 0, love: 0, haha: 0, wow: 0, sad: 0, angry: 0, paw: 0 }
+
   // Privacy and settings
-  visibility            String    @default("public") // public, friends, private, custom, followers_only
-  visibilityUserIds     String[]  // For custom visibility
-  commentsEnabled       Boolean   @default(true)
-  sharesEnabled         Boolean   @default(true)
-  
+  visibility        String   @default("public") // public, friends, private, custom, followers_only
+  visibilityUserIds String[] // For custom visibility
+  commentsEnabled   Boolean  @default(true)
+  sharesEnabled     Boolean  @default(true)
+
   // Post type specific data
-  pollOptions           Json?     // For poll posts: [{ id, text, votes }]
-  eventData             Json?     // For event posts: { date, time, location, rsvps }
-  marketplaceData       Json?     // For marketplace posts: { price, condition, category }
-  sharedPostId          String?   // For shared posts
-  
+  pollOptions     Json? // For poll posts: [{ id, text, votes }]
+  eventData       Json? // For event posts: { date, time, location, rsvps }
+  marketplaceData Json? // For marketplace posts: { price, condition, category }
+  sharedPostId    String? // For shared posts
+
   // Metadata
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
-  editedAt              DateTime?
-  deletedAt             DateTime?
-  scheduledPublishAt    DateTime?
-  publishedAt           DateTime?
-  
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  editedAt           DateTime?
+  deletedAt          DateTime?
+  scheduledPublishAt DateTime?
+  publishedAt        DateTime?
+
   // Ranking and algorithm
-  relevanceScore        Float     @default(0)
-  lastScoreComputedAt   DateTime?
-  
+  relevanceScore      Float     @default(0)
+  lastScoreComputedAt DateTime?
+
   // Relations
-  likes                 PostLike[]
-  comments              Comment[]
-  shares                PostShare[]
-  saves                 SavedPost[]
-  views                 PostView[]
-  
+  likes    PostLike[]
+  comments Comment[]
+  shares   PostShare[]
+  saves    SavedPost[]
+  views    PostView[]
+
   @@index([authorUserId, createdAt(sort: Desc)])
   @@index([publishedAt(sort: Desc)])
   @@index([relevanceScore(sort: Desc)])
@@ -811,15 +808,15 @@ model Post {
 
 // Post Like model - tracks likes on posts
 model PostLike {
-  id            String    @id @default(uuid())
-  postId        String
-  userId        String
-  reactionType  String    @default("like") // like, love, haha, wow, sad, angry, paw
-  createdAt     DateTime  @default(now())
-  
+  id           String   @id @default(uuid())
+  postId       String
+  userId       String
+  reactionType String   @default("like") // like, love, haha, wow, sad, angry, paw
+  createdAt    DateTime @default(now())
+
   // Relations
-  post          Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
-  
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
   @@unique([postId, userId])
   @@index([postId, createdAt(sort: Desc)])
   @@index([userId])
@@ -828,30 +825,30 @@ model PostLike {
 
 // Comment model - comments on posts
 model Comment {
-  id                String    @id @default(uuid())
-  postId            String
-  authorUserId      String
-  parentCommentId   String?   // For threaded replies
-  textContent       String
-  mediaUrl          String?   // Optional image/gif in comment
-  mentionedUserIds  String[]
-  
+  id               String   @id @default(uuid())
+  postId           String
+  authorUserId     String
+  parentCommentId  String? // For threaded replies
+  textContent      String
+  mediaUrl         String? // Optional image/gif in comment
+  mentionedUserIds String[]
+
   // Engagement
-  likesCount        Int       @default(0)
-  repliesCount      Int       @default(0)
-  
+  likesCount   Int @default(0)
+  repliesCount Int @default(0)
+
   // Metadata
-  createdAt         DateTime  @default(now())
-  editedAt          DateTime?
-  deletedAt         DateTime?
-  isPinned          Boolean   @default(false)
-  
+  createdAt DateTime  @default(now())
+  editedAt  DateTime?
+  deletedAt DateTime?
+  isPinned  Boolean   @default(false)
+
   // Relations
-  post              Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
-  likes             CommentLike[]
-  replies           Comment[] @relation("CommentReplies")
-  parent            Comment?  @relation("CommentReplies", fields: [parentCommentId], references: [id], onDelete: Cascade)
-  
+  post    Post          @relation(fields: [postId], references: [id], onDelete: Cascade)
+  likes   CommentLike[]
+  replies Comment[]     @relation("CommentReplies")
+  parent  Comment?      @relation("CommentReplies", fields: [parentCommentId], references: [id], onDelete: Cascade)
+
   @@index([postId, createdAt(sort: Desc)])
   @@index([authorUserId])
   @@index([parentCommentId])
@@ -861,14 +858,14 @@ model Comment {
 
 // Comment Like model - tracks likes on comments
 model CommentLike {
-  id          String    @id @default(uuid())
-  commentId   String
-  userId      String
-  createdAt   DateTime  @default(now())
-  
+  id        String   @id @default(uuid())
+  commentId String
+  userId    String
+  createdAt DateTime @default(now())
+
   // Relations
-  comment     Comment   @relation(fields: [commentId], references: [id], onDelete: Cascade)
-  
+  comment Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
   @@unique([commentId, userId])
   @@index([commentId])
   @@index([userId])
@@ -877,16 +874,16 @@ model CommentLike {
 
 // Post Share model - tracks post shares
 model PostShare {
-  id          String    @id @default(uuid())
-  postId      String
-  userId      String
-  shareType   String    @default("repost") // repost, quote, external
-  caption     String?   // For quote shares
-  createdAt   DateTime  @default(now())
-  
+  id        String   @id @default(uuid())
+  postId    String
+  userId    String
+  shareType String   @default("repost") // repost, quote, external
+  caption   String? // For quote shares
+  createdAt DateTime @default(now())
+
   // Relations
-  post        Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
-  
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
   @@index([postId, createdAt(sort: Desc)])
   @@index([userId])
   @@map("post_shares")
@@ -894,15 +891,15 @@ model PostShare {
 
 // Saved Post model - bookmarked posts
 model SavedPost {
-  id          String    @id @default(uuid())
-  postId      String
-  userId      String
+  id             String   @id @default(uuid())
+  postId         String
+  userId         String
   collectionName String? // Optional collection/folder name
-  createdAt   DateTime  @default(now())
-  
+  createdAt      DateTime @default(now())
+
   // Relations
-  post        Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
-  
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
   @@unique([postId, userId])
   @@index([userId, createdAt(sort: Desc)])
   @@map("saved_posts")
@@ -910,15 +907,15 @@ model SavedPost {
 
 // Post View model - tracks post views for analytics
 model PostView {
-  id          String    @id @default(uuid())
-  postId      String
-  userId      String?   // Nullable for anonymous views
-  duration    Int       @default(0) // Seconds viewed
-  viewedAt    DateTime  @default(now())
-  
+  id       String   @id @default(uuid())
+  postId   String
+  userId   String? // Nullable for anonymous views
+  duration Int      @default(0) // Seconds viewed
+  viewedAt DateTime @default(now())
+
   // Relations
-  post        Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
-  
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
   @@index([postId, viewedAt(sort: Desc)])
   @@index([userId])
   @@map("post_views")
@@ -926,12 +923,12 @@ model PostView {
 
 // Poll Vote model - tracks votes on poll posts
 model PollVote {
-  id          String    @id @default(uuid())
-  postId      String
-  userId      String
-  optionId    String    // ID of the poll option voted for
-  createdAt   DateTime  @default(now())
-  
+  id        String   @id @default(uuid())
+  postId    String
+  userId    String
+  optionId  String // ID of the poll option voted for
+  createdAt DateTime @default(now())
+
   @@unique([postId, userId])
   @@index([postId])
   @@index([userId])
@@ -944,44 +941,44 @@ model PollVote {
 
 // Story model - 24-hour ephemeral content
 model Story {
-  id                  String    @id @default(uuid())
-  creatorUserId       String
-  mediaUrl            String
-  mediaType           String    // photo, video
-  thumbnailUrl        String
-  mediaDimensions     Json      // { width, height }
-  videoDuration       Int?      // Seconds, for videos
-  
+  id              String @id @default(uuid())
+  creatorUserId   String
+  mediaUrl        String
+  mediaType       String // photo, video
+  thumbnailUrl    String
+  mediaDimensions Json // { width, height }
+  videoDuration   Int? // Seconds, for videos
+
   // Content
-  caption             String?
-  stickers            Json?     // Array of sticker objects with type, position, content
-  musicTrackId        String?
-  linkUrl             String?
-  
+  caption      String?
+  stickers     Json? // Array of sticker objects with type, position, content
+  musicTrackId String?
+  linkUrl      String?
+
   // Privacy
-  visibility          String    @default("everyone") // everyone, close_friends, custom
-  visibilityUserIds   String[]  // For custom visibility
-  isSensitiveContent  Boolean   @default(false)
-  
+  visibility         String   @default("everyone") // everyone, close_friends, custom
+  visibilityUserIds  String[] // For custom visibility
+  isSensitiveContent Boolean  @default(false)
+
   // Engagement counters
-  viewsCount          Int       @default(0)
-  uniqueViewersCount  Int       @default(0)
-  repliesCount        Int       @default(0)
-  reactionsCount      Int       @default(0)
-  sharesCount         Int       @default(0)
-  linkClicksCount     Int       @default(0)
-  
+  viewsCount         Int @default(0)
+  uniqueViewersCount Int @default(0)
+  repliesCount       Int @default(0)
+  reactionsCount     Int @default(0)
+  sharesCount        Int @default(0)
+  linkClicksCount    Int @default(0)
+
   // Lifecycle
-  createdAt           DateTime  @default(now())
-  expiresAt           DateTime
-  deletedAt           DateTime?
-  isArchived          Boolean   @default(false)
-  archivedAt          DateTime?
-  
+  createdAt  DateTime  @default(now())
+  expiresAt  DateTime
+  deletedAt  DateTime?
+  isArchived Boolean   @default(false)
+  archivedAt DateTime?
+
   // Relations
-  views               StoryView[]
-  interactions        StoryInteraction[]
-  
+  views        StoryView[]
+  interactions StoryInteraction[]
+
   @@index([creatorUserId, expiresAt])
   @@index([expiresAt])
   @@index([deletedAt])
@@ -991,16 +988,16 @@ model Story {
 
 // Story View model - tracks who viewed stories
 model StoryView {
-  id          String    @id @default(uuid())
-  storyId     String
+  id           String   @id @default(uuid())
+  storyId      String
   viewerUserId String
-  duration    Int       @default(0) // Seconds watched
-  completed   Boolean   @default(false) // Watched to end
-  viewedAt    DateTime  @default(now())
-  
+  duration     Int      @default(0) // Seconds watched
+  completed    Boolean  @default(false) // Watched to end
+  viewedAt     DateTime @default(now())
+
   // Relations
-  story       Story     @relation(fields: [storyId], references: [id], onDelete: Cascade)
-  
+  story Story @relation(fields: [storyId], references: [id], onDelete: Cascade)
+
   @@unique([storyId, viewerUserId])
   @@index([storyId, viewedAt(sort: Desc)])
   @@index([viewerUserId])
@@ -1009,16 +1006,16 @@ model StoryView {
 
 // Story Interaction model - tracks interactions with story stickers
 model StoryInteraction {
-  id              String    @id @default(uuid())
+  id              String   @id @default(uuid())
   storyId         String
   userId          String
-  interactionType String    // poll_vote, question_response, quiz_answer, reaction, reply, link_click
-  data            Json?     // Type-specific data
-  createdAt       DateTime  @default(now())
-  
+  interactionType String // poll_vote, question_response, quiz_answer, reaction, reply, link_click
+  data            Json? // Type-specific data
+  createdAt       DateTime @default(now())
+
   // Relations
-  story           Story     @relation(fields: [storyId], references: [id], onDelete: Cascade)
-  
+  story Story @relation(fields: [storyId], references: [id], onDelete: Cascade)
+
   @@index([storyId, interactionType])
   @@index([userId])
   @@map("story_interactions")
@@ -1026,26 +1023,26 @@ model StoryInteraction {
 
 // Story Highlight model - permanent collections of stories
 model StoryHighlight {
-  id          String    @id @default(uuid())
-  userId      String
-  name        String
-  coverUrl    String    // Cover image URL
-  storyIds    String[]  // Array of story IDs in this highlight
-  order       Int       @default(0) // Display order
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  
+  id        String   @id @default(uuid())
+  userId    String
+  name      String
+  coverUrl  String // Cover image URL
+  storyIds  String[] // Array of story IDs in this highlight
+  order     Int      @default(0) // Display order
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@index([userId, order])
   @@map("story_highlights")
 }
 
 // Close Friends model - curated list for private story sharing
 model CloseFriend {
-  id          String    @id @default(uuid())
-  userId      String
+  id           String   @id @default(uuid())
+  userId       String
   friendUserId String
-  addedAt     DateTime  @default(now())
-  
+  addedAt      DateTime @default(now())
+
   @@unique([userId, friendUserId])
   @@index([userId])
   @@index([friendUserId])
