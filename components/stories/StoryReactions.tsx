@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Heart, Laugh, Surprise, Frown, Flame, HandClap } from "lucide-react"
+import { Heart, Laugh, Frown, Flame, Hand, Zap } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 interface StoryReactionsProps {
@@ -15,10 +15,10 @@ interface StoryReactionsProps {
 const reactions = [
   { type: "heart", icon: Heart, label: "Heart", color: "text-red-500" },
   { type: "laughing", icon: Laugh, label: "Laughing", color: "text-yellow-500" },
-  { type: "surprised", icon: Surprise, label: "Surprised", color: "text-blue-500" },
+  { type: "surprised", icon: Zap, label: "Surprised", color: "text-blue-500" },
   { type: "crying", icon: Frown, label: "Crying", color: "text-blue-400" },
   { type: "fire", icon: Flame, label: "Fire", color: "text-orange-500" },
-  { type: "clap", icon: HandClap, label: "Clap", color: "text-green-500" },
+  { type: "clap", icon: Hand, label: "Clap", color: "text-green-500" },
 ]
 
 export function StoryReactions({ storyId, userId, onReact, className }: StoryReactionsProps) {

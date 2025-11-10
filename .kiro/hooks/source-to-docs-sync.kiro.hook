@@ -1,25 +1,26 @@
 {
   "enabled": true,
   "name": "Source to Docs Sync",
-  "description": "Monitors TypeScript source files, components, API routes, and configuration files for changes and prompts the agent to update relevant documentation in README.md or the /docs folder",
+  "description": "Monitors TypeScript source files, React components, library files, API routes, Prisma schema, and configuration files. When changes are detected, triggers documentation updates in README or /docs folder to keep documentation in sync with code changes.",
   "version": "1",
   "when": {
     "type": "fileEdited",
     "patterns": [
-      "app/**/*.tsx",
       "app/**/*.ts",
-      "components/**/*.tsx",
+      "app/**/*.tsx",
       "components/**/*.ts",
+      "components/**/*.tsx",
       "lib/**/*.ts",
+      "lib/**/*.tsx",
       "prisma/schema.prisma",
-      "package.json",
-      "next.config.mjs",
-      "capacitor.config.ts",
-      "tsconfig.json"
+      "*.ts",
+      "*.tsx",
+      "*.mjs",
+      "package.json"
     ]
   },
   "then": {
     "type": "askAgent",
-    "prompt": "Source files have been modified. Please review the changes and update the documentation accordingly. Check if README.md needs updates for new features, API changes, or setup instructions. Also review the /docs folder to see if any specific documentation files (like FEATURES.md, INSTALLATION.md, or implementation guides) need to be updated to reflect these code changes. Ensure documentation stays in sync with the current codebase. \n- Source files have been modified. update on root changelog.md file with new features, write only on human language about changes"
+    "prompt": "Source code files have been modified. Review the changes and update the relevant documentation in the /docs folder or README.md file. Ensure that:\n1. New features or components are documented with usage examples\n2. API changes are reflected in API documentation\n3. Database schema changes are documented in DATABASE_ARCHITECTURE.md or related docs\n4. Configuration changes are noted in INSTALLATION.md or setup guides\n5. Breaking changes are highlighted in appropriate documentation\nFocus on keeping documentation accurate, clear, and synchronized with the current codebase."
   }
 }

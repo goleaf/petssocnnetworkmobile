@@ -245,6 +245,118 @@ Test files should cover:
 - Citation management
 - Related articles scoring
 
+## Quality Analytics
+
+The wiki system includes automated quality monitoring to identify and track content issues.
+
+### Quality Issue Types
+
+**Stub Articles**
+- Detects articles with insufficient content (< 200 characters)
+- Checks for minimal structure (< 2 sections)
+- Severity: High (< 100 chars) or Medium (100-200 chars)
+
+**Stale Health Pages**
+- Monitors health articles for outdated information
+- Flags articles not updated in 12+ months
+- Severity based on age:
+  - High: 18+ months old
+  - Medium: 12-18 months old
+  - Low: < 15 months old
+- Only applies to articles with health-related tags
+
+**Orphaned Pages**
+- Identifies articles with no inbound links
+- Counts links from:
+  - Related articles
+  - Wiki-style links `[[article]]` in content
+  - Tag references
+- Severity: Medium (0 links) or Low (< 1 link)
+
+### Quality Dashboard
+
+```typescript
+import { getQualityDashboardData } from "@/lib/utils/quality-analytics"
+
+const dashboard = getQualityDashboardData()
+// Returns:
+// {
+//   totalArticles: number
+//   stubs: number
+//   staleHealthPages: number
+//   orphanedPages: number
+//   issuesBySeverity: { low, medium, high }
+//   issues: QualityIssue[]
+//   totalIssues: number
+//   healthScore: number // 0-100
+// }
+```
+
+### Health Score Calculation
+
+The wiki health score (0-100) is calculated by:
+- Starting with a base score of 100
+- Applying penalties for each issue:
+  - Low severity: -1 point
+  - Medium severity: -3 points
+  - High severity: -5 points
+- Minimum score: 0
+
+### API Functions
+
+```typescript
+// Get all quality issues
+const issues = getQualityIssues()
+
+// Get issues by type
+const stubs = getIssuesByType("stub")
+const staleHealth = getIssuesByType("stale_health")
+const orphaned = getIssuesByType("orphaned")
+
+// Get issues by severity
+const highPriority = getIssuesBySeverity("high")
+const mediumPriority = getIssuesBySeverity("medium")
+const lowPriority = getIssuesBySeverity("low")
+
+// Detect specific issue types
+const stubIssues = detectStubs(articles)
+const staleIssues = detectStaleHealthPages(articles)
+const orphanedIssues = detectOrphanedPages(articles)
+```
+
+### Quality Issue Interface
+
+```typescript
+interface QualityIssue {
+  id: string
+  type: "stub" | "stale_health" | "orphaned"
+  articleId: string
+  articleSlug: string
+  articleTitle: string
+  severity: "low" | "medium" | "high"
+  description: string
+  detectedAt: string
+  lastUpdated?: string
+}
+```
+
+### Integration Points
+
+**Admin Dashboard**
+- Display quality metrics overview
+- Show high-priority issues requiring attention
+- Track health score trends over time
+
+**Article Editor**
+- Warn authors about stub content
+- Suggest related articles to reduce orphaning
+- Prompt for updates on stale health content
+
+**Moderation Queue**
+- Prioritize review of high-severity issues
+- Batch operations for similar issues
+- Track resolution progress
+
 ## Future Enhancements
 
 - Translation system integration
@@ -252,4 +364,7 @@ Test files should cover:
 - Edit request workflow
 - Conflict of Interest (COI) disclosure
 - Link validation for citations
+- Automated quality improvement suggestions
+- Quality score trends and analytics
+- Email notifications for stale content owners
 

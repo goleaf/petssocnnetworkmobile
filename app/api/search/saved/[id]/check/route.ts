@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/lib/db"
-import { performCrossEntitySearch } from "../../route"
+import { performCrossEntitySearch } from "../../../route"
 import type { LatLng } from "@/lib/utils/geo-search"
 
 // GET /api/search/saved/[id]/check - Check for new results since last check

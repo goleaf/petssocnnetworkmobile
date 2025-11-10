@@ -390,6 +390,26 @@ This document provides a comprehensive list of all features available in the Pet
   - Pagination (9 articles per page)
   - Featured articles
 
+### Wiki Quality Analytics
+- **Automated Quality Monitoring**
+  - Stub detection (articles < 200 characters with < 2 sections)
+  - Stale health page detection (health articles not updated in 12+ months)
+  - Orphaned page detection (articles with no inbound links)
+  - Severity classification (low, medium, high)
+  
+- **Quality Dashboard**
+  - Total articles count
+  - Issue counts by type (stubs, stale health, orphaned)
+  - Issue counts by severity
+  - Wiki health score (0-100)
+  - Detailed issue list with article information
+  
+- **Quality Metrics**
+  - Health score calculation with severity-based penalties
+  - Issue detection timestamps
+  - Last updated tracking per article
+  - Inbound link counting from related articles, wiki links, and tags
+
 ---
 
 ## Social Features

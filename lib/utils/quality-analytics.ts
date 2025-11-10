@@ -1,5 +1,5 @@
 import type { WikiArticle, HealthArticleData } from "@/lib/types"
-import { getAllItems } from "@/lib/storage"
+import { getWikiArticles } from "@/lib/storage"
 
 export interface QualityIssue {
   id: string
@@ -158,7 +158,7 @@ export function detectOrphanedPages(articles: WikiArticle[]): QualityIssue[] {
 
 // Get all quality issues for the wiki
 export function getQualityIssues(): QualityIssue[] {
-  const articles = getAllItems<WikiArticle>("wiki_articles")
+  const articles = getWikiArticles()
   
   const stubs = detectStubs(articles)
   const staleHealthPages = detectStaleHealthPages(articles)
@@ -169,7 +169,7 @@ export function getQualityIssues(): QualityIssue[] {
 
 // Get quality dashboard data
 export function getQualityDashboardData(): QualityDashboardData {
-  const articles = getAllItems<WikiArticle>("wiki_articles")
+  const articles = getWikiArticles()
   const issues = getQualityIssues()
 
   const totalArticles = articles.length

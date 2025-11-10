@@ -29,16 +29,21 @@ Continue building your app on:
 3. Changes are automatically pushed to this repository
 4. Vercel deploys the latest version from this repository
 
-## Database Architecture
+## Documentation
 
+### Database
 This project uses **Prisma ORM exclusively** for all database operations. 
 
-### Quick Links
 - **[Database Documentation Index](./DATABASE_README.md)** - Complete guide to database docs
 - **[Quick Start](./QUICK_START_DATABASE.md)** - Get started with Prisma in 5 minutes
 - **[Architecture Guide](./DATABASE_ARCHITECTURE.md)** - Comprehensive database architecture
 - **[Migration Guide](./MIGRATION_TO_PRISMA.md)** - Migrate from PostgreSQL to Prisma
 - **[Summary](./DATABASE_SUMMARY.md)** - Executive summary
+
+### Features
+- **[Wiki Quality Analytics](./WIKI_QUALITY_ANALYTICS.md)** - Automated content quality monitoring
+- **[Wiki Implementation](../doc/WIKI_IMPLEMENTATION.md)** - Wiki system architecture
+- **[Features List](../doc/FEATURES.md)** - Complete feature documentation
 
 ### Key Rules
 - ✅ **Always use Prisma** for database operations

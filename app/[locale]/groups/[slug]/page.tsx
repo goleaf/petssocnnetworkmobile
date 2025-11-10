@@ -61,10 +61,6 @@ import {
   Trophy,
 } from "lucide-react"
 import Link from "next/link"
-import { BulkEventExportButton } from "@/components/groups/EventExportButton"
-import { AnalyticsDashboard } from "@/components/groups/AnalyticsDashboard"
-import { MemberList } from "@/components/groups/MemberList"
-import { GroupSettings } from "@/components/groups/GroupSettings"
 
 const GROUP_TAB_VALUES = new Set([
   "posts",

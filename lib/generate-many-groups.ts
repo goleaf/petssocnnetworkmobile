@@ -4,7 +4,7 @@
 
 import type { Group, GroupMember } from "./types"
 import { generateGroupsForAnimal } from "./generate-groups"
-import { addGroup, addGroupMember, generateStorageId, getAllGroups } from "./storage"
+import { addGroup, addGroupMember, generateStorageId, getGroups } from "./storage"
 
 // Animal category mapping
 const animalCategoryMap: Record<string, string> = {
@@ -42,7 +42,7 @@ export function generateManyGroups(groupsPerAnimal: number = 50): {
   let totalGenerated = 0
 
   // Get existing groups to determine starting ID
-  const existingGroups = getAllGroups()
+  const existingGroups = getGroups()
   let groupIdCounter = existingGroups.length + 1
 
   // Generate groups for each animal type
@@ -115,7 +115,7 @@ export function generateGroupsForCategory(
   count: number,
   categoryId: string
 ): number {
-  const existingGroups = getAllGroups()
+  const existingGroups = getGroups()
   let groupIdCounter = existingGroups.length + 1
 
   const groups = generateGroupsForAnimal(animalType, categoryId, count, groupIdCounter)

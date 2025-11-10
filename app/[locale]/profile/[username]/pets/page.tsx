@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ViewModeSelector } from "@/components/ui/view-mode-selector"
 import { BackButton } from "@/components/ui/back-button"
 import { FilterDropdown } from "@/components/ui/filter-dropdown"
-import { getUsers, getPets, getFeedPostsByPetId, getBlogPostsByPetId, deletePet } from "@/lib/storage"
+import { getUsers, getPets, getBlogPostsByPetId, deletePet } from "@/lib/storage"
 import { useAuth } from "@/lib/auth"
 import {
   PawPrint,

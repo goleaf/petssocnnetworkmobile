@@ -270,7 +270,7 @@ export default function PetProfilePage({ params }: { params: Promise<{ username:
   }
 
   // Owner-only share controls
-  const isOwner = viewerId === owner.id
+  const isOwnerForShare = viewerId === owner.id
   const [shareOpen, setShareOpen] = useState(false)
   const [shareViewHealth, setShareViewHealth] = useState(true)
   const [shareCoOwner, setShareCoOwner] = useState(false)

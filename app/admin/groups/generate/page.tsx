@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { generateManyGroups, generateGroupsForCategory } from "@/lib/generate-many-groups"
-import { getAllGroups } from "@/lib/storage"
+import { getGroups } from "@/lib/storage"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -59,7 +59,7 @@ export default function GenerateGroupsPage() {
   const [selectedAnimalType, setSelectedAnimalType] = useState<string>("")
   const [customCount, setCustomCount] = useState("50")
 
-  const currentGroupCount = getAllGroups().length
+  const currentGroupCount = getGroups().length
 
   const handleGenerateAll = () => {
     setIsGenerating(true)
@@ -256,7 +256,7 @@ export default function GenerateGroupsPage() {
                     </div>
                   )}
                   <p className="text-sm text-muted-foreground mt-4">
-                    Current total groups in system: {getAllGroups().length}
+                    Current total groups in system: {getGroups().length}
                   </p>
                 </div>
               ) : (
