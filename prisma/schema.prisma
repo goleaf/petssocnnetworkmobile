@@ -981,7 +981,6 @@ model Story {
   // Relations
   views               StoryView[]
   interactions        StoryInteraction[]
-  highlights          StoryHighlight[]
   
   @@index([creatorUserId, expiresAt])
   @@index([expiresAt])
