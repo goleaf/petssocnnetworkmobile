@@ -335,7 +335,7 @@ function normalizeUrl(url: string): string {
 function renderMessageContent(text: string) {
   // Linkify URLs and style mentions
   const urlPattern = /(https?:\/\/[^\s]+|www\.[^\s]+)/gi
-  const parts: Array<string | JSX.Element> = []
+  const parts: Array<ReactNode> = []
   let lastIndex = 0
   let match: RegExpExecArray | null
 
@@ -1548,7 +1548,7 @@ export default function MessagesPage() {
     document.addEventListener('touchend', end as any)
   }
 
-  const handleMessageChange = (event: ChangeEvent<HTMLTextAreaElement>) => {
+  const handleMessageChange = (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const value = event.target.value
     setNewMessage(value)
     // Auto-detect link and fetch preview asynchronously
