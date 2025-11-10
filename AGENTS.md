@@ -9,6 +9,9 @@ Use `npm run dev` for everyday work and pair it with `mobile/` previews when val
 ## Coding Style & Naming Conventions
 Code is TypeScript-first with 2-space indentation and explicit return types on exported helpers. Components use PascalCase filenames and export a single default or named component; hooks/utilities stay camelCase (`useFriendRequests`, `formatReputation`). Client-side React files start with `"use client"` and use the `cn` helper to compose Tailwind classes. Prefer colocating domain logic in `lib/` (often paired with `zod` schemas) and rely on ESLint autofix before committing.
 
+## Database & Data Persistence
+**Use Prisma exclusively** for all database operations. Import from `@/lib/prisma` or `@/lib/db`. Never use direct PostgreSQL queries, `pg` library, or raw SQL. The schema lives in `prisma/schema.prisma`. Run `npx prisma generate` after schema changes and `npx prisma migrate dev` to create migrations. See `docs/DATABASE_ARCHITECTURE.md` for patterns and best practices.
+
 ## Testing Guidelines
 Unit and integration tests follow the `*.test.ts(x)` pattern near their sources or under `tests/`; reuse `__mocks__/` for auth/network doubles. Maintain or raise the coverage recorded in `coverage/`, and document any intentional gaps inside the PR description. E2E specs live in `e2e/flows` with Playwright; rely on `data-testid` selectors and run the headed mode before merging UI-heavy changes.
 

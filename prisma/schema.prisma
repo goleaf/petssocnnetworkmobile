@@ -370,6 +370,9 @@ model ReportReason {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  // Relations
+  reports     ContentReport[]
+
   @@index([code])
   @@index([category])
   @@index([active])
@@ -585,13 +588,6 @@ model FlaggedRevision {
   @@map("flagged_revisions")
 }
 
-
-  @@index([type])
-  @@index([enabled])
-  @@index([createdAt])
-  @@map("notification_templates")
-}
-
 // Notification Send Record - audit log for sent notifications
 model NotificationSendRecord {
   id            String   @id @default(uuid())
@@ -613,6 +609,131 @@ model NotificationSendRecord {
   @@index([createdAt])
   @@index([jobId])
   @@map("notification_send_records")
+}
+
+// User model - core user account and authentication
+model User {
+  id                    String    @id @default(uuid())
+  username              String    @unique
+  email                 String    @unique
+  emailVerified         Boolean   @default(false)
+  passwordHash          String
+  passwordChangedAt     DateTime?
+  sessionInvalidatedAt  DateTime?
+  
+  // Profile information
+  displayName           String?
+  bio                   String?
+  avatarUrl             String?
+  role                  String    @default("user") // user, moderator, admin
+  
+  // Privacy settings (JSON field)
+  privacy               Json?
+  
+  // Notification preferences
+  notificationSettings  Json?
+  
+  // Search and discoverability
+  searchIndexingEnabled Boolean   @default(true)
+  showInSearch          Boolean   @default(true)
+  showInRecommendations Boolean   @default(true)
+  
+  // Account deletion
+  deletionScheduledAt   DateTime?
+  deletionReason        String?
+  
+  // Relations
+  emailVerifications    EmailVerification[]
+  sessions              Session[]
+  blockedUsers          BlockedUser[]       @relation("UserBlocks")
+  blockedBy             BlockedUser[]       @relation("BlockedUser")
+  mutedUsers            MutedUser[]         @relation("UserMutes")
+  mutedBy               MutedUser[]         @relation("MutedUser")
+  
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  
+  @@index([email])
+  @@index([username])
+  @@index([deletionScheduledAt])
+  @@index([role])
+  @@map("users")
+}
+
+// Email Verification model - tracks email change requests
+model EmailVerification {
+  id            String    @id @default(uuid())
+  userId        String
+  pendingEmail  String
+  token         String    @unique
+  expiresAt     DateTime
+  createdAt     DateTime  @default(now())
+  
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([token])
+  @@index([expiresAt])
+  @@map("email_verifications")
+}
+
+// Session model - tracks user login sessions
+model Session {
+  id              String    @id @default(uuid())
+  userId          String
+  token           String    @unique
+  customName      String?
+  deviceName      String?
+  deviceType      String?   // mobile, tablet, desktop
+  os              String?
+  browser         String?
+  ip              String?
+  city            String?
+  country         String?
+  revoked         Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+  lastActivityAt  DateTime  @default(now())
+  expiresAt       DateTime
+  
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([token])
+  @@index([revoked])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+// Blocked User model - tracks user blocking relationships
+model BlockedUser {
+  id          String    @id @default(uuid())
+  userId      String
+  blockedId   String
+  blockedAt   DateTime  @default(now())
+  
+  user        User      @relation("UserBlocks", fields: [userId], references: [id], onDelete: Cascade)
+  blocked     User      @relation("BlockedUser", fields: [blockedId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, blockedId])
+  @@index([userId])
+  @@index([blockedId])
+  @@map("blocked_users")
+}
+
+// Muted User model - tracks user muting relationships
+model MutedUser {
+  id        String    @id @default(uuid())
+  userId    String
+  mutedId   String
+  mutedAt   DateTime  @default(now())
+  
+  user      User      @relation("UserMutes", fields: [userId], references: [id], onDelete: Cascade)
+  muted     User      @relation("MutedUser", fields: [mutedId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, mutedId])
+  @@index([userId])
+  @@index([mutedId])
+  @@map("muted_users")
 }
 
 

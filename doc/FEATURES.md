@@ -504,24 +504,116 @@ This document provides a comprehensive list of all features available in the Pet
 
 ## Privacy & Settings
 
+### Account Security
+- **Email Management**
+  - Change email address with verification
+  - Verification tokens with 24-hour expiration
+  - Notification to old email with cancellation link
+  - Confirmation emails to both old and new addresses
+
+- **Password Management**
+  - Change password with current password verification
+  - Password complexity requirements (8+ characters, uppercase, lowercase, number, special character)
+  - Password strength meter (weak/fair/good/strong)
+  - Session invalidation on password change
+  - Log out from all devices option
+  - Password change notification emails
+
+- **Session Management**
+  - View all active sessions with device information
+  - Device name, operating system, and browser detection
+  - IP address and geolocation (city, country)
+  - Last activity timestamps
+  - Rename devices with custom names
+  - Remove individual sessions
+  - Remove all sessions except current
+  - 7-day session expiration
+  - Current session highlighting
+
+- **Account Deletion**
+  - Request account deletion with password verification
+  - 30-day grace period before permanent deletion
+  - Deletion reason tracking
+  - Restore account within 30 days via email link
+  - Immediate session revocation on deletion request
+  - Scheduled background job for permanent deletion
+
 ### Privacy Settings (`/settings/privacy`)
-- Profile privacy (public, private, followers-only)
-- Email privacy
-- Location privacy
-- Pets privacy
-- Posts privacy
-- Followers visibility
-- Following visibility
-- Searchable status
-- Follow request settings
-- Tagging permissions
-- Message privacy with end-to-end encrypted direct messages
+- **Profile Visibility**
+  - Public, Friends Only, or Private profile
+  - Granular field privacy (email, phone, birthday, age, location)
+  - Online status visibility toggle
+  - Profile section visibility controls
+
+- **Tagging & Mentions**
+  - Who can tag you (Everyone, Friends, No One)
+  - Review tags before showing on profile
+  - Who can mention you with privacy levels
+  - Tag notification preferences
+
+- **Messaging Privacy**
+  - Who can send messages (Everyone, Friends, No One)
+  - Read receipts toggle
+  - Typing indicators toggle
+  - Message forwarding permissions
+  - End-to-end encrypted direct messages
+
+- **Search & Indexing**
+  - Allow search engines to index profile
+  - Show profile in user search
+  - Show in recommendations
+  - Profile discoverability controls
+
+- **Blocking & Muting**
+  - Block users with automatic follower removal
+  - Muted users list management
+  - Bulk block functionality
+  - Search and filter blocked/muted users
+  - Unblock and unmute actions
+
+### Notification Settings
+- **Notification Categories**
+  - Interactions (likes, comments, reactions)
+  - Social (follows, friend requests)
+  - Messages (direct messages, group messages)
+  - Posts (mentions, tags)
+  - Pets (health alerts, reminders)
+  - Events (upcoming events, RSVPs)
+  - Marketplace (offers, transactions)
+  - Community (group updates, announcements)
+  - System (security alerts, updates)
+
+- **Notification Channels**
+  - Push notifications
+  - Email notifications
+  - SMS notifications (with cost warnings)
+  - In-app notifications
+  - Per-category channel selection
+
+- **Email Digest Options**
+  - Real-time delivery
+  - Hourly digest
+  - Daily digest with time preference
+  - Weekly digest with day preference
+  - Security alerts always sent immediately
+
+- **Quiet Hours**
+  - Start and end time configuration
+  - Day-of-week selection
+  - Allow critical notifications during quiet hours
+  - Automatic notification suppression
+
+- **Notification Previews**
+  - Show notification previews toggle
+  - Show on lock screen toggle
+  - Privacy implications explained
 
 ### User Settings
 - Profile customization
 - Account management
 - Notification preferences
 - Privacy controls
+- Security settings
 
 ---
 

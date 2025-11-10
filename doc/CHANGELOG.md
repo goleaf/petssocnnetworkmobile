@@ -8,6 +8,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Account Settings & Security**
+  - Email change functionality with verification tokens and 24-hour expiration
+  - Password change with complexity requirements and session invalidation
+  - Active session management with device tracking, location, and IP address
+  - Account deletion with 30-day grace period and restore capability
+  - Privacy settings for profile visibility, contact information, and online status
+  - Granular privacy controls for tagging, mentions, and messaging
+  - User blocking and muting system with relationship management
+  - Comprehensive notification settings with channel preferences (push, email, SMS, in-app)
+  - Email digest options (real-time, hourly, daily, weekly)
+  - Quiet hours configuration with critical notification exceptions
+  - Search and indexing controls for profile discoverability
+  - Database models: EmailVerification, Session, BlockedUser, MutedUser
+  - Enhanced User model with privacy, notification settings, and deletion scheduling
 - **Post Embeds**
   - Share dialog with link copying and iframe embed generation
   - Dedicated `/embed/post/[id]` route for lightweight external embeds

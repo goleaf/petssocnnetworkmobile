@@ -28,3 +28,36 @@ Continue building your app on:
 2. Deploy your chats from the v0 interface
 3. Changes are automatically pushed to this repository
 4. Vercel deploys the latest version from this repository
+
+## Database Architecture
+
+This project uses **Prisma ORM exclusively** for all database operations. 
+
+### Quick Links
+- **[Database Documentation Index](./DATABASE_README.md)** - Complete guide to database docs
+- **[Quick Start](./QUICK_START_DATABASE.md)** - Get started with Prisma in 5 minutes
+- **[Architecture Guide](./DATABASE_ARCHITECTURE.md)** - Comprehensive database architecture
+- **[Migration Guide](./MIGRATION_TO_PRISMA.md)** - Migrate from PostgreSQL to Prisma
+- **[Summary](./DATABASE_SUMMARY.md)** - Executive summary
+
+### Key Rules
+- ✅ **Always use Prisma** for database operations
+- ✅ Import from `@/lib/prisma` or `@/lib/db`
+- ❌ **Never use** direct PostgreSQL queries or `pg` library
+- 📖 Schema: `../prisma/schema.prisma`
+
+### Quick Example
+```typescript
+import { prisma } from '@/lib/prisma'
+
+// Create
+const user = await prisma.user.create({ data: { ... } })
+
+// Read
+const user = await prisma.user.findUnique({ where: { id } })
+
+// Update
+await prisma.user.update({ where: { id }, data: { ... } })
+```
+
+See [DATABASE_README.md](./DATABASE_README.md) for complete documentation.
