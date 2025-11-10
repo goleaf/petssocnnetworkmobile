@@ -27,30 +27,41 @@ const createPostSchema = z.object({
   visibilityUserIds: z.array(z.string()).optional(),
   commentsEnabled: z.boolean().default(true),
   sharesEnabled: z.boolean().default(true),
+  // Poll data
   pollOptions: z.array(z.object({
     id: z.string(),
     text: z.string().max(50),
     votes: z.number().default(0),
   })).min(2).max(4).optional(),
-  eventData: z.object({
-    title: z.string(),
-    date: z.string(),
-    time: z.string().optional(),
-    location: z.string(),
-    rsvps: z.object({
-      going: z.array(z.string()).default([]),
-      interested: z.array(z.string()).default([]),
-      cantGo: z.array(z.string()).default([]),
-    }).optional(),
+  pollQuestion: z.string().optional(),
+  pollExpiresAt: z.string().datetime().optional(),
+  pollAllowMultiple: z.boolean().default(false),
+  // Event data
+  eventTitle: z.string().optional(),
+  eventStartAt: z.string().datetime().optional(),
+  eventDurationMinutes: z.number().optional(),
+  eventTimezone: z.string().optional(),
+  eventLocation: z.object({
+    name: z.string().optional(),
+    address: z.string().optional(),
+    lat: z.number().optional(),
+    lng: z.number().optional(),
   }).optional(),
-  marketplaceData: z.object({
-    title: z.string(),
-    price: z.number(),
-    condition: z.string(),
-    category: z.string(),
-    isSold: z.boolean().default(false),
+  // Marketplace data
+  marketplacePrice: z.number().optional(),
+  marketplaceCurrency: z.string().default('USD'),
+  marketplaceCondition: z.enum(['New', 'Like New', 'Good', 'Fair']).optional(),
+  marketplaceCategory: z.enum(['Toys', 'Food', 'Clothing', 'Accessories', 'Furniture', 'Healthcare', 'Books', 'Other']).optional(),
+  marketplaceShipping: z.object({
+    localPickup: z.boolean().optional(),
+    shippingAvailable: z.boolean().optional(),
   }).optional(),
+  marketplacePaymentMethods: z.array(z.string()).optional(),
+  // Question data
+  questionCategory: z.enum(['Training', 'Health', 'Behavior', 'Products', 'General']).optional(),
+  // Shared post
   sharedPostId: z.string().optional(),
+  shareComment: z.string().optional(),
   scheduledPublishAt: z.string().datetime().optional(),
 });
 
@@ -216,23 +227,31 @@ export async function POST(request: NextRequest) {
     // Validate poll options if poll post
     if (validatedData.postType === 'poll' && !validatedData.pollOptions) {
       return NextResponse.json(
-        { error: 'Poll posts require poll options' },
+        { error: 'Poll posts require poll options and question' },
         { status: 400 }
       );
     }
     
     // Validate event data if event post
-    if (validatedData.postType === 'event' && !validatedData.eventData) {
+    if (validatedData.postType === 'event' && (!validatedData.eventTitle || !validatedData.eventStartAt)) {
       return NextResponse.json(
-        { error: 'Event posts require event data' },
+        { error: 'Event posts require title and start time' },
         { status: 400 }
       );
     }
     
     // Validate marketplace data if marketplace post
-    if (validatedData.postType === 'marketplace' && !validatedData.marketplaceData) {
+    if (validatedData.postType === 'marketplace' && (!validatedData.marketplacePrice || !validatedData.marketplaceCondition || !validatedData.marketplaceCategory)) {
       return NextResponse.json(
-        { error: 'Marketplace posts require marketplace data' },
+        { error: 'Marketplace posts require price, condition, and category' },
+        { status: 400 }
+      );
+    }
+    
+    // Validate question category if question post
+    if (validatedData.postType === 'question' && !validatedData.questionCategory) {
+      return NextResponse.json(
+        { error: 'Question posts require a category' },
         { status: 400 }
       );
     }
@@ -248,6 +267,44 @@ export async function POST(request: NextRequest) {
       }
     }
     
+    // Prepare poll data
+    const pollData = validatedData.postType === 'poll' && validatedData.pollOptions ? {
+      question: validatedData.pollQuestion || '',
+      options: validatedData.pollOptions,
+      totalVotes: 0,
+      expiresAt: validatedData.pollExpiresAt,
+      allowMultiple: validatedData.pollAllowMultiple,
+    } : undefined;
+
+    // Prepare event data
+    const eventData = validatedData.postType === 'event' ? {
+      title: validatedData.eventTitle!,
+      startAt: validatedData.eventStartAt!,
+      durationMinutes: validatedData.eventDurationMinutes,
+      timezone: validatedData.eventTimezone,
+      location: validatedData.eventLocation,
+      rsvps: {
+        going: [],
+        interested: [],
+        cantGo: [],
+      },
+    } : undefined;
+
+    // Prepare marketplace data
+    const marketplaceData = validatedData.postType === 'marketplace' ? {
+      price: validatedData.marketplacePrice!,
+      currency: validatedData.marketplaceCurrency,
+      condition: validatedData.marketplaceCondition!,
+      category: validatedData.marketplaceCategory!,
+      shipping: validatedData.marketplaceShipping,
+      paymentMethods: validatedData.marketplacePaymentMethods,
+    } : undefined;
+
+    // Prepare question data
+    const questionData = validatedData.postType === 'question' ? {
+      category: validatedData.questionCategory!,
+    } : undefined;
+
     // Create post record
     const post = await postRepository.createPost({
       authorUserId: userId,
@@ -262,10 +319,12 @@ export async function POST(request: NextRequest) {
       visibilityUserIds: validatedData.visibilityUserIds || [],
       commentsEnabled: validatedData.commentsEnabled,
       sharesEnabled: validatedData.sharesEnabled,
-      pollOptions: validatedData.pollOptions,
-      eventData: validatedData.eventData,
-      marketplaceData: validatedData.marketplaceData,
+      pollData,
+      eventData,
+      marketplaceData,
+      questionData,
       sharedPostId: validatedData.sharedPostId,
+      shareComment: validatedData.shareComment,
       scheduledPublishAt: validatedData.scheduledPublishAt ? new Date(validatedData.scheduledPublishAt) : undefined,
       publishedAt: validatedData.scheduledPublishAt ? undefined : new Date(),
     });

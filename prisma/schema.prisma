@@ -275,6 +275,7 @@ model Breed {
   averageLifespan String?
   temperament     String[]
   origin          String?
+  photoUrl        String? // Photo for autocomplete display
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -773,10 +774,12 @@ model Post {
   sharesEnabled     Boolean  @default(true)
 
   // Post type specific data
-  pollOptions     Json? // For poll posts: [{ id, text, votes }]
-  eventData       Json? // For event posts: { date, time, location, rsvps }
-  marketplaceData Json? // For marketplace posts: { price, condition, category }
+  pollOptions     Json? // For poll posts: { question, options: [{ id, text, votes }], totalVotes, expiresAt, allowMultiple }
+  eventData       Json? // For event posts: { title, startAt, durationMinutes, timezone, location, rsvps }
+  marketplaceData Json? // For marketplace posts: { price, currency, condition, category, shipping, paymentMethods, soldAt }
+  questionData    Json? // For question posts: { category, bestAnswerCommentId }
   sharedPostId    String? // For shared posts
+  shareComment    String? // Comment when sharing a post
 
   // Metadata
   createdAt          DateTime  @default(now())
@@ -1047,4 +1050,142 @@ model CloseFriend {
   @@index([userId])
   @@index([friendUserId])
   @@map("close_friends")
+}
+
+// ============================================================================
+// PET PROFILE SYSTEM
+// ============================================================================
+
+// Pet model - main pet profile information
+model Pet {
+  id       String @id @default(uuid())
+  ownerId  String
+  slug     String // URL-friendly identifier (e.g., "max-golden-retriever")
+  name     String
+  species  String // dog, cat, bird, rabbit, guinea_pig, hamster, fish, reptile, horse, farm_animal, other
+  breedId  String? // Reference to Breed model
+  breed    String? // Free text breed for non-dog/cat species
+
+  // Physical characteristics
+  gender           String? // male, female, unknown
+  birthday         String? // ISO date string
+  approximateAge   Json? // { years: number, months: number } for unknown exact birthday
+  adoptionDate     String? // ISO date string
+  color            String?
+  markings         String? // Detailed appearance description
+  weight           String? // Current weight with unit
+  weightUnit       String? // lbs or kg
+  spayedNeutered   Boolean @default(false)
+  coverPhoto       String? // Hero banner image URL
+  primaryPhotoUrl  String? // Main profile photo URL
+  primaryPhotoIndex Int?    // Index of primary photo in photos array
+
+  // Identification
+  microchipId                  String?
+  microchipCompany             String?
+  microchipRegistrationStatus  String? // registered, not_registered, unknown
+  microchipCertificateUrl      String?
+  collarTagId                  String?
+  insurancePolicyNumber        String?
+
+  // Medical information
+  vetClinicName    String?
+  vetClinicContact String?
+  allergies        String[] // Array of allergy names
+  allergySeverities Json?   // Map of allergy name to severity (mild, moderate, severe)
+  medications      Json?    // Array of medication objects
+  conditions       Json?    // Array of condition objects with name, diagnosedAt, notes
+
+  // Personality and preferences
+  personality      Json? // Array of trait strings
+  favoriteThings   Json? // { treats: string, toys: string, activities: string[] }
+  specialNeeds     String?
+  dislikes         String?
+
+  // Profile content
+  bio              String?
+  isFeatured       Boolean @default(false) // Featured pet on owner's profile
+
+  // Privacy settings
+  privacy          Json? // { visibility: string, sections: object, interactions: object }
+
+  // Social features
+  followers        String[] // User IDs following this pet
+  followRequests   String[] // Pending follow requests
+
+  // Photo management
+  photoCaptions    Json? // Map of photo URL to caption
+  photoTags        Json? // Map of photo URL to array of pet IDs tagged
+
+  // Weight history
+  weightHistory    Json? // Array of { date: string, weight: number, unit: string, notes?: string }
+
+  // Metadata
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  deletedAt        DateTime?
+
+  // Relations
+  photos         PetPhoto[]
+  timelineEvents PetTimelineEvent[]
+
+  @@unique([ownerId, slug])
+  @@index([ownerId])
+  @@index([slug])
+  @@index([species])
+  @@index([deletedAt])
+  @@map("pets")
+}
+
+// Pet Photo model - manages pet photo gallery
+model PetPhoto {
+  id           String  @id @default(uuid())
+  petId        String
+  url          String
+  thumbnailUrl String?
+  optimizedUrl String? // WebP optimized version
+  caption      String?
+  taggedPetIds String[] // Pet IDs tagged in this photo
+  isPrimary    Boolean  @default(false)
+  order        Int      @default(0) // Display order in gallery
+
+  uploadedAt   DateTime @default(now())
+
+  // Relations
+  pet Pet @relation(fields: [petId], references: [id], onDelete: Cascade)
+
+  @@index([petId])
+  @@index([petId, isPrimary])
+  @@index([petId, order])
+  @@map("pet_photos")
+}
+
+// Pet Timeline Event model - tracks milestones and activities
+model PetTimelineEvent {
+  id           String   @id @default(uuid())
+  petId        String
+  type         String // added_to_family, vet_visit, vaccination, birthday, achievement, health_update, new_friend, custom
+  title        String
+  description  String
+  date         DateTime
+  photos       String[] // Array of photo URLs
+  relatedPetId String? // For "new_friend" events linking to another pet
+
+  // Engagement
+  reactions    Json? // Map of reaction type to array of user IDs
+  comments     Json? // Array of comment objects
+
+  // Privacy
+  visibility   String   @default("public") // public, followers_only, private
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  pet Pet @relation(fields: [petId], references: [id], onDelete: Cascade)
+
+  @@index([petId])
+  @@index([petId, date(sort: Desc)])
+  @@index([type])
+  @@map("pet_timeline_events")
 }

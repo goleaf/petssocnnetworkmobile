@@ -162,6 +162,125 @@ const score = rankingEngine.computeScore(post, context);
 const scores = rankingEngine.batchComputeScores(posts, context);
 ```
 
+## Story Service
+
+**File:** `story-service.ts`
+
+The StoryService handles story creation, validation, and lifecycle management for 24-hour ephemeral content.
+
+### Features
+
+- **Story Creation:**
+  - Validates media constraints (photos max 10MB, videos max 100MB and 15 seconds)
+  - Creates story records with 24-hour expiry
+  - Stores stickers as JSONB data
+  - Supports multiple visibility levels (everyone, close_friends, custom)
+
+- **Media Validation:**
+  - Photo size limit: 10MB
+  - Video size limit: 100MB
+  - Video duration limit: 15 seconds
+
+- **Privacy Controls:**
+  - Everyone: Public stories visible to all
+  - Close Friends: Only visible to curated close friends list
+  - Custom: Visible to specific user list
+
+- **Story Management:**
+  - Get active stories (not expired, not deleted)
+  - Delete stories (soft delete)
+  - Archive stories for permanent storage
+  - Check view permissions based on visibility
+
+### Usage
+
+```typescript
+import { storyService } from '@/lib/services/story-service';
+
+// Create a story
+const story = await storyService.createStory({
+  creatorUserId: 'user-id',
+  mediaUrl: 'https://cdn.example.com/story.jpg',
+  mediaType: 'photo',
+  thumbnailUrl: 'https://cdn.example.com/thumb.jpg',
+  mediaDimensions: { width: 1080, height: 1920 },
+  caption: 'My story caption',
+  stickers: [
+    {
+      type: 'poll',
+      position: { x: 0.5, y: 0.7 },
+      content: { question: 'What do you think?', options: ['Yes', 'No'] }
+    }
+  ],
+  visibility: 'close_friends',
+});
+
+// Validate media before upload
+const validation = storyService.validateMedia('video', 95000000, 14);
+if (!validation.valid) {
+  console.error(validation.errors);
+}
+
+// Get active stories
+const stories = await storyService.getActiveStories('user-id');
+
+// Check if user can view story
+const canView = await storyService.canViewStory(story, 'viewer-id');
+```
+
+### API Endpoint
+
+**POST /api/stories**
+
+Request Body:
+```json
+{
+  "mediaUrl": "https://cdn.example.com/story.jpg",
+  "mediaType": "photo",
+  "thumbnailUrl": "https://cdn.example.com/thumb.jpg",
+  "mediaDimensions": { "width": 1080, "height": 1920 },
+  "fileSize": 5242880,
+  "caption": "My story caption",
+  "stickers": [
+    {
+      "type": "poll",
+      "position": { "x": 0.5, "y": 0.7 },
+      "size": 1,
+      "rotation": 0,
+      "content": {
+        "question": "What do you think?",
+        "options": ["Yes", "No"]
+      }
+    }
+  ],
+  "visibility": "everyone",
+  "isSensitiveContent": false
+}
+```
+
+Response:
+```json
+{
+  "success": true,
+  "story": {
+    "id": "story-id",
+    "creatorUserId": "user-id",
+    "mediaUrl": "https://cdn.example.com/story.jpg",
+    "mediaType": "photo",
+    "thumbnailUrl": "https://cdn.example.com/thumb.jpg",
+    "mediaDimensions": { "width": 1080, "height": 1920 },
+    "caption": "My story caption",
+    "stickers": [...],
+    "visibility": "everyone",
+    "viewsCount": 0,
+    "uniqueViewersCount": 0,
+    "createdAt": "2024-01-01T00:00:00.000Z",
+    "expiresAt": "2024-01-02T00:00:00.000Z",
+    "isArchived": false
+  }
+}
+```
+
 ## Requirements Satisfied
 
 - ✅ Requirement 1.1: Feed types (Home, Explore, Following, Local, My Pets)
@@ -172,3 +291,5 @@ const scores = rankingEngine.batchComputeScores(posts, context);
 - ✅ Requirement 4.3: Affinity calculation
 - ✅ Requirement 4.4: Content type preferences
 - ✅ Requirement 4.5: Diversity and negative signals
+- ✅ Requirement 9.1: Story publishing with visibility controls
+- ✅ Requirement 13.4: Story creation with 24-hour expiry and JSONB stickers

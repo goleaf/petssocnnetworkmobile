@@ -23,10 +23,12 @@ export interface CreatePostInput {
   visibilityUserIds?: string[];
   commentsEnabled?: boolean;
   sharesEnabled?: boolean;
-  pollOptions?: any;
+  pollData?: any;
   eventData?: any;
   marketplaceData?: any;
+  questionData?: any;
   sharedPostId?: string;
+  shareComment?: string;
   scheduledPublishAt?: Date;
   publishedAt?: Date;
 }
@@ -42,9 +44,10 @@ export interface UpdatePostInput {
   visibilityUserIds?: string[];
   commentsEnabled?: boolean;
   sharesEnabled?: boolean;
-  pollOptions?: any;
+  pollData?: any;
   eventData?: any;
   marketplaceData?: any;
+  questionData?: any;
   editedAt?: Date;
 }
 
@@ -98,10 +101,12 @@ export class PostRepository {
         visibilityUserIds: input.visibilityUserIds || [],
         commentsEnabled: input.commentsEnabled ?? true,
         sharesEnabled: input.sharesEnabled ?? true,
-        pollOptions: input.pollOptions,
+        pollOptions: input.pollData,
         eventData: input.eventData,
         marketplaceData: input.marketplaceData,
+        questionData: input.questionData,
         sharedPostId: input.sharedPostId,
+        shareComment: input.shareComment,
         scheduledPublishAt: input.scheduledPublishAt,
         publishedAt: input.publishedAt || new Date(),
       },

@@ -17,10 +17,10 @@ const createShareSchema = z.object({
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: { postId: string } }
+  { params }: { params: Promise<{ postId: string }> }
 ) {
   try {
-    const { postId } = params;
+    const { postId } = await params;
     
     // Get authenticated user from session
     // TODO: Replace with actual auth check
@@ -105,7 +105,7 @@ export async function POST(
       
       createNotification({
         userId: post.authorUserId,
-        type: 'share',
+        type: 'post',
         actorId: userId,
         targetId: postId,
         targetType: 'post',
@@ -123,8 +123,9 @@ export async function POST(
       });
     }
     
-    // TODO: Broadcast real-time update via WebSocket
-    console.log(`[WebSocket] Broadcasting share on post ${postId} by user ${userId}`);
+    // Broadcast real-time update via WebSocket
+    const { websocketService } = await import('@/lib/services/websocket-service');
+    await websocketService.broadcastShare(postId, userId, post.sharesCount + 1);
     
     return NextResponse.json(
       {
@@ -166,10 +167,10 @@ export async function POST(
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { postId: string } }
+  { params }: { params: Promise<{ postId: string }> }
 ) {
   try {
-    const { postId } = params;
+    const { postId } = await params;
     const { searchParams } = new URL(request.url);
     
     const limit = parseInt(searchParams.get('limit') || '20', 10);
@@ -207,7 +208,7 @@ export async function GET(
     const nextCursor = hasMore ? resultShares[resultShares.length - 1].id : undefined;
     
     // Get user info for all shares
-    const userIds = Array.from(new Set(resultShares.map(s => s.userId)));
+    const userIds = Array.from(new Set(resultShares.map((s: { userId: string }) => s.userId)));
     const users = await prisma.user.findMany({
       where: { id: { in: userIds } },
       select: {
@@ -218,10 +219,10 @@ export async function GET(
       },
     });
     
-    const userMap = new Map(users.map(u => [u.id, u]));
+    const userMap = new Map(users.map((u: { id: string; username: string; displayName: string | null; avatarUrl: string | null }) => [u.id, u]));
     
     // Enrich shares with user data
-    const enrichedShares = resultShares.map(share => ({
+    const enrichedShares = resultShares.map((share: { id: string; postId: string; userId: string; shareType: string; caption: string | null; createdAt: Date }) => ({
       ...share,
       user: userMap.get(share.userId),
     }));

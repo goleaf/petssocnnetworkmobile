@@ -56,10 +56,10 @@ async function validateAndResolveMentions(usernames: string[]): Promise<string[]
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: { postId: string } }
+  { params }: { params: Promise<{ postId: string }> }
 ) {
   try {
-    const { postId } = params;
+    const { postId } = await params;
     
     // Get authenticated user from session
     // TODO: Replace with actual auth check
@@ -232,8 +232,9 @@ export async function POST(
       }
     }
     
-    // TODO: Broadcast real-time update via WebSocket
-    console.log(`[WebSocket] Broadcasting new comment ${comment.id} on post ${postId}`);
+    // Broadcast real-time update via WebSocket
+    const { websocketService } = await import('@/lib/services/websocket-service');
+    await websocketService.broadcastComment(postId, comment.id, userId, post.commentsCount + 1);
     
     // Return created comment with author info
     const commentWithAuthor = await prisma.comment.findUnique({
@@ -289,10 +290,10 @@ export async function POST(
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { postId: string } }
+  { params }: { params: Promise<{ postId: string }> }
 ) {
   try {
-    const { postId } = params;
+    const { postId } = await params;
     const { searchParams } = new URL(request.url);
     
     const limit = parseInt(searchParams.get('limit') || '20', 10);

@@ -10,10 +10,10 @@ import { invalidateContentCache } from '@/lib/scalability/cache-layer';
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: { postId: string } }
+  { params }: { params: Promise<{ postId: string }> }
 ) {
   try {
-    const { postId } = params;
+    const { postId } = await params;
     
     // Get authenticated user from session
     // TODO: Replace with actual auth check
@@ -143,8 +143,9 @@ export async function POST(
       });
     }
     
-    // TODO: Broadcast real-time update via WebSocket
-    console.log(`[WebSocket] Broadcasting like on post ${postId} by user ${userId}`);
+    // Broadcast real-time update via WebSocket
+    const { websocketService } = await import('@/lib/services/websocket-service');
+    await websocketService.broadcastLike(postId, userId, reactionType, post.likesCount + 1);
     
     return NextResponse.json({
       success: true,
@@ -168,10 +169,10 @@ export async function POST(
  */
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { postId: string } }
+  { params }: { params: Promise<{ postId: string }> }
 ) {
   try {
-    const { postId } = params;
+    const { postId } = await params;
     
     // Get authenticated user from session
     // TODO: Replace with actual auth check
@@ -233,8 +234,9 @@ export async function DELETE(
     // Invalidate cache
     await invalidateContentCache('post', postId);
     
-    // TODO: Broadcast real-time update via WebSocket
-    console.log(`[WebSocket] Broadcasting unlike on post ${postId} by user ${userId}`);
+    // Broadcast real-time update via WebSocket
+    const { websocketService } = await import('@/lib/services/websocket-service');
+    await websocketService.broadcastUnlike(postId, userId, Math.max(0, post.likesCount - 1));
     
     return NextResponse.json({
       success: true,

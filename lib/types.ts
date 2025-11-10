@@ -362,7 +362,7 @@ export interface VideoCaptionTrack {
 }
 
 // Stories (24h ephemeral content)
-export type StoryOverlayType = 'text' | 'sticker' | 'gif' | 'location' | 'poll' | 'question' | 'countdown' | 'drawing'
+export type StoryOverlayType = 'text' | 'sticker' | 'gif' | 'location' | 'poll' | 'question' | 'countdown' | 'quiz' | 'drawing'
 
 export interface StoryOverlay {
   id: string

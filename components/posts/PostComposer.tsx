@@ -6,8 +6,8 @@ import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 // import { PrivacySelector } from "@/components/privacy-selector"
 import { useAuth } from "@/lib/auth"
-import { addBlogPost, getPetById, getPetsByOwnerId } from "@/lib/storage"
-import type { BlogPost, PrivacyLevel, Draft } from "@/lib/types"
+import { getPetById, getPetsByOwnerId } from "@/lib/storage"
+import type { PrivacyLevel, Draft } from "@/lib/types"
 import { getCurrentPetId } from "@/lib/pets/current-pet"
 import { useEditor, EditorContent } from "@tiptap/react"
 import StarterKit from "@tiptap/starter-kit"
@@ -434,16 +434,9 @@ export function PostComposer({ onSubmitted, onCancel, className, initialDraftId 
     },
   })
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!user || !canPost) return
-    const now = new Date().toISOString()
-    const language =
-      user.displayPreferences?.primaryLanguage ||
-      user.displayPreferences?.preferredContentLanguages?.[0] ||
-      "en"
-
-    const hashtags = Array.from(new Set((content.match(/#([A-Za-z0-9_]+)/g) || []).map((h) => h.replace(/^#/, '').toLowerCase())))
-
+    
     const isQuestion = postMode === 'question'
     const isEvent = postMode === 'event'
     const isListing = postMode === 'listing'
@@ -454,24 +447,17 @@ export function PostComposer({ onSubmitted, onCancel, className, initialDraftId 
         ? titleBase
         : (titleBase + (content.length > 50 ? "..." : ""))
 
-    const post: BlogPost = {
-      id: String(Date.now()),
+    const postData = {
       petId,
-      authorId: user.id,
       title,
       content,
-      language,
-      tags: [],
-      categories: [],
-      likes: [],
-      createdAt: now,
-      updatedAt: now,
-      privacy,
-      hashtags,
+      visibility: visibility.privacy,
+      visibilityMode: visibility.mode,
+      allowedUserIds: visibility.mode === 'custom' ? (visibility.allowedUserIds || []) : undefined,
+      scheduledAt: visibility.scheduledAt || undefined,
       media: {
         images: media.images.map((i) => i.src),
         videos: media.video ? [media.video.src] : [],
-        links: [],
         captions: media.images.reduce((acc, i) => {
           if (i.caption) acc[i.src] = i.caption
           return acc
@@ -489,18 +475,14 @@ export function PostComposer({ onSubmitted, onCancel, className, initialDraftId 
       feeling,
       activity,
       poll: poll || undefined,
-      visibilityMode: visibility.mode,
-      allowedUserIds: visibility.mode === 'custom' ? (visibility.allowedUserIds || []) : undefined,
-      queueStatus: visibility.scheduledAt ? 'scheduled' : (visibility.mode === 'private' ? 'draft' : undefined),
-      scheduledAt: visibility.scheduledAt || undefined,
       ...(isQuestion ? { postType: 'question' as const, questionCategory: questionCategory } : {}),
       ...(isEvent ? {
         postType: 'event' as const,
         eventStartAt: eventStartLocal ? new Date(eventStartLocal).toISOString() : undefined,
         eventDurationMinutes: eventDuration || undefined,
         eventTimezone: eventTimezone || undefined,
+        coverImage: media.images.length > 0 ? media.images[0]!.src : undefined,
       } : {}),
-      ...(isEvent && media.images.length > 0 ? { coverImage: media.images[0]!.src } : {}),
       ...(isListing ? {
         postType: 'listing' as const,
         title: listingTitle.substring(0, 100),
@@ -513,16 +495,42 @@ export function PostComposer({ onSubmitted, onCancel, className, initialDraftId 
       } : {}),
     }
 
-    addBlogPost(post)
-    setContent("")
-    editor?.commands.clearContent(true)
-    setMedia({ images: [], video: null })
-    setTaggedPetIds([])
-    setPlaceId(null)
-    setFeeling(undefined)
-    setActivity(undefined)
-    setPoll(null)
-    onSubmitted?.()
+    try {
+      const response = await fetch('/api/posts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(postData),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to create post')
+      }
+
+      const result = await response.json()
+      
+      // Clear form on success
+      setContent("")
+      editor?.commands.clearContent(true)
+      setMedia({ images: [], video: null })
+      setTaggedPetIds([])
+      setPlaceId(null)
+      setFeeling(undefined)
+      setActivity(undefined)
+      setPoll(null)
+      setPostMode('post')
+      setQuestionCategory(undefined)
+      setEventTitle("")
+      setEventStartLocal("")
+      setListingTitle("")
+      setListingPrice("")
+      
+      toast.success('Post created successfully!')
+      onSubmitted?.()
+    } catch (error) {
+      console.error('Failed to create post:', error)
+      toast.error(error instanceof Error ? error.message : 'Failed to create post')
+    }
   }
 
   if (!user) {

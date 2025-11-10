@@ -196,3 +196,9 @@
     min-height: 44px;
   }
 }
+
+/* Required field indicator */
+label.required::after {
+  content: " *";
+  color: var(--destructive);
+}
