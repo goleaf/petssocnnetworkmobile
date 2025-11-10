@@ -1,5 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react';
-import { BlurredMedia } from '../blurred-media';
+import { BlurredMedia } from '@/components/moderation/blurred-media';
 
 // Mock Next.js Image component
 jest.mock('next/image', () => ({

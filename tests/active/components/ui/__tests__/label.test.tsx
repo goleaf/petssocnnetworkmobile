@@ -1,6 +1,6 @@
 import React from 'react'
 import { render, screen } from '@testing-library/react'
-import { Label } from '../label'
+import { Label } from '@/components/ui/label'
 
 describe('Label', () => {
   it('should render Label component', () => {

@@ -1,6 +1,6 @@
 import React from 'react'
 import { render, screen } from '@testing-library/react'
-import { GroupCard } from '../GroupCard'
+import { GroupCard } from '@/components/groups/GroupCard'
 import * as storage from '@/lib/storage'
 
 jest.mock('@/lib/storage')

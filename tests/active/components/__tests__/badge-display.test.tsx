@@ -1,6 +1,6 @@
 import React from 'react'
 import { render, screen } from '@testing-library/react'
-import { BadgeDisplay } from '../badge-display'
+import { BadgeDisplay } from '@/components/badge-display'
 import type { User } from '@/lib/types'
 
 describe('BadgeDisplay', () => {

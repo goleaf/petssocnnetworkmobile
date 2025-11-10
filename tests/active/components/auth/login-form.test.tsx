@@ -2,7 +2,7 @@ import React from 'react'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useRouter } from 'next/navigation'
-import { LoginForm } from '../login-form'
+import { LoginForm } from '@/components/auth/login-form'
 import { useAuth } from '@/lib/auth'
 
 // Mock next/navigation

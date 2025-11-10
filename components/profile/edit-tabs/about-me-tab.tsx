@@ -1,12 +1,14 @@
 "use client"
 
 import * as React from "react"
+import { useRef } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { CardHeaderWithIcon } from "@/components/ui/card-header-with-icon"
 import { Textarea } from "@/components/ui/textarea"
 import { FormLabel } from "@/components/ui/form-label"
 import { TagInput } from "@/components/ui/tag-input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { MentionAutocomplete, type MentionUser } from "@/components/profile/mention-autocomplete"
 import { Heart, Book, Film, Music, Gamepad2, Quote, GraduationCap } from "lucide-react"
 
 interface FormData {
@@ -26,6 +28,22 @@ interface AboutMeTabProps {
 }
 
 export function AboutMeTab({ formData, setFormData }: AboutMeTabProps) {
+  const aboutMeTextareaRef = useRef<HTMLTextAreaElement>(null)
+
+  const handleSearchUsers = async (query: string): Promise<MentionUser[]> => {
+    try {
+      const response = await fetch(`/api/users/search?q=${encodeURIComponent(query)}&limit=10`)
+      if (!response.ok) {
+        throw new Error("Failed to search users")
+      }
+      const data = await response.json()
+      return data.users || []
+    } catch (error) {
+      console.error("Error searching users:", error)
+      return []
+    }
+  }
+
   return (
     <div className="space-y-6">
       <Card>
@@ -35,17 +53,24 @@ export function AboutMeTab({ formData, setFormData }: AboutMeTabProps) {
           icon={Heart}
         />
         <CardContent className="space-y-6">
-          <div className="space-y-2">
+          <div className="space-y-2 relative">
             <FormLabel htmlFor="aboutMe" icon={Quote}>
               About Me
             </FormLabel>
             <Textarea
+              ref={aboutMeTextareaRef}
               id="aboutMe"
               value={formData.aboutMe}
               onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setFormData({ ...formData, aboutMe: e.target.value })}
-              placeholder="Tell us more about yourself..."
+              placeholder="Tell us more about yourself... (Use @ to mention users)"
               rows={6}
               className="resize-none"
+            />
+            <MentionAutocomplete
+              textareaRef={aboutMeTextareaRef as React.RefObject<HTMLTextAreaElement>}
+              value={formData.aboutMe}
+              onChange={(newValue) => setFormData({ ...formData, aboutMe: newValue })}
+              onSearchUsers={handleSearchUsers}
             />
           </div>
 

@@ -204,6 +204,18 @@ export async function updatePasswordAction(input: {
     }
   })
 
+  // Revoke all sessions except current session in the session store
+  // Note: Sessions are also lazily invalidated via sessionInvalidatedAt check in getCurrentUser
+  const { revokeOtherSessions } = await import("../session-store")
+  const { cookies } = await import("next/headers")
+  const cookieStore = await cookies()
+  const currentSessionToken = cookieStore.get("pet-social-session")?.value
+  
+  if (currentSessionToken) {
+    // Revoke all other sessions in the session store
+    revokeOtherSessions(user.id, currentSessionToken)
+  }
+
   // Re-issue session for current device so it remains valid after cutoff
   const refreshedUser = await prisma.user.findUnique({
     where: { id: user.id }

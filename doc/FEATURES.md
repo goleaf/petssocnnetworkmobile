@@ -77,6 +77,22 @@ This document provides a comprehensive list of all features available in the Pet
   - Completion message at 100%
   - Contextual tips for incomplete profiles
 
+### User Mentions
+- **@Mention System**
+  - Mention other users in profile bio using @username syntax
+  - Real-time autocomplete dropdown triggered by @ symbol
+  - Search followers and friends as you type
+  - Visual dropdown with profile photos and usernames
+  - Keyboard navigation (Arrow Up/Down, Enter, Tab, Escape)
+  - Click to select users from dropdown
+  - Mentions render as clickable blue links
+  - Links navigate to mentioned user's profile
+  - Debounced search (150ms) for optimal performance
+  - Automatic cursor positioning after insertion
+  - Privacy-aware: excludes blocked and muted users
+  - Prioritizes mutual friends in search results
+  - Works in profile bio editor with seamless integration
+
 ### User Connections
 - Follow/unfollow users
 - View followers list (`/user/[username]/followers`)

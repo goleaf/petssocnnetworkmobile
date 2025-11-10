@@ -8,7 +8,7 @@ import {
   CardContent,
   CardFooter,
   CardAction,
-} from '../card'
+} from '@/components/ui/card'
 
 describe('Card', () => {
   it('should render Card component', () => {

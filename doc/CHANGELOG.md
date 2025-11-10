@@ -8,6 +8,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Email Change Modal**
+  - Secure email change dialog with password verification
+  - Current email display (read-only) for reference
+  - New email input with format validation
+  - Password field for security verification
+  - Real-time validation with user-friendly error messages
+  - Success state with confirmation message showing new email
+  - Loading states during submission with spinner
+  - Automatic modal close after successful change
+  - Clean state reset when modal closes
+  - Prevents changing to the same email address
+  - Integrated with ContactTab for seamless user experience
+
+- **User Mention System**
+  - Mention other users in profile bio using @username syntax
+  - Real-time autocomplete dropdown triggered by @ symbol
+  - Search and filter followers and friends for mentions
+  - Visual user list with profile photos and usernames
+  - Keyboard navigation support (Arrow keys, Enter, Tab, Escape)
+  - Clickable mention links that navigate to user profiles
+  - Mentions highlighted in blue throughout the application
+  - Debounced search queries to optimize performance
+  - Automatic cursor positioning after mention insertion
+  - Excludes blocked and muted users from mention suggestions
+  - Prioritizes mutual friends in search results
+  - User search API endpoint with privacy-aware filtering
+  - Comprehensive test coverage for mention components
+
 - **Account Settings Type System**
   - Comprehensive TypeScript types for account security and privacy management
   - Privacy settings types with granular visibility controls for profile, email, phone, birthday, age, location, and online status

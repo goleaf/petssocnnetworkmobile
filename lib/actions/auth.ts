@@ -141,14 +141,66 @@ export async function loginAction(input: LoginInput): Promise<AuthResult> {
   const sessionToken = createSession(user)
   await setSessionCookie(sessionToken)
 
-  // Register session in session store with metadata
+  // Register session in database with metadata
   try {
+    const { prisma } = await import("../prisma")
+    const UAParser = (await import("ua-parser-js")).default
     const requestHeaders = await headers()
     const userAgent = requestHeaders.get("user-agent") || undefined
     const forwarded = requestHeaders.get("x-forwarded-for")
     const ip = forwarded ? forwarded.split(",")[0].trim() : requestHeaders.get("x-real-ip") || undefined
-    registerSession(sessionToken, user.id, userAgent, ip)
-  } catch {}
+    
+    // Parse device information
+    const parser = new (UAParser as any)(userAgent)
+    const result = parser.getResult()
+    
+    let deviceType: "mobile" | "tablet" | "desktop" = "desktop"
+    if (result.device.type === "mobile") deviceType = "mobile"
+    else if (result.device.type === "tablet") deviceType = "tablet"
+    
+    const deviceName = result.device.model || result.device.vendor || result.os.name || "Unknown Device"
+    const os = result.os.name || "Unknown"
+    const browser = result.browser.name || "Unknown"
+    
+    // Simple geolocation (in production, use a real service)
+    let city: string | undefined
+    let country: string | undefined
+    if (ip) {
+      if (ip.startsWith("127.")) {
+        city = "Localhost"
+        country = "—"
+      } else if (ip.startsWith("192.168.") || ip.startsWith("10.") || ip.startsWith("172.16.")) {
+        city = "Private"
+        country = "LAN"
+      } else {
+        city = "Unknown"
+        country = "Unknown"
+      }
+    }
+    
+    // Create or update session in database
+    const { SESSION_MAX_AGE } = await import("../auth-server")
+    await prisma.session.upsert({
+      where: { token: sessionToken },
+      create: {
+        userId: user.id,
+        token: sessionToken,
+        deviceName,
+        deviceType,
+        os,
+        browser,
+        ip,
+        city,
+        country,
+        expiresAt: new Date(Date.now() + SESSION_MAX_AGE * 1000),
+      },
+      update: {
+        lastActivityAt: new Date(),
+      },
+    })
+  } catch (error) {
+    console.error("Failed to register session in database:", error)
+  }
 
   // Revalidate pages that depend on auth
   revalidatePath("/")
@@ -462,12 +514,65 @@ export async function verifyMagicLink(
     // Create session
     const sessionToken = createSession(user)
     await setSessionCookie(sessionToken)
+    
+    // Register session in database
     try {
+      const { prisma } = await import("../prisma")
+      const UAParser = (await import("ua-parser-js")).default
       const userAgent = headersList.get("user-agent") || undefined
       const forwarded = headersList.get("x-forwarded-for")
       const ip = forwarded ? forwarded.split(",")[0].trim() : headersList.get("x-real-ip") || undefined
-      registerSession(sessionToken, user.id, userAgent, ip)
-    } catch {}
+      
+      // Parse device information
+      const parser = new (UAParser as any)(userAgent)
+      const result = parser.getResult()
+      
+      let deviceType: "mobile" | "tablet" | "desktop" = "desktop"
+      if (result.device.type === "mobile") deviceType = "mobile"
+      else if (result.device.type === "tablet") deviceType = "tablet"
+      
+      const deviceName = result.device.model || result.device.vendor || result.os.name || "Unknown Device"
+      const os = result.os.name || "Unknown"
+      const browser = result.browser.name || "Unknown"
+      
+      // Simple geolocation
+      let city: string | undefined
+      let country: string | undefined
+      if (ip) {
+        if (ip.startsWith("127.")) {
+          city = "Localhost"
+          country = "—"
+        } else if (ip.startsWith("192.168.") || ip.startsWith("10.") || ip.startsWith("172.16.")) {
+          city = "Private"
+          country = "LAN"
+        } else {
+          city = "Unknown"
+          country = "Unknown"
+        }
+      }
+      
+      const { SESSION_MAX_AGE } = await import("../auth-server")
+      await prisma.session.upsert({
+        where: { token: sessionToken },
+        create: {
+          userId: user.id,
+          token: sessionToken,
+          deviceName,
+          deviceType,
+          os,
+          browser,
+          ip,
+          city,
+          country,
+          expiresAt: new Date(Date.now() + SESSION_MAX_AGE * 1000),
+        },
+        update: {
+          lastActivityAt: new Date(),
+        },
+      })
+    } catch (error) {
+      console.error("Failed to register session in database:", error)
+    }
 
     revalidatePath("/")
     return { success: true }

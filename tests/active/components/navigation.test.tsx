@@ -2,7 +2,7 @@ import React from 'react'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { usePathname } from 'next/navigation'
-import { Navigation } from '../navigation'
+import { Navigation } from '@/components/navigation'
 import { useAuth } from '@/lib/auth'
 
 // Mock next/navigation

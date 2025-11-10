@@ -1,7 +1,7 @@
 import React from 'react'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { GroupHeader } from '../GroupHeader'
+import { GroupHeader } from '@/components/groups/GroupHeader'
 import * as storage from '@/lib/storage'
 import * as auth from '@/lib/auth'
 

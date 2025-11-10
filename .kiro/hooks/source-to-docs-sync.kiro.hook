@@ -20,6 +20,6 @@
   },
   "then": {
     "type": "askAgent",
-    "prompt": "Source files have been modified. Please review the changes and update the documentation accordingly. Check if README.md needs updates for new features, API changes, or setup instructions. Also review the /docs folder to see if any specific documentation files (like FEATURES.md, INSTALLATION.md, or implementation guides) need to be updated to reflect these code changes. Ensure documentation stays in sync with the current codebase. update on root changelog.md file with new features, write only on human language about changes"
+    "prompt": "Source files have been modified. Please review the changes and update the documentation accordingly. Check if README.md needs updates for new features, API changes, or setup instructions. Also review the /docs folder to see if any specific documentation files (like FEATURES.md, INSTALLATION.md, or implementation guides) need to be updated to reflect these code changes. Ensure documentation stays in sync with the current codebase. \n- Source files have been modified. update on root changelog.md file with new features, write only on human language about changes"
   }
 }

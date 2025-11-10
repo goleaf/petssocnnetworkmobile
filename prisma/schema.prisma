@@ -738,3 +738,317 @@ model MutedUser {
 
 
 
+
+// ============================================================================
+// CONTENT FEED & TIMELINE SYSTEM
+// ============================================================================
+
+// Post model - main content posts in the feed
+model Post {
+  id                    String    @id @default(uuid())
+  authorUserId          String
+  postType              String    @default("standard") // standard, photo_album, video, poll, shared, question, event, marketplace
+  textContent           String?
+  
+  // Media and attachments
+  media                 Json?     // Array of media items with URLs, types, captions
+  
+  // Social features
+  petTags               String[]  // Pet IDs tagged in post
+  mentionedUserIds      String[]  // User IDs mentioned with @
+  hashtags              String[]  // Hashtags without # symbol
+  location              Json?     // { name, lat, lng, placeId }
+  
+  // Engagement counters (denormalized for performance)
+  likesCount            Int       @default(0)
+  commentsCount         Int       @default(0)
+  sharesCount           Int       @default(0)
+  savesCount            Int       @default(0)
+  viewsCount            Int       @default(0)
+  
+  // Reactions breakdown
+  reactions             Json?     // { like: 0, love: 0, haha: 0, wow: 0, sad: 0, angry: 0, paw: 0 }
+  
+  // Privacy and settings
+  visibility            String    @default("public") // public, friends, private, custom, followers_only
+  visibilityUserIds     String[]  // For custom visibility
+  commentsEnabled       Boolean   @default(true)
+  sharesEnabled         Boolean   @default(true)
+  
+  // Post type specific data
+  pollOptions           Json?     // For poll posts: [{ id, text, votes }]
+  eventData             Json?     // For event posts: { date, time, location, rsvps }
+  marketplaceData       Json?     // For marketplace posts: { price, condition, category }
+  sharedPostId          String?   // For shared posts
+  
+  // Metadata
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  editedAt              DateTime?
+  deletedAt             DateTime?
+  scheduledPublishAt    DateTime?
+  publishedAt           DateTime?
+  
+  // Ranking and algorithm
+  relevanceScore        Float     @default(0)
+  lastScoreComputedAt   DateTime?
+  
+  // Relations
+  likes                 PostLike[]
+  comments              Comment[]
+  shares                PostShare[]
+  saves                 SavedPost[]
+  views                 PostView[]
+  
+  @@index([authorUserId, createdAt(sort: Desc)])
+  @@index([publishedAt(sort: Desc)])
+  @@index([relevanceScore(sort: Desc)])
+  @@index([deletedAt])
+  @@index([hashtags(ops: ArrayOps)], type: Gin)
+  @@index([visibility])
+  @@map("posts")
+}
+
+// Post Like model - tracks likes on posts
+model PostLike {
+  id            String    @id @default(uuid())
+  postId        String
+  userId        String
+  reactionType  String    @default("like") // like, love, haha, wow, sad, angry, paw
+  createdAt     DateTime  @default(now())
+  
+  // Relations
+  post          Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  
+  @@unique([postId, userId])
+  @@index([postId, createdAt(sort: Desc)])
+  @@index([userId])
+  @@map("post_likes")
+}
+
+// Comment model - comments on posts
+model Comment {
+  id                String    @id @default(uuid())
+  postId            String
+  authorUserId      String
+  parentCommentId   String?   // For threaded replies
+  textContent       String
+  mediaUrl          String?   // Optional image/gif in comment
+  mentionedUserIds  String[]
+  
+  // Engagement
+  likesCount        Int       @default(0)
+  repliesCount      Int       @default(0)
+  
+  // Metadata
+  createdAt         DateTime  @default(now())
+  editedAt          DateTime?
+  deletedAt         DateTime?
+  isPinned          Boolean   @default(false)
+  
+  // Relations
+  post              Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  likes             CommentLike[]
+  replies           Comment[] @relation("CommentReplies")
+  parent            Comment?  @relation("CommentReplies", fields: [parentCommentId], references: [id], onDelete: Cascade)
+  
+  @@index([postId, createdAt(sort: Desc)])
+  @@index([authorUserId])
+  @@index([parentCommentId])
+  @@index([deletedAt])
+  @@map("comments")
+}
+
+// Comment Like model - tracks likes on comments
+model CommentLike {
+  id          String    @id @default(uuid())
+  commentId   String
+  userId      String
+  createdAt   DateTime  @default(now())
+  
+  // Relations
+  comment     Comment   @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  
+  @@unique([commentId, userId])
+  @@index([commentId])
+  @@index([userId])
+  @@map("comment_likes")
+}
+
+// Post Share model - tracks post shares
+model PostShare {
+  id          String    @id @default(uuid())
+  postId      String
+  userId      String
+  shareType   String    @default("repost") // repost, quote, external
+  caption     String?   // For quote shares
+  createdAt   DateTime  @default(now())
+  
+  // Relations
+  post        Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  
+  @@index([postId, createdAt(sort: Desc)])
+  @@index([userId])
+  @@map("post_shares")
+}
+
+// Saved Post model - bookmarked posts
+model SavedPost {
+  id          String    @id @default(uuid())
+  postId      String
+  userId      String
+  collectionName String? // Optional collection/folder name
+  createdAt   DateTime  @default(now())
+  
+  // Relations
+  post        Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  
+  @@unique([postId, userId])
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("saved_posts")
+}
+
+// Post View model - tracks post views for analytics
+model PostView {
+  id          String    @id @default(uuid())
+  postId      String
+  userId      String?   // Nullable for anonymous views
+  duration    Int       @default(0) // Seconds viewed
+  viewedAt    DateTime  @default(now())
+  
+  // Relations
+  post        Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  
+  @@index([postId, viewedAt(sort: Desc)])
+  @@index([userId])
+  @@map("post_views")
+}
+
+// Poll Vote model - tracks votes on poll posts
+model PollVote {
+  id          String    @id @default(uuid())
+  postId      String
+  userId      String
+  optionId    String    // ID of the poll option voted for
+  createdAt   DateTime  @default(now())
+  
+  @@unique([postId, userId])
+  @@index([postId])
+  @@index([userId])
+  @@map("poll_votes")
+}
+
+// ============================================================================
+// STORIES SYSTEM
+// ============================================================================
+
+// Story model - 24-hour ephemeral content
+model Story {
+  id                  String    @id @default(uuid())
+  creatorUserId       String
+  mediaUrl            String
+  mediaType           String    // photo, video
+  thumbnailUrl        String
+  mediaDimensions     Json      // { width, height }
+  videoDuration       Int?      // Seconds, for videos
+  
+  // Content
+  caption             String?
+  stickers            Json?     // Array of sticker objects with type, position, content
+  musicTrackId        String?
+  linkUrl             String?
+  
+  // Privacy
+  visibility          String    @default("everyone") // everyone, close_friends, custom
+  visibilityUserIds   String[]  // For custom visibility
+  isSensitiveContent  Boolean   @default(false)
+  
+  // Engagement counters
+  viewsCount          Int       @default(0)
+  uniqueViewersCount  Int       @default(0)
+  repliesCount        Int       @default(0)
+  reactionsCount      Int       @default(0)
+  sharesCount         Int       @default(0)
+  linkClicksCount     Int       @default(0)
+  
+  // Lifecycle
+  createdAt           DateTime  @default(now())
+  expiresAt           DateTime
+  deletedAt           DateTime?
+  isArchived          Boolean   @default(false)
+  archivedAt          DateTime?
+  
+  // Relations
+  views               StoryView[]
+  interactions        StoryInteraction[]
+  highlights          StoryHighlight[]
+  
+  @@index([creatorUserId, expiresAt])
+  @@index([expiresAt])
+  @@index([deletedAt])
+  @@index([isArchived])
+  @@map("stories")
+}
+
+// Story View model - tracks who viewed stories
+model StoryView {
+  id          String    @id @default(uuid())
+  storyId     String
+  viewerUserId String
+  duration    Int       @default(0) // Seconds watched
+  completed   Boolean   @default(false) // Watched to end
+  viewedAt    DateTime  @default(now())
+  
+  // Relations
+  story       Story     @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  
+  @@unique([storyId, viewerUserId])
+  @@index([storyId, viewedAt(sort: Desc)])
+  @@index([viewerUserId])
+  @@map("story_views")
+}
+
+// Story Interaction model - tracks interactions with story stickers
+model StoryInteraction {
+  id              String    @id @default(uuid())
+  storyId         String
+  userId          String
+  interactionType String    // poll_vote, question_response, quiz_answer, reaction, reply, link_click
+  data            Json?     // Type-specific data
+  createdAt       DateTime  @default(now())
+  
+  // Relations
+  story           Story     @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  
+  @@index([storyId, interactionType])
+  @@index([userId])
+  @@map("story_interactions")
+}
+
+// Story Highlight model - permanent collections of stories
+model StoryHighlight {
+  id          String    @id @default(uuid())
+  userId      String
+  name        String
+  coverUrl    String    // Cover image URL
+  storyIds    String[]  // Array of story IDs in this highlight
+  order       Int       @default(0) // Display order
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  @@index([userId, order])
+  @@map("story_highlights")
+}
+
+// Close Friends model - curated list for private story sharing
+model CloseFriend {
+  id          String    @id @default(uuid())
+  userId      String
+  friendUserId String
+  addedAt     DateTime  @default(now())
+  
+  @@unique([userId, friendUserId])
+  @@index([userId])
+  @@index([friendUserId])
+  @@map("close_friends")
+}

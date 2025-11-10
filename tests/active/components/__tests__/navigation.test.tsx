@@ -2,7 +2,7 @@ import React from 'react'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { usePathname } from 'next/navigation'
-import { Navigation } from '../navigation'
+import { Navigation } from '@/components/navigation'
 import { useAuth } from '@/lib/auth'
 
 // Mock next/navigation
@@ -28,12 +28,12 @@ jest.mock('next/link', () => {
 })
 
 // Mock NotificationsDropdown
-jest.mock('../notifications-dropdown', () => ({
+jest.mock('@/components/notifications-dropdown', () => ({
   NotificationsDropdown: () => <div data-testid="notifications-dropdown">Notifications</div>,
 }))
 
 // Mock ScreenReaderToggle to avoid requiring provider in tests
-jest.mock('../a11y/ScreenReaderToggle', () => ({
+jest.mock('@/components/a11y/ScreenReaderToggle', () => ({
   ScreenReaderToggle: () => <div data-testid="sr-toggle" />,
 }))
 

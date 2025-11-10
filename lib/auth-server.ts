@@ -87,7 +87,7 @@ export async function getSession(): Promise<SessionData | null> {
     return null
   }
 
-  // Check if token has been revoked in the session store
+  // Check if token has been revoked in the in-memory session store (for backwards compatibility)
   if (isSessionRevoked(sessionToken)) {
     cookieStore.delete(SESSION_COOKIE_NAME)
     return null
@@ -101,7 +101,35 @@ export async function getSession(): Promise<SessionData | null> {
     return null
   }
 
-  // Bump activity timestamp
+  // Check database for session revocation
+  try {
+    const { prisma } = await import("./prisma")
+    const dbSession = await prisma.session.findUnique({
+      where: { token: sessionToken },
+      select: { revoked: true, expiresAt: true },
+    })
+    
+    if (dbSession) {
+      // If session is revoked or expired in database, clear cookie
+      if (dbSession.revoked || dbSession.expiresAt < new Date()) {
+        cookieStore.delete(SESSION_COOKIE_NAME)
+        return null
+      }
+      
+      // Update last activity timestamp in database
+      await prisma.session.update({
+        where: { token: sessionToken },
+        data: { lastActivityAt: new Date() },
+      }).catch(() => {
+        // Ignore errors updating activity timestamp
+      })
+    }
+  } catch (error) {
+    // If database check fails, fall back to in-memory check
+    console.error("Failed to check session in database:", error)
+  }
+
+  // Bump activity timestamp in memory store (for backwards compatibility)
   updateSessionActivity(sessionToken)
 
   return session

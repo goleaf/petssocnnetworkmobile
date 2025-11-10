@@ -1,7 +1,7 @@
 import React from 'react'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MarkdownEditor } from '../markdown-editor'
+import { MarkdownEditor } from '@/components/markdown-editor'
 
 // Mock react-markdown
 jest.mock('react-markdown', () => ({

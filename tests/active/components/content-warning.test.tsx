@@ -1,6 +1,6 @@
 import React from 'react'
 import { render, screen } from '@testing-library/react'
-import { ContentWarning } from '../content-warning'
+import { ContentWarning } from '@/components/content-warning'
 
 describe('ContentWarning', () => {
   it('should return null when no violations', () => {

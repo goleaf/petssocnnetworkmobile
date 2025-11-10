@@ -1,6 +1,6 @@
 import React from 'react'
 import { render, screen } from '@testing-library/react'
-import { Avatar, AvatarImage, AvatarFallback } from '../avatar'
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 
 describe('Avatar', () => {
   it('should render Avatar component', () => {

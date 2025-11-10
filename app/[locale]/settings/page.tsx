@@ -601,6 +601,31 @@ export default function SettingsPage() {
                   <Progress value={passwordStrength.value} />
                   <div className="text-xs text-muted-foreground">Strength: {passwordStrength.label}</div>
                 </div>
+                {newPassword.length > 0 && (
+                  <div className="mt-2 space-y-1 text-xs">
+                    <div className="font-medium text-muted-foreground">Password requirements:</div>
+                    <div className={`flex items-center gap-1 ${newPassword.length >= 8 ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'}`}>
+                      {newPassword.length >= 8 ? <CheckCircle2 className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
+                      <span>At least 8 characters</span>
+                    </div>
+                    <div className={`flex items-center gap-1 ${/[A-Z]/.test(newPassword) ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'}`}>
+                      {/[A-Z]/.test(newPassword) ? <CheckCircle2 className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
+                      <span>One uppercase letter</span>
+                    </div>
+                    <div className={`flex items-center gap-1 ${/[a-z]/.test(newPassword) ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'}`}>
+                      {/[a-z]/.test(newPassword) ? <CheckCircle2 className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
+                      <span>One lowercase letter</span>
+                    </div>
+                    <div className={`flex items-center gap-1 ${/\d/.test(newPassword) ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'}`}>
+                      {/\d/.test(newPassword) ? <CheckCircle2 className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
+                      <span>One number</span>
+                    </div>
+                    <div className={`flex items-center gap-1 ${/[!@#$%^&*]/.test(newPassword) ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'}`}>
+                      {/[!@#$%^&*]/.test(newPassword) ? <CheckCircle2 className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
+                      <span>One special character (!@#$%^&*)</span>
+                    </div>
+                  </div>
+                )}
               </div>
               <div className="space-y-1 sm:col-span-2">
                 <Label>Confirm New Password</Label>
