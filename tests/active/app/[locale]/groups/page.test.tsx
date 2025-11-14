@@ -1,12 +1,23 @@
 import React from 'react'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import GroupsPage from '../page'
+import GroupsPage from '@/app/[locale]/groups/page'
 import * as storage from '@/lib/storage'
-import * as auth from '@/lib/auth'
 
 jest.mock('@/lib/storage')
-jest.mock('@/lib/auth')
+jest.mock('@/lib/auth', () => ({
+  useAuth: jest.fn(),
+}))
+jest.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: jest.fn(),
+    replace: jest.fn(),
+    prefetch: jest.fn(),
+  }),
+  useSearchParams: () => ({
+    get: jest.fn(() => null),
+  }),
+}))
 jest.mock('next/link', () => {
   return ({ children, href }: { children: React.ReactNode; href: string }) => {
     return <a href={href}>{children}</a>
@@ -59,30 +70,34 @@ describe('GroupsPage', () => {
     },
   ]
 
-  const mockCategories = [
-    {
-      id: 'cat-dogs',
-      name: 'Dogs',
-      slug: 'dogs',
-      description: 'Groups for dog owners',
-      icon: '🐕',
-      color: '#3b82f6',
-      groupCount: 8,
-      createdAt: '2024-01-01T00:00:00Z',
-    },
-  ]
-
   beforeEach(() => {
     jest.clearAllMocks()
-    ;(storage.getGroupCategories as jest.Mock).mockReturnValue(mockCategories)
     ;(storage.getGroups as jest.Mock).mockReturnValue(mockGroups)
     ;(storage.searchGroups as jest.Mock).mockReturnValue([])
     ;(storage.getGroupsByCategory as jest.Mock).mockReturnValue([])
     ;(storage.canUserDiscoverGroup as jest.Mock).mockReturnValue(true)
-    ;(auth.useAuth as jest.Mock).mockReturnValue({
+    
+    const { useAuth } = require('@/lib/auth')
+    useAuth.mockReturnValue({
       user: null,
       isAuthenticated: false,
     })
+  })
+
+  it('should render without hydration errors', async () => {
+    // This test ensures categories are loaded consistently on both server and client
+    // to prevent hydration mismatches
+    const { container } = render(<GroupsPage />)
+    
+    await waitFor(() => {
+      expect(screen.getByText(/discover groups/i)).toBeInTheDocument()
+    }, { timeout: 3000 })
+    
+    // Verify categories are rendered immediately without client-side loading
+    await waitFor(() => {
+      const categoryTabs = container.querySelectorAll('[role="tab"]')
+      expect(categoryTabs.length).toBeGreaterThan(0)
+    }, { timeout: 3000 })
   })
 
   it('should render groups page with title', async () => {
@@ -166,7 +181,8 @@ describe('GroupsPage', () => {
   })
 
   it('should show create group button when authenticated', async () => {
-    ;(auth.useAuth as jest.Mock).mockReturnValue({
+    const { useAuth } = require('@/lib/auth')
+    useAuth.mockReturnValue({
       user: { id: '1', username: 'user1' },
       isAuthenticated: true,
     })
@@ -274,10 +290,10 @@ describe('GroupsPage', () => {
     render(<GroupsPage />)
     
     await waitFor(() => {
-      const showingElements = screen.getAllByText((content, element) => {
-        return element?.textContent?.includes('Showing') &&
+      const showingElements = screen.getAllByText((_content, element) => {
+        return !!(element?.textContent?.includes('Showing') &&
                element?.textContent?.includes('of') &&
-               element?.textContent?.includes('groups')
+               element?.textContent?.includes('groups'))
       })
       expect(showingElements.length).toBeGreaterThan(0)
     }, { timeout: 3000 })

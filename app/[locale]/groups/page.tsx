@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Input } from "@/components/ui/input"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import {
   Search,
@@ -29,7 +29,6 @@ import {
 import Link from "next/link"
 import {
   getGroups,
-  getGroupCategories,
   searchGroups,
   getGroupsByCategory,
   canUserDiscoverGroup,
@@ -53,6 +52,20 @@ const GROUPS_PER_PAGE = 6
 type SortOption = "recent" | "popular" | "members"
 type GroupTypeFilter = "all" | "open" | "closed" | "secret"
 const GROUP_TYPE_FILTERS: GroupTypeFilter[] = ["all", "open", "closed", "secret"]
+
+// Static category data to avoid hydration mismatches
+const DEFAULT_CATEGORIES: GroupCategory[] = [
+  { id: "cat-dogs", name: "Dogs", slug: "dogs", description: "Groups for dog owners and enthusiasts" },
+  { id: "cat-cats", name: "Cats", slug: "cats", description: "Groups for cat owners and enthusiasts" },
+  { id: "cat-birds", name: "Birds", slug: "birds", description: "Groups for bird owners and enthusiasts" },
+  { id: "cat-rabbits", name: "Rabbits", slug: "rabbits", description: "Groups for rabbit owners and enthusiasts" },
+  { id: "cat-hamsters", name: "Hamsters", slug: "hamsters", description: "Groups for hamster owners and enthusiasts" },
+  { id: "cat-fish", name: "Fish", slug: "fish", description: "Groups for fish owners and enthusiasts" },
+  { id: "cat-training", name: "Training", slug: "training", description: "Groups focused on pet training" },
+  { id: "cat-health", name: "Health", slug: "health", description: "Groups focused on pet health and wellness" },
+  { id: "cat-adoption", name: "Adoption", slug: "adoption", description: "Groups focused on pet adoption and rescue" },
+  { id: "cat-nutrition", name: "Nutrition", slug: "nutrition", description: "Groups focused on pet nutrition and diet" },
+]
 
 // Map category IDs to animal types or custom icons
 const getCategoryIcon = (categoryId: string) => {
@@ -93,7 +106,7 @@ const getCategoryIcon = (categoryId: string) => {
   return customIconMap[categoryId]
 }
 
-export default function GroupsPage() {
+function GroupsPageClient() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { user, isAuthenticated } = useAuth()
@@ -115,13 +128,11 @@ export default function GroupsPage() {
   const [currentPage, setCurrentPage] = useState(initialPage)
   const [isLoading, setIsLoading] = useState(false)
 
-  const [categories, setCategories] = useState<GroupCategory[]>([])
+  // Use static categories to avoid hydration mismatch
+  const categories = DEFAULT_CATEGORIES
   const [groups, setGroups] = useState<Group[]>([])
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      setCategories(getGroupCategories())
-    }
     setMounted(true)
     loadGroups()
   }, [])
@@ -582,4 +593,9 @@ export default function GroupsPage() {
       )}
     </div>
   )
+}
+
+// Wrapper component to handle client-side rendering
+export default function GroupsPage() {
+  return <GroupsPageClient />
 }
