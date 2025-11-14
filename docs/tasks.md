@@ -12,20 +12,22 @@
 2. Merge and validate (tests + lint)
 3. Perform PR cleanup
 
-# Groups Page Hydration Mismatch
+# Groups Page Hydration Mismatch ✅ COMPLETED (2025-11-14)
 
 ## Tasks
 
-- [ ] Confirm `/groups` hydration error involving Radix `TabsTrigger`
-- [ ] Ensure group category data is identical between SSR and client
-- [ ] Implement deterministic category loading strategy
-- [ ] Add regression coverage for tabs rendering (unit or integration)
+- [x] Confirm `/groups` hydration error involving Radix `TabsTrigger`
+- [x] Ensure group category data is identical between SSR and client
+- [x] Implement deterministic category loading strategy
+- [x] Add regression coverage for tabs rendering (unit or integration)
 
 ## Priority Order
-1. Reproduce hydration mismatch
-2. Stabilize category data retrieval
-3. Implement fix and verify manually
-4. Add automated coverage
+1. ✅ Reproduce hydration mismatch
+2. ✅ Stabilize category data retrieval
+3. ✅ Implement fix and verify manually
+4. ✅ Add automated coverage
+
+**Solution:** Static `DEFAULT_CATEGORIES` array in `app/[locale]/groups/page.tsx` ensures identical data on server/client. E2E test in `e2e/groups-hydration.spec.ts` validates fix.
 
 # Product Pages with Recall Banner and Safety Notices
 

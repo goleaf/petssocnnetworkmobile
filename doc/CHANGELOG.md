@@ -171,6 +171,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Dropdown menu items with destructive variant use gradient backgrounds
 
 ### Fixed
+- **Groups Page Hydration Error** (2025-11-14)
+  - Fixed React hydration mismatch on `/groups` page
+  - Replaced dynamic category loading with static `DEFAULT_CATEGORIES` array
+  - Removed unnecessary `"use client"` directive to enable Server Component rendering
+  - Ensures identical category data between server and client renders
+  - All 10 group categories (Dogs, Cats, Birds, Rabbits, Hamsters, Fish, Training, Health, Adoption, Nutrition) now load without errors
+  - E2E test validates no hydration errors occur
 - React.Children.only error when using EditButton with Link component
 - React Hooks order violation in UserPetsPage
 - Feed post creation now properly saves as FeedPost type

@@ -4,7 +4,7 @@ test.describe('Groups Page Hydration Fix', () => {
   test('should load groups page without hydration errors', async ({ authenticatedPage: page }) => {
     // Listen for console errors that might indicate hydration issues
     const consoleErrors: string[] = [];
-    page.on('console', (msg) => {
+    page.on('console', (msg: any) => {
       if (msg.type() === 'error') {
         consoleErrors.push(msg.text());
       }
@@ -86,7 +86,7 @@ test.describe('Groups Page Hydration Fix', () => {
 
     // Verify no console errors
     const consoleErrors: string[] = [];
-    page.on('console', (msg) => {
+    page.on('console', (msg: any) => {
       if (msg.type() === 'error') {
         consoleErrors.push(msg.text());
       }
@@ -116,7 +116,7 @@ test.describe('Groups Page Hydration Fix', () => {
 
     // Verify no errors occurred
     const consoleErrors: string[] = [];
-    page.on('console', (msg) => {
+    page.on('console', (msg: any) => {
       if (msg.type() === 'error') {
         consoleErrors.push(msg.text());
       }

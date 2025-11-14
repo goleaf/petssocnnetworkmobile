@@ -482,3 +482,91 @@ export function sendEventReminders(eventId: string): {
   }
 }
 
+
+export interface CreateGroupResourceParams {
+  groupId: string
+  createdBy: string
+  title: string
+  description?: string
+  url?: string
+  type?: "link" | "file" | "note"
+  tags?: string[]
+}
+
+/**
+ * Create a group resource
+ */
+export function createGroupResource(params: CreateGroupResourceParams): {
+  success: boolean
+  message?: string
+  resource?: import("./types").GroupResource
+} {
+  const group = getGroupById(params.groupId)
+  if (!group) {
+    return {
+      success: false,
+      message: "Group not found",
+    }
+  }
+
+  // Check if user is a member
+  if (!isUserMemberOfGroup(params.groupId, params.createdBy)) {
+    return {
+      success: false,
+      message: "You must be a member of this group to create resources",
+    }
+  }
+
+  // Validate required fields
+  if (!params.title || params.title.trim().length === 0) {
+    return {
+      success: false,
+      message: "Title is required",
+    }
+  }
+
+  // Validate URL for link type
+  if (params.type === "link" && (!params.url || params.url.trim().length === 0)) {
+    return {
+      success: false,
+      message: "URL is required for link resources",
+    }
+  }
+
+  const now = new Date().toISOString()
+  const resource: import("./types").GroupResource = {
+    id: generateStorageId("resource"),
+    groupId: params.groupId,
+    createdBy: params.createdBy,
+    title: params.title.trim(),
+    description: params.description?.trim(),
+    url: params.url?.trim(),
+    type: params.type || "link",
+    tags: params.tags,
+    createdAt: now,
+    updatedAt: now,
+  }
+
+  const { addGroupResource } = require("./storage")
+  addGroupResource(resource)
+
+  // Send notification to group members (optional)
+  addNotification({
+    userId: group.ownerId,
+    type: "message",
+    actorId: params.createdBy,
+    targetId: resource.id,
+    targetType: "post",
+    message: `New resource added to ${group.name}: ${resource.title}`,
+    metadata: {
+      groupId: params.groupId,
+      resourceId: resource.id,
+      type: "group_resource",
+    },
+  })
+
+  return {
+    success: true,
+    resource,
+  }
+}

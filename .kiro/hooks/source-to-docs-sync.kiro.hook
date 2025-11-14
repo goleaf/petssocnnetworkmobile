@@ -21,6 +21,6 @@
   },
   "then": {
     "type": "askAgent",
-    "prompt": "Source code files have been modified. Review the changes and update the relevant documentation in the /docs folder or README.md file. Ensure that:\n1. New features or components are documented with usage examples\n2. API changes are reflected in API documentation\n3. Database schema changes are documented in DATABASE_ARCHITECTURE.md or related docs\n4. Configuration changes are noted in INSTALLATION.md or setup guides\n5. Breaking changes are highlighted in appropriate documentation\nFocus on keeping documentation accurate, clear, and synchronized with the current codebase."
+    "prompt": "Source code files have been modified. Review the changes and update the relevant documentation in the /docs folder or README.md file. Ensure that:\n1. New features or components are documented with usage examples\n2. API changes are reflected in API documentation\n3. Database schema changes are documented in DATABASE_ARCHITECTURE.md or related docs\n4. Configuration changes are noted in INSTALLATION.md or setup guides\n5. Breaking changes are highlighted in appropriate documentation\nFocus on keeping documentation accurate, clear, and synchronized with the current codebase.\n\nfor all editing use mcp"
   }
 }

@@ -1,92 +1,81 @@
 "use client"
 
 import { use } from "react"
-import { useEffect, useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { BackButton } from "@/components/ui/back-button"
-import { ResourceCreator, type ResourceFormValues } from "@/components/groups/ResourceCreator"
+import { ResourceCreator } from "@/components/groups/ResourceCreator"
 import {
-  addGroupResource,
-  canUserViewGroup,
   getGroupBySlug,
+  canUserViewGroup,
+  addGroupResource,
   isUserMemberOfGroup,
 } from "@/lib/storage"
 import type { Group, GroupResource } from "@/lib/types"
 import { useAuth } from "@/lib/auth"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { AlertCircle, Shield } from "lucide-react"
-import { useTranslations } from "next-intl"
-
-interface PageParams {
-  slug: string
-}
 
 export default function CreateResourcePage({
   params,
 }: {
-  params: Promise<PageParams>
+  params: Promise<{ slug: string }>
 }) {
   const { slug } = use(params)
   const router = useRouter()
   const { user, isAuthenticated } = useAuth()
   const [group, setGroup] = useState<Group | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const t = useTranslations("GroupResources.Create")
 
   useEffect(() => {
     if (typeof window === "undefined") return
 
     const foundGroup = getGroupBySlug(slug)
-
     if (!foundGroup) {
       setIsLoading(false)
       router.push("/groups")
       return
     }
 
+    // Check visibility
     if (isAuthenticated && user) {
-      const canView = canUserViewGroup(foundGroup.id, user.id)
-      if (!canView) {
+      if (!canUserViewGroup(foundGroup.id, user.id)) {
         setIsLoading(false)
         router.push("/groups")
         return
       }
     } else {
-      setIsLoading(false)
-      router.push("/groups")
-      return
+      if (foundGroup.type === "secret") {
+        setIsLoading(false)
+        router.push("/groups")
+        return
+      }
     }
 
     setGroup(foundGroup)
     setIsLoading(false)
   }, [slug, user, isAuthenticated, router])
 
-  const handleSubmit = async (values: ResourceFormValues) => {
-    if (!group || !user) return
+  const handleSubmit = (data: Omit<GroupResource, "id" | "createdAt" | "updatedAt">) => {
+    if (!user || !group) return
 
-    const timestamp = new Date().toISOString()
-    const resource: GroupResource = {
+    const newResource: GroupResource = {
+      ...data,
       id: `resource-${Date.now()}`,
-      groupId: group.id,
-      title: values.title,
-      description: values.description,
-      url: values.type === "note" ? undefined : values.url,
-      type: values.type,
-      tags: values.tags.length > 0 ? values.tags : undefined,
       createdBy: user.id,
-      createdAt: timestamp,
-      updatedAt: timestamp,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     }
 
-    addGroupResource(resource)
+    addGroupResource(newResource)
     router.push(`/groups/${group.slug}?tab=resources`)
   }
 
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background">
-        <div className="flex items-center justify-center py-20">
+        <div className="flex justify-center items-center py-20">
           <LoadingSpinner />
         </div>
       </div>
@@ -100,11 +89,13 @@ export default function CreateResourcePage({
   if (!isAuthenticated || !user) {
     return (
       <div className="min-h-screen bg-background">
-        <div className="container mx-auto max-w-4xl px-4 py-8">
+        <div className="container mx-auto px-4 py-8 max-w-4xl">
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
-            <AlertTitle>{t("accessDeniedTitle")}</AlertTitle>
-            <AlertDescription>{t("accessDeniedDescription")}</AlertDescription>
+            <AlertTitle>Access Denied</AlertTitle>
+            <AlertDescription>
+              You must be logged in to create resources.
+            </AlertDescription>
           </Alert>
         </div>
       </div>
@@ -116,16 +107,18 @@ export default function CreateResourcePage({
   if (!isMember) {
     return (
       <div className="min-h-screen bg-background">
-        <div className="container mx-auto max-w-4xl px-4 py-8">
+        <div className="container mx-auto px-4 py-8 max-w-4xl">
           <div className="mb-6">
-            <BackButton href={`/groups/${group.slug}`}>
-              {t("backToResources")}
+            <BackButton href={`/groups/${group.slug}?tab=resources`}>
+              Back to Resources
             </BackButton>
           </div>
           <Alert>
             <Shield className="h-4 w-4" />
-            <AlertTitle>{t("permissionDeniedTitle")}</AlertTitle>
-            <AlertDescription>{t("permissionDeniedDescription")}</AlertDescription>
+            <AlertTitle>Permission Denied</AlertTitle>
+            <AlertDescription>
+              You must be a member of this group to create resources.
+            </AlertDescription>
           </Alert>
         </div>
       </div>
@@ -134,14 +127,15 @@ export default function CreateResourcePage({
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto max-w-4xl px-4 py-8">
+      <div className="container mx-auto px-4 py-8 max-w-4xl">
         <div className="mb-6">
           <BackButton href={`/groups/${group.slug}?tab=resources`}>
-            {t("backToResources")}
+            Back to Resources
           </BackButton>
         </div>
+
         <ResourceCreator
-          initialValues={{ type: "link" }}
+          groupId={group.id}
           onSubmit={handleSubmit}
           onCancel={() => router.push(`/groups/${group.slug}?tab=resources`)}
         />
@@ -149,5 +143,3 @@ export default function CreateResourcePage({
     </div>
   )
 }
-
-

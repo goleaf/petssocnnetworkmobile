@@ -149,3 +149,96 @@ export function compareObjects(
   return diffs;
 }
 
+/**
+ * Calculate structured diff for edit requests
+ * Generates a JSON-serializable diff object with additions and deletions
+ * 
+ * @param oldContent - Original content object
+ * @param newContent - Modified content object
+ * @returns Structured diff object suitable for storage in EditRequest.changes
+ */
+export function calculateEditRequestDiff(
+  oldContent: Record<string, unknown>,
+  newContent: Record<string, unknown>
+): Record<string, { old: unknown; new: unknown; type: 'added' | 'modified' | 'deleted' }> {
+  const diff: Record<string, { old: unknown; new: unknown; type: 'added' | 'modified' | 'deleted' }> = {};
+  const allKeys = new Set([...Object.keys(oldContent), ...Object.keys(newContent)]);
+
+  for (const key of allKeys) {
+    const oldValue = oldContent[key];
+    const newValue = newContent[key];
+
+    // Skip if values are identical
+    if (JSON.stringify(oldValue) === JSON.stringify(newValue)) {
+      continue;
+    }
+
+    // Determine change type
+    if (oldValue === undefined) {
+      diff[key] = { old: null, new: newValue, type: 'added' };
+    } else if (newValue === undefined) {
+      diff[key] = { old: oldValue, new: null, type: 'deleted' };
+    } else {
+      diff[key] = { old: oldValue, new: newValue, type: 'modified' };
+    }
+  }
+
+  return diff;
+}
+
+/**
+ * Calculate diff for blog post content
+ * 
+ * @param oldPost - Original blog post data
+ * @param newPost - Modified blog post data
+ * @returns Structured diff for blog post
+ */
+export function calculateBlogDiff(
+  oldPost: { title?: string; content?: string; coverImage?: string | null; tags?: string[]; categories?: string[] },
+  newPost: { title?: string; content?: string; coverImage?: string | null; tags?: string[]; categories?: string[] }
+): Record<string, unknown> {
+  return calculateEditRequestDiff(oldPost as Record<string, unknown>, newPost as Record<string, unknown>);
+}
+
+/**
+ * Calculate diff for wiki article content
+ * 
+ * @param oldArticle - Original wiki article data
+ * @param newArticle - Modified wiki article data
+ * @returns Structured diff for wiki article
+ */
+export function calculateWikiDiff(
+  oldArticle: { title?: string; content?: string; status?: string },
+  newArticle: { title?: string; content?: string; status?: string }
+): Record<string, unknown> {
+  return calculateEditRequestDiff(oldArticle as Record<string, unknown>, newArticle as Record<string, unknown>);
+}
+
+/**
+ * Calculate diff for pet profile content
+ * 
+ * @param oldPet - Original pet profile data
+ * @param newPet - Modified pet profile data
+ * @returns Structured diff for pet profile
+ */
+export function calculatePetDiff(
+  oldPet: { name?: string; bio?: string | null; breed?: string | null; birthday?: string | null; weight?: string | null },
+  newPet: { name?: string; bio?: string | null; breed?: string | null; birthday?: string | null; weight?: string | null }
+): Record<string, unknown> {
+  return calculateEditRequestDiff(oldPet as Record<string, unknown>, newPet as Record<string, unknown>);
+}
+
+/**
+ * Calculate diff for user profile content
+ * 
+ * @param oldProfile - Original user profile data
+ * @param newProfile - Modified user profile data
+ * @returns Structured diff for user profile
+ */
+export function calculateProfileDiff(
+  oldProfile: { displayName?: string | null; bio?: string | null; avatarUrl?: string | null },
+  newProfile: { displayName?: string | null; bio?: string | null; avatarUrl?: string | null }
+): Record<string, unknown> {
+  return calculateEditRequestDiff(oldProfile as Record<string, unknown>, newProfile as Record<string, unknown>);
+}
+

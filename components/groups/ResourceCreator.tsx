@@ -1,282 +1,279 @@
 "use client"
 
-import { useMemo, useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { useState } from "react"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { ErrorText } from "@/components/ui/error-text"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { Plus, X, Loader2 } from "lucide-react"
-import { useTranslations } from "next-intl"
+import { X, Plus, Save, Loader2, Link as LinkIcon, FileText, StickyNote } from "lucide-react"
 import type { GroupResource } from "@/lib/types"
 
-type ResourceType = NonNullable<GroupResource["type"]>
-
-export interface ResourceFormValues {
-  title: string
-  description?: string
-  url?: string
-  type: ResourceType
-  tags: string[]
-}
-
 interface ResourceCreatorProps {
-  initialValues?: Partial<ResourceFormValues>
-  onSubmit: (values: ResourceFormValues) => Promise<void> | void
+  groupId: string
+  initialData?: GroupResource
+  onSubmit: (resource: Omit<GroupResource, "id" | "createdAt" | "updatedAt">) => void
   onCancel: () => void
 }
 
-type ValidationErrors = Partial<Record<keyof ResourceFormValues | "tags", string>>
+export function ResourceCreator({
+  groupId,
+  initialData,
+  onSubmit,
+  onCancel,
+}: ResourceCreatorProps) {
+  const [formData, setFormData] = useState({
+    title: initialData?.title || "",
+    description: initialData?.description || "",
+    url: initialData?.url || "",
+    type: initialData?.type || "link" as "link" | "file" | "note",
+    tags: initialData?.tags || [] as string[],
+  })
 
-const RESOURCE_TYPES: ResourceType[] = ["link", "file", "note"]
-
-export function ResourceCreator({ initialValues, onSubmit, onCancel }: ResourceCreatorProps) {
-  const t = useTranslations("GroupResources.Create")
-  const tCommon = useTranslations("Common")
-
-  const [values, setValues] = useState<ResourceFormValues>(() => ({
-    title: initialValues?.title ?? "",
-    description: initialValues?.description ?? "",
-    url: initialValues?.url ?? "",
-    type: initialValues?.type ?? "link",
-    tags: initialValues?.tags ?? [],
-  }))
   const [tagInput, setTagInput] = useState("")
-  const [errors, setErrors] = useState<ValidationErrors>({})
+  const [errors, setErrors] = useState<Record<string, string>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const typeOptions = useMemo(
-    () =>
-      RESOURCE_TYPES.map((typeValue) => ({
-        value: typeValue,
-        label: t(`typeOptions.${typeValue}` as const),
-        description: t(`typeDescriptions.${typeValue}` as const),
-      })),
-    [t],
-  )
-
-  const validate = (nextValues: ResourceFormValues): ValidationErrors => {
-    const validationErrors: ValidationErrors = {}
-
-    if (!nextValues.title.trim()) {
-      validationErrors.title = t("errors.titleRequired")
-    } else if (nextValues.title.trim().length < 3) {
-      validationErrors.title = t("errors.titleTooShort")
-    }
-
-    if (nextValues.type !== "note") {
-      const urlValue = nextValues.url?.trim()
-      if (!urlValue) {
-        validationErrors.url = t("errors.urlRequired")
-      } else {
-        try {
-          // eslint-disable-next-line no-new
-          new URL(urlValue)
-        } catch (error) {
-          validationErrors.url = t("errors.urlInvalid")
+  const validateField = (name: string, value: any): string | undefined => {
+    switch (name) {
+      case "title":
+        if (!value || value.trim().length === 0) {
+          return "Title is required"
         }
-      }
+        if (value.trim().length < 3) {
+          return "Title must be at least 3 characters"
+        }
+        if (value.trim().length > 100) {
+          return "Title must be less than 100 characters"
+        }
+        break
+      case "description":
+        if (value && value.trim().length > 500) {
+          return "Description must be less than 500 characters"
+        }
+        break
+      case "url":
+        if (formData.type === "link" && (!value || value.trim().length === 0)) {
+          return "URL is required for link resources"
+        }
+        if (value && value.trim().length > 0) {
+          try {
+            new URL(value)
+          } catch {
+            return "Please enter a valid URL"
+          }
+        }
+        break
     }
-
-    if (nextValues.tags.length > 10) {
-      validationErrors.tags = t("errors.tooManyTags")
-    }
-
-    return validationErrors
+    return undefined
   }
 
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    const trimmedValues: ResourceFormValues = {
-      title: values.title.trim(),
-      description: values.description?.trim() ? values.description.trim() : undefined,
-      url: values.url?.trim() ? values.url.trim() : undefined,
-      type: values.type,
-      tags: values.tags,
+  const handleFieldChange = (name: string, value: any) => {
+    setFormData((prev) => ({ ...prev, [name]: value }))
+    const error = validateField(name, value)
+    if (error) {
+      setErrors((prev) => ({ ...prev, [name]: error }))
+    } else {
+      setErrors((prev) => {
+        const newErrors = { ...prev }
+        delete newErrors[name]
+        return newErrors
+      })
     }
+  }
 
-    const validationErrors = validate(trimmedValues)
-    setErrors(validationErrors)
+  const handleAddTag = () => {
+    const tag = tagInput.trim()
+    if (tag && !formData.tags.includes(tag) && formData.tags.length < 10) {
+      setFormData((prev) => ({ ...prev, tags: [...prev.tags, tag] }))
+      setTagInput("")
+    }
+  }
 
-    if (Object.keys(validationErrors).length > 0) {
+  const handleRemoveTag = (tagToRemove: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      tags: prev.tags.filter((tag) => tag !== tagToRemove),
+    }))
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    // Validate
+    const newErrors: Record<string, string> = {}
+    const titleError = validateField("title", formData.title)
+    if (titleError) newErrors.title = titleError
+
+    const descriptionError = validateField("description", formData.description)
+    if (descriptionError) newErrors.description = descriptionError
+
+    const urlError = validateField("url", formData.url)
+    if (urlError) newErrors.url = urlError
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors)
       return
     }
 
+    setIsSubmitting(true)
+
     try {
-      setIsSubmitting(true)
-      await onSubmit(trimmedValues)
+      onSubmit({
+        groupId,
+        createdBy: initialData?.createdBy || "",
+        title: formData.title.trim(),
+        description: formData.description.trim() || undefined,
+        url: formData.url.trim() || undefined,
+        type: formData.type,
+        tags: formData.tags.length > 0 ? formData.tags : undefined,
+      })
     } finally {
       setIsSubmitting(false)
     }
   }
 
-  const handleTagAdd = () => {
-    const normalized = tagInput.trim().toLowerCase()
-    if (!normalized) {
-      return
+  const getTypeIcon = (type: string) => {
+    switch (type) {
+      case "link":
+        return <LinkIcon className="h-4 w-4" />
+      case "file":
+        return <FileText className="h-4 w-4" />
+      case "note":
+        return <StickyNote className="h-4 w-4" />
+      default:
+        return <LinkIcon className="h-4 w-4" />
     }
-
-    if (values.tags.includes(normalized)) {
-      setErrors((prev) => ({ ...prev, tags: t("errors.duplicateTag") }))
-      return
-    }
-
-    if (normalized.length > 24) {
-      setErrors((prev) => ({ ...prev, tags: t("errors.tagTooLong") }))
-      return
-    }
-
-    const updatedTags = [...values.tags, normalized]
-    if (updatedTags.length > 10) {
-      setErrors((prev) => ({ ...prev, tags: t("errors.tooManyTags") }))
-      return
-    }
-
-    setValues((prev) => ({ ...prev, tags: updatedTags }))
-    setTagInput("")
-    setErrors((prev) => ({ ...prev, tags: undefined }))
-  }
-
-  const handleTagRemove = (tagToRemove: string) => {
-    setValues((prev) => ({
-      ...prev,
-      tags: prev.tags.filter((tag) => tag !== tagToRemove),
-    }))
-    setErrors((prev) => ({ ...prev, tags: undefined }))
   }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle>{t("formTitle")}</CardTitle>
-          <CardDescription>{t("formDescription")}</CardDescription>
+          <CardTitle>{initialData ? "Edit Resource" : "Create New Resource"}</CardTitle>
+          <CardDescription>
+            Share helpful resources with group members
+          </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6">
+        <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="resource-title">{t("titleLabel")}</Label>
+            <Label htmlFor="type">
+              Resource Type <span className="text-destructive">*</span>
+            </Label>
+            <Select
+              value={formData.type}
+              onValueChange={(value) => handleFieldChange("type", value as "link" | "file" | "note")}
+            >
+              <SelectTrigger id="type">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="link">
+                  <div className="flex items-center gap-2">
+                    <LinkIcon className="h-4 w-4" />
+                    Link
+                  </div>
+                </SelectItem>
+                <SelectItem value="file">
+                  <div className="flex items-center gap-2">
+                    <FileText className="h-4 w-4" />
+                    File
+                  </div>
+                </SelectItem>
+                <SelectItem value="note">
+                  <div className="flex items-center gap-2">
+                    <StickyNote className="h-4 w-4" />
+                    Note
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="title">
+              Title <span className="text-destructive">*</span>
+            </Label>
             <Input
-              id="resource-title"
-              value={values.title}
-              onChange={(event) => {
-                const nextTitle = event.target.value
-                setValues((prev) => ({ ...prev, title: nextTitle }))
-                if (errors.title) {
-                  setErrors((prev) => ({ ...prev, title: undefined }))
-                }
-              }}
-              placeholder={t("titlePlaceholder")}
+              id="title"
+              value={formData.title}
+              onChange={(e) => handleFieldChange("title", e.target.value)}
+              placeholder="Enter resource title"
               className={errors.title ? "border-destructive" : ""}
             />
             {errors.title && <ErrorText className="text-sm">{errors.title}</ErrorText>}
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="resource-type">{t("typeLabel")}</Label>
-              <Select
-                value={values.type}
-                onValueChange={(nextValue: ResourceType) => {
-                  setValues((prev) => ({ ...prev, type: nextValue }))
-                  setErrors((prev) => ({ ...prev, url: undefined }))
-                }}
-              >
-                <SelectTrigger id="resource-type" className="w-full">
-                  <SelectValue placeholder={t("typePlaceholder")} />
-                </SelectTrigger>
-                <SelectContent>
-                  {typeOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      <div className="flex flex-col">
-                        <span>{option.label}</span>
-                        <span className="text-xs text-muted-foreground">{option.description}</span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {values.type !== "note" && (
-              <div className="space-y-2">
-                <Label htmlFor="resource-url">{t("urlLabel")}</Label>
-                <Input
-                  id="resource-url"
-                  value={values.url ?? ""}
-                  onChange={(event) => {
-                    const nextUrl = event.target.value
-                    setValues((prev) => ({ ...prev, url: nextUrl }))
-                    if (errors.url) {
-                      setErrors((prev) => ({ ...prev, url: undefined }))
-                    }
-                  }}
-                  placeholder={t("urlPlaceholder")}
-                  className={errors.url ? "border-destructive" : ""}
-                  inputMode="url"
-                  autoComplete="url"
-                />
-                {errors.url && <ErrorText className="text-sm">{errors.url}</ErrorText>}
-              </div>
-            )}
+          <div className="space-y-2">
+            <Label htmlFor="description">Description (optional)</Label>
+            <Textarea
+              id="description"
+              value={formData.description}
+              onChange={(e) => handleFieldChange("description", e.target.value)}
+              placeholder="Describe this resource"
+              rows={3}
+              className={errors.description ? "border-destructive" : ""}
+            />
+            {errors.description && <ErrorText className="text-sm">{errors.description}</ErrorText>}
+            <p className="text-xs text-muted-foreground">
+              {formData.description.length} / 500 characters
+            </p>
           </div>
+
+          {(formData.type === "link" || formData.type === "file") && (
+            <div className="space-y-2">
+              <Label htmlFor="url">
+                URL {formData.type === "link" && <span className="text-destructive">*</span>}
+              </Label>
+              <Input
+                id="url"
+                type="url"
+                value={formData.url}
+                onChange={(e) => handleFieldChange("url", e.target.value)}
+                placeholder="https://example.com"
+                className={errors.url ? "border-destructive" : ""}
+              />
+              {errors.url && <ErrorText className="text-sm">{errors.url}</ErrorText>}
+            </div>
+          )}
 
           <div className="space-y-2">
-            <Label htmlFor="resource-description">{t("descriptionLabel")}</Label>
-            <Textarea
-              id="resource-description"
-              value={values.description ?? ""}
-              onChange={(event) => {
-                const nextDescription = event.target.value
-                setValues((prev) => ({ ...prev, description: nextDescription }))
-              }}
-              placeholder={t("descriptionPlaceholder")}
-              rows={4}
-            />
-          </div>
-
-          <div className="space-y-3">
-            <div className="flex flex-col gap-2 md:flex-row md:items-end">
-              <div className="flex-1 space-y-2">
-                <Label htmlFor="resource-tags">{t("tagsLabel")}</Label>
-                <Input
-                  id="resource-tags"
-                  value={tagInput}
-                  onChange={(event) => setTagInput(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") {
-                      event.preventDefault()
-                      handleTagAdd()
-                    }
-                  }}
-                  placeholder={t("tagsPlaceholder")}
-                />
-                <p className="text-xs text-muted-foreground">{t("tagsHelper")}</p>
-              </div>
-              <Button type="button" variant="secondary" onClick={handleTagAdd} className="md:self-auto">
-                <Plus className="mr-2 h-4 w-4" />
-                {t("addTag")}
+            <Label htmlFor="tags">Tags (optional)</Label>
+            <div className="flex gap-2">
+              <Input
+                id="tags"
+                value={tagInput}
+                onChange={(e) => setTagInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault()
+                    handleAddTag()
+                  }
+                }}
+                placeholder="Add a tag"
+                disabled={formData.tags.length >= 10}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleAddTag}
+                disabled={!tagInput.trim() || formData.tags.length >= 10}
+              >
+                <Plus className="h-4 w-4" />
               </Button>
             </div>
-            {errors.tags && <ErrorText className="text-sm">{errors.tags}</ErrorText>}
-            {values.tags.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {values.tags.map((tag) => (
-                  <Badge key={tag} variant="secondary" className="flex items-center gap-1">
-                    <span>{tag}</span>
+            {formData.tags.length > 0 && (
+              <div className="flex flex-wrap gap-2 mt-2">
+                {formData.tags.map((tag) => (
+                  <Badge key={tag} variant="secondary" className="gap-1">
+                    {tag}
                     <button
                       type="button"
-                      onClick={() => handleTagRemove(tag)}
-                      className="rounded-full p-0.5 text-muted-foreground transition hover:text-foreground"
-                      aria-label={t("removeTag", { tag })}
+                      onClick={() => handleRemoveTag(tag)}
+                      className="ml-1 hover:text-destructive"
                     >
                       <X className="h-3 w-3" />
                     </button>
@@ -284,20 +281,26 @@ export function ResourceCreator({ initialValues, onSubmit, onCancel }: ResourceC
                 ))}
               </div>
             )}
+            <p className="text-xs text-muted-foreground">
+              {formData.tags.length} / 10 tags
+            </p>
           </div>
 
-          <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+          <div className="flex items-center justify-end gap-4 pt-4 border-t">
             <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>
-              {tCommon("cancel")}
+              Cancel
             </Button>
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {t("saving")}
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  {initialData ? "Updating..." : "Creating..."}
                 </>
               ) : (
-                t("submit")
+                <>
+                  <Save className="h-4 w-4 mr-2" />
+                  {initialData ? "Update Resource" : "Create Resource"}
+                </>
               )}
             </Button>
           </div>
@@ -306,4 +309,3 @@ export function ResourceCreator({ initialValues, onSubmit, onCancel }: ResourceC
     </form>
   )
 }
-

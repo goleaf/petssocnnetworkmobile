@@ -282,3 +282,27 @@ test.describe('Group Sub-Pages', () => {
 
 
 
+
+  test('should test group resources create page', async ({ authenticatedPage: page }) => {
+    await page.goto('/groups');
+    await page.waitForLoadState('networkidle');
+    
+    const groupLink = page.locator('a[href*="/groups/"]').filter({ hasNot: page.locator('text=/create|Create/') }).first();
+    if (await groupLink.count() > 0) {
+      const href = await groupLink.getAttribute('href');
+      if (href) {
+        const slug = href.split('/groups/')[1]?.split('/')[0];
+        if (slug) {
+          await page.goto(`/groups/${slug}/resources/create`);
+          await page.waitForLoadState('networkidle');
+          
+          // Verify page loaded successfully
+          await expect(page).toHaveURL(new RegExp(`/groups/${slug}/resources/create`));
+          
+          // Test form fields
+          await testAllFormFields(page);
+          await testAllButtons(page, 50);
+        }
+      }
+    }
+  });
