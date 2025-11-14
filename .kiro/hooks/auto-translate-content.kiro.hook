@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "name": "Auto-Translate Localization Files",
+  "description": "Monitors changes to user-facing text content in localization files (JSON, YAML) and automatically generates translations for all configured target languages while maintaining context and locale-specific conventions.",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "messages/*.json",
+      "messages/*.yaml",
+      "i18n/**/*.json",
+      "i18n/**/*.yaml"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "Localization files have been modified. Please:\n\n1. Analyze the changed files to identify new or modified text entries\n2. Determine the primary/source language (likely English from messages/en.json)\n3. Identify all target languages from existing message files in the messages/ directory\n4. For each new or modified text entry:\n   - Generate accurate translations for all target languages\n   - Maintain proper context and meaning from the source text\n   - Apply locale-specific conventions (date formats, pluralization, formality levels)\n   - Preserve any interpolation variables (e.g., {name}, {{count}})\n   - Keep consistent terminology across related strings\n5. Update the corresponding target language files with the new translations\n6. Ensure JSON/YAML formatting and structure remains valid\n7. Add comments if any translations require cultural adaptation notes\n\nfor all editing use mcp\n\nProvide the updated translation files with clear explanations of translation choices where context matters."
+  }
+}

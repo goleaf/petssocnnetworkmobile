@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "name": "Auto Test, Fix & Commit",
+  "description": "After saving any file, automatically creates missing test files for all test types (unit, integration, e2e), runs all tests, fixes any errors found, and commits all changes to git with a descriptive message",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "**/*.ts",
+      "**/*.tsx",
+      "**/*.js",
+      "**/*.jsx"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "\nA file has been saved. Please:\n1. Check if test files exist for the changed file (unit tests in tests/unit/, integration tests in tests/integration/, e2e tests in e2e/)\n2. If test files don't exist, create comprehensive test files for all applicable test types following the project's testing patterns\n3. Run all test suites: `npm run test` for Jest tests and `npm run test:e2e` for Playwright tests\n4. If any tests fail, analyze the errors and fix them by updating the source code or tests as needed\n5. After all tests pass, stage all changes with `git add .`\n6. Commit with a descriptive message using Conventional Commits format that explains what was changed, tested, and fixed\n7. Provide a summary of what was created, fixed, and committed\n\nfor all editing use mcp"
+  }
+}

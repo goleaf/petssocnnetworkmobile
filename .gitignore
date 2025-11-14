@@ -80,7 +80,6 @@ node_modules
 node_modules
 
 /lib/generated/prisma
-.kiro/
 
 # Uploaded files (local development)
 public/uploads/*
