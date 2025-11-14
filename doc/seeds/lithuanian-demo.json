@@ -1,0 +1,279 @@
+{
+  "cities": [
+    {
+      "name": "Vilnius",
+      "country": "Lithuania",
+      "state": null,
+      "latitude": 54.6872,
+      "longitude": 25.2797,
+      "population": 580020
+    },
+    {
+      "name": "Kaunas",
+      "country": "Lithuania",
+      "state": null,
+      "latitude": 54.8985,
+      "longitude": 23.9036,
+      "population": 289380
+    },
+    {
+      "name": "Klaipėda",
+      "country": "Lithuania",
+      "state": null,
+      "latitude": 55.7033,
+      "longitude": 21.1443,
+      "population": 154326
+    }
+  ],
+  "users": [
+    {
+      "id": "user-lt-jonas",
+      "username": "jonas_vilnius",
+      "email": "jonas@example.lt",
+      "displayName": "Jonas Kazlauskas",
+      "bio": "Šunų treneris iš Vilniaus 🐕 Myliu ilgus pasivaikščiojimus parke",
+      "role": "user"
+    },
+    {
+      "id": "user-lt-greta",
+      "username": "greta_kaunas",
+      "email": "greta@example.lt",
+      "displayName": "Greta Petraitė",
+      "bio": "Kačių mylėtoja 🐱 Veterinarijos studentė Kaune",
+      "role": "user"
+    },
+    {
+      "id": "user-lt-tomas",
+      "username": "tomas_klaipeda",
+      "email": "tomas@example.lt",
+      "displayName": "Tomas Jankauskas",
+      "bio": "Šuniukas Max ir aš tyrinėjame Klaipėdą 🌊",
+      "role": "user"
+    },
+    {
+      "id": "user-lt-laura",
+      "username": "laura_vilnius",
+      "email": "laura@example.lt",
+      "displayName": "Laura Mockutė",
+      "bio": "Gyvūnų prieglauda 'Šilta Širdis' savanorė ❤️",
+      "role": "user"
+    },
+    {
+      "id": "user-lt-darius",
+      "username": "darius_kaunas",
+      "email": "darius@example.lt",
+      "displayName": "Darius Vasiliauskas",
+      "bio": "Profesionalus šunų kirpėjas 💈 Kaunas",
+      "role": "user"
+    }
+  ],
+  "pets": [
+    {
+      "id": "pet-lt-rex",
+      "ownerId": "user-lt-jonas",
+      "slug": "rex-vokieciu-aviganis",
+      "name": "Rex",
+      "species": "dog",
+      "breed": "Vokiečių aviganis",
+      "gender": "male",
+      "birthday": "2020-05-15",
+      "bio": "Draugiškas ir protingas šuo, mylintis žaisti parke"
+    },
+    {
+      "id": "pet-lt-milda",
+      "ownerId": "user-lt-greta",
+      "slug": "milda-maine-coon",
+      "name": "Milda",
+      "species": "cat",
+      "breed": "Maine Coon",
+      "gender": "female",
+      "birthday": "2021-03-20",
+      "bio": "Graži ir miela katytė, mėgstanti žaisti su kamuoliukais"
+    },
+    {
+      "id": "pet-lt-max",
+      "ownerId": "user-lt-tomas",
+      "slug": "max-golden-retriever",
+      "name": "Max",
+      "species": "dog",
+      "breed": "Auksaspalvis retriveris",
+      "gender": "male",
+      "birthday": "2019-08-10",
+      "bio": "Energingas ir draugiškas šuo, mylintis vandenį"
+    },
+    {
+      "id": "pet-lt-luna",
+      "ownerId": "user-lt-laura",
+      "slug": "luna-mišrūnas",
+      "name": "Luna",
+      "species": "dog",
+      "breed": "Mišrūnas",
+      "gender": "female",
+      "birthday": "2022-01-05",
+      "bio": "Išgelbėta iš prieglaudos, ieško amžino namų"
+    },
+    {
+      "id": "pet-lt-bruno",
+      "ownerId": "user-lt-darius",
+      "slug": "bruno-prancūzų-buldogas",
+      "name": "Bruno",
+      "species": "dog",
+      "breed": "Prancūzų buldogas",
+      "gender": "male",
+      "birthday": "2021-11-30",
+      "bio": "Mažas bet drąsus šuniukas su dideliu charakteriu"
+    }
+  ],
+  "posts": [
+    {
+      "id": "post-lt-1",
+      "authorUserId": "user-lt-jonas",
+      "postType": "standard",
+      "textContent": "Puiki diena pasivaikščiojimui su Rex Vingio parke! 🌳 Oras nuostabus, daug draugų sutikome. Kas dar šiandien buvo parke?",
+      "petTags": ["pet-lt-rex"],
+      "hashtags": ["VingioPark", "ŠunųPasivaikščiojimas", "Vilnius"],
+      "location": {
+        "name": "Vingio parkas, Vilnius",
+        "lat": 54.6872,
+        "lng": 25.2797
+      },
+      "visibility": "public",
+      "likesCount": 15,
+      "commentsCount": 3,
+      "publishedAt": "2024-11-13T10:30:00Z"
+    },
+    {
+      "id": "post-lt-2",
+      "authorUserId": "user-lt-greta",
+      "postType": "photo_album",
+      "textContent": "Milda šiandien labai žaisli! 😺 Naujas žaislas - didžiulis sėkmė! #KatėsGyvenimas",
+      "petTags": ["pet-lt-milda"],
+      "hashtags": ["KatėsGyvenimas", "MaineCoon", "Kaunas"],
+      "media": [
+        {
+          "type": "photo",
+          "url": "/placeholder-cat-1.jpg",
+          "caption": "Milda su nauju žaislu"
+        }
+      ],
+      "visibility": "public",
+      "likesCount": 22,
+      "commentsCount": 5,
+      "publishedAt": "2024-11-13T14:15:00Z"
+    },
+    {
+      "id": "post-lt-3",
+      "authorUserId": "user-lt-tomas",
+      "postType": "standard",
+      "textContent": "Max pirmą kartą matė jūrą! 🌊 Jo reakcija buvo nepakartojama - iš karto šoko į bangas! Klaipėdos paplūdimys yra nuostabus šunims.",
+      "petTags": ["pet-lt-max"],
+      "hashtags": ["Klaipėda", "ŠunysPaplūdimyje", "AuksaspalvisRetriveris"],
+      "location": {
+        "name": "Klaipėdos paplūdimys",
+        "lat": 55.7033,
+        "lng": 21.1443
+      },
+      "visibility": "public",
+      "likesCount": 34,
+      "commentsCount": 8,
+      "publishedAt": "2024-11-13T16:45:00Z"
+    },
+    {
+      "id": "post-lt-4",
+      "authorUserId": "user-lt-laura",
+      "postType": "standard",
+      "textContent": "🏠 SKUBU! Luna ieško mylimų namų! Ji yra 2 metų, labai draugiška ir gerai sugyvena su vaikais. Jei galite padėti, susisiekite su 'Šilta Širdis' prieglauda. Pasidalinkite! 🙏",
+      "petTags": ["pet-lt-luna"],
+      "hashtags": ["Įsivaikinti", "GyvūnųPrieglauda", "Vilnius", "IeškoNamų"],
+      "visibility": "public",
+      "likesCount": 45,
+      "commentsCount": 12,
+      "sharesCount": 18,
+      "publishedAt": "2024-11-12T09:00:00Z"
+    },
+    {
+      "id": "post-lt-5",
+      "authorUserId": "user-lt-darius",
+      "postType": "standard",
+      "textContent": "Bruno po kirpimo seanso! 💈✨ Prancūzų buldogai reikalauja specialios priežiūros. Patarimai: reguliariai valykite raukšles ir naudokite švelnų šampūną. #ŠunųPriežiūra",
+      "petTags": ["pet-lt-bruno"],
+      "hashtags": ["ŠunųKirpimas", "PrancūzųBuldogas", "Kaunas", "ŠunųPriežiūra"],
+      "visibility": "public",
+      "likesCount": 28,
+      "commentsCount": 6,
+      "publishedAt": "2024-11-13T11:20:00Z"
+    },
+    {
+      "id": "post-lt-6",
+      "authorUserId": "user-lt-jonas",
+      "postType": "question",
+      "textContent": "Sveiki! Ar kas nors žino gerą veterinarijos kliniką Vilniuje? Rex reikia profilaktinio patikrinimo. Dėkoju už rekomendacijas! 🏥",
+      "petTags": ["pet-lt-rex"],
+      "hashtags": ["Veterinarija", "Vilnius", "Patarimai"],
+      "questionData": {
+        "category": "health"
+      },
+      "visibility": "public",
+      "likesCount": 8,
+      "commentsCount": 15,
+      "publishedAt": "2024-11-11T13:30:00Z"
+    },
+    {
+      "id": "post-lt-7",
+      "authorUserId": "user-lt-greta",
+      "postType": "standard",
+      "textContent": "Veterinarijos studijos + katės priežiūra = nuolatinis iššūkis! 😅 Bet Milda yra geriausia motyvacija. Kaip jūs deriniate darbą/mokslus su augintinių priežiūra?",
+      "petTags": ["pet-lt-milda"],
+      "hashtags": ["VeterinarijosStudijos", "KatėsGyvenimas", "Studentas"],
+      "visibility": "public",
+      "likesCount": 19,
+      "commentsCount": 11,
+      "publishedAt": "2024-11-12T18:00:00Z"
+    },
+    {
+      "id": "post-lt-8",
+      "authorUserId": "user-lt-tomas",
+      "postType": "event",
+      "textContent": "🎉 Organizuojame šunų susitikimą Klaipėdoje! Šeštadienį, 10:00 val. prie Danės upės. Atsineškite savo keturkojus draugus! Visi kviečiami!",
+      "petTags": ["pet-lt-max"],
+      "hashtags": ["ŠunųSusitikimas", "Klaipėda", "Renginys"],
+      "eventData": {
+        "title": "Šunų susitikimas prie Danės",
+        "startAt": "2024-11-16T10:00:00Z",
+        "durationMinutes": 120,
+        "location": {
+          "name": "Danės upė, Klaipėda",
+          "lat": 55.7033,
+          "lng": 21.1443
+        }
+      },
+      "visibility": "public",
+      "likesCount": 52,
+      "commentsCount": 23,
+      "publishedAt": "2024-11-10T15:00:00Z"
+    },
+    {
+      "id": "post-lt-9",
+      "authorUserId": "user-lt-laura",
+      "postType": "standard",
+      "textContent": "Šiandien prieglaudoje turėjome 5 naujus svečius 😢 Bet džiaugiamės, kad 3 šuniukai rado namus šią savaitę! ❤️ Ačiū visiems, kurie padeda ir remia mūsų darbą. #GyvūnųGerovė",
+      "hashtags": ["GyvūnųPrieglauda", "Įsivaikinti", "Vilnius", "Savanorystė"],
+      "visibility": "public",
+      "likesCount": 67,
+      "commentsCount": 18,
+      "sharesCount": 25,
+      "publishedAt": "2024-11-13T20:00:00Z"
+    },
+    {
+      "id": "post-lt-10",
+      "authorUserId": "user-lt-darius",
+      "postType": "standard",
+      "textContent": "Profesionalus patarimas: rudenį ir žiemą šunų letenų priežiūra ypač svarbi! ❄️ Druskos gatvėse gali sudirginti odą. Naudokite specialius balzamus. #ŠunųSveikata",
+      "hashtags": ["ŠunųPriežiūra", "Ruduo", "ProfesionaliPatarimai"],
+      "visibility": "public",
+      "likesCount": 41,
+      "commentsCount": 9,
+      "publishedAt": "2024-11-13T08:30:00Z"
+    }
+  ]
+}

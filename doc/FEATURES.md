@@ -110,12 +110,15 @@ This document provides a comprehensive list of all features available in the Pet
   - Name and slug
   - Species (dog, cat, bird, rabbit, hamster, fish, other)
   - Breed
-  - Age
+  - **Age Tracking**
+    - Exact birth date mode: Enter specific birthday for automatic age calculation
+    - Approximate age mode: Enter years and months for pets with unknown birth dates
+    - Real-time age display showing years and months
   - Gender (male, female)
   - Avatar image
   - Bio/description
   - Birthday
-  - Weight
+  - Weight (with kg/lb unit conversion)
   - Color
   - Microchip ID
   - Adoption date
@@ -222,7 +225,15 @@ This document provides a comprehensive list of all features available in the Pet
   - Tooltips on form labels for helpful information
   - Success/error messages with auto-dismiss
   - Loading spinner during submission
-  - Organized tabs: Basic, Personality, Favorites, Diet, Health, Training
+  - Organized tabs: Basic, Photos, ID, Personality, Favorites, Diet, Health, Achievements
+  - **Age Input Modes**
+    - Toggle between exact birth date and approximate age
+    - Exact mode: Date picker with automatic age calculation
+    - Approximate mode: Separate year and month selectors (0-30 years, 0-11 months)
+    - Real-time age display in human-readable format
+  - **Weight Input**
+    - Unit conversion between kg and lbs
+    - Formatted display with locale-aware number formatting
   - Dynamic fields for health records, vaccinations, medications, training progress
   - Species-specific validation
   - Character counters for text fields

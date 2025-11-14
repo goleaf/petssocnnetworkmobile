@@ -15,7 +15,8 @@
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:debug": "playwright test --debug",
     "typecheck": "tsc --noEmit",
-    "db:seed": "tsx prisma/seed.ts"
+    "db:seed": "tsx prisma/seed.ts",
+    "db:seed:lt": "tsx prisma/seed-lithuanian-demo.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
