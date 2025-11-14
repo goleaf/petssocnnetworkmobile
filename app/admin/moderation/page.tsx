@@ -1,182 +1,252 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { Button } from "@/components/ui/button";
+import { useState } from "react";
+import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useAuth } from "@/components/auth/auth-provider";
-import { getModerationStats, getPaginatedEditRequests, approveEditRequest, rejectEditRequest, getEditRequestAuditTrail } from "@/lib/moderation";
-
-type FilterType = "blog" | "wiki" | "pet" | "user" | undefined
-type StatusType = "pending" | "approved" | "rejected" | undefined
+import { RecentChangesFeed } from "@/components/admin/RecentChangesFeed";
+import { ModerationFilters, type FilterValues } from "@/components/admin/ModerationFilters";
+import { AlertCircle, ArrowRight, CheckCircle } from "lucide-react";
 
 export default function ModerationDashboardPage() {
-  const { user } = useAuth()
+  const { user } = useAuth();
 
-  const [filters, setFilters] = useState<{ type?: FilterType; status?: StatusType; reporterId?: string; maxAge?: number }>({})
-  const [page, setPage] = useState(1)
-  const [pageSize] = useState(10)
-  const [totalPages, setTotalPages] = useState(1)
-  const [requests, setRequests] = useState<any[]>([])
-  const [stats, setStats] = useState<{ totalPending: number; totalApproved: number; totalRejected: number }>({ totalPending: 0, totalApproved: 0, totalRejected: 0 })
-  const [rejectOpen, setRejectOpen] = useState(false)
-  const [rejectReason, setRejectReason] = useState("")
-  const [activeRequestId, setActiveRequestId] = useState<string | null>(null)
-  const [historyOpen, setHistoryOpen] = useState(false)
+  const [filters, setFilters] = useState<FilterValues>({});
+  const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
+  const [rejectReason, setRejectReason] = useState("");
+  const [activeRequestId, setActiveRequestId] = useState<string | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  useEffect(() => {
-    const s = getModerationStats()
-    setStats({ totalPending: s.totalPending, totalApproved: s.totalApproved, totalRejected: s.totalRejected })
-  }, [])
+  // Handle approve action
+  const handleApprove = async (id: string) => {
+    if (!user) {
+      setErrorMessage("You must be logged in to approve edits.");
+      return;
+    }
 
-  useEffect(() => {
-    const resp: any = getPaginatedEditRequests(filters as any, { page, pageSize })
-    setRequests(resp.items as any[])
-    if (typeof resp.totalPages === 'number') setTotalPages(resp.totalPages)
-    if (typeof resp.page === 'number') setPage(resp.page)
-  }, [filters, page, pageSize])
+    setActionLoading(true);
+    setSuccessMessage(null);
+    setErrorMessage(null);
 
-  const handleApprove = (id: string) => {
-    if (!user) return
-    approveEditRequest(id, (user as any).id || "moderator1")
+    try {
+      const response = await fetch("/api/admin/moderation/approve", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to approve edit request");
+      }
+
+      setSuccessMessage("Edit request approved and applied successfully.");
+
+      // Trigger feed refresh by updating filters
+      setFilters({ ...filters });
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "An error occurred");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Handle reject action
+  const handleReject = async (id: string) => {
+    setActiveRequestId(id);
+    setRejectReason("");
+    setRejectDialogOpen(true);
+  };
+
+  // Submit rejection with reason
+  const submitReject = async () => {
+    if (!activeRequestId || !user) return;
+
+    setActionLoading(true);
+    setSuccessMessage(null);
+    setErrorMessage(null);
+
+    try {
+      const response = await fetch("/api/admin/moderation/reject", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: activeRequestId,
+          reason: rejectReason || "No reason provided",
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to reject edit request");
+      }
+
+      setSuccessMessage("Edit request rejected successfully.");
+      setRejectDialogOpen(false);
+      setActiveRequestId(null);
+      setRejectReason("");
+
+      // Trigger feed refresh
+      setFilters({ ...filters });
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "An error occurred");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Handle filter changes
+  const handleFiltersChange = (newFilters: FilterValues) => {
+    setFilters(newFilters);
+  };
+
+  // Check if user is moderator
+  const isModerator = user?.role === "moderator" || user?.role === "admin";
+
+  if (!user) {
+    return (
+      <div className="container mx-auto p-6">
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            You must be logged in to access the moderation dashboard.
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
   }
 
-  const handleReject = (id: string) => {
-    setActiveRequestId(id)
-    setRejectReason("")
-    setRejectOpen(true)
-  }
-
-  const submitReject = () => {
-    if (!activeRequestId || !user) return
-    rejectEditRequest(activeRequestId, (user as any).id || "moderator1", rejectReason || undefined)
-    setRejectOpen(false)
-  }
-
-  const openHistory = (id: string) => {
-    setActiveRequestId(id)
-    setHistoryOpen(true)
-    getEditRequestAuditTrail(id)
+  if (!isModerator) {
+    return (
+      <div className="container mx-auto p-6">
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            You do not have permission to access the moderation dashboard.
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
   }
 
   return (
     <div className="container mx-auto p-6 space-y-6">
-      <h1 className="text-3xl font-bold">Content Moderation</h1>
-      <div className="text-sm text-muted-foreground">Media Moderation Queue</div>
-
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-4">
-        <Card>
-          <CardHeader><CardTitle>Awaiting Review</CardTitle></CardHeader>
-          <CardContent className="text-2xl font-semibold">{stats.totalPending}</CardContent>
-        </Card>
-        <Card>
-          <CardHeader><CardTitle>Accepted</CardTitle></CardHeader>
-          <CardContent className="text-2xl font-semibold">{stats.totalApproved}</CardContent>
-        </Card>
-        <Card>
-          <CardHeader><CardTitle>Declined</CardTitle></CardHeader>
-          <CardContent className="text-2xl font-semibold">{stats.totalRejected}</CardContent>
-        </Card>
+      {/* Header */}
+      <div>
+        <h1 className="text-3xl font-bold">Content Moderation</h1>
+        <p className="text-muted-foreground mt-1">
+          Review and approve content changes from the community
+        </p>
       </div>
 
-      {/* Filters */}
+      {/* Success/Error Messages */}
+      {successMessage && (
+        <Alert>
+          <CheckCircle className="h-4 w-4" />
+          <AlertDescription>{successMessage}</AlertDescription>
+        </Alert>
+      )}
+      {errorMessage && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{errorMessage}</AlertDescription>
+        </Alert>
+      )}
+
+      {/* Quick Links to Specialized Queues */}
       <Card>
-        <CardHeader><CardTitle>Filters</CardTitle></CardHeader>
-        <CardContent className="grid grid-cols-4 gap-4 items-end">
-          <div className="space-y-2">
-            <Label htmlFor="filter-type">Content Type</Label>
-            <Select value={filters.type} onValueChange={(v) => setFilters((f) => ({ ...f, type: v as FilterType }))}>
-              <SelectTrigger id="filter-type" aria-label="Content Type"><SelectValue placeholder="All types" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="blog">Blog Posts</SelectItem>
-                <SelectItem value="wiki">Wiki</SelectItem>
-                <SelectItem value="pet">Pets</SelectItem>
-                <SelectItem value="user">Users</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="filter-status">Status</Label>
-            <Select value={filters.status} onValueChange={(v) => setFilters((f) => ({ ...f, status: v as StatusType }))}>
-              <SelectTrigger id="filter-status" aria-label="Status"><SelectValue placeholder="Any status" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="approved">Approved</SelectItem>
-                <SelectItem value="rejected">Rejected</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="filter-reporter">Reporter</Label>
-            <Input id="filter-reporter" placeholder="Filter by reporter" value={filters.reporterId || ""} onChange={(e) => setFilters((f) => ({ ...f, reporterId: e.target.value || undefined }))} />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="filter-age">Max Age (hours)</Label>
-            <Input id="filter-age" placeholder="No limit" value={filters.maxAge?.toString() || ""} onChange={(e) => setFilters((f) => ({ ...f, maxAge: e.target.value ? Number(e.target.value) : undefined }))} />
+        <CardHeader>
+          <CardTitle>Specialized Queues</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <Link href="/admin/queue/new-pages">
+              <Button variant="outline" className="w-full justify-between">
+                New Pages
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </Link>
+            <Link href="/admin/queue/flagged-health">
+              <Button variant="outline" className="w-full justify-between">
+                Health Content
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </Link>
+            <Link href="/admin/queue/coi-edits">
+              <Button variant="outline" className="w-full justify-between">
+                COI Edits
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </Link>
+            <Link href="/admin/queue/image-reviews">
+              <Button variant="outline" className="w-full justify-between">
+                Image Reviews
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </Link>
           </div>
         </CardContent>
       </Card>
 
-      {/* List */}
-      <Card>
-        <CardHeader><CardTitle>Requests</CardTitle></CardHeader>
-        <CardContent className="space-y-2">
-          {requests.map((r) => (
-            <div key={r.id} className="flex items-center justify-between border rounded p-3">
-              <div className="space-y-1">
-                <div className="font-medium">{r.type}: {r.contentId}</div>
-                <div className="text-xs text-muted-foreground">{r.changesSummary || "Changed title"}</div>
-              </div>
-              <div className="flex gap-2">
-                <Button size="sm" onClick={() => handleApprove(r.id)}>Approve</Button>
-                <Button size="sm" variant="destructive" onClick={() => handleReject(r.id)}>
-                  {rejectOpen && activeRequestId === r.id ? 'Cancel' : 'Reject'}
-                </Button>
-                <Dialog open={historyOpen && activeRequestId === r.id} onOpenChange={setHistoryOpen}>
-                  <DialogTrigger asChild>
-                    <Button size="sm" variant="outline" onClick={() => openHistory(r.id)}>History</Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Audit Trail</DialogTitle>
-                      <DialogDescription>Review history for this request</DialogDescription>
-                    </DialogHeader>
-                    <div className="text-sm">Viewing history</div>
-                  </DialogContent>
-                </Dialog>
-              </div>
-            </div>
-          ))}
+      {/* Main Content Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        {/* Filters Sidebar */}
+        <div className="lg:col-span-1">
+          <ModerationFilters onFiltersChange={handleFiltersChange} />
+        </div>
 
-          {/* Pagination */}
-          <div className="flex items-center justify-between pt-2">
-            <div>Page {page} of {totalPages}</div>
-            <div className="flex gap-2">
-              <Button size="sm" variant="outline" disabled={page === 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>Previous</Button>
-              <Button size="sm" variant="outline" disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>Next</Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+        {/* Recent Changes Feed */}
+        <div className="lg:col-span-3">
+          <RecentChangesFeed
+            filters={filters}
+            pageSize={10}
+            onApprove={handleApprove}
+            onReject={handleReject}
+          />
+        </div>
+      </div>
 
-      {/* Reject dialog */}
-      <Dialog open={rejectOpen} onOpenChange={setRejectOpen}>
+      {/* Reject Dialog */}
+      <Dialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{rejectReason ? 'Confirm Decision' : 'Reject Edit Request'}</DialogTitle>
-            <DialogDescription>Provide a reason</DialogDescription>
+            <DialogTitle>Reject Edit Request</DialogTitle>
+            <DialogDescription>
+              Please provide a reason for rejecting this edit. The user will be notified.
+            </DialogDescription>
           </DialogHeader>
-          <Input placeholder="Enter rejection reason" value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} />
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setRejectOpen(false)}>Cancel</Button>
-            <Button onClick={submitReject}>Reject</Button>
+          <div className="space-y-4 py-4">
+            <Textarea
+              placeholder="Enter rejection reason..."
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              rows={4}
+            />
           </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setRejectDialogOpen(false)}
+              disabled={actionLoading}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={submitReject}
+              disabled={actionLoading || !rejectReason.trim()}
+            >
+              {actionLoading ? "Rejecting..." : "Reject Edit"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
-  )
+  );
 }
