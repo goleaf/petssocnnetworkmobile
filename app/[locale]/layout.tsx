@@ -31,7 +31,6 @@ export default async function LocaleLayout({ children, params }: Props) {
       messages={messages}
       locale={currentLocale}
       timeZone="UTC"
-      now={new Date()}
     >
       {children}
     </NextIntlClientProvider>

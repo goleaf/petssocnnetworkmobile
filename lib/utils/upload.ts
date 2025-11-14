@@ -28,7 +28,14 @@ export async function uploadProfilePhoto(params: {
         onProgress(percent)
       }
     }
-    xhr.onerror = () => reject(new Error('Upload failed'))
+    xhr.onerror = () => {
+      // Check if it's a network error
+      if (xhr.status === 0 || !xhr.responseText) {
+        reject(new Error('Network error: Please check your internet connection and try again'))
+      } else {
+        reject(new Error('Upload failed'))
+      }
+    }
     xhr.onabort = () => reject(new Error('Upload aborted'))
     xhr.onload = () => {
       try {
@@ -74,7 +81,14 @@ export async function uploadCoverPhoto(params: {
       if (!onProgress) return
       if (evt.lengthComputable) onProgress(Math.round((evt.loaded / evt.total) * 100))
     }
-    xhr.onerror = () => reject(new Error('Upload failed'))
+    xhr.onerror = () => {
+      // Check if it's a network error
+      if (xhr.status === 0 || !xhr.responseText) {
+        reject(new Error('Network error: Please check your internet connection and try again'))
+      } else {
+        reject(new Error('Upload failed'))
+      }
+    }
     xhr.onabort = () => reject(new Error('Upload aborted'))
     xhr.onload = () => {
       try {

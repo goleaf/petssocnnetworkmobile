@@ -764,7 +764,7 @@ export default function EditProfilePage({ params }: { params: Promise<{ username
     setIsSubmitting(true)
 
     try {
-      updateUser(profileUser.id, {
+      const updatedProfile = {
         fullName: formData.fullName,
         bio: formData.bio,
         avatar: formData.avatar,
@@ -805,9 +805,44 @@ export default function EditProfilePage({ params }: { params: Promise<{ username
           ...profileUser.privacy,
           ...formData.privacy,
         },
+      }
+
+      // Submit to moderation API instead of direct update
+      const response = await fetch("/api/admin/moderation/edit-requests", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          contentType: "profile",
+          contentId: profileUser.id,
+          originalContent: profileUser,
+          editedContent: updatedProfile,
+          reason: "User profile edit",
+          priority: "normal",
+        }),
       })
 
-      setMessage({ type: "success", text: "Profile updated successfully!" })
+      const data = await response.json()
+
+      if (!response.ok) {
+        // Handle rate limit errors
+        if (response.status === 429) {
+          const retryMinutes = data.details?.retryAfterMinutes || 1
+          setMessage({
+            type: "error",
+            text: `Rate limit exceeded. You can submit ${data.details?.remaining || 0} more edits. Please try again in ${retryMinutes} minute${retryMinutes !== 1 ? 's' : ''}.`
+          })
+          setIsSubmitting(false)
+          return
+        }
+
+        // Handle other errors
+        throw new Error(data.error || "Failed to submit edit request")
+      }
+
+      // Show success message
+      setMessage({ type: "success", text: "Edit submitted for approval! Your changes will be reviewed by a moderator." })
 
       // Redirect to profile page after a short delay
       setTimeout(() => {
@@ -816,7 +851,7 @@ export default function EditProfilePage({ params }: { params: Promise<{ username
     } catch (error) {
       setMessage({
         type: "error",
-        text: error instanceof Error ? error.message : "Failed to update profile. Please try again.",
+        text: error instanceof Error ? error.message : "Failed to submit edit request. Please try again.",
       })
       setIsSubmitting(false)
     }

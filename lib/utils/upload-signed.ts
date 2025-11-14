@@ -23,7 +23,14 @@ export async function uploadImageWithProgress(params: {
     xhr.upload.onprogress = (evt) => {
       if (onProgress && evt.lengthComputable) onProgress(Math.round((evt.loaded / evt.total) * 100))
     }
-    xhr.onerror = () => reject(new Error('Upload failed'))
+    xhr.onerror = () => {
+      // Check if it's a network error
+      if (xhr.status === 0 || !xhr.responseText) {
+        reject(new Error('Network error: Please check your internet connection and try again'))
+      } else {
+        reject(new Error('Upload failed'))
+      }
+    }
     xhr.onabort = () => reject(new Error('Upload aborted'))
     xhr.onload = () => {
       if (xhr.status >= 200 && xhr.status < 300) resolve()
@@ -55,7 +62,14 @@ export async function uploadFileWithProgress(params: {
     xhr.upload.onprogress = (evt) => {
       if (onProgress && evt.lengthComputable) onProgress(Math.round((evt.loaded / evt.total) * 100))
     }
-    xhr.onerror = () => reject(new Error('Upload failed'))
+    xhr.onerror = () => {
+      // Check if it's a network error
+      if (xhr.status === 0 || !xhr.responseText) {
+        reject(new Error('Network error: Please check your internet connection and try again'))
+      } else {
+        reject(new Error('Upload failed'))
+      }
+    }
     xhr.onabort = () => reject(new Error('Upload aborted'))
     xhr.onload = () => {
       if (xhr.status >= 200 && xhr.status < 300) resolve()

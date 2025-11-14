@@ -23,6 +23,7 @@ import {
 import { cacheArticle, getCachedArticle, trackOfflineRead } from "@/lib/offline-cache"
 import { useOfflineSync } from "@/lib/hooks/use-offline-sync"
 import { useAuth } from "@/lib/auth"
+import { generateJsonLd } from "@/lib/wiki-server"
 import { canUserModerate } from "@/lib/utils/comments"
 import {
   Eye,
@@ -33,6 +34,7 @@ import {
   RotateCcw,
   AlertTriangle,
   RefreshCw,
+  CheckCircle,
 } from "lucide-react"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import Link from "next/link"
@@ -53,6 +55,7 @@ export default function WikiArticlePage({ params }: { params: Promise<{ slug: st
   const { slug } = use(params)
   const searchParams = useSearchParams()
   const { user: currentUser } = useAuth()
+  const { isOnline } = useOfflineSync()
   const [article, setArticle] = useState<WikiArticle | null>(null)
   const [author, setAuthor] = useState<any | null>(null)
   const [hasLiked, setHasLiked] = useState(false)

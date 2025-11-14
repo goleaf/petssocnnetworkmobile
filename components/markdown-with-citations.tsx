@@ -20,7 +20,12 @@ export function MarkdownWithCitations({ content, className, articleId }: Markdow
   const [citations, setCitations] = useState<Citation[]>([])
 
   const { parsedCitations, parsedSources, cleanedContent } = useMemo(() => {
-    return parseCitationsFromMarkdown(content)
+    const result = parseCitationsFromMarkdown(content || "")
+    return {
+      parsedCitations: result.citations || [],
+      parsedSources: Array.isArray(result.sources) ? result.sources : [],
+      cleanedContent: result.cleanedContent || "",
+    }
   }, [content])
 
   // Load existing sources from storage and merge with parsed sources

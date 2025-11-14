@@ -15,10 +15,12 @@ const STORAGE_KEY = "screenReaderMode"
 
 export function ScreenReaderProvider({ children }: { children: React.ReactNode }) {
   const [enabled, setEnabled] = useState<boolean>(false)
+  const [mounted, setMounted] = useState(false)
   const liveRef = useRef<HTMLDivElement | null>(null)
   const observerRef = useRef<MutationObserver | null>(null)
 
   useEffect(() => {
+    setMounted(true)
     try {
       const stored = localStorage.getItem(STORAGE_KEY)
       if (stored) setEnabled(stored === "true")
@@ -26,6 +28,7 @@ export function ScreenReaderProvider({ children }: { children: React.ReactNode }
   }, [])
 
   useEffect(() => {
+    if (!mounted) return
     try {
       localStorage.setItem(STORAGE_KEY, String(enabled))
     } catch {}
@@ -39,7 +42,7 @@ export function ScreenReaderProvider({ children }: { children: React.ReactNode }
       }, 1500)
       return () => clearTimeout(id)
     }
-  }, [enabled])
+  }, [enabled, mounted])
 
   const applyAltIfMissing = useCallback(async (img: HTMLImageElement) => {
     if (!(img instanceof HTMLImageElement)) return
@@ -85,7 +88,7 @@ export function ScreenReaderProvider({ children }: { children: React.ReactNode }
   }, [applyAltIfMissing])
 
   useEffect(() => {
-    if (!enabled) {
+    if (!mounted || !enabled) {
       if (observerRef.current) {
         observerRef.current.disconnect()
         observerRef.current = null
@@ -104,7 +107,7 @@ export function ScreenReaderProvider({ children }: { children: React.ReactNode }
         observerRef.current = null
       }
     }
-  }, [enabled, scanImages, setupObserver])
+  }, [enabled, mounted, scanImages, setupObserver])
 
   const toggle = useCallback(() => setEnabled((v) => !v), [])
 

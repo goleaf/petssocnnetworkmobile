@@ -181,7 +181,7 @@ export function Step6BioReview({
             {
               label: "Weight",
               value: allFormData.weight
-                ? `${allFormData.weight} ${allFormData.weightUnit || "lbs"}`
+                ? `${allFormData.weight} ${allFormData.weightUnit || "kg"}`
                 : "Not specified",
             },
             {

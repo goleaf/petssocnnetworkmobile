@@ -32,10 +32,12 @@ const MotorA11yContext = createContext<MotorA11yContextValue | undefined>(undefi
 
 export function MotorAccessibilityProvider({ children }: { children: React.ReactNode }) {
   const [settings, setSettings] = useState<MotorA11ySettings>(DEFAULTS)
+  const [mounted, setMounted] = useState(false)
   const lastClickRef = useRef<number>(0)
 
   // Load from localStorage
   useEffect(() => {
+    setMounted(true)
     try {
       const raw = localStorage.getItem(STORAGE_KEY)
       if (raw) {
@@ -47,25 +49,26 @@ export function MotorAccessibilityProvider({ children }: { children: React.React
 
   // Persist to localStorage on change
   useEffect(() => {
+    if (!mounted) return
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(settings))
     } catch {}
-  }, [settings])
+  }, [settings, mounted])
 
   // Apply/unapply large touch targets via body class
   useEffect(() => {
-    if (typeof document === "undefined") return
+    if (!mounted || typeof document === "undefined") return
     const cls = "a11y-large-targets"
     if (settings.largeTouchTargets) {
       document.body.classList.add(cls)
     } else {
       document.body.classList.remove(cls)
     }
-  }, [settings.largeTouchTargets])
+  }, [settings.largeTouchTargets, mounted])
 
   // Global click guard to enforce click delay between activations
   useEffect(() => {
-    if (typeof window === "undefined") return
+    if (!mounted || typeof window === "undefined") return
     const handler = (e: MouseEvent) => {
       const delay = settings.clickDelayMs
       if (!delay || delay <= 0) return
@@ -82,7 +85,7 @@ export function MotorAccessibilityProvider({ children }: { children: React.React
     // Use capture to intercept before React handlers
     window.addEventListener("click", handler, { capture: true })
     return () => window.removeEventListener("click", handler, { capture: true } as any)
-  }, [settings.clickDelayMs])
+  }, [settings.clickDelayMs, mounted])
 
   const setStickyKeys = useCallback((v: boolean) => setSettings((s) => ({ ...s, stickyKeys: v })), [])
   const setSlowKeys = useCallback((v: boolean) => setSettings((s) => ({ ...s, slowKeys: v })), [])

@@ -272,11 +272,14 @@ export function PetForm({ mode, initialData, onSubmit, onCancel, petName }: PetF
   const unitSystem = useUnitSystem()
   const formatNumber = useFormatNumber()
 
-  // Weight local state with unit handling
-  const [weightUnit, setWeightUnit] = useState<'kg' | 'lb'>(unitSystem === 'imperial' ? 'lb' : 'kg')
-  const [weightValue, setWeightValue] = useState<number | ''>('')
+  // Age handling: exact birth date vs approximate age
+  const [ageMode, setAgeMode] = useState<'exact' | 'approx'>(initialData?.birthday ? 'exact' : 'approx')
+  const [approxYears, setApproxYears] = useState<number>(0)
+  const [approxMonths, setApproxMonths] = useState<number>(0)
 
-  // Age handling: exact birth date vs approximate age (declared after formData)
+  // Weight local state with unit handling
+  const [weightUnit, setWeightUnit] = useState<'kg' | 'lb'>('kg')
+  const [weightValue, setWeightValue] = useState<number | ''>('')
 
   useEffect(() => {
     // Initialize from existing weight string (e.g., "70 lbs" or "5 kg")
@@ -284,12 +287,12 @@ export function PetForm({ mode, initialData, onSubmit, onCancel, petName }: PetF
     const match = raw.match(/([0-9]+(?:\.[0-9]+)?)\s*(kg|kgs|kilograms|lb|lbs|pounds)?/i)
     if (match) {
       const val = Number(match[1])
-      const unit = (match[2] || (unitSystem === 'imperial' ? 'lb' : 'kg')).toLowerCase()
+      const unit = (match[2] || 'kg').toLowerCase()
       setWeightValue(Number.isNaN(val) ? '' : val)
       setWeightUnit(unit.startsWith('k') ? 'kg' : 'lb')
     } else {
       setWeightValue('')
-      setWeightUnit(unitSystem === 'imperial' ? 'lb' : 'kg')
+      setWeightUnit('kg')
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -297,19 +300,129 @@ export function PetForm({ mode, initialData, onSubmit, onCancel, petName }: PetF
   useEffect(() => {
     // Sync display weight back to formData as a formatted string
     if (weightValue === '') {
-      setFormData((prev) => ({ ...prev, weight: '' }))
+      setFormData((prev) => {
+        if (prev.weight === '') return prev
+        return { ...prev, weight: '' }
+      })
       return
     }
     const v = typeof weightValue === 'number' ? weightValue : Number(weightValue)
     const display = `${formatNumber(v, { minimumFractionDigits: 0, maximumFractionDigits: 1 })} ${weightUnit}`
-    setFormData((prev) => ({ ...prev, weight: display }))
+    setFormData((prev) => {
+      if (prev.weight === display) return prev
+      return { ...prev, weight: display }
+    })
   }, [weightValue, weightUnit, formatNumber])
 
+  const resolvedPrivacy = React.useMemo(() => {
+    const rawPrivacy = initialData?.privacy
+    if (
+      rawPrivacy &&
+      typeof rawPrivacy === "object" &&
+      "visibility" in rawPrivacy &&
+      "interactions" in rawPrivacy
+    ) {
+      return {
+        visibility: rawPrivacy.visibility as PrivacyLevel,
+        interactions: rawPrivacy.interactions as PrivacyLevel,
+      }
+    }
+
+    const fallback = (rawPrivacy as PrivacyLevel | undefined) || "public"
+    return {
+      visibility: fallback,
+      interactions: fallback,
+    }
+  }, [initialData?.privacy])
+
+  const [formData, setFormData] = useState<PetFormData>({
+    name: initialData?.name || "",
+    species: initialData?.species || "dog",
+    speciesId: initialData?.speciesId || undefined,
+    customSpecies: "",
+    breed: initialData?.breed || "",
+    breedId: initialData?.breedId || undefined,
+    age: initialData?.age?.toString() || "",
+    gender: (initialData?.gender as PetFormData["gender"]) || "unknown",
+    bio: initialData?.bio || "",
+    privacyVisibility: resolvedPrivacy.visibility,
+    privacyInteractions: resolvedPrivacy.interactions,
+    birthday: initialData?.birthday || "",
+    weight: initialData?.weight || "",
+    color: initialData?.color || "",
+    microchipId: initialData?.microchipId || "",
+    microchipCompany: (initialData as any)?.microchipCompany || undefined,
+    microchipCompanyOther: undefined,
+    microchipRegistrationStatus: (initialData as any)?.microchipRegistrationStatus || 'unknown',
+    microchipCertificateUrl: (initialData as any)?.microchipCertificateUrl || undefined,
+    collarTagId: (initialData as any)?.collarTagId || "",
+    adoptionDate: initialData?.adoptionDate || "",
+    specialNeeds: initialData?.specialNeeds || "",
+    dislikes: (initialData as any)?.dislikes || "",
+    spayedNeutered: initialData?.spayedNeutered || false,
+    avatar: initialData?.avatar || undefined,
+    photos: initialData?.photos || [],
+    photoCaptions: (initialData as any)?.photoCaptions || {},
+    isFeatured: (initialData as any)?.isFeatured || false,
+    allergies: initialData?.allergies || [],
+    allergySeverities: ((initialData as any)?.allergySeverities as Record<string,'mild'|'moderate'|'severe'>) || {},
+    personality: initialData?.personality || {
+      energyLevel: 3,
+      friendliness: 3,
+      trainability: 3,
+      playfulness: 3,
+      independence: 3,
+      traits: [],
+    },
+    favoriteThings: initialData?.favoriteThings || {
+      toys: [],
+      activities: [],
+      places: [],
+      foods: [],
+    },
+    dietInfo: initialData?.dietInfo || {
+      foodBrand: "",
+      foodType: "",
+      portionSize: "",
+      feedingSchedule: [],
+      treats: [],
+      restrictions: [],
+    },
+    vetInfo: initialData?.vetInfo || {
+      clinicName: "",
+      veterinarianName: "",
+      phone: "",
+      address: "",
+      emergencyContact: "",
+    },
+    insurance: initialData?.insurance || {
+      provider: "",
+      policyNumber: "",
+      coverage: "",
+      expiryDate: "",
+    },
+    healthRecords: initialData?.healthRecords || [],
+    vaccinations: initialData?.vaccinations || [],
+    medications: initialData?.medications || [],
+    conditions: ((initialData as any)?.conditions as Array<{ id: string; name: string; diagnosedAt?: string; notes?: string }>) || [],
+    achievements: initialData?.achievements || [],
+    trainingProgress: initialData?.trainingProgress || [],
+  })
+
+  const [errors, setErrors] = useState<ValidationErrors>({})
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
+
+  // Age calculation effect
   useEffect(() => {
     if (ageMode === 'approx') {
       const totalMonths = approxYears * 12 + approxMonths
       const ageYears = totalMonths / 12
-      setFormData((prev) => ({ ...prev, birthday: prev.birthday && prev.birthday, age: ageYears ? ageYears.toFixed(2) : '' }))
+      const newAge = ageYears ? ageYears.toFixed(2) : ''
+      setFormData((prev) => {
+        if (prev.age === newAge) return prev
+        return { ...prev, age: newAge }
+      })
     }
   }, [ageMode, approxYears, approxMonths])
 
@@ -396,108 +509,6 @@ export function PetForm({ mode, initialData, onSubmit, onCancel, petName }: PetF
   const updateCondition = (id: string, field: 'diagnosedAt' | 'notes', value: string) => {
     setFormData((prev) => ({ ...prev, conditions: prev.conditions.map((c) => c.id === id ? { ...c, [field]: value } : c) }))
   }
-  const resolvedPrivacy = (() => {
-    const rawPrivacy = initialData?.privacy
-    if (
-      rawPrivacy &&
-      typeof rawPrivacy === "object" &&
-      "visibility" in rawPrivacy &&
-      "interactions" in rawPrivacy
-    ) {
-      return {
-        visibility: rawPrivacy.visibility as PrivacyLevel,
-        interactions: rawPrivacy.interactions as PrivacyLevel,
-      }
-    }
-
-    const fallback = (rawPrivacy as PrivacyLevel | undefined) || "public"
-    return {
-      visibility: fallback,
-      interactions: fallback,
-    }
-  })()
-
-  const [formData, setFormData] = useState<PetFormData>({
-    name: initialData?.name || "",
-    species: initialData?.species || "dog",
-    speciesId: initialData?.speciesId || undefined,
-    customSpecies: "",
-    breed: initialData?.breed || "",
-    breedId: initialData?.breedId || undefined,
-    age: initialData?.age?.toString() || "",
-    gender: (initialData?.gender as PetFormData["gender"]) || "unknown",
-    bio: initialData?.bio || "",
-    privacyVisibility: resolvedPrivacy.visibility,
-    privacyInteractions: resolvedPrivacy.interactions,
-    birthday: initialData?.birthday || "",
-    weight: initialData?.weight || "",
-    color: initialData?.color || "",
-    microchipId: initialData?.microchipId || "",
-    microchipCompany: (initialData as any)?.microchipCompany || undefined,
-    microchipCompanyOther: undefined,
-    microchipRegistrationStatus: (initialData as any)?.microchipRegistrationStatus || 'unknown',
-    microchipCertificateUrl: (initialData as any)?.microchipCertificateUrl || undefined,
-    collarTagId: (initialData as any)?.collarTagId || "",
-    adoptionDate: initialData?.adoptionDate || "",
-    specialNeeds: initialData?.specialNeeds || "",
-    dislikes: (initialData as any)?.dislikes || "",
-    spayedNeutered: initialData?.spayedNeutered || false,
-    avatar: initialData?.avatar || undefined,
-    photos: initialData?.photos || [],
-    photoCaptions: (initialData as any)?.photoCaptions || {},
-    isFeatured: (initialData as any)?.isFeatured || false,
-    allergies: initialData?.allergies || [],
-    allergySeverities: ((initialData as any)?.allergySeverities as Record<string,'mild'|'moderate'|'severe'>) || {},
-    personality: initialData?.personality || {
-      energyLevel: 3,
-      friendliness: 3,
-      trainability: 3,
-      playfulness: 3,
-      independence: 3,
-      traits: [],
-    },
-    favoriteThings: initialData?.favoriteThings || {
-      toys: [],
-      activities: [],
-      places: [],
-      foods: [],
-    },
-    dietInfo: initialData?.dietInfo || {
-      foodBrand: "",
-      foodType: "",
-      portionSize: "",
-      feedingSchedule: [],
-      treats: [],
-      restrictions: [],
-    },
-    vetInfo: initialData?.vetInfo || {
-      clinicName: "",
-      veterinarianName: "",
-      phone: "",
-      address: "",
-      emergencyContact: "",
-    },
-    insurance: initialData?.insurance || {
-      provider: "",
-      policyNumber: "",
-      coverage: "",
-      expiryDate: "",
-    },
-    healthRecords: initialData?.healthRecords || [],
-    vaccinations: initialData?.vaccinations || [],
-    medications: initialData?.medications || [],
-    conditions: ((initialData as any)?.conditions as Array<{ id: string; name: string; diagnosedAt?: string; notes?: string }>) || [],
-    achievements: initialData?.achievements || [],
-    trainingProgress: initialData?.trainingProgress || [],
-  })
-
-  const [ageMode, setAgeMode] = useState<'exact' | 'approx'>(formData.birthday ? 'exact' : 'approx')
-  const [approxYears, setApproxYears] = useState<number>(0)
-  const [approxMonths, setApproxMonths] = useState<number>(0)
-
-  const [errors, setErrors] = useState<ValidationErrors>({})
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
   
   // Character counter helper (Unicode-aware)
   const charCount = (value: string) => Array.from(value || "").length

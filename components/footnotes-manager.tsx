@@ -25,7 +25,11 @@ export function FootnotesManager({
   const sources = useMemo(() => getSources(), [])
   
   const { citations, sources: parsedSources } = useMemo(() => {
-    return parseCitationsFromMarkdown(content)
+    const result = parseCitationsFromMarkdown(content || "")
+    return {
+      citations: result.citations || [],
+      sources: Array.isArray(result.sources) ? result.sources : [],
+    }
   }, [content])
 
   // Combine parsed sources with library sources

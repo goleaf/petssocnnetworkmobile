@@ -49,6 +49,22 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Use local storage if configured
+    if (process.env.USE_LOCAL_STORAGE === "true") {
+      const timestamp = Date.now()
+      const randomStr = Math.random().toString(36).substring(7)
+      const sanitizedFileName = fileName.replace(/[^a-zA-Z0-9.-]/g, "_")
+      const finalFileName = `${timestamp}-${randomStr}-${sanitizedFileName}`
+      const fileUrl = `/uploads/${folder}/${finalFileName}`
+
+      return NextResponse.json({
+        uploadUrl: `/api/upload/local?fileName=${finalFileName}&folder=${folder}`,
+        fileUrl,
+        expiresIn: 3600,
+        useLocal: true,
+      })
+    }
+
     // Validate file type (allow images and videos)
     const isImage = fileType.startsWith("image/")
     const isVideo = fileType.startsWith("video/")

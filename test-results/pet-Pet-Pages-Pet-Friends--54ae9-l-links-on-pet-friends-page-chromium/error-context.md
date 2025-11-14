@@ -1,0 +1,100 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic:
+    - link "Skip to content" [ref=e3] [cursor=pointer]:
+      - /url: "#main-content"
+    - link "Skip to navigation" [ref=e4] [cursor=pointer]:
+      - /url: "#primary-navigation"
+  - status [ref=e6]
+  - navigation "Primary" [ref=e8]:
+    - generic [ref=e10]:
+      - link "PawSocial" [ref=e11] [cursor=pointer]:
+        - /url: /
+        - img [ref=e12]
+        - generic [ref=e17]: PawSocial
+      - generic [ref=e18]:
+        - link "Blogs" [ref=e19] [cursor=pointer]:
+          - /url: /blog/
+          - button "Blogs" [ref=e20]:
+            - img
+            - text: Blogs
+        - link "Groups" [ref=e21] [cursor=pointer]:
+          - /url: /groups/
+          - button "Groups" [ref=e22]:
+            - img
+            - text: Groups
+        - link "Wiki" [ref=e23] [cursor=pointer]:
+          - /url: /wiki/
+          - button "Wiki" [ref=e24]:
+            - img
+            - text: Wiki
+        - link "Shelters" [ref=e25] [cursor=pointer]:
+          - /url: /shelters/
+          - button "Shelters" [ref=e26]:
+            - img
+            - text: Shelters
+        - link "Search" [ref=e27] [cursor=pointer]:
+          - /url: /search/
+          - button "Search" [ref=e28]:
+            - img
+            - text: Search
+      - generic [ref=e30]:
+        - link "Sign In" [ref=e31] [cursor=pointer]:
+          - /url: /login/
+          - button "Sign In" [ref=e32]:
+            - img
+            - text: Sign In
+        - button "Enable screen reader mode" [ref=e33] [cursor=pointer]:
+          - img
+          - text: Screen reader
+        - link "Sign Up" [ref=e34] [cursor=pointer]:
+          - /url: /register/
+          - button "Sign Up" [ref=e35]:
+            - img
+            - text: Sign Up
+  - main [ref=e36]:
+    - generic [ref=e38]:
+      - generic [ref=e39]:
+        - generic [ref=e40]:
+          - generic [ref=e41]: Welcome Back
+          - generic [ref=e42]: Sign in to your pet social network account
+        - generic [ref=e43]:
+          - generic [ref=e44]:
+            - generic [ref=e45]:
+              - generic [ref=e47] [cursor=pointer]: Username
+              - generic [ref=e48]:
+                - img [ref=e49]
+                - textbox "Username" [ref=e52]:
+                  - /placeholder: Enter your username
+            - generic [ref=e53]:
+              - generic [ref=e55] [cursor=pointer]: Password
+              - generic [ref=e56]:
+                - img [ref=e57]
+                - textbox "Password" [ref=e60]:
+                  - /placeholder: Enter your password
+                - button "Show password" [ref=e61] [cursor=pointer]:
+                  - img [ref=e62]
+          - generic [ref=e65]:
+            - button "Sign In" [ref=e66] [cursor=pointer]:
+              - img
+              - generic [ref=e67]: Sign In
+            - button "Don't have an account? Register" [ref=e68] [cursor=pointer]:
+              - img
+              - generic [ref=e69]: Don't have an account? Register
+      - generic [ref=e71]:
+        - generic [ref=e72]:
+          - img [ref=e73]
+          - paragraph [ref=e76]: Demo Credentials
+        - generic [ref=e77]:
+          - paragraph [ref=e78]:
+            - strong [ref=e79]: "Username:"
+            - text: admin, sarahpaws, mikecatlover, emmabirds, alexrabbits
+          - paragraph [ref=e80]:
+            - strong [ref=e81]: "Password:"
+            - text: password123
+  - button "Open Next.js Dev Tools" [ref=e87] [cursor=pointer]:
+    - img [ref=e88]
+  - alert [ref=e91]
+```

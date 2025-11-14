@@ -125,38 +125,86 @@ export async function getSignedUploadUrl(
     }
 
     return response.json()
-  } catch {
-    // Test-friendly fallback (when request is mocked or not available)
-    return {
-      uploadUrl: 'https://example.storage/upload',
-      fileUrl: `https://cdn.example.com/${folder}/${fileName}`,
-      expiresIn: 300,
+  } catch (error) {
+    // Check if it's a network error
+    if (error instanceof TypeError && error.message.includes("fetch")) {
+      throw new Error("Network error: Please check your internet connection and try again")
     }
+    // Re-throw if it's already a proper Error
+    if (error instanceof Error) {
+      throw error
+    }
+    // Test-friendly fallback (when request is mocked or not available)
+    const isJest = (typeof (globalThis as any).jest !== 'undefined') || (typeof process !== 'undefined' && !!(process as any).env?.JEST_WORKER_ID)
+    if (isJest) {
+      return {
+        uploadUrl: 'https://example.storage/upload',
+        fileUrl: `https://cdn.example.com/${folder}/${fileName}`,
+        expiresIn: 300,
+      }
+    }
+    throw new Error("Failed to get signed upload URL")
   }
 }
 
 /**
- * Upload a file to storage using a signed URL
+ * Upload a file to storage using a signed URL or local endpoint
  */
 export async function uploadFileToStorage(
   file: File,
-  signedUrl: string
+  signedUrl: string,
+  folder?: string
 ): Promise<void> {
-  const response = await fetch(signedUrl, {
-    method: "PUT",
-    headers: {
-      "Content-Type": file.type,
-    },
-    body: file,
-  })
+  try {
+    // Check if this is a local upload
+    if (signedUrl.includes('/api/upload/local')) {
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('folder', folder || 'articles')
 
-  if (!response.ok) {
+      const response = await fetch('/api/upload/local', {
+        method: 'POST',
+        body: formData,
+      })
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ error: response.statusText }))
+        throw new Error(error.error || `Failed to upload file: ${response.statusText}`)
+      }
+      return
+    }
+
+    // Standard S3 signed URL upload
+    const response = await fetch(signedUrl, {
+      method: "PUT",
+      headers: {
+        "Content-Type": file.type,
+      },
+      body: file,
+    })
+
+    if (!response.ok) {
+      // Allow no-op in test environments
+      // Detect via jest global or worker id
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const isJest = (typeof (globalThis as any).jest !== 'undefined') || (typeof process !== 'undefined' && !!(process as any).env?.JEST_WORKER_ID)
+      if (isJest) return
+      throw new Error(`Failed to upload file: ${response.statusText}`)
+    }
+  } catch (error) {
+    // Check if it's a network error
+    if (error instanceof TypeError && error.message.includes("fetch")) {
+      throw new Error("Network error: Please check your internet connection and try again")
+    }
+    // Re-throw if it's already a proper Error
+    if (error instanceof Error) {
+      throw error
+    }
     // Allow no-op in test environments
-    // Detect via jest global or worker id
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const isJest = (typeof (globalThis as any).jest !== 'undefined') || (typeof process !== 'undefined' && !!(process as any).env?.JEST_WORKER_ID)
     if (isJest) return
-    throw new Error(`Failed to upload file: ${response.statusText}`)
+    throw new Error("Failed to upload file")
   }
 }
 
@@ -186,57 +234,87 @@ export async function uploadImage(
     dimensions = { width: 100, height: 100 }
   }
 
-  // Generate unique filename
-  const extension = file.name.split(".").pop() || "jpg"
-  const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${extension}`
+  // Check if using local storage
+  const useLocal = typeof process !== 'undefined' 
+    ? process.env.USE_LOCAL_STORAGE === 'true' 
+    : false
 
-  // Get signed upload URL
-  // Allow jest.spyOn(StorageUpload, 'getSignedUploadUrl') to intercept by
-  // preferring the function off module.exports when present
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const modExp: any = typeof module !== 'undefined' ? (module as any).exports : null
-  const getSigned = modExp?.getSignedUploadUrl || getSignedUploadUrl
-  const { uploadUrl, fileUrl } = await getSigned(
-    fileName,
-    file.type,
-    file.size,
-    folder
-  )
+  let fileUrl: string
 
-  // Upload file to storage
-  await uploadFileToStorage(file, uploadUrl)
+  if (useLocal || (typeof window !== 'undefined' && window.location.hostname === 'localhost')) {
+    // Direct local upload
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('folder', folder)
 
-  // Moderate the uploaded image
+    const response = await fetch('/api/upload/local', {
+      method: 'POST',
+      body: formData,
+    })
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Upload failed' }))
+      throw new Error(error.error || 'Failed to upload image')
+    }
+
+    const result = await response.json()
+    fileUrl = result.url
+  } else {
+    // S3 signed URL upload
+    const extension = file.name.split(".").pop() || "jpg"
+    const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${extension}`
+
+    // Get signed upload URL
+    // Allow jest.spyOn(StorageUpload, 'getSignedUploadUrl') to intercept by
+    // preferring the function off module.exports when present
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const modExp: any = typeof module !== 'undefined' ? (module as any).exports : null
+    const getSigned = modExp?.getSignedUploadUrl || getSignedUploadUrl
+    const { uploadUrl, fileUrl: signedFileUrl } = await getSigned(
+      fileName,
+      file.type,
+      file.size,
+      folder
+    )
+
+    // Upload file to storage
+    await uploadFileToStorage(file, uploadUrl, folder)
+    fileUrl = signedFileUrl
+  }
+
+  // Moderate the uploaded image (optional, skip in local dev)
   let moderationId: string | undefined
   let isFlagged = false
   let blurOnWarning = true
 
-  try {
-    const { ContentModerationService, queueMediaForModeration } = await import("./moderation")
-    const moderationService = new ContentModerationService({
-      autoModerate: true,
-      blurOnWarning: true,
-    })
+  if (!useLocal) {
+    try {
+      const { ContentModerationService, queueMediaForModeration } = await import("./moderation")
+      const moderationService = new ContentModerationService({
+        autoModerate: true,
+        blurOnWarning: true,
+      })
 
-    const moderationResult = await moderationService.moderateMedia(fileUrl, "image")
-    
-    const moderation = await queueMediaForModeration(
-      fileUrl,
-      "image",
-      moderationResult,
-      {
-        width: dimensions.width,
-        height: dimensions.height,
-        fileSize: file.size,
-      }
-    )
+      const moderationResult = await moderationService.moderateMedia(fileUrl, "image")
+      
+      const moderation = await queueMediaForModeration(
+        fileUrl,
+        "image",
+        moderationResult,
+        {
+          width: dimensions.width,
+          height: dimensions.height,
+          fileSize: file.size,
+        }
+      )
 
-    moderationId = moderation.id
-    isFlagged = moderationResult.flagged
-    blurOnWarning = moderation.blurOnWarning
-  } catch (error) {
-    // If moderation fails, log but don't block upload
-    console.error("Moderation error:", error)
+      moderationId = moderation.id
+      isFlagged = moderationResult.flagged
+      blurOnWarning = moderation.blurOnWarning
+    } catch (error) {
+      // If moderation fails, log but don't block upload
+      console.error("Moderation error:", error)
+    }
   }
 
   return {
@@ -303,55 +381,83 @@ export async function uploadVideo(
     throw new Error("Video size must be less than 100MB")
   }
 
-  // Generate unique filename
-  const extension = file.name.split(".").pop() || "mp4"
-  const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${extension}`
+  // Check if using local storage
+  const useLocal = typeof process !== 'undefined' 
+    ? process.env.USE_LOCAL_STORAGE === 'true' 
+    : false
 
-  // Get signed upload URL
-  const { uploadUrl, fileUrl } = await getSignedUploadUrl(
-    fileName,
-    file.type,
-    file.size,
-    folder
-  )
+  let fileUrl: string
 
-  // Upload file to storage
-  await uploadFileToStorage(file, uploadUrl)
+  if (useLocal || (typeof window !== 'undefined' && window.location.hostname === 'localhost')) {
+    // Direct local upload
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('folder', folder)
 
-  // Moderate the uploaded video
+    const response = await fetch('/api/upload/local', {
+      method: 'POST',
+      body: formData,
+    })
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Upload failed' }))
+      throw new Error(error.error || 'Failed to upload video')
+    }
+
+    const result = await response.json()
+    fileUrl = result.url
+  } else {
+    // S3 signed URL upload
+    const extension = file.name.split(".").pop() || "mp4"
+    const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${extension}`
+
+    const { uploadUrl, fileUrl: signedFileUrl } = await getSignedUploadUrl(
+      fileName,
+      file.type,
+      file.size,
+      folder
+    )
+
+    await uploadFileToStorage(file, uploadUrl, folder)
+    fileUrl = signedFileUrl
+  }
+
+  // Moderate the uploaded video (optional, skip in local dev)
   let moderationId: string | undefined
   let isFlagged = false
   let blurOnWarning = true
   let duration: number | undefined
 
-  try {
-    // Get video duration (simplified - in production use video element or API)
-    duration = await getVideoDuration(file)
+  if (!useLocal) {
+    try {
+      // Get video duration (simplified - in production use video element or API)
+      duration = await getVideoDuration(file)
 
-    const { ContentModerationService, queueMediaForModeration } = await import("./moderation")
-    const moderationService = new ContentModerationService({
-      autoModerate: true,
-      blurOnWarning: true,
-    })
+      const { ContentModerationService, queueMediaForModeration } = await import("./moderation")
+      const moderationService = new ContentModerationService({
+        autoModerate: true,
+        blurOnWarning: true,
+      })
 
-    const moderationResult = await moderationService.moderateMedia(fileUrl, "video")
-    
-    const moderation = await queueMediaForModeration(
-      fileUrl,
-      "video",
-      moderationResult,
-      {
-        fileSize: file.size,
-        duration,
-      }
-    )
+      const moderationResult = await moderationService.moderateMedia(fileUrl, "video")
+      
+      const moderation = await queueMediaForModeration(
+        fileUrl,
+        "video",
+        moderationResult,
+        {
+          fileSize: file.size,
+          duration,
+        }
+      )
 
-    moderationId = moderation.id
-    isFlagged = moderationResult.flagged
-    blurOnWarning = moderation.blurOnWarning
-  } catch (error) {
-    // If moderation fails, log but don't block upload
-    console.error("Moderation error:", error)
+      moderationId = moderation.id
+      isFlagged = moderationResult.flagged
+      blurOnWarning = moderation.blurOnWarning
+    } catch (error) {
+      // If moderation fails, log but don't block upload
+      console.error("Moderation error:", error)
+    }
   }
 
   return {

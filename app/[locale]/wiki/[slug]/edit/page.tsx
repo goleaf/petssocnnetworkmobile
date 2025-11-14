@@ -6,12 +6,13 @@ import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { BackButton } from "@/components/ui/back-button"
 import { WikiForm, type WikiFormData } from "@/components/wiki-form"
-import { getWikiArticleBySlug, updateWikiArticle, generateWikiSlug, addWikiRevision } from "@/lib/storage"
+import { getWikiArticleBySlug, updateWikiArticle, generateWikiSlug, addWikiRevision, canPublishStableHealthRevision } from "@/lib/storage"
 import { getPermissionResult } from "@/lib/policy"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { AlertCircle } from "lucide-react"
 import { Save } from "lucide-react"
+import { toast } from "sonner"
 
 export default function EditWikiPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params)
@@ -137,12 +138,48 @@ export default function EditWikiPage({ params }: { params: Promise<{ slug: strin
       healthData: isHealthArticle && formData.healthData ? formData.healthData : undefined,
     })
 
-    updateWikiArticle(updatedArticle)
-    
-    // Redirect to article page with potentially new slug after a short delay to show success message
-    setTimeout(() => {
-      router.push(`/wiki/${updatedArticle.slug}`)
-    }, 1000)
+    try {
+      // Submit to moderation API instead of direct update
+      const response = await fetch("/api/admin/moderation/edit-requests", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          contentType: "wiki",
+          contentId: article.id,
+          originalContent: article,
+          editedContent: updatedArticle,
+          reason: formData.reasonForChange || "Wiki article edit",
+          priority: isHealthArticle ? "high" : "normal",
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        // Handle rate limit errors
+        if (response.status === 429) {
+          const retryMinutes = data.details?.retryAfterMinutes || 1
+          toast.error(`Rate limit exceeded. You can submit ${data.details?.remaining || 0} more edits. Please try again in ${retryMinutes} minute${retryMinutes !== 1 ? 's' : ''}.`)
+          return
+        }
+
+        // Handle other errors
+        throw new Error(data.error || "Failed to submit edit request")
+      }
+
+      // Show success message
+      toast.success("Edit submitted for approval! Your changes will be reviewed by a moderator.")
+
+      // Redirect to article page with potentially new slug after a short delay
+      setTimeout(() => {
+        router.push(`/wiki/${article.slug}`)
+      }, 1000)
+    } catch (error) {
+      console.error("Error submitting edit request:", error)
+      toast.error(error instanceof Error ? error.message : "Failed to submit edit request. Please try again.")
+    }
   }
 
   if (isLoading) {

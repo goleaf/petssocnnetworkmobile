@@ -10,6 +10,7 @@ import { getBlogPostById, getPetsByOwnerId, updateBlogPost } from "@/lib/storage
 import type { BlogPost } from "@/lib/types"
 import { Save, FileText } from "lucide-react"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
+import { toast } from "sonner"
 
 export default function EditBlogPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
@@ -90,12 +91,48 @@ export default function EditBlogPage({ params }: { params: Promise<{ id: string 
       relatedWikiIds: formData.relatedWikiIds || [],
     }
 
-    updateBlogPost(updatedPost)
+    try {
+      // Submit to moderation API instead of direct update
+      const response = await fetch("/api/admin/moderation/edit-requests", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          contentType: "blog",
+          contentId: post.id,
+          originalContent: post,
+          editedContent: updatedPost,
+          reason: "Blog post edit",
+          priority: "normal",
+        }),
+      })
 
-    // Redirect to post page after a short delay to show success message
-    setTimeout(() => {
-      router.push(`/blog/${post.id}`)
-    }, 1000)
+      const data = await response.json()
+
+      if (!response.ok) {
+        // Handle rate limit errors
+        if (response.status === 429) {
+          const retryMinutes = data.details?.retryAfterMinutes || 1
+          toast.error(`Rate limit exceeded. You can submit ${data.details?.remaining || 0} more edits. Please try again in ${retryMinutes} minute${retryMinutes !== 1 ? 's' : ''}.`)
+          return
+        }
+
+        // Handle other errors
+        throw new Error(data.error || "Failed to submit edit request")
+      }
+
+      // Show success message
+      toast.success("Edit submitted for approval! Your changes will be reviewed by a moderator.")
+
+      // Redirect to post page after a short delay
+      setTimeout(() => {
+        router.push(`/blog/${post.id}`)
+      }, 1000)
+    } catch (error) {
+      console.error("Error submitting edit request:", error)
+      toast.error(error instanceof Error ? error.message : "Failed to submit edit request. Please try again.")
+    }
   }
 
   if (isLoading) {
@@ -107,7 +144,7 @@ export default function EditBlogPage({ params }: { params: Promise<{ id: string 
       <div className="container mx-auto px-4 py-8">
         <Card>
           <CardContent className="p-8 text-center">
-            <p className="text-muted-foreground">Post not found or you don't have permission to edit.</p>
+            <p className="text-muted-foreground">Post not found or you don&apos;t have permission to edit.</p>
             <BackButton href="/blog" label="Back to Blogs" />
           </CardContent>
         </Card>
@@ -127,7 +164,7 @@ export default function EditBlogPage({ params }: { params: Promise<{ id: string 
             </div>
             <div>
               <CardTitle className="text-2xl">Edit Blog Post</CardTitle>
-              <CardDescription>Update your pet{"'"}s story: {post.title}</CardDescription>
+              <CardDescription>Update your pet&apos;s story: {post.title}</CardDescription>
             </div>
           </div>
         </CardHeader>

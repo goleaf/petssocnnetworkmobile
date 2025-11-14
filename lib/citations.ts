@@ -14,6 +14,12 @@ export function parseCitationsFromMarkdown(content: string): {
 } {
   const citations: Citation[] = []
   const sources: Source[] = []
+  
+  // Handle null, undefined, or non-string content
+  if (!content || typeof content !== "string") {
+    return { citations, sources, cleanedContent: "" }
+  }
+  
   let cleanedContent = content
 
   // Extract inline citations: [^1], [^citation-needed]

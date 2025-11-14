@@ -136,7 +136,7 @@ export function PetCreationWizard({ isOpen, onClose, userId }: PetCreationWizard
   const [state, setState] = useState<WizardState>({
     currentStep: 1,
     petData: {
-      weightUnit: "lbs",
+      weightUnit: "kg",
       spayedNeutered: false,
       photos: [],
       personalityTraits: [],
@@ -404,7 +404,7 @@ export function PetCreationWizard({ isOpen, onClose, userId }: PetCreationWizard
               color: state.petData.color,
               markings: state.petData.markings,
               weight: state.petData.weight,
-              weightUnit: state.petData.weightUnit || "lbs",
+              weightUnit: state.petData.weightUnit || "kg",
               birthday: state.petData.birthday,
               approximateAge: state.petData.approximateAge,
               adoptionDate: state.petData.adoptionDate,

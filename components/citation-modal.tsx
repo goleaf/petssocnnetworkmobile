@@ -51,7 +51,11 @@ export function CitationModal({ open, onOpenChange, onInsert, content }: Citatio
 
   // Extract existing citations to get next citation number
   const { citations, sources: existingSources } = useMemo(() => {
-    return parseCitationsFromMarkdown(content)
+    const result = parseCitationsFromMarkdown(content || "")
+    return {
+      citations: result.citations || [],
+      sources: Array.isArray(result.sources) ? result.sources : [],
+    }
   }, [content])
 
   const nextCitationNumber = useMemo(() => {

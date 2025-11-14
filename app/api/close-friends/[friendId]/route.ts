@@ -9,9 +9,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
 interface RouteContext {
-  params: {
+  params: Promise<{
     friendId: string;
-  };
+  }>;
 }
 
 /**
@@ -24,7 +24,7 @@ export async function POST(
   try {
     // TODO: Get authenticated user from session
     const userId = request.headers.get('x-user-id') || 'user-1';
-    const { friendId } = params;
+    const { friendId } = await params;
 
     // Validate that friend user exists
     const friendUser = await prisma.user.findUnique({
@@ -94,7 +94,7 @@ export async function DELETE(
   try {
     // TODO: Get authenticated user from session
     const userId = request.headers.get('x-user-id') || 'user-1';
-    const { friendId } = params;
+    const { friendId } = await params;
 
     // Check if in close friends
     const existing = await prisma.closeFriend.findUnique({

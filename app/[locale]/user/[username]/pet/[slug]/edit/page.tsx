@@ -13,6 +13,7 @@ import type { Pet } from "@/lib/types"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { Save } from "lucide-react"
 import { getPetUrlFromPet } from "@/lib/utils/pet-url"
+import { toast } from "sonner"
 
 export default function EditPetPage({ params }: { params: Promise<{ username: string; slug: string }> }) {
   const { username, slug } = use(params)
@@ -112,17 +113,48 @@ export default function EditPetPage({ params }: { params: Promise<{ username: st
       },
     }
 
-    await updatePetEncrypted(updatedPet as Pet)
-    
-    // Redirect to pet profile with potentially new slug after a short delay to show success message
-    setTimeout(() => {
-      const owner = getUsers().find((u) => u.id === user.id)
-      if (owner) {
-        router.push(getPetUrlFromPet(updatedPet, owner.username))
-      } else {
-        router.push(`/user/${username}`)
+    try {
+      // Submit to moderation API instead of direct update
+      const response = await fetch("/api/admin/moderation/edit-requests", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          contentType: "pet",
+          contentId: pet.id,
+          originalContent: pet,
+          editedContent: updatedPet,
+          reason: "Pet profile edit",
+          priority: "normal",
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        // Handle rate limit errors
+        if (response.status === 429) {
+          const retryMinutes = data.details?.retryAfterMinutes || 1
+          toast.error(`Rate limit exceeded. You can submit ${data.details?.remaining || 0} more edits. Please try again in ${retryMinutes} minute${retryMinutes !== 1 ? 's' : ''}.`)
+          return
+        }
+
+        // Handle other errors
+        throw new Error(data.error || "Failed to submit edit request")
       }
-    }, 1000)
+
+      // Show success message
+      toast.success("Edit submitted for approval! Your changes will be reviewed by a moderator.")
+
+      // Redirect to pet profile after a short delay
+      setTimeout(() => {
+        router.push(getPetUrlFromPet(pet, username))
+      }, 1000)
+    } catch (error) {
+      console.error("Error submitting edit request:", error)
+      toast.error(error instanceof Error ? error.message : "Failed to submit edit request. Please try again.")
+    }
   }
 
   if (isLoading) {

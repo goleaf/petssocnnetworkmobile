@@ -44,6 +44,7 @@ This project uses **Prisma ORM exclusively** for all database operations.
 - **[Wiki Quality Analytics](./WIKI_QUALITY_ANALYTICS.md)** - Automated content quality monitoring
 - **[Wiki Implementation](../doc/WIKI_IMPLEMENTATION.md)** - Wiki system architecture
 - **[Features List](../doc/FEATURES.md)** - Complete feature documentation
+- **[Edit Requests API](./EDIT_REQUESTS_API.md)** - Content moderation and diff calculation utilities
 
 ### Key Rules
 - ✅ **Always use Prisma** for database operations

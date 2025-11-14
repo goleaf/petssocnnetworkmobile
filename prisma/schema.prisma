@@ -644,12 +644,17 @@ model User {
   deletionReason      String?
 
   // Relations
-  emailVerifications EmailVerification[]
-  sessions           Session[]
-  blockedUsers       BlockedUser[]       @relation("UserBlocks")
-  blockedBy          BlockedUser[]       @relation("BlockedUser")
-  mutedUsers         MutedUser[]         @relation("UserMutes")
-  mutedBy            MutedUser[]         @relation("MutedUser")
+  emailVerifications    EmailVerification[]
+  sessions              Session[]
+  blockedUsers          BlockedUser[]         @relation("UserBlocks")
+  blockedBy             BlockedUser[]         @relation("BlockedUser")
+  mutedUsers            MutedUser[]           @relation("UserMutes")
+  mutedBy               MutedUser[]           @relation("MutedUser")
+  editRequests          EditRequest[]         @relation("EditRequests")
+  reviewedEdits         EditRequest[]         @relation("ReviewedEdits")
+  whitelistedLinks      LinkWhitelist[]       @relation("WhitelistedLinks")
+  blacklistedLinks      LinkBlacklist[]       @relation("BlacklistedLinks")
+  moderationCategories  ModerationCategory[]  @relation("ModerationCategories")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1188,4 +1193,89 @@ model PetTimelineEvent {
   @@index([petId, date(sort: Desc)])
   @@index([type])
   @@map("pet_timeline_events")
+}
+
+// ============================================================================
+// MODERATION SYSTEM - EDIT REQUESTS & REVIEW WORKFLOW
+// ============================================================================
+
+// Edit Request model - tracks proposed changes to content awaiting moderation
+model EditRequest {
+  id          String   @id @default(uuid())
+  contentType String // 'blog' | 'wiki' | 'pet' | 'profile'
+  contentId   String
+  userId      String
+  status      String   @default("pending") // 'pending' | 'approved' | 'rejected'
+  priority    String   @default("normal") // 'low' | 'normal' | 'high' | 'urgent'
+  changes     Json // Structured diff showing additions/deletions
+  reason      String? // Optional reason for the edit
+  reviewedBy  String? // Moderator who reviewed
+  reviewedAt  DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Metadata for queue classification
+  isCOI              Boolean  @default(false) // Conflict of Interest flag
+  isFlaggedHealth    Boolean  @default(false) // Health-related content flag
+  isNewPage          Boolean  @default(false) // New content creation flag
+  hasImages          Boolean  @default(false) // Contains image uploads flag
+  categories         String[] // Hidden categories for internal triage
+
+  // Relations
+  user     User  @relation("EditRequests", fields: [userId], references: [id], onDelete: Cascade)
+  reviewer User? @relation("ReviewedEdits", fields: [reviewedBy], references: [id])
+
+  @@index([status, createdAt(sort: Desc)])
+  @@index([contentType, status])
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([isCOI, status])
+  @@index([isFlaggedHealth, status])
+  @@index([isNewPage, status])
+  @@index([reviewedBy])
+  @@map("edit_requests")
+}
+
+// Link Whitelist model - pre-approved domains for content links
+model LinkWhitelist {
+  id        String   @id @default(uuid())
+  domain    String   @unique
+  reason    String? // Reason for whitelisting
+  addedBy   String
+  addedAt   DateTime @default(now())
+
+  // Relations
+  moderator User @relation("WhitelistedLinks", fields: [addedBy], references: [id])
+
+  @@index([domain])
+  @@map("link_whitelist")
+}
+
+// Link Blacklist model - blocked domains for content links
+model LinkBlacklist {
+  id        String   @id @default(uuid())
+  domain    String   @unique
+  reason    String? // Reason for blacklisting
+  addedBy   String
+  addedAt   DateTime @default(now())
+
+  // Relations
+  moderator User @relation("BlacklistedLinks", fields: [addedBy], references: [id])
+
+  @@index([domain])
+  @@map("link_blacklist")
+}
+
+// Moderation Category model - internal triage categories for edit requests
+model ModerationCategory {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  createdBy   String
+  createdAt   DateTime @default(now())
+
+  // Relations
+  moderator User @relation("ModerationCategories", fields: [createdBy], references: [id])
+
+  @@index([name])
+  @@map("moderation_categories")
 }

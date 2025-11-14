@@ -62,6 +62,7 @@ The database schema is defined in `prisma/schema.prisma`
 - **Product**: Pet products
 - **Place**: Pet-friendly locations
 - **Breed**: Pet breed information
+- **EditRequest**: Content edit requests for moderation workflow
 - **ModerationQueue**: Content moderation
 - **AuditLog**: System audit trail
 - **SearchTelemetry**: Search analytics
@@ -273,6 +274,101 @@ model MutedUser {
   @@index([userId])
   @@index([mutedId])
 }
+```
+
+### EditRequest Model
+Manages content edit requests for moderation workflow:
+
+```typescript
+model EditRequest {
+  id               String   @id @default(cuid())
+  contentType      String   // 'blog' | 'wiki' | 'pet' | 'profile'
+  contentId        String
+  userId           String
+  changes          Json     // Structured diff of changes
+  reason           String?
+  status           String   @default("pending") // 'pending' | 'approved' | 'rejected'
+  priority         String   @default("normal")  // 'low' | 'normal' | 'high' | 'urgent'
+  reviewedBy       String?
+  reviewedAt       DateTime?
+  isCOI            Boolean  @default(false)
+  isFlaggedHealth  Boolean  @default(false)
+  isNewPage        Boolean  @default(false)
+  hasImages        Boolean  @default(false)
+  categories       String[] @default([])
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  
+  user     User  @relation("UserEditRequests", fields: [userId], references: [id], onDelete: Cascade)
+  reviewer User? @relation("ReviewerEditRequests", fields: [reviewedBy], references: [id])
+  
+  @@index([userId])
+  @@index([reviewedBy])
+  @@index([status])
+  @@index([contentType])
+  @@index([priority])
+  @@index([createdAt])
+  @@index([isCOI])
+  @@index([isFlaggedHealth])
+  @@index([isNewPage])
+  @@index([hasImages])
+}
+```
+
+**Storage Layer**: `lib/storage/edit-requests.ts`
+
+**Key Operations**:
+- `createEditRequest()` - Create new edit request
+- `getEditRequest()` - Retrieve edit request by ID with user/reviewer relations
+- `updateEditRequest()` - Update edit request fields
+- `deleteEditRequest()` - Delete edit request
+- `listEditRequests()` - Query with filtering and pagination
+- `getQueueItems()` - Get specialized queue items (new-pages, flagged-health, coi-edits, image-reviews)
+- `getRecentChanges()` - Get recent changes feed
+- `approveEditRequest()` - Approve and apply changes with transaction
+- `rejectEditRequest()` - Reject with reason and notification
+
+**Diff Calculation Utilities** (`lib/diff-utils.ts`):
+- `calculateEditRequestDiff()` - Core diff calculation for any content object
+- `calculateBlogDiff()` - Blog post diff calculation
+- `calculateWikiDiff()` - Wiki article diff calculation
+- `calculatePetDiff()` - Pet profile diff calculation
+- `calculateProfileDiff()` - User profile diff calculation
+
+**Usage Example**:
+```typescript
+import {
+  createEditRequest,
+  listEditRequests,
+  approveEditRequest
+} from '@/lib/storage/edit-requests';
+import { calculateBlogDiff } from '@/lib/diff-utils';
+
+// Calculate structured diff
+const originalPost = await prisma.blogPost.findUnique({ where: { id: 'post_123' } });
+const changes = calculateBlogDiff(
+  { title: originalPost.title, content: originalPost.content },
+  { title: 'New Title', content: 'Updated content' }
+);
+
+// Create edit request with calculated diff
+const editRequest = await createEditRequest({
+  contentType: 'blog',
+  contentId: 'post_123',
+  userId: 'user_456',
+  changes, // Structured diff: { title: { old: '...', new: '...', type: 'modified' } }
+  reason: 'Fixed typo in title',
+  priority: 'normal'
+});
+
+// Query pending edits
+const { items, total } = await listEditRequests(
+  { status: ['pending'], contentType: ['blog'] },
+  { page: 1, limit: 20 }
+);
+
+// Approve edit request (applies changes in transaction)
+await approveEditRequest(editRequest.id, 'moderator_789');
 ```
 
 ## Advanced Features

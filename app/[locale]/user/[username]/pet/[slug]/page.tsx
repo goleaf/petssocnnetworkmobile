@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, use, useCallback } from "react"
+import { useState, useEffect, use, useCallback, useMemo } from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { EditButton } from "@/components/ui/edit-button"
@@ -87,7 +87,7 @@ export default function PetProfilePage({ params }: { params: Promise<{ username:
   const [weightModalOpen, setWeightModalOpen] = useState(false)
   const [weightDate, setWeightDate] = useState<string>("")
   const [weightValue, setWeightValue] = useState<string>("")
-  const [weightUnit, setWeightUnit] = useState<'kg'|'lb'>('kg')
+  const [weightUnit, setWeightUnit] = useState<'kg' | 'lb'>('kg')
   const [birthdayEditing, setBirthdayEditing] = useState(false)
   const [birthdayDraft, setBirthdayDraft] = useState<string>("")
   const [photoManagerOpen, setPhotoManagerOpen] = useState(false)
@@ -98,71 +98,105 @@ export default function PetProfilePage({ params }: { params: Promise<{ username:
   const [captionDrafts, setCaptionDrafts] = useState<Record<string, string>>({})
   const [traitsOpen, setTraitsOpen] = useState(false)
   const [traitDrafts, setTraitDrafts] = useState<string[]>([])
+  // Owner-only share controls - must be declared before early returns
+  const [shareOpen, setShareOpen] = useState(false)
+  const [shareViewHealth, setShareViewHealth] = useState(true)
+  const [shareCoOwner, setShareCoOwner] = useState(false)
+  const [shareLink, setShareLink] = useState<string>("")
+  // Accept co-owner if visiting with invite and logged in
+  const [coOwnerOffer, setCoOwnerOffer] = useState<{ token: string; label: string } | null>(null)
 
-  const loadPetData = useCallback(() => {
-    const fetchedPet = getPetByUsernameAndSlug(username, slug)
-    setPet(fetchedPet)
-    if (fetchedPet) {
-      const fetchedOwner = getUserById(fetchedPet.ownerId)
-      setOwner(fetchedOwner)
-      const fetchedPosts = getBlogPosts()
-      const users = getUsers()
-      const viewer = currentUser?.id || null
-      const visiblePosts = fetchedPosts.filter((p) => {
-        if (p.petId !== fetchedPet.id) return false
-        const author = users.find((u) => u.id === p.authorId)
-        if (!author) return false
-        return canViewPost(p, author, viewer)
-      })
-      setPosts(visiblePosts)
+  const loadPetData = useCallback(async () => {
+    try {
+      const fetchedPet = getPetByUsernameAndSlug(username, slug)
+      setPet(fetchedPet)
 
-      if (fetchedPet.friends && fetchedPet.friends.length > 0) {
-        const allPets = getPets()
-        const friendPets = fetchedPet.friends
-          .map((friendId: string) => allPets.find((p) => p.id === friendId))
-          .filter(Boolean)
-        setFriends(friendPets)
-      } else {
-        setFriends([])
-      }
+      if (fetchedPet) {
+        const fetchedOwner = getUserById(fetchedPet.ownerId)
+        setOwner(fetchedOwner)
+        const fetchedPosts = getBlogPosts()
+        const users = getUsers()
+        const viewer = currentUser?.id || null
+        const visiblePosts = fetchedPosts.filter((p) => {
+          if (p.petId !== fetchedPet.id) return false
+          const author = users.find((u) => u.id === p.authorId)
+          if (!author) return false
+          return canViewPost(p, author, viewer)
+        })
+        setPosts(visiblePosts)
 
-      // Handle access token in URL for share links
-      try {
-        const params = new URLSearchParams(window.location.search)
-        const accessToken = params.get('access') || params.get('invite')
-        if (accessToken) {
-          const invite = getInvite(accessToken)
-          if (invite && invite.petId === fetchedPet.id) {
-            // Grant temporary access for viewing health data
-            if (invite.permissions?.viewHealth) {
-              grantTemporaryAccess(fetchedPet.id)
-            }
-          }
+        if (fetchedPet.friends && fetchedPet.friends.length > 0) {
+          const allPets = getPets()
+          const friendPets = fetchedPet.friends
+            .map((friendId: string) => allPets.find((p) => p.id === friendId))
+            .filter(Boolean)
+          setFriends(friendPets)
+        } else {
+          setFriends([])
         }
-      } catch {}
 
-      // Refresh with decrypted view for authorized viewer or temporary access
-      const accessGranted = (() => {
+        // Handle access token in URL for share links
         try {
           const params = new URLSearchParams(window.location.search)
-          return params.has('access') || params.has('invite')
-        } catch { return false }
-      })()
-      const grantSet = accessGranted ? new Set<string>([fetchedPet.id]) : new Set<string>()
-      getPetByUsernameAndSlugForViewer(username, slug, currentUser?.id ?? null, grantSet).then((decrypted) => {
-        if (decrypted) setPet(decrypted)
-      })
-    } else {
+          const accessToken = params.get('access') || params.get('invite')
+          if (accessToken) {
+            const invite = getInvite(accessToken)
+            if (invite && invite.petId === fetchedPet.id) {
+              // Grant temporary access for viewing health data
+              if (invite.permissions?.viewHealth) {
+                grantTemporaryAccess(fetchedPet.id)
+              }
+            }
+          }
+        } catch { }
+
+        // Refresh with decrypted view for authorized viewer or temporary access
+        const accessGranted = (() => {
+          try {
+            const params = new URLSearchParams(window.location.search)
+            return params.has('access') || params.has('invite')
+          } catch { return false }
+        })()
+        const grantSet = accessGranted ? new Set<string>([fetchedPet.id]) : new Set<string>()
+
+        try {
+          const decrypted = await getPetByUsernameAndSlugForViewer(username, slug, currentUser?.id ?? null, grantSet)
+          if (decrypted) {
+            setPet(decrypted)
+          }
+        } catch (error) {
+          // If decryption fails, continue with regular pet data
+          console.error('Failed to load decrypted pet data:', error)
+        }
+      } else {
+        setOwner(null)
+        setPosts([])
+        setFriends([])
+      }
+    } catch (error) {
+      console.error('Failed to load pet data:', error)
       setOwner(null)
       setPosts([])
       setFriends([])
+    } finally {
+      setIsLoading(false)
     }
   }, [username, slug, currentUser?.id])
 
   useEffect(() => {
+    let isMounted = true
     setIsLoading(true)
-    loadPetData()
-    setIsLoading(false)
+
+    const loadData = async () => {
+      await loadPetData()
+      // loadPetData handles setIsLoading(false) in its finally block
+    }
+
+    loadData()
+
+    return () => {
+      isMounted = false
+    }
   }, [loadPetData])
 
   const refreshPetData = useCallback(() => {
@@ -174,6 +208,62 @@ export default function PetProfilePage({ params }: { params: Promise<{ username:
       setIsFollowing(pet.followers && pet.followers.includes(currentUser.id))
     }
   }, [currentUser, pet])
+
+  // Accept co-owner if visiting with invite and logged in
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search)
+      const token = params.get('invite') || params.get('access')
+      if (!token || !pet) return
+      const inv = getInvite(token)
+      if (inv && inv.petId === pet.id && inv.permissions?.coOwner && currentUser && owner && currentUser.id !== owner.id) {
+        setCoOwnerOffer({ token, label: 'Accept Co-owner Invitation' })
+      }
+    } catch { }
+  }, [pet?.id, currentUser?.id, owner?.id])
+
+  // Build activity timeline entries from pet data - must be before early returns
+  // Always call useMemo, even if pet is null, to maintain consistent hook order
+  const timelineEntries = useMemo(() => {
+    if (!pet) return [] as Array<{ id: string; date: string; kind: string; title: string; description?: string; photos?: string[] }>
+    const entries: Array<{ id: string; date: string; kind: string; title: string; description?: string; photos?: string[] }> = []
+    // Adoption
+    if (pet.adoptionDate) {
+      entries.push({ id: `adopt-${pet.id}`, date: pet.adoptionDate, kind: 'adoption', title: 'Added to family', description: `${pet.name} joined the family.` })
+    }
+    // First vet visit
+    const checkups = (pet.healthRecords || []).filter((r: any) => r.type === 'checkup').sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime())
+    if (checkups.length > 0) {
+      const first = checkups[0]
+      entries.push({ id: `vet-${first.id}`, date: first.date, kind: 'vet', title: 'First vet visit', description: first.title || 'First checkup' })
+    }
+    // Vaccinations
+    ; (pet.vaccinations || []).forEach((v: any) => {
+      entries.push({ id: `vac-${v.id}`, date: v.date, kind: 'vaccination', title: `Completed vaccination`, description: v.name })
+    })
+      // Health updates
+      ; (pet.healthRecords || []).forEach((r: any) => {
+        if (r.type === 'illness' || r.type === 'injury' || r.type === 'surgery') {
+          entries.push({ id: `health-${r.id}`, date: r.date, kind: 'health', title: 'Health update', description: r.title || r.description, photos: r.attachments })
+        }
+      })
+      // Achievements
+      ; (pet.achievements || []).forEach((a: any) => {
+        const when = a.earnedAt || new Date().toISOString()
+        entries.push({ id: `ach-${a.id}`, date: when, kind: 'accomplishment', title: 'New accomplishment', description: a.title })
+      })
+    // Birthday (last occurrence)
+    if (pet.birthday) {
+      const now = new Date()
+      const b = new Date(pet.birthday)
+      const currentYearBirthday = new Date(now.getFullYear(), b.getMonth(), b.getDate())
+      const last = currentYearBirthday <= now ? currentYearBirthday : new Date(now.getFullYear() - 1, b.getMonth(), b.getDate())
+      entries.push({ id: `bday-${last.getFullYear()}`, date: last.toISOString(), kind: 'birthday', title: 'Birthday celebrations', description: `Happy birthday, ${pet.name}!`, photos: pet.photos && pet.photos.length > 0 ? [pet.photos[0]] : undefined })
+    }
+    // Sort reverse chronologically
+    entries.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    return entries
+  }, [pet])
 
   if (isLoading) {
     return <LoadingSpinner fullScreen />
@@ -270,31 +360,13 @@ export default function PetProfilePage({ params }: { params: Promise<{ username:
   }
 
   // Owner-only share controls
-  const isOwnerForShare = viewerId === owner.id
-  const [shareOpen, setShareOpen] = useState(false)
-  const [shareViewHealth, setShareViewHealth] = useState(true)
-  const [shareCoOwner, setShareCoOwner] = useState(false)
-  const [shareLink, setShareLink] = useState<string>("")
+  const isOwnerForShare = viewerId !== null && viewerId === owner.id
 
   const generateShare = () => {
     const invite = createShareInvite(pet.id, owner.id, { viewHealth: shareViewHealth, coOwner: shareCoOwner })
     const url = `${window.location.origin}${window.location.pathname}?access=${encodeURIComponent(invite.token)}`
     setShareLink(url)
   }
-
-  // Accept co-owner if visiting with invite and logged in
-  const [coOwnerOffer, setCoOwnerOffer] = useState<{ token: string; label: string } | null>(null)
-  useEffect(() => {
-    try {
-      const params = new URLSearchParams(window.location.search)
-      const token = params.get('invite') || params.get('access')
-      if (!token || !pet) return
-      const inv = getInvite(token)
-      if (inv && inv.petId === pet.id && inv.permissions?.coOwner && currentUser && currentUser.id !== owner.id) {
-        setCoOwnerOffer({ token, label: 'Accept Co-owner Invitation' })
-      }
-    } catch {}
-  }, [pet?.id, currentUser?.id])
 
   const isOwner = currentUser?.id === pet.ownerId
   const privacyLabelMap: Record<PrivacyLevel, string> = {
@@ -348,7 +420,7 @@ export default function PetProfilePage({ params }: { params: Promise<{ username:
 
   const openWeightLogger = () => {
     if (!isOwner) return
-    setWeightDate(new Date().toISOString().slice(0,10))
+    setWeightDate(new Date().toISOString().slice(0, 10))
     // prefill numeric; parse from pet.weight
     if (pet?.weight) {
       const m = pet.weight.match(/([0-9]+(?:\.[0-9]+)?)\s*(kg|kgs|kilograms|lb|lbs|pounds)?/i)
@@ -367,7 +439,7 @@ export default function PetProfilePage({ params }: { params: Promise<{ username:
     if (!Number.isFinite(val) || val <= 0) return
     const kg = weightUnit === 'kg' ? val : val * 0.453592
     const history = ((pet as any).weightHistory || []) as Array<{ date: string; valueKg: number }>
-    const nextHistory = [...history, { date: weightDate || new Date().toISOString().slice(0,10), valueKg: Number(kg.toFixed(2)) }]
+    const nextHistory = [...history, { date: weightDate || new Date().toISOString().slice(0, 10), valueKg: Number(kg.toFixed(2)) }]
     const display = weightUnit === 'kg' ? `${val} kg` : `${val} lb`
     updatePet({ ...pet, weight: display, weightHistory: nextHistory } as any)
     setWeightModalOpen(false)
@@ -418,7 +490,7 @@ export default function PetProfilePage({ params }: { params: Promise<{ username:
   }
 
   const PREDEFINED_TRAITS = [
-    'Friendly','Shy','Energetic','Calm','Playful','Curious','Protective','Independent','Affectionate','Vocal','Quiet','Intelligent','Stubborn','Loyal','Anxious','Confident','Gentle','Aggressive','Good with Kids','Good with Other Pets'
+    'Friendly', 'Shy', 'Energetic', 'Calm', 'Playful', 'Curious', 'Protective', 'Independent', 'Affectionate', 'Vocal', 'Quiet', 'Intelligent', 'Stubborn', 'Loyal', 'Anxious', 'Confident', 'Gentle', 'Aggressive', 'Good with Kids', 'Good with Other Pets'
   ]
   const saveTraits = () => {
     if (!isOwner || !pet) return
@@ -428,48 +500,6 @@ export default function PetProfilePage({ params }: { params: Promise<{ username:
     setTraitsOpen(false)
     refreshPetData()
   }
-
-  // Build activity timeline entries from pet data
-  const timelineEntries = useMemo(() => {
-    if (!pet) return [] as Array<{ id: string; date: string; kind: string; title: string; description?: string; photos?: string[] }>
-    const entries: Array<{ id: string; date: string; kind: string; title: string; description?: string; photos?: string[] }> = []
-    // Adoption
-    if (pet.adoptionDate) {
-      entries.push({ id: `adopt-${pet.id}`, date: pet.adoptionDate, kind: 'adoption', title: 'Added to family', description: `${pet.name} joined the family.` })
-    }
-    // First vet visit
-    const checkups = (pet.healthRecords || []).filter((r: any) => r.type === 'checkup').sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime())
-    if (checkups.length > 0) {
-      const first = checkups[0]
-      entries.push({ id: `vet-${first.id}`, date: first.date, kind: 'vet', title: 'First vet visit', description: first.title || 'First checkup' })
-    }
-    // Vaccinations
-    ;(pet.vaccinations || []).forEach((v: any) => {
-      entries.push({ id: `vac-${v.id}`, date: v.date, kind: 'vaccination', title: `Completed vaccination`, description: v.name })
-    })
-    // Health updates
-    ;(pet.healthRecords || []).forEach((r: any) => {
-      if (r.type === 'illness' || r.type === 'injury' || r.type === 'surgery') {
-        entries.push({ id: `health-${r.id}`, date: r.date, kind: 'health', title: 'Health update', description: r.title || r.description, photos: r.attachments })
-      }
-    })
-    // Achievements
-    ;(pet.achievements || []).forEach((a: any) => {
-      const when = a.earnedAt || new Date().toISOString()
-      entries.push({ id: `ach-${a.id}`, date: when, kind: 'accomplishment', title: 'New accomplishment', description: a.title })
-    })
-    // Birthday (last occurrence)
-    if (pet.birthday) {
-      const now = new Date()
-      const b = new Date(pet.birthday)
-      const currentYearBirthday = new Date(now.getFullYear(), b.getMonth(), b.getDate())
-      const last = currentYearBirthday <= now ? currentYearBirthday : new Date(now.getFullYear() - 1, b.getMonth(), b.getDate())
-      entries.push({ id: `bday-${last.getFullYear()}`, date: last.toISOString(), kind: 'birthday', title: 'Birthday celebrations', description: `Happy birthday, ${pet.name}!`, photos: pet.photos && pet.photos.length > 0 ? [pet.photos[0]] : undefined })
-    }
-    // Sort reverse chronologically
-    entries.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-    return entries
-  }, [pet])
 
   const entryKeyForComments = (entryId: string) => `${pet?.id}:${'timeline-' + entryId}`
 
@@ -524,7 +554,7 @@ export default function PetProfilePage({ params }: { params: Promise<{ username:
     <div className="container mx-auto px-4 py-8 max-w-7xl">
       <BackButton href={`/user/${owner.username}`} label={`Back to ${owner.fullName}'s Profile`} icon={FileText} />
       <section className="relative rounded-2xl overflow-hidden border bg-card shadow-sm mb-6">
-        <div className={`relative h-[220px] sm:h-[260px] lg:h-[360px] w-full ${cover ? '' : `bg-gradient-to-b ${speciesBg[pet.species] || speciesBg.other}`}` }>
+        <div className={`relative h-[220px] sm:h-[260px] lg:h-[360px] w-full ${cover ? '' : `bg-gradient-to-b ${speciesBg[pet.species] || speciesBg.other}`}`}>
           {cover && (
             <img src={cover} alt={`${pet.name} cover`} className="h-full w-full object-cover" />
           )}
@@ -589,9 +619,9 @@ export default function PetProfilePage({ params }: { params: Promise<{ username:
                   const url = typeof window !== 'undefined' ? window.location.href : ''
                   if (!url) return
                   if ((navigator as any).share) {
-                    ;(navigator as any).share({ title: `${pet.name} on PetSocial`, text: `Meet ${pet.name}!`, url }).catch(() => {})
+                    ; (navigator as any).share({ title: `${pet.name} on PetSocial`, text: `Meet ${pet.name}!`, url }).catch(() => { })
                   } else if (navigator.clipboard) {
-                    navigator.clipboard.writeText(url).then(() => alert('Link copied to clipboard!')).catch(() => {})
+                    navigator.clipboard.writeText(url).then(() => alert('Link copied to clipboard!')).catch(() => { })
                   }
                 }}>
                   <Share2 className="h-4 w-4 mr-2" /> Share Profile
@@ -952,48 +982,48 @@ export default function PetProfilePage({ params }: { params: Promise<{ username:
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Personality Traits */}
-              {pet.personality && (
-                <Card>
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="flex items-center gap-2">
-                        <Brain className="h-5 w-5" />
-                        Personality
-                      </CardTitle>
-                      {isOwner && (
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          onClick={() => {
-                            setTraitDrafts(Array.isArray(pet.personality?.traits) ? [...pet.personality.traits] : [])
-                            setTraitsOpen(true)
-                          }}
-                        >
-                          Edit Traits
-                        </Button>
-                      )}
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {/* Category chips */}
-                    <div className="flex flex-wrap gap-2">
-                      {typeof pet.personality.energyLevel === 'number' && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-amber-100 text-amber-800">
-                          ⚡ Energy: {pet.personality.energyLevel}/5
-                        </span>
-                      )}
-                      {typeof pet.personality.friendliness === 'number' && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-sky-100 text-sky-800">
-                          🤝 Social: {pet.personality.friendliness}/5
-                        </span>
-                      )}
-                      {typeof pet.personality.independence === 'number' && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-violet-100 text-violet-800">
-                          🌿 Temperament: {pet.personality.independence}/5
-                        </span>
-                      )}
-                    </div>
+            {pet.personality && (
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="flex items-center gap-2">
+                      <Brain className="h-5 w-5" />
+                      Personality
+                    </CardTitle>
+                    {isOwner && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setTraitDrafts(Array.isArray(pet.personality?.traits) ? [...pet.personality.traits] : [])
+                          setTraitsOpen(true)
+                        }}
+                      >
+                        Edit Traits
+                      </Button>
+                    )}
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* Category chips */}
+                  <div className="flex flex-wrap gap-2">
+                    {typeof pet.personality.energyLevel === 'number' && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-amber-100 text-amber-800">
+                        ⚡ Energy: {pet.personality.energyLevel}/5
+                      </span>
+                    )}
+                    {typeof pet.personality.friendliness === 'number' && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-sky-100 text-sky-800">
+                        🤝 Social: {pet.personality.friendliness}/5
+                      </span>
+                    )}
+                    {typeof pet.personality.independence === 'number' && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-violet-100 text-violet-800">
+                        🌿 Temperament: {pet.personality.independence}/5
+                      </span>
+                    )}
+                  </div>
                   {pet.personality.energyLevel && (
                     <div>
                       <div className="flex justify-between mb-2">
@@ -1059,9 +1089,9 @@ export default function PetProfilePage({ params }: { params: Promise<{ username:
                       </div>
                     </div>
                   )}
-              </CardContent>
-            </Card>
-          )}
+                </CardContent>
+              </Card>
+            )}
 
             {/* Favorite Things */}
             <PetFavorites
@@ -1556,65 +1586,65 @@ export default function PetProfilePage({ params }: { params: Promise<{ username:
           <div className="space-y-6">
             <FriendRequestsSection pet={pet} onChange={refreshPetData} />
             <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5" />
-                Pet Friends
-              </CardTitle>
-              <CardDescription>
-                {pet.name}
-                {"'"}s furry friends
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {friends.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {friends.map((friend) => {
-                    const friendOwner = getUsers().find((u) => u.id === friend.ownerId)
-                    const friendSlug = friend.slug || friend.name.toLowerCase().replace(/\s+/g, "-").replace(/[^\w-]/g, "")
-                    const assignmentId = pet.friendCategoryAssignments?.[friend.id]
-                    const assignedCategory =
-                      assignmentId && pet.friendCategories
-                        ? pet.friendCategories.find((category) => category.id === assignmentId)
-                        : undefined
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="h-5 w-5" />
+                  Pet Friends
+                </CardTitle>
+                <CardDescription>
+                  {pet.name}
+                  {"'"}s furry friends
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {friends.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {friends.map((friend) => {
+                      const friendOwner = getUsers().find((u) => u.id === friend.ownerId)
+                      const friendSlug = friend.slug || friend.name.toLowerCase().replace(/\s+/g, "-").replace(/[^\w-]/g, "")
+                      const assignmentId = pet.friendCategoryAssignments?.[friend.id]
+                      const assignedCategory =
+                        assignmentId && pet.friendCategories
+                          ? pet.friendCategories.find((category) => category.id === assignmentId)
+                          : undefined
 
-                    return (
-                      <Link
-                        key={friend.id}
-                        href={friendOwner ? `/user/${friendOwner.username}/pet/${friendSlug}` : `/pet/${friend.id}`}
-                      >
-                        <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-                          <CardContent className="p-4 flex items-center gap-3">
-                            <Avatar className="h-16 w-16">
-                              <AvatarImage src={friend.avatar || "/placeholder.svg"} alt={friend.name} />
-                              <AvatarFallback>{friend.name.charAt(0)}</AvatarFallback>
-                            </Avatar>
-                            <div className="space-y-2">
-                              <p className="font-semibold">{friend.name}</p>
-                              <div className="flex flex-wrap items-center gap-2">
-                                <Badge variant="outline" className="capitalize">
-                                  {friend.species}
-                                </Badge>
-                                {assignedCategory ? (
-                                  <Badge variant="secondary">{assignedCategory.name}</Badge>
-                                ) : pet.friendCategories && pet.friendCategories.length > 0 ? (
-                                  <Badge variant="outline">No category</Badge>
-                                ) : null}
+                      return (
+                        <Link
+                          key={friend.id}
+                          href={friendOwner ? `/user/${friendOwner.username}/pet/${friendSlug}` : `/pet/${friend.id}`}
+                        >
+                          <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+                            <CardContent className="p-4 flex items-center gap-3">
+                              <Avatar className="h-16 w-16">
+                                <AvatarImage src={friend.avatar || "/placeholder.svg"} alt={friend.name} />
+                                <AvatarFallback>{friend.name.charAt(0)}</AvatarFallback>
+                              </Avatar>
+                              <div className="space-y-2">
+                                <p className="font-semibold">{friend.name}</p>
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <Badge variant="outline" className="capitalize">
+                                    {friend.species}
+                                  </Badge>
+                                  {assignedCategory ? (
+                                    <Badge variant="secondary">{assignedCategory.name}</Badge>
+                                  ) : pet.friendCategories && pet.friendCategories.length > 0 ? (
+                                    <Badge variant="outline">No category</Badge>
+                                  ) : null}
+                                </div>
                               </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      </Link>
-                    )
-                  })}
-                </div>
-              ) : (
-                <div className="text-center py-12">
-                  <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                  <p className="text-muted-foreground">No friends yet</p>
-                </div>
-              )}
-            </CardContent>
+                            </CardContent>
+                          </Card>
+                        </Link>
+                      )
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-center py-12">
+                    <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                    <p className="text-muted-foreground">No friends yet</p>
+                  </div>
+                )}
+              </CardContent>
             </Card>
           </div>
         </TabsContent>
@@ -1737,7 +1767,7 @@ export default function PetProfilePage({ params }: { params: Promise<{ username:
                   onChange={(e) => setWeightValue(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter') saveWeightLog(); if (e.key === 'Escape') setWeightModalOpen(false) }}
                 />
-                <Select value={weightUnit} onValueChange={(v: 'kg'|'lb') => setWeightUnit(v)}>
+                <Select value={weightUnit} onValueChange={(v: 'kg' | 'lb') => setWeightUnit(v)}>
                   <SelectTrigger className="w-[110px]"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="kg">kg</SelectItem>
@@ -1776,12 +1806,12 @@ export default function PetProfilePage({ params }: { params: Promise<{ username:
                       const current = (pet.photos?.length || 0)
                       const maxMore = Math.max(0, 20 - current)
                       const files = Array.from(e.target.files || []).slice(0, maxMore)
-                      if (files.length === 0) { try { (e.target as any).value=''; } catch {}; return }
+                      if (files.length === 0) { try { (e.target as any).value = ''; } catch { }; return }
                       for (const f of files) { await uploadNewPhoto(f) }
                       if ((e.target.files?.length || 0) > files.length) {
-                        alert(`Only ${maxMore} more photo${maxMore===1?'':'s'} allowed (max 20). Extra files were skipped.`)
+                        alert(`Only ${maxMore} more photo${maxMore === 1 ? '' : 's'} allowed (max 20). Extra files were skipped.`)
                       }
-                      try { (e.target as any).value = '' } catch {}
+                      try { (e.target as any).value = '' } catch { }
                     }} />
                   </>
                 ) : (
@@ -1814,7 +1844,7 @@ export default function PetProfilePage({ params }: { params: Promise<{ username:
                 <Button size="sm" variant="destructive" onClick={() => {
                   const count = selected.size
                   if (count === 0) return
-                  if (!window.confirm(`Delete ${count} photo${count===1?'':'s'}?`)) return
+                  if (!window.confirm(`Delete ${count} photo${count === 1 ? '' : 's'}?`)) return
                   const keep = (pet.photos || []).filter((u: string) => !selected.has(u))
                   const updated: any = { ...pet, photos: keep, avatar: selected.has(pet.avatar) ? (keep[0] || undefined) : pet.avatar }
                   if (pet.photoCaptions) {
@@ -1850,13 +1880,13 @@ export default function PetProfilePage({ params }: { params: Promise<{ username:
                       const fname = `photo-${i}.${ext}`
                       files[fname] = new Uint8Array(ab)
                       i += 1
-                    } catch {}
+                    } catch { }
                   }
                   const zipped = zipSync(files)
                   const blob = new Blob([zipped], { type: 'application/zip' })
                   const a = document.createElement('a')
                   a.href = URL.createObjectURL(blob)
-                  a.download = `${pet.name.replace(/\s+/g,'-')}-photos.zip`
+                  a.download = `${pet.name.replace(/\s+/g, '-')}-photos.zip`
                   document.body.appendChild(a)
                   a.click()
                   setTimeout(() => { URL.revokeObjectURL(a.href); a.remove() }, 0)
@@ -1864,7 +1894,7 @@ export default function PetProfilePage({ params }: { params: Promise<{ username:
                   <Download className="h-4 w-4 mr-1" /> Download selected
                 </Button>
                 <Button size="sm" onClick={() => {
-                  const drafts: Record<string,string> = {}
+                  const drafts: Record<string, string> = {}
                   const pc = pet.photoCaptions || {}
                   Array.from(selected).forEach((u) => drafts[u] = pc[u] || '')
                   setCaptionDrafts(drafts)
