@@ -46,6 +46,12 @@ This project uses **Prisma ORM exclusively** for all database operations.
 - **[Features List](../doc/FEATURES.md)** - Complete feature documentation
 - **[Edit Requests API](./EDIT_REQUESTS_API.md)** - Content moderation and diff calculation utilities
 
+### Admin & Moderation
+- **[Admin Implementation Summary](./ADMIN_IMPLEMENTATION_SUMMARY.md)** - Complete admin system overview
+- **[Moderator Dashboard](./MODERATOR_DASHBOARD.md)** - Moderation features and workflows
+- **[Recent Changes Feed](./RECENT_CHANGES_FEED.md)** - Reusable edit request feed component
+- **[Moderation Feature](./MODERATION-FEATURE.md)** - Media moderation system
+
 ### Key Rules
 - ✅ **Always use Prisma** for database operations
 - ✅ Import from `@/lib/prisma` or `@/lib/db`

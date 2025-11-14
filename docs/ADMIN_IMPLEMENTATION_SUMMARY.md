@@ -106,6 +106,34 @@ All P0 (core) features from the admin PR plan have been successfully implemented
 
 ---
 
+### Commit 6: Recent Changes Feed Component ✅
+
+**Components Created:**
+- `components/admin/RecentChangesFeed.tsx` - Reusable edit request feed component
+
+**API Routes Created:**
+- `app/api/admin/moderation/recent-changes/route.ts` - GET endpoint for paginated edit requests
+
+**Features:**
+- Paginated display of edit requests with visual diffs
+- Advanced filtering (content type, status, priority, age)
+- Inline approve/reject actions
+- Expandable diff viewer integration
+- Metadata badges (COI, Health, New Page, Images)
+- Loading states and error handling
+- Responsive card-based UI
+- Role-based access control (moderator required)
+- Comprehensive parameter validation
+
+**Integration Notes:**
+- Uses existing `DiffViewer` component for change visualization
+- Integrates with moderation types from `lib/types/moderation.ts`
+- API endpoint fully implemented with auth and validation
+- Fully typed with TypeScript interfaces
+- See `docs/RECENT_CHANGES_FEED.md` for complete documentation
+
+---
+
 ### Tests ✅
 
 **Files Created:**

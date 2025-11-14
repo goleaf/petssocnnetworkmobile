@@ -202,6 +202,88 @@ const history = getRollbackHistoryByContentId('wiki-789')
 // Returns all rollbacks for that content, sorted by date (newest first)
 ```
 
+## 5. Recent Changes Feed Component
+- **Location**: `components/admin/RecentChangesFeed.tsx`
+- **Features**:
+  - Reusable client component for displaying edit requests
+  - Paginated feed with customizable page size
+  - Advanced filtering by content type, status, priority, and age
+  - Visual diff viewer integration (expandable/collapsible)
+  - Inline approve/reject actions with loading states
+  - Metadata badges (COI, Health, New Page, Images)
+  - Responsive card-based layout
+  - Error handling and empty states
+  - Real-time action feedback
+
+### Component API
+```typescript
+interface RecentChangesFeedProps {
+  filters?: {
+    contentType?: string[]
+    status?: string[]
+    priority?: string[]
+    ageInDays?: number
+  }
+  pageSize?: number
+  onApprove?: (id: string) => void
+  onReject?: (id: string) => void
+  className?: string
+}
+```
+
+### Usage Example
+```tsx
+import { RecentChangesFeed } from '@/components/admin/RecentChangesFeed'
+
+<RecentChangesFeed
+  filters={{
+    status: ['pending'],
+    priority: ['high', 'urgent'],
+    ageInDays: 7
+  }}
+  pageSize={20}
+  onApprove={async (id) => {
+    await fetch(`/api/admin/moderation/approve/${id}`, { method: 'POST' })
+  }}
+  onReject={async (id) => {
+    await fetch(`/api/admin/moderation/reject/${id}`, { method: 'POST' })
+  }}
+/>
+```
+
+### API Integration
+The component integrates with the REST API endpoint:
+- `GET /api/admin/moderation/recent-changes` ✅ **Implemented**
+
+**Location**: `app/api/admin/moderation/recent-changes/route.ts`
+
+Query parameters:
+- `page` - Page number (1-indexed, default: 1)
+- `limit` - Items per page (1-100, default: 50)
+- `contentType` - Comma-separated content types (blog, wiki, pet, profile)
+- `status` - Comma-separated statuses (pending, approved, rejected)
+- `priority` - Comma-separated priorities (low, normal, high, urgent)
+- `ageInDays` - Filter by age in days (default: 30)
+
+Response format:
+```typescript
+{
+  items: EditRequest[]
+  total: number
+  page: number
+  limit: number
+  totalPages: number
+  metadata?: {
+    filters: { ... }
+    availableFilters: { ... }
+  }
+}
+```
+
+**Security**: Requires moderator role. Returns 403 for unauthorized access.
+
+For complete API documentation, see [RECENT_CHANGES_FEED.md](./RECENT_CHANGES_FEED.md).
+
 ## Future Enhancements
 1. Email notifications for report resolutions
 2. Bulk actions for processing multiple reports/flags

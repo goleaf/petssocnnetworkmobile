@@ -8,6 +8,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Recent Changes Feed Component**
+  - Reusable React component for displaying edit requests with visual diffs
+  - Paginated feed with customizable page size (default: 10 items)
+  - Advanced filtering by content type, status, priority, and age
+  - Inline approve/reject actions with loading states
+  - Expandable/collapsible diff viewer integration
+  - Metadata badges for COI, health flags, new pages, and images
+  - Responsive card-based layout with TailwindCSS
+  - Error handling with user-friendly messages
+  - Empty state display when no items match filters
+  - REST API endpoint at `/api/admin/moderation/recent-changes`
+  - Role-based access control (moderator required)
+  - Comprehensive parameter validation
+  - Full test coverage in `tests/active/components/admin/RecentChangesFeed.test.tsx`
+  - Complete documentation in `docs/RECENT_CHANGES_FEED.md`
 - **Email Change Modal**
   - Secure email change dialog with password verification
   - Current email display (read-only) for reference
