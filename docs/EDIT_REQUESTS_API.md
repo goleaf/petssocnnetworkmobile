@@ -699,6 +699,78 @@ describe('Edit Requests', () => {
 });
 ```
 
+## API Routes
+
+### GET /api/admin/moderation/queue-counts
+
+Returns counts for all moderation queues with urgent item detection.
+
+**Authentication**: Required (moderator or admin role)
+
+**Response**:
+```typescript
+{
+  queues: {
+    'new-pages': number,        // Count of new page submissions
+    'flagged-health': number,   // Count of health-related edits
+    'coi-edits': number,        // Count of conflict of interest edits
+    'image-reviews': number     // Count of edits with images
+  },
+  totalPending: number,         // Total pending items across all queues
+  urgentCount: number,          // Count of urgent priority items
+  hasUrgent: boolean            // Whether any urgent items exist
+}
+```
+
+**Example**:
+```typescript
+const response = await fetch('/api/admin/moderation/queue-counts');
+const data = await response.json();
+
+console.log(`Total pending: ${data.totalPending}`);
+console.log(`Urgent items: ${data.urgentCount}`);
+console.log(`New pages: ${data.queues['new-pages']}`);
+
+if (data.hasUrgent) {
+  // Show urgent badge in navigation
+}
+```
+
+**Usage in Navigation**:
+```typescript
+// Display queue counts as badges
+function AdminNavigation() {
+  const { data } = useSWR('/api/admin/moderation/queue-counts');
+  
+  return (
+    <nav>
+      <Link href="/admin/queue/new-pages">
+        New Pages
+        {data?.queues['new-pages'] > 0 && (
+          <Badge>{data.queues['new-pages']}</Badge>
+        )}
+      </Link>
+      
+      <Link href="/admin/queue/flagged-health">
+        Health Content
+        {data?.queues['flagged-health'] > 0 && (
+          <Badge variant={data.hasUrgent ? 'destructive' : 'default'}>
+            {data.queues['flagged-health']}
+          </Badge>
+        )}
+      </Link>
+    </nav>
+  );
+}
+```
+
+**Error Responses**:
+- `401 Unauthorized` - User not authenticated
+- `403 Forbidden` - User lacks moderator/admin role
+- `500 Internal Server Error` - Database or server error
+
+---
+
 ## Related Documentation
 
 - [Database Architecture](./DATABASE_ARCHITECTURE.md) - Database schema and Prisma usage
