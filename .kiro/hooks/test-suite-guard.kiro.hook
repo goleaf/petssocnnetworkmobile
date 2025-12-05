@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "name": "Test Suite Guard",
+  "description": "Enforces centralized test layout and verification when tests change.",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "tests/**/*",
+      "e2e/**/*"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "Test files changed: {{changedFiles}}. Use MCP for all file edits and shell commands.\n\n1) Ensure location matches `.cursorrules`: Jest tests in `tests/active/`, Playwright in `e2e/`; avoid stray `__tests__` or colocated specs.\n2) Keep naming: Jest `*.test.ts(x)`/`*.spec.ts(x)` as appropriate; Playwright `*.spec.ts`.\n3) Validate dependencies and helpers: reuse fixtures (`e2e/fixtures.ts`, `e2e/test-helpers.ts`) and shared mocks; update data-testid selectors if assertions rely on them.\n4) Run MCP shell checks: `pnpm typecheck`, `pnpm lint`, targeted Jest (`pnpm test -- <path>`) and Playwright (`pnpm test:e2e --workers=1`, start dev server per `TEST_RUNNING_INSTRUCTIONS.md` if needed).\n5) Confirm coverage of edge cases and document any gaps for follow-up."
+  }
+}

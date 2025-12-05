@@ -9,7 +9,7 @@
   - Run migrations and verify schema changes
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 2.9, 2.10_
 
-- [x] 2. Implement core pet service layer
+- [x] 1.1. Implement core pet service layer
   - Create lib/services/pet-service.ts with CRUD operations for pets
   - Implement createPet function with validation using Zod schema
   - Implement getPetById, getPetBySlug, updatePet, and deletePet functions
@@ -19,7 +19,7 @@
   - Add pet statistics calculation (followers, posts, photos count)
   - _Requirements: 1.1, 1.4, 1.5, 7.3, 7.4, 8.1, 8.2, 8.3, 8.4, 8.5, 8.6, 8.7, 8.8_
 
-- [x] 3. Implement photo service and upload handling
+- [x] 1.2. Implement photo service and upload handling
   - Create lib/services/photo-service.ts for photo management
   - Implement photo upload with file validation (type, size, dimensions)
   - Add image processing: resize to multiple sizes (thumbnail 150x150, medium 800x800, large 1600x1600)
@@ -29,7 +29,7 @@
   - Implement caption and tag management for photos
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 3.9_
 
-- [x] 4. Create API routes for pet management
+- [x] 1.3. Create API routes for pet management
   - Implement POST /api/pets/create endpoint with request validation
   - Implement GET /api/pets/[id] endpoint with privacy checks
   - Implement PATCH /api/pets/[id] endpoint for updates
@@ -40,7 +40,7 @@
   - Add rate limiting to all endpoints (10 req/min for uploads, 20 req/min for updates)
   - _Requirements: 1.1, 1.4, 1.5, 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 7.6, 8.8_
 
-- [x] 5. Build Step 1: Basic Information component
+- [x] 1.4. Build Step 1: Basic Information component
   - Create components/pet/wizard/step1-basic-info.tsx component
   - Implement pet name input with Unicode support, emoji support, and 2-50 character validation
   - Add real-time character counter for name field
@@ -58,7 +58,7 @@
   - Create adoption date picker with "With you for X months" display
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 2.9, 2.10_
 
-- [x] 6. Build Step 2: Photos & Gallery component
+- [x] 1.5. Build Step 2: Photos & Gallery component
   - Create components/pet/wizard/step2-photos.tsx component
   - Implement primary photo upload with required validation
   - Add image cropping tool for 500x500px square format
@@ -72,7 +72,7 @@
   - Display file format and size validation errors
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 3.9_
 
-- [x] 7. Build Step 3: Personality & Temperament component
+- [x] 1.6. Build Step 3: Personality & Temperament component
   - Create components/pet/wizard/step3-personality.tsx component
   - Implement personality trait selector with pre-defined options as chips
   - Add traits: Friendly, Shy, Energetic, Calm, Playful, Curious, Protective, Independent, Affectionate, Vocal, Quiet, Intelligent, Stubborn, Loyal, Anxious, Confident, Gentle, Aggressive, Good with Kids, Good with Other Pets
@@ -86,7 +86,7 @@
   - Display selected traits as colored tags below selector
   - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.7_
 
-- [x] 8. Build Step 4: Identification component
+- [x] 1.7. Build Step 4: Identification component
   - Create components/pet/wizard/step4-identification.tsx component
   - Implement microchip ID input with 15-digit validation
   - Add microchip company dropdown (Avid, HomeAgain, AKC Reunite, PetLink, 24PetWatch, Other)
@@ -97,7 +97,7 @@
   - Display validation errors for incorrect microchip format
   - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 5.6_
 
-- [x] 9. Build Step 5: Medical Information component
+- [x] 1.8. Build Step 5: Medical Information component
   - Create components/pet/wizard/step5-medical.tsx component
   - Implement vet clinic name and contact text inputs
   - Create allergies multi-select with common options as chips
@@ -111,7 +111,7 @@
   - Create date diagnosed and notes fields for each condition
   - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5, 6.6, 6.7_
 
-- [x] 10. Build Step 6: Bio & Review component
+- [x] 1.9. Build Step 6: Bio & Review component
   - Create components/pet/wizard/step6-bio-review.tsx component
   - Implement rich text editor for pet bio (1000 character limit)
   - Add support for bold, italic, emoji, line breaks, @mentions, #hashtags
@@ -122,7 +122,7 @@
   - Add edit buttons to jump back to specific steps from review
   - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5, 7.6_
 
-- [x] 11. Build pet creation wizard shell
+- [x] 1.10. Build pet creation wizard shell
   - Create components/pet/pet-creation-wizard.tsx main component
   - Implement step indicator showing progress (1-6 with checkmarks)
   - Add step navigation with Next, Back, Save Draft buttons
@@ -135,7 +135,7 @@
   - Handle final submission and redirect to new pet profile
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 7.6_
 
-- [x] 12. Create pet profile page layout
+- [x] 1.11. Create pet profile page layout
   - Create app/[locale]/pet/[username]/[petSlug]/page.tsx
   - Implement hero section with cover photo banner
   - Add profile photo overlay (200x200px circular) in bottom-left of cover
@@ -147,7 +147,7 @@
   - Add verified pet badge display (if applicable)
   - _Requirements: 8.1, 8.2, 8.3, 8.4, 8.5, 8.6, 8.7, 8.8_
 
-- [x] 13. Implement pet profile stats bar
+- [x] 1.12. Implement pet profile stats bar
   - Create components/pet/pet-stats-bar.tsx component
   - Display followers count with icon
   - Show photos count with icon
@@ -157,7 +157,7 @@
   - Add responsive layout (horizontal on desktop, grid on mobile)
   - _Requirements: 8.5, 8.6_
 
-- [x] 14. Build About tab with information cards
+- [x] 1.13. Build About tab with information cards
   - Create components/pet/about-tab.tsx component
   - Implement Physical Stats card with weight, color, neutered status
   - Add weight history line chart if multiple entries exist
@@ -171,7 +171,7 @@
   - Display condition management status (Controlled, Under Treatment, Monitoring)
   - _Requirements: 10.1, 10.2, 10.3, 10.4, 10.5, 10.6, 10.7, 10.8, 10.9_
 
-- [x] 15. Build Photos tab with gallery
+- [x] 1.14. Build Photos tab with gallery
   - Create components/pet/photos-tab.tsx component
   - Implement responsive grid layout (3 columns desktop, 2 tablet, 1 mobile)
   - Add lightbox viewer on photo click
@@ -182,7 +182,7 @@
   - Implement lazy loading for photos
   - _Requirements: 9.3, 9.4_
 
-- [ ] 16. Build Health tab
+- [ ] 1.15. Build Health tab
   - Create components/pet/health-tab.tsx component
   - Display vet records in chronological order
   - Show vaccination history with next due dates
@@ -193,7 +193,7 @@
   - Implement privacy checks for sensitive health data
   - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5, 6.6, 6.7, 9.6_
 
-- [ ] 17. Build Documents tab
+- [ ] 1.16. Build Documents tab
   - Create components/pet/documents-tab.tsx component
   - Display uploaded documents in list/grid view
   - Show document types: adoption papers, pedigree certificates, insurance documents, vet receipts
@@ -203,7 +203,7 @@
   - Show upload date and file size
   - _Requirements: 9.7_
 
-- [ ] 18. Implement pet timeline component
+- [ ] 1.17. Implement pet timeline component
   - Create components/pet/pet-timeline.tsx component
   - Display events in reverse chronological order
   - Show automatic events: "Added to family", "First vet visit", "Completed vaccinations", "Birthday celebrations"
@@ -215,7 +215,7 @@
   - Create pagination for timeline (load 20 events at a time)
   - _Requirements: 11.1, 11.2, 11.3, 11.4, 11.5, 11.6_
 
-- [ ] 19. Implement tabbed content navigation
+- [ ] 1.18. Implement tabbed content navigation
   - Create components/pet/pet-tabs.tsx component
   - Add tabs: About, Photos, Posts, Health, Documents
   - Set About as default view
@@ -225,7 +225,7 @@
   - Lazy load tab content on first view
   - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.5, 9.6, 9.7_
 
-- [ ] 20. Add "Add New Pet" button to dashboard
+- [ ] 1.19. Add "Add New Pet" button to dashboard
   - Update dashboard page to include prominent "Add New Pet" button
   - Add paw icon to button
   - Show incentive message "Add your first furry friend!" for users with no pets
@@ -233,7 +233,7 @@
   - Open pet creation wizard modal on click
   - _Requirements: 1.1, 1.2, 1.3_
 
-- [ ] 21. Implement pet follow/unfollow functionality
+- [ ] 1.20. Implement pet follow/unfollow functionality
   - Create API endpoint POST /api/pets/[id]/follow
   - Implement follow button on pet profile page
   - Update follower count in real-time
@@ -242,7 +242,7 @@
   - Update UI optimistically while request processes
   - _Requirements: 8.7, 8.8_
 
-- [ ] 22. Implement privacy controls for pet profiles
+- [ ] 1.21. Implement privacy controls for pet profiles
   - Create components/pet/privacy-settings.tsx component
   - Add visibility selector (Public, Followers-only, Private)
   - Implement interaction permissions selector
@@ -252,7 +252,7 @@
   - Display privacy badges on pet cards
   - _Requirements: 7.3, 7.4, 8.1, 8.2, 8.3, 8.4, 8.5, 8.6, 8.7, 8.8_
 
-- [ ] 23. Implement responsive design and mobile optimization
+- [ ] 1.22. Implement responsive design and mobile optimization
   - Test all components on mobile devices (< 640px)
   - Optimize wizard for mobile with bottom sheet on small screens
   - Ensure touch-friendly tap targets (minimum 44x44px)
@@ -262,7 +262,7 @@
   - Verify all forms work with mobile keyboards
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 2.9, 2.10, 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 3.9_
 
-- [ ] 24. Implement accessibility features
+- [ ] 1.23. Implement accessibility features
   - Add ARIA labels to all interactive elements
   - Implement keyboard navigation for wizard
   - Add focus management for modal dialogs
@@ -273,7 +273,7 @@
   - Implement focus trap in modal
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 8.1, 8.2, 8.3, 8.4, 8.5, 8.6, 8.7, 8.8, 9.1, 9.2, 9.3, 9.4_
 
-- [ ] 25. Add error handling and validation
+- [ ] 1.24. Add error handling and validation
   - Implement client-side validation for all form fields
   - Add server-side validation using Zod schemas
   - Create user-friendly error messages
@@ -284,7 +284,7 @@
   - Implement draft recovery after errors
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 2.9, 2.10, 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 3.9_
 
-- [ ] 26. Write unit tests for pet services
+- [ ] 1.25. Write unit tests for pet services
   - Test PetService CRUD operations
   - Test PhotoService upload and processing
   - Test privacy checking utilities
@@ -293,7 +293,7 @@
   - Test error handling
   - _Requirements: 1.1, 1.4, 1.5, 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 2.9, 2.10, 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 3.9_
 
-- [ ] 27. Write component tests
+- [ ] 1.26. Write component tests
   - Test PetCreationWizard step navigation
   - Test form validation in each step
   - Test photo upload component
@@ -303,7 +303,7 @@
   - Test tab navigation
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 7.6, 8.1, 8.2, 8.3, 8.4, 8.5, 8.6, 8.7, 8.8, 9.1, 9.2, 9.3, 9.4, 9.5, 9.6, 9.7, 11.1, 11.2, 11.3, 11.4, 11.5, 11.6_
 
-- [ ] 28. Write E2E tests for critical flows
+- [ ] 1.27. Write E2E tests for critical flows
   - Test complete pet creation flow (all 6 steps)
   - Test photo upload and gallery management
   - Test pet profile viewing with different privacy settings
@@ -312,7 +312,7 @@
   - Test responsive behavior on mobile
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 3.9, 7.3, 7.4, 8.1, 8.2, 8.3, 8.4, 8.5, 8.6, 8.7, 8.8, 11.1, 11.2, 11.3, 11.4, 11.5, 11.6_
 
-- [ ] 29. Implement inline editing infrastructure
+- [ ] 1.28. Implement inline editing infrastructure
   - Create components/pet/inline-edit-wrapper.tsx component with hover-to-edit functionality
   - Add edit icon display in top-right corner of editable sections
   - Implement QuickEditModal component for inline form editing
@@ -323,7 +323,7 @@
   - Implement optimistic UI updates without page reload
   - _Requirements: 12.1, 12.2, 12.3, 12.4, 12.5, 12.6_
 
-- [ ] 30. Build quick-edit shortcuts
+- [ ] 1.29. Build quick-edit shortcuts
   - Implement inline name editing with Enter to save and Escape to cancel
   - Create WeightLogModal component with date picker and number input
   - Add automatic weight history tracking on weight log
@@ -332,7 +332,7 @@
   - Add upload, delete, and reorder functionality to photo manager
   - _Requirements: 12.7, 12.8, 12.9, 12.10_
 
-- [ ] 31. Implement bulk photo management
+- [ ] 1.30. Implement bulk photo management
   - Create BulkPhotoManager component with multi-select checkboxes
   - Add actions toolbar that appears when photos are selected
   - Implement "Delete selected" with confirmation dialog showing count
@@ -344,7 +344,7 @@
   - Show storage usage indicator "X of 20 photos uploaded"
   - _Requirements: 13.1, 13.2, 13.3, 13.4, 13.5, 13.6, 13.7, 13.8, 13.9_
 
-- [ ] 32. Build pet switcher navigation
+- [ ] 1.31. Build pet switcher navigation
   - Create PetSwitcher component as dropdown in navigation
   - Display all user's pets with small profile photos and names
   - Add count badge showing total number of pets
@@ -355,7 +355,7 @@
   - Implement sort options: Recently Added, Alphabetical, Species, Age
   - _Requirements: 14.1, 14.2, 14.3, 14.4, 14.5, 14.6, 14.7, 14.8_
 
-- [ ] 33. Create pet comparison feature
+- [ ] 1.32. Create pet comparison feature
   - Build PetComparison component with grid layout
   - Allow selection of up to 4 pets for comparison
   - Display each pet's photo, key stats, breed, and age
@@ -364,7 +364,7 @@
   - Implement "Export as PDF" button for comparison report
   - _Requirements: 15.1, 15.2, 15.3, 15.4, 15.5, 15.6_
 
-- [ ] 34. Implement per-pet notification system
+- [ ] 1.33. Implement per-pet notification system
   - Create PetNotificationSettings component
   - Add independent notification toggles for each pet
   - Implement health reminders: medication, vet appointments, vaccinations
@@ -374,7 +374,7 @@
   - Include pet's photo and name in all notifications
   - _Requirements: 16.1, 16.2, 16.3, 16.4, 16.5, 16.6_
 
-- [ ] 35. Add species-specific fields for dogs
+- [ ] 1.34. Add species-specific fields for dogs
   - Create SpeciesFieldsRenderer component for dynamic field rendering
   - Add breed group selector: Sporting, Hound, Working, Terrier, Toy, Non-Sporting, Herding, Mixed
   - Implement AKC/Kennel Club registration number input for purebreds
@@ -384,7 +384,7 @@
   - Implement grooming requirements selector: Low, Moderate, High-maintenance
   - _Requirements: 17.1, 17.2, 17.3, 17.4, 17.5, 17.6_
 
-- [ ] 36. Add species-specific fields for cats
+- [ ] 1.35. Add species-specific fields for cats
   - Add indoor/outdoor status selector: Fully indoor, Indoor/outdoor, Outdoor only
   - Implement declawed status checkbox
   - Add litter box trained checkbox
@@ -393,7 +393,7 @@
   - Implement breed type selector: Domestic shorthair, Domestic longhair, Purebred
   - _Requirements: 18.1, 18.2, 18.3, 18.4, 18.5, 18.6_
 
-- [ ] 37. Add species-specific fields for birds
+- [ ] 1.36. Add species-specific fields for birds
   - Add bird species selector: Parrot, Parakeet, Cockatiel, Canary, Finch, Macaw, Cockatoo, Other
   - Implement wingspan measurement input field
   - Add talking ability selector: Can speak, Learning, Whistles only, Quiet species
@@ -402,7 +402,7 @@
   - Implement flight status selector: Fully flighted, Clipped wings, Disabled
   - _Requirements: 19.1, 19.2, 19.3, 19.4, 19.5, 19.6_
 
-- [ ] 38. Add species-specific fields for reptiles
+- [ ] 1.37. Add species-specific fields for reptiles
   - Add reptile species selector: Lizard, Snake, Turtle, Tortoise, Gecko, Iguana, Other
   - Implement enclosure type selector: Terrarium, Aquarium, Outdoor habitat
   - Add temperature inputs: basking temp, ambient temp, night temp
@@ -411,7 +411,7 @@
   - Implement live food preference selector: Crickets, Mealworms, Mice, None
   - _Requirements: 20.1, 20.2, 20.3, 20.4, 20.5, 20.6_
 
-- [ ] 39. Add species-specific fields for small animals
+- [ ] 1.38. Add species-specific fields for small animals
   - Add housing type selector: Cage, Hutch, Free-roam, Custom setup
   - Implement bonded pairs linking to other pet profiles
   - Add handling preference selector: Loves being held, Tolerates briefly, Prefers no handling
@@ -419,7 +419,7 @@
   - Add exercise routine fields: playtime duration, supervised/unsupervised
   - _Requirements: 21.1, 21.2, 21.3, 21.4, 21.5_
 
-- [ ] 40. Add species-specific fields for fish
+- [ ] 1.39. Add species-specific fields for fish
   - Add tank size input in gallons or liters
   - Implement tank type selector: Freshwater, Saltwater, Brackish
   - Create water parameters inputs: pH, temperature range, ammonia, nitrite, nitrate
@@ -428,7 +428,7 @@
   - Add equipment fields: filter type, heater, lights, air pump
   - _Requirements: 22.1, 22.2, 22.3, 22.4, 22.5, 22.6_
 
-- [ ] 41. Add species-specific fields for horses
+- [ ] 1.40. Add species-specific fields for horses
   - Add stable/barn location fields: name and address
   - Implement discipline selector: Dressage, Jumping, Western, Trail riding, Racing, Companion, Other
   - Add training level selector: Green broke, Trained, Advanced, Competing
@@ -438,7 +438,7 @@
   - Add dietary needs fields: grain type, supplements, hay quality
   - _Requirements: 23.1, 23.2, 23.3, 23.4, 23.5, 23.6, 23.7_
 
-- [ ] 42. Build health dashboard component
+- [ ] 1.41. Build health dashboard component
   - Create HealthDashboard component in components/pet/health/
   - Display vaccination status with green checkmark or red warning
   - Show next vet appointment date with countdown in days
@@ -447,7 +447,7 @@
   - Show recent health events timeline from last 6 months
   - _Requirements: 24.1, 24.2, 24.3, 24.4, 24.5_
 
-- [ ] 43. Implement vaccination tracking system
+- [ ] 1.42. Implement vaccination tracking system
   - Create VaccinationTracker component
   - Add vaccination form with vaccine name dropdown: Rabies, DHPP/FVRCP, Bordetella, Leptospirosis, Lyme, Canine Influenza, Feline Leukemia, custom
   - Implement fields: date administered, administered by, next due date, batch/lot number
@@ -459,7 +459,7 @@
   - Create weekly email summary for multiple upcoming vaccinations
   - _Requirements: 25.1, 25.2, 25.3, 25.4, 25.5, 25.6, 25.7, 25.8_
 
-- [ ] 44. Build medication management system
+- [ ] 1.43. Build medication management system
   - Create MedicationManager component
   - Add medication form with autocomplete from common pet medications
   - Implement fields: name, dosage with unit selector, frequency, times, start/end date, purpose, prescribing vet
@@ -474,7 +474,7 @@
   - Implement dose logging: timestamp, administered by, notes
   - _Requirements: 26.1, 26.2, 26.3, 26.4, 26.5, 26.6, 26.7, 26.8, 26.9, 26.10_
 
-- [ ] 45. Create weight tracking system
+- [ ] 1.44. Create weight tracking system
   - Build WeightTracker component
   - Add weight entry form: date, weight with unit selector, optional photo, notes
   - Create line graph with date on X-axis and weight on Y-axis
@@ -488,7 +488,7 @@
   - Implement weight goal setting with target, timeline, and progress percentage
   - _Requirements: 27.1, 27.2, 27.3, 27.4, 27.5, 27.6, 27.7, 27.8, 27.9, 27.10_
 
-- [ ] 46. Implement vet visit logging
+- [ ] 1.45. Implement vet visit logging
   - Create VetVisitLogger component
   - Add vet visit form with clinic name auto-suggest from previous visits
   - Implement fields: visit date, vet name, reason, diagnosis, treatment, cost, next appointment
@@ -500,7 +500,7 @@
   - Implement export to PDF functionality for medical history
   - _Requirements: 28.1, 28.2, 28.3, 28.4, 28.5, 28.6, 28.7_
 
-- [ ] 47. Build health incident logging system
+- [ ] 1.46. Build health incident logging system
   - Create HealthIncidentLogger component
   - Add incident form with date/time picker
   - Implement symptom selector: Vomiting, Diarrhea, Limping, Coughing, Sneezing, Loss of appetite, Lethargy, Excessive scratching, Lumps/bumps, Behavioral changes, Other
@@ -512,7 +512,7 @@
   - Add sharing functionality for vet appointments
   - _Requirements: 29.1, 29.2, 29.3, 29.4, 29.5, 29.6, 29.7_
 
-- [ ] 48. Create wellness goal tracking
+- [ ] 1.47. Create wellness goal tracking
   - Build WellnessGoalTracker component
   - Add goal creation form with type selector: Weight management, Exercise, Training milestones, Behavioral improvements
   - Implement weight goal fields: target weight and timeline
@@ -523,7 +523,7 @@
   - Show motivational messages and badges when goals are reached
   - _Requirements: 30.1, 30.2, 30.3, 30.4, 30.5, 30.6, 30.7_
 
-- [ ] 49. Implement document management system
+- [ ] 1.48. Implement document management system
   - Create DocumentManager component
   - Add folder structure: Medical Records, Adoption/Purchase Papers, Insurance, Pedigree/Registration, Training Certificates, Photos & Videos, Other
   - Implement drag-and-drop file upload
@@ -536,21 +536,21 @@
   - Add document metadata editing: filename, description, date, tags
   - _Requirements: 31.1, 31.2, 31.3, 31.4, 31.5, 31.6, 31.7, 31.8_
 
-- [ ] 50. Add document search and filtering
+- [ ] 1.49. Add document search and filtering
   - Implement search box for documents by name/description/tags
   - Add filters: document type, date range, size
   - Create sort options: Date added, Name, Size, Type, Recently viewed
   - Build smart collections: Recent documents (last 30 days), Expiring soon, Needs attention
   - _Requirements: 31.9, 31.10_
 
-- [ ] 51. Create document expiration tracking
+- [ ] 1.50. Create document expiration tracking
   - Add expiration date field for time-sensitive documents
   - Implement reminder system: 60 days, 30 days, 1 week, day of expiration
   - Flag expired documents in red with "EXPIRED" badge
   - Add renewal prompt with upload option
   - _Requirements: 32.1, 32.2, 32.3, 32.4_
 
-- [ ] 52. Implement granular privacy controls
+- [ ] 1.51. Implement granular privacy controls
   - Create PrivacyControls component
   - Add profile visibility selector: Public, Friends Only, Private, Hidden
   - Implement per-section privacy: Photos, Health records, Documents, Posts
@@ -560,14 +560,14 @@
   - Display privacy badges on pet cards
   - _Requirements: 33.1, 33.2, 33.3, 7.3, 7.4_
 
-- [ ] 53. Build shareable link system
+- [ ] 1.52. Build shareable link system
   - Implement shareable link generation with options
   - Add link types: public, password-protected, time-limited
   - Create permission levels: view only, view and comment, view and contribute
   - Support use cases: pet sitter, potential adopters, vet, family members
   - _Requirements: 33.4, 33.5_
 
-- [ ] 54. Create co-owner management system
+- [ ] 1.53. Create co-owner management system
   - Build CoOwnerManager component
   - Implement invitation system via email or username
   - Add permission customization: Full access, Health records only, Photos only, View only
@@ -575,7 +575,7 @@
   - Display co-owner scenarios: shared custody, family care, professional caregivers
   - _Requirements: 34.1, 34.2, 34.3, 34.4, 34.5_
 
-- [ ] 55. Implement profile analytics dashboard
+- [ ] 1.54. Implement profile analytics dashboard
   - Create ProfileAnalytics component
   - Build profile views graph: daily views over 30 days
   - Show unique vs returning visitors
@@ -584,7 +584,7 @@
   - Create geographic distribution map by countries/regions
   - _Requirements: 35.1, 35.2, 35.3, 35.4, 35.5_
 
-- [ ] 56. Add photo and post analytics
+- [ ] 1.55. Add photo and post analytics
   - Display most viewed, liked, and commented photos
   - Calculate engagement rate per photo
   - Show photo reach (unique users who saw each photo)
@@ -594,52 +594,52 @@
   - Add audience insights: demographics of engaged users
   - _Requirements: 35.6, 35.7, 35.8, 35.9_
 
-- [ ] 57. Create API endpoints for inline editing
+- [ ] 1.56. Create API endpoints for inline editing
   - Implement PATCH /api/pets/[id]/quick-edit endpoint for field updates
   - Add validation matching creation flow rules
   - Return updated pet object with optimistic update support
   - _Requirements: 12.1, 12.2, 12.3, 12.4, 12.5, 12.6_
 
-- [ ] 58. Create API endpoints for weight tracking
+- [ ] 1.57. Create API endpoints for weight tracking
   - Implement POST /api/pets/[id]/weight endpoint
   - Add GET /api/pets/[id]/weight-history endpoint
   - Create weight alert checking logic
   - Return trend analysis with each entry
   - _Requirements: 27.1, 27.2, 27.3, 27.4, 27.5, 27.6, 27.7, 27.8, 27.9, 27.10_
 
-- [ ] 59. Create API endpoints for vaccinations
+- [ ] 1.58. Create API endpoints for vaccinations
   - Implement POST /api/pets/[id]/vaccinations endpoint
   - Add GET /api/pets/[id]/vaccinations endpoint with status calculation
   - Create vaccination reminder scheduling system
   - _Requirements: 25.1, 25.2, 25.3, 25.4, 25.5, 25.6, 25.7, 25.8_
 
-- [ ] 60. Create API endpoints for medications
+- [ ] 1.59. Create API endpoints for medications
   - Implement POST /api/pets/[id]/medications endpoint
   - Add POST /api/pets/[id]/medications/[medId]/doses endpoint for logging doses
   - Create GET /api/pets/[id]/medications endpoint with adherence calculation
   - Build medication reminder scheduling system
   - _Requirements: 26.1, 26.2, 26.3, 26.4, 26.5, 26.6, 26.7, 26.8, 26.9, 26.10_
 
-- [ ] 61. Create API endpoints for vet visits
+- [ ] 1.60. Create API endpoints for vet visits
   - Implement POST /api/pets/[id]/vet-visits endpoint
   - Add GET /api/pets/[id]/vet-visits endpoint with filtering
   - Create appointment reminder scheduling
   - Add PDF export functionality for medical history
   - _Requirements: 28.1, 28.2, 28.3, 28.4, 28.5, 28.6, 28.7_
 
-- [ ] 62. Create API endpoints for health incidents
+- [ ] 1.61. Create API endpoints for health incidents
   - Implement POST /api/pets/[id]/incidents endpoint
   - Add GET /api/pets/[id]/incidents endpoint with pattern analysis
   - Create incident sharing functionality for vet appointments
   - _Requirements: 29.1, 29.2, 29.3, 29.4, 29.5, 29.6, 29.7_
 
-- [ ] 63. Create API endpoints for wellness goals
+- [ ] 1.62. Create API endpoints for wellness goals
   - Implement POST /api/pets/[id]/goals endpoint
   - Add PATCH /api/pets/[id]/goals/[goalId]/progress endpoint
   - Create GET /api/pets/[id]/goals endpoint with progress calculation
   - _Requirements: 30.1, 30.2, 30.3, 30.4, 30.5, 30.6, 30.7_
 
-- [ ] 64. Create API endpoints for documents
+- [ ] 1.63. Create API endpoints for documents
   - Implement POST /api/pets/[id]/documents endpoint with multipart upload
   - Add GET /api/pets/[id]/documents endpoint with search and filtering
   - Create DELETE /api/pets/[id]/documents/[docId] endpoint
@@ -647,14 +647,14 @@
   - Implement expiration reminder scheduling
   - _Requirements: 31.1, 31.2, 31.3, 31.4, 31.5, 31.6, 31.7, 31.8, 31.9, 31.10, 32.1, 32.2, 32.3, 32.4_
 
-- [ ] 65. Create API endpoints for co-owners
+- [ ] 1.64. Create API endpoints for co-owners
   - Implement POST /api/pets/[id]/co-owners endpoint for invitations
   - Add PATCH /api/pets/[id]/co-owners/[coOwnerId] endpoint for permission updates
   - Create DELETE /api/pets/[id]/co-owners/[coOwnerId] endpoint
   - Add activity log tracking for co-owner changes
   - _Requirements: 34.1, 34.2, 34.3, 34.4, 34.5_
 
-- [ ] 66. Create API endpoints for analytics
+- [ ] 1.65. Create API endpoints for analytics
   - Implement GET /api/pets/[id]/analytics endpoint with time range parameter
   - Add profile view tracking on each pet profile page load
   - Create analytics data aggregation queries
@@ -662,21 +662,21 @@
   - Add photo and post engagement metrics calculation
   - _Requirements: 35.1, 35.2, 35.3, 35.4, 35.5, 35.6, 35.7, 35.8, 35.9_
 
-- [ ] 67. Create API endpoint for pet comparison
+- [ ] 1.66. Create API endpoint for pet comparison
   - Implement POST /api/pets/compare endpoint
   - Accept array of pet IDs (up to 4)
   - Return comparison data with stats, health info, activity levels
   - Add PDF export functionality
   - _Requirements: 15.1, 15.2, 15.3, 15.4, 15.5, 15.6_
 
-- [ ] 68. Create API endpoints for shareable links
+- [ ] 1.67. Create API endpoints for shareable links
   - Implement POST /api/pets/[id]/share endpoint with options
   - Add GET /api/pets/share/[token] endpoint with password validation
   - Track access count and last accessed timestamp
   - Enforce expiration dates
   - _Requirements: 33.4, 33.5_
 
-- [ ] 69. Update database schema for health tracking
+- [ ] 1.68. Update database schema for health tracking
   - Create Vaccination model in Prisma schema
   - Create Medication and MedicationDose models
   - Create WeightEntry model
@@ -687,7 +687,7 @@
   - Run migrations and verify schema
   - _Requirements: 24.1, 24.2, 24.3, 24.4, 24.5, 25.1, 25.2, 25.3, 25.4, 25.5, 26.1, 26.2, 26.3, 26.4, 26.5, 27.1, 27.2, 27.3, 28.1, 28.2, 28.3, 29.1, 29.2, 29.3, 30.1, 30.2, 30.3_
 
-- [ ] 70. Update database schema for documents and collaboration
+- [ ] 1.69. Update database schema for documents and collaboration
   - Create PetDocument model in Prisma schema
   - Create CoOwner model
   - Create PetShare model for shareable links
@@ -696,13 +696,13 @@
   - Run migrations and verify schema
   - _Requirements: 31.1, 31.2, 31.3, 31.4, 31.5, 31.6, 31.7, 31.8, 31.9, 31.10, 32.1, 32.2, 32.3, 32.4, 34.1, 34.2, 34.3, 34.4, 34.5, 35.1, 35.2, 35.3, 35.4, 35.5_
 
-- [ ] 71. Update database schema for species-specific data
+- [ ] 1.70. Update database schema for species-specific data
   - Create SpeciesSpecificData model with flexible JSON field
   - Add indexes for petId lookups
   - Run migrations and verify schema
   - _Requirements: 17.1, 17.2, 17.3, 17.4, 17.5, 17.6, 18.1, 18.2, 18.3, 18.4, 18.5, 18.6, 19.1, 19.2, 19.3, 19.4, 19.5, 19.6, 20.1, 20.2, 20.3, 20.4, 20.5, 20.6, 21.1, 21.2, 21.3, 21.4, 21.5, 22.1, 22.2, 22.3, 22.4, 22.5, 22.6, 23.1, 23.2, 23.3, 23.4, 23.5, 23.6, 23.7_
 
-- [ ] 72. Implement notification scheduling system
+- [ ] 1.71. Implement notification scheduling system
   - Create notification service for vaccination reminders
   - Add medication reminder scheduling with daily notifications
   - Implement birthday reminder system
@@ -711,14 +711,14 @@
   - Build email summary for multiple upcoming tasks
   - _Requirements: 16.1, 16.2, 16.3, 16.4, 16.5, 16.6, 25.6, 25.7, 25.8, 26.6, 26.7, 26.8, 26.9_
 
-- [ ] 73. Integrate species-specific fields into creation wizard
+- [ ] 1.72. Integrate species-specific fields into creation wizard
   - Update Step 1 to conditionally render species-specific fields
   - Add validation for species-specific required fields
   - Store species-specific data in SpeciesSpecificData table
   - Display species-specific fields in profile About tab
   - _Requirements: 17.1, 17.2, 17.3, 17.4, 17.5, 17.6, 18.1, 18.2, 18.3, 18.4, 18.5, 18.6, 19.1, 19.2, 19.3, 19.4, 19.5, 19.6, 20.1, 20.2, 20.3, 20.4, 20.5, 20.6, 21.1, 21.2, 21.3, 21.4, 21.5, 22.1, 22.2, 22.3, 22.4, 22.5, 22.6, 23.1, 23.2, 23.3, 23.4, 23.5, 23.6, 23.7_
 
-- [ ] 74. Update Health tab with new tracking features
+- [ ] 1.73. Update Health tab with new tracking features
   - Integrate HealthDashboard component
   - Add VaccinationTracker to Health tab
   - Add MedicationManager to Health tab
@@ -728,7 +728,7 @@
   - Add WellnessGoalTracker to Health tab
   - _Requirements: 24.1, 24.2, 24.3, 24.4, 24.5, 25.1, 25.2, 25.3, 25.4, 25.5, 26.1, 26.2, 26.3, 26.4, 26.5, 27.1, 27.2, 27.3, 28.1, 28.2, 28.3, 29.1, 29.2, 29.3, 30.1, 30.2, 30.3_
 
-- [ ] 75. Add analytics tab to pet profile
+- [ ] 1.74. Add analytics tab to pet profile
   - Create new Analytics tab in pet profile navigation
   - Integrate ProfileAnalytics component
   - Add photo analytics section
@@ -736,7 +736,7 @@
   - Restrict access to profile owner only
   - _Requirements: 35.1, 35.2, 35.3, 35.4, 35.5, 35.6, 35.7, 35.8, 35.9_
 
-- [ ] 76. Implement file storage for documents
+- [ ] 1.75. Implement file storage for documents
   - Set up cloud storage bucket for pet documents
   - Create upload service with file validation
   - Implement virus scanning for uploaded files
@@ -745,7 +745,7 @@
   - Implement automatic cleanup for expired shares
   - _Requirements: 31.1, 31.2, 31.3, 31.4, 31.5, 31.6, 31.7, 31.8_
 
-- [ ] 77. Add rate limiting for new endpoints
+- [ ] 1.76. Add rate limiting for new endpoints
   - Implement rate limiting for weight logging: 20 req/min
   - Add rate limiting for vaccination logging: 10 req/min
   - Add rate limiting for medication logging: 20 req/min
@@ -753,14 +753,14 @@
   - Add rate limiting for analytics requests: 10 req/min
   - _Requirements: 27.1, 25.1, 26.1, 31.1, 35.1_
 
-- [ ] 78. Implement caching for analytics data
+- [ ] 1.77. Implement caching for analytics data
   - Add Redis caching for profile view counts
   - Cache follower growth data with 1-hour TTL
   - Cache photo engagement metrics with 30-minute TTL
   - Implement cache invalidation on new data
   - _Requirements: 35.1, 35.2, 35.3, 35.4, 35.5, 35.6, 35.7, 35.8, 35.9_
 
-- [ ] 79. Add background jobs for reminders
+- [ ] 1.78. Add background jobs for reminders
   - Create daily job to check vaccination due dates
   - Add hourly job for medication reminders
   - Create daily job for birthday reminders
@@ -769,7 +769,7 @@
   - Implement job for document expiration checks
   - _Requirements: 16.2, 16.3, 16.4, 16.5, 25.6, 25.7, 25.8, 26.6, 26.7, 26.8, 32.2_
 
-- [ ] 80. Write unit tests for health tracking services
+- [ ] 1.79. Write unit tests for health tracking services
   - Test vaccination service CRUD operations
   - Test medication service with dose logging
   - Test weight tracking with trend analysis
@@ -779,7 +779,7 @@
   - Test reminder scheduling logic
   - _Requirements: 25.1, 25.2, 25.3, 26.1, 26.2, 26.3, 27.1, 27.2, 27.3, 28.1, 28.2, 28.3, 29.1, 29.2, 29.3, 30.1, 30.2, 30.3_
 
-- [ ] 81. Write unit tests for document and collaboration services
+- [ ] 1.80. Write unit tests for document and collaboration services
   - Test document upload and storage
   - Test document search and filtering
   - Test shareable link generation and validation
@@ -787,7 +787,7 @@
   - Test activity log tracking
   - _Requirements: 31.1, 31.2, 31.3, 31.4, 31.5, 31.6, 31.7, 31.8, 31.9, 31.10, 33.4, 33.5, 34.1, 34.2, 34.3, 34.4, 34.5_
 
-- [ ] 82. Write unit tests for analytics services
+- [ ] 1.81. Write unit tests for analytics services
   - Test profile view tracking
   - Test follower growth calculation
   - Test photo engagement metrics
@@ -795,7 +795,7 @@
   - Test geographic distribution calculation
   - _Requirements: 35.1, 35.2, 35.3, 35.4, 35.5, 35.6, 35.7, 35.8, 35.9_
 
-- [ ] 83. Write component tests for new features
+- [ ] 1.82. Write component tests for new features
   - Test inline editing components
   - Test bulk photo manager
   - Test pet switcher navigation
@@ -808,7 +808,7 @@
   - Test analytics dashboard
   - _Requirements: 12.1, 12.2, 12.3, 13.1, 13.2, 13.3, 14.1, 14.2, 14.3, 15.1, 15.2, 15.3, 17.1, 18.1, 19.1, 20.1, 21.1, 22.1, 23.1, 24.1, 25.1, 26.1, 27.1, 28.1, 29.1, 30.1, 31.1, 33.1, 34.1, 35.1_
 
-- [ ] 84. Write E2E tests for inline editing
+- [ ] 1.83. Write E2E tests for inline editing
   - Test quick name edit with Enter/Escape
   - Test weight logging modal
   - Test photo manager modal
@@ -816,13 +816,13 @@
   - Test edit confirmation dialogs
   - _Requirements: 12.1, 12.2, 12.3, 12.4, 12.5, 12.6, 12.7, 12.8, 12.9, 12.10, 13.1, 13.2, 13.3, 13.4, 13.5, 13.6, 13.7, 13.8, 13.9_
 
-- [ ] 85. Write E2E tests for multiple pet management
+- [ ] 1.84. Write E2E tests for multiple pet management
   - Test pet switcher navigation
   - Test pet comparison feature
   - Test per-pet notification settings
   - _Requirements: 14.1, 14.2, 14.3, 14.4, 14.5, 14.6, 14.7, 14.8, 15.1, 15.2, 15.3, 15.4, 15.5, 15.6, 16.1, 16.2, 16.3, 16.4, 16.5, 16.6_
 
-- [ ] 86. Write E2E tests for health tracking
+- [ ] 1.85. Write E2E tests for health tracking
   - Test complete vaccination logging flow
   - Test medication management with reminders
   - Test weight tracking with graph
@@ -831,14 +831,14 @@
   - Test wellness goal creation and tracking
   - _Requirements: 25.1, 25.2, 25.3, 25.4, 25.5, 25.6, 25.7, 25.8, 26.1, 26.2, 26.3, 26.4, 26.5, 26.6, 26.7, 26.8, 26.9, 26.10, 27.1, 27.2, 27.3, 27.4, 27.5, 27.6, 27.7, 27.8, 27.9, 27.10, 28.1, 28.2, 28.3, 28.4, 28.5, 28.6, 28.7, 29.1, 29.2, 29.3, 29.4, 29.5, 29.6, 29.7, 30.1, 30.2, 30.3, 30.4, 30.5, 30.6, 30.7_
 
-- [ ] 87. Write E2E tests for document management
+- [ ] 1.86. Write E2E tests for document management
   - Test document upload flow
   - Test document search and filtering
   - Test document sharing with password
   - Test expiration reminders
   - _Requirements: 31.1, 31.2, 31.3, 31.4, 31.5, 31.6, 31.7, 31.8, 31.9, 31.10, 32.1, 32.2, 32.3, 32.4_
 
-- [ ] 88. Write E2E tests for privacy and collaboration
+- [ ] 1.87. Write E2E tests for privacy and collaboration
   - Test granular privacy settings
   - Test shareable link generation and access
   - Test co-owner invitation flow
@@ -846,7 +846,7 @@
   - Test activity log tracking
   - _Requirements: 33.1, 33.2, 33.3, 33.4, 33.5, 34.1, 34.2, 34.3, 34.4, 34.5_
 
-- [ ] 89. Write E2E tests for species-specific fields
+- [ ] 1.88. Write E2E tests for species-specific fields
   - Test dog-specific fields in creation wizard
   - Test cat-specific fields
   - Test bird-specific fields
@@ -856,7 +856,7 @@
   - Test horse-specific fields
   - _Requirements: 17.1, 17.2, 17.3, 17.4, 17.5, 17.6, 18.1, 18.2, 18.3, 18.4, 18.5, 18.6, 19.1, 19.2, 19.3, 19.4, 19.5, 19.6, 20.1, 20.2, 20.3, 20.4, 20.5, 20.6, 21.1, 21.2, 21.3, 21.4, 21.5, 22.1, 22.2, 22.3, 22.4, 22.5, 22.6, 23.1, 23.2, 23.3, 23.4, 23.5, 23.6, 23.7_
 
-- [ ] 90. Optimize performance for new features
+- [ ] 1.89. Optimize performance for new features
   - Implement lazy loading for health tracking components
   - Add pagination for vaccination and medication lists
   - Optimize document search with database indexes
@@ -865,7 +865,7 @@
   - Optimize analytics queries with aggregation
   - _Requirements: 25.1, 26.1, 27.1, 28.1, 31.9, 35.1_
 
-- [ ] 91. Add accessibility features for new components
+- [ ] 1.90. Add accessibility features for new components
   - Add ARIA labels to health tracking forms
   - Implement keyboard navigation for document manager
   - Add screen reader support for analytics charts
@@ -873,7 +873,7 @@
   - Add focus management for inline editing modals
   - _Requirements: 12.1, 24.1, 25.1, 26.1, 27.1, 31.1, 35.1_
 
-- [ ] 92. Create user documentation for new features
+- [ ] 1.91. Create user documentation for new features
   - Write guide for inline editing
   - Document health tracking features
   - Create document management tutorial

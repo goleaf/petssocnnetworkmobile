@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "name": "Docs Change Guard",
+  "description": "Keeps README and docs consistent with code, tests, and specs.",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "README.md",
+      "docs/**/*",
+      "doc/**/*"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "Documentation files changed: {{changedFiles}}. Use MCP for all reads, edits, and shell commands.\n\n1) Verify accuracy: cross-check commands, file paths, and features against current code/specs (AGENTS.md, openspec/AGENTS.md, .cursorrules).\n2) Call out schema/env/test impacts; keep Prisma-only rule clear and testing locations aligned with `.cursorrules`.\n3) Update related references (links, screenshots, samples) and ensure translation/i18n notes are correct.\n4) Run sanity checks via MCP shell if commands changed: `pnpm lint`, `pnpm typecheck`, and targeted tests when docs describe flows.\n5) Summarize edits and open gaps so readers know what remains manual."
+  }
+}

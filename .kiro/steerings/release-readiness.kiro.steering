@@ -1,0 +1,6 @@
+{
+  "name": "Release Readiness",
+  "description": "Checklist before tagging/releasing or merging major changes.",
+  "version": "1",
+  "prompt": "Use MCP shell for commands. Before release/merge:\n- Confirm specs/tasks complete (openspec/AGENTS.md workflow); update checklists in `.kiro/specs/**` if needed\n- Build and verify: pnpm typecheck, pnpm lint, pnpm test, pnpm test:e2e --workers=1 (start dev server per TEST_RUNNING_INSTRUCTIONS.md), pnpm build\n- Database: ensure migrations are applied and documented; seeds updated if schema changed\n- Mobile: if Capacitor impacted, run pnpm exec cap sync (iOS/Android) after pnpm build\n- Update changelog and README/docs with user-facing changes and breaking notes\n- Summarize verification results and remaining risks/gaps"
+}

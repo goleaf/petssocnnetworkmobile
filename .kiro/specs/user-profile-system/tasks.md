@@ -8,7 +8,7 @@
   - Note: Using in-memory storage (lib/storage-server.ts) rather than Prisma - no database migrations needed
   - _Requirements: 1.1, 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 5.1, 5.2, 5.3, 5.4, 5.5, 5.6, 6.1, 6.2, 6.3, 6.4, 6.5, 9.1, 9.2, 9.3, 9.4, 9.5, 9.6, 10.1, 10.2, 10.3, 10.4, 10.5, 12.1, 12.2, 12.3, 12.4, 12.5, 12.6, 13.1, 13.2, 13.3, 13.4, 13.5, 13.6, 14.1, 14.2, 14.3, 14.4, 14.5, 14.6_
 
-- [x] 2. Create TypeScript types and interfaces
+- [x] 1.1. Create TypeScript types and interfaces
   - User interface already exists in lib/types.ts with comprehensive profile fields
   - Privacy settings embedded in User type with all required visibility controls
   - ProfileAnalytics types exist in lib/profile-analytics.ts and lib/profile-audience.ts
@@ -16,7 +16,7 @@
   - Note: Types are already defined and in use across the codebase
   - _Requirements: 15.1, 15.2, 15.3, 15.4, 15.5, 15.6, 15.7, 15.8, 15.9_
 
-- [x] 3. Implement profile data service layer
+- [x] 1.2. Implement profile data service layer
   - Profile CRUD operations exist in lib/storage-server.ts (getServerUserById, updateServerUser, getServerUsers)
   - Privacy rule application exists in lib/utils/privacy.ts (canViewProfile, canViewProfileSection, canViewUserScopedProperty)
   - Profile completion calculation exists in lib/utils/profile-compute.ts (computeProfileCompletionForServer)
@@ -24,7 +24,7 @@
   - Note: Services are already implemented and functional
   - _Requirements: 15.1, 15.2, 15.3, 15.4, 15.5, 15.6, 15.7, 9.1, 9.2, 9.3, 9.4, 9.5, 9.6_
 
-- [x] 4. Create Zod validation schemas
+- [x] 1.3. Create Zod validation schemas
   - Created lib/validations/profile-schemas.ts with comprehensive validation
   - Implemented profileBasicInfoSchema with fullName (2-100 chars, letters/spaces/hyphens/apostrophes only), displayName (1-50 chars), username (3-20 chars alphanumeric), dateOfBirth (age 13+), gender validation with custom option
   - Implemented profileBioSchema with 1000 char limit, max 10 hashtags, interests array (max 30 items, 30 chars each)
@@ -38,8 +38,8 @@
   - All schemas use strict mode and provide detailed error messages
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 5.1, 5.2, 5.3, 5.4, 5.5, 5.6, 6.1, 6.2, 6.3, 6.4, 6.5, 9.1, 9.2, 9.3, 9.4, 9.5, 9.6, 10.1, 10.2, 10.3, 10.4, 10.5, 12.3, 12.4_
 
-- [x] 5. Build profile display components
-- [x] 5.1 Create ProfileHeader component
+- [x] 1.4. Build profile display components
+- [x] 1.5. Create ProfileHeader component
   - ProfileHeader already exists at components/profile/ProfileHeader.tsx
   - Displays profile photo, cover photo, username, display name, location
   - Shows follower/following/posts counts
@@ -48,7 +48,7 @@
   - Note: Component is complete and functional
   - _Requirements: 1.3, 1.4, 1.5, 11.4, 13.6_
 
-- [x] 5.2 Create ProfileCompletionWidget component ✅ COMPLETED
+- [x] 1.6. Create ProfileCompletionWidget component ✅ COMPLETED
   - Built components/profile/profile-completion-widget.tsx with full implementation
   - Circular progress indicator with SVG animation showing percentage
   - Color-coded progress: red (<30%), yellow (30-60%), green (60-100%)
@@ -62,7 +62,7 @@
   - Documentation in components/profile/README.md
   - _Requirements: 11.1, 11.2, 11.3_
 
-- [ ] 5.3 Create VerificationBadge component
+- [ ] 1.7. Create VerificationBadge component
   - Build components/profile/verification-badge.tsx
   - Display blue checkmark icon for verified users (use CheckCircle2 from lucide-react)
   - Add tooltip showing "Verified account" on hover using Tooltip component from @/components/ui/tooltip
@@ -70,7 +70,7 @@
   - Make badge size configurable (small, medium, large)
   - _Requirements: 13.6_
 
-- [ ] 6. Build profile editing page and tab container
+- [ ] 1.8. Build profile editing page and tab container
   - Create app/[locale]/settings/profile/page.tsx (following existing settings pattern in app/[locale]/settings/)
   - Implement tabbed interface with 5 tabs: Basic Info, About Me, Contact, Preferences, Privacy using Tabs component from @/components/ui/tabs
   - Integrate existing tab components: BasicInfoTab, AboutMeTab, ContactTab, PreferencesTab, PrivacyTab
@@ -82,8 +82,8 @@
   - Show success toast on save, error toast on failure
   - _Requirements: 1.1, 1.2_
 
-- [ ] 7. Enhance BasicInfoTab component
-- [ ] 7.1 Enhance basic info form fields
+- [ ] 1.9. Enhance BasicInfoTab component
+- [ ] 1.10. Enhance basic info form fields
   - Update components/profile/edit-tabs/basic-info-tab.tsx (already exists with fullName, occupation, bio, dateOfBirth, gender)
   - Add character counter to Full Name input showing "X/100 characters" below the field
   - Add client-side validation using profileBasicInfoSchema from lib/validations/profile-schemas.ts
@@ -95,7 +95,7 @@
   - Use existing Input component from @/components/ui/input
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5_
 
-- [ ] 7.2 Enhance date of birth and gender fields
+- [ ] 1.11. Enhance date of birth and gender fields
   - Date of Birth picker already exists as date input
   - Add age calculation function and display calculated age next to date picker (e.g., "Age: 25")
   - Add Checkbox "Show age on profile" below date picker
@@ -106,8 +106,8 @@
   - Use Select component from @/components/ui/select
   - _Requirements: 2.6, 2.7_
 
-- [ ] 8. Enhance AboutMeTab component with rich text editor
-- [ ] 8.1 Set up TipTap rich text editor for bio
+- [ ] 1.12. Enhance AboutMeTab component with rich text editor
+- [ ] 1.13. Set up TipTap rich text editor for bio
   - Update components/profile/edit-tabs/about-me-tab.tsx (currently has Textarea for aboutMe field)
   - Install TipTap if not already: @tiptap/react @tiptap/starter-kit @tiptap/extension-link
   - Replace textarea with TipTap editor component
@@ -119,7 +119,7 @@
   - Use existing Card and CardContent components for layout
   - _Requirements: 3.1, 3.2_
 
-- [x] 8.2 Implement @mention functionality ✅ COMPLETED
+- [x] 1.14. Implement @mention functionality ✅ COMPLETED
   - Component already exists at components/profile/mention-autocomplete.tsx
   - Integrated into AboutMeTab with textareaRef prop
   - Triggers dropdown on @ symbol showing users
@@ -129,7 +129,7 @@
   - Note: Works with textarea, may need adaptation for TipTap editor
   - _Requirements: 3.3, 3.4_
 
-- [ ] 8.3 Implement #hashtag functionality
+- [ ] 1.15. Implement #hashtag functionality
   - Create components/profile/hashtag-autocomplete.tsx following pattern from mention-autocomplete.tsx
   - Trigger dropdown on # symbol showing trending hashtags
   - Fetch trending hashtags from API or use predefined list
@@ -138,7 +138,7 @@
   - Display hashtags in blue color (#3B82F6)
   - _Requirements: 3.5, 3.6_
 
-- [ ] 8.4 Implement URL auto-detection
+- [ ] 1.16. Implement URL auto-detection
   - Add URL detection regex to bio processing
   - Auto-convert URLs to clickable links with http/https validation
   - Truncate long URLs to domain + "..." in display (e.g., "example.com...")
@@ -146,7 +146,7 @@
   - Can be implemented as TipTap extension or post-processing
   - _Requirements: 3.7, 3.8_
 
-- [ ] 8.5 Enhance interests and hobbies section
+- [ ] 1.17. Enhance interests and hobbies section
   - AboutMeTab already has TagInput component for interests
   - Create predefined interests list: Training & Behavior, Pet Photography, Grooming & Styling, Pet Fashion, Veterinary Care, Nutrition & Diet, Exercise & Fitness, Pet Travel, Breeding, Shows & Competitions, Pet Rescue, Pet Products & Reviews, DIY Pet Projects, Pet Technology, Pet Psychology, Alternative Medicine, Agility Training, Service Animals, Therapy Animals, Wildlife Rehabilitation, Exotic Pets, Aquatic Pets, Reptile Care, Avian Care
   - Add multi-select Combobox component from @/components/ui/combobox for predefined interests
@@ -156,8 +156,8 @@
   - Use profileBioSchema validation from lib/validations/profile-schemas.ts
   - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5_
 
-- [ ] 9. Enhance ContactTab component
-- [ ] 9.1 Add email and phone verification UI
+- [ ] 1.18. Enhance ContactTab component
+- [ ] 1.19. Add email and phone verification UI
   - Update components/profile/edit-tabs/contact-tab.tsx (check if it exists, create if not)
   - Add email display with verified checkmark icon (CheckCircle2) or "Unverified - Click to verify" link
   - Create Dialog component for email change with new email input and current password field
@@ -168,7 +168,7 @@
   - Connect to email verification API endpoints (may need to create)
   - _Requirements: 5.1, 5.2, 5.3, 5.4_
 
-- [ ] 9.2 Add website and social media fields
+- [ ] 1.20. Add website and social media fields
   - Check if ContactTab exists, create if not following pattern from BasicInfoTab
   - Add Website URL input with validation (http/https required)
   - Add social media inputs: Instagram, Twitter, TikTok, YouTube, Facebook
@@ -177,7 +177,7 @@
   - Use Input component from @/components/ui/input
   - _Requirements: 5.5, 5.6_
 
-- [ ] 9.3 Implement location fields
+- [ ] 1.21. Implement location fields
   - Add Country dropdown with searchable list using Combobox component
   - Add State/Region dropdown that populates based on selected country
   - Add City input with CityAutocomplete component (check if exists at @/components/ui/city-autocomplete)
@@ -187,7 +187,7 @@
   - Use existing location API integration if available
   - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5_
 
-- [ ] 9.4 Add languages section
+- [ ] 1.22. Add languages section
   - Create multi-select Combobox for languages (English, Spanish, French, German, Chinese, Japanese, etc.)
   - Add proficiency level Select for each language: Native, Fluent, Conversational, Basic, Learning
   - Display selected languages as Badge components with proficiency level
@@ -196,7 +196,7 @@
   - Use profileContactSchema validation from lib/validations/profile-schemas.ts
   - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5_
 
-- [ ] 10. Enhance PreferencesTab component
+- [ ] 1.23. Enhance PreferencesTab component
   - Check if components/profile/edit-tabs/preferences-tab.tsx exists, create if not
   - Add Relationship Status Select with options: Single, In a relationship, Married, It's complicated, Prefer not to say
   - Add Display Preferences section with Select components:
@@ -211,8 +211,8 @@
   - Use Card, Select, Switch components from @/components/ui
   - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5_
 
-- [ ] 11. Enhance PrivacyTab component
-- [ ] 11.1 Build profile visibility controls
+- [ ] 1.24. Enhance PrivacyTab component
+- [ ] 1.25. Build profile visibility controls
   - Check if components/profile/edit-tabs/privacy-tab.tsx exists, create if not
   - Add profile visibility RadioGroup with options: Public, Friends Only, Private, Custom
   - Show explanation text and icon for each option using Alert component
@@ -223,7 +223,7 @@
   - Use RadioGroup component from @/components/ui/radio-group
   - _Requirements: 9.1_
 
-- [ ] 11.2 Implement granular privacy toggles
+- [ ] 1.26. Implement granular privacy toggles
   - Add individual privacy Select dropdowns for each field:
     - Profile photo: Everyone, Friends, Only Me
     - Cover photo: Everyone, Friends, Only Me
@@ -240,7 +240,7 @@
   - Use Select component from @/components/ui/select
   - _Requirements: 9.2, 9.3, 9.4, 9.5_
 
-- [ ] 11.3 Add contact privacy controls
+- [ ] 1.27. Add contact privacy controls
   - Add "Who can send me messages" Select: Everyone, Friends, Friends of Friends, Only people I follow, No one
   - Add "Who can tag me in posts" Select: Everyone, Friends, Only Me, No one
   - Add "Who can see my friends/followers list" Select: Everyone, Friends, Only Me
@@ -250,7 +250,7 @@
   - Group in Card with title "Contact & Interaction Privacy"
   - _Requirements: 9.6_
 
-- [ ] 11.4 Build blocking and restricting UI
+- [ ] 1.28. Build blocking and restricting UI
   - Create "Blocked Accounts" section with Card component
   - Fetch blocked users list from API (may need to create endpoint)
   - Display each blocked user with Avatar, username, and Unblock Button
@@ -263,8 +263,8 @@
   - _Requirements: 10.1, 10.2, 10.3, 10.4, 10.5_
 
 
-- [ ] 12. Implement photo upload and management
-- [ ] 12.1 Create ProfilePhotoUpload component
+- [ ] 1.29. Implement photo upload and management
+- [ ] 1.30. Create ProfilePhotoUpload component
   - Check if ProfileHeader component exists at components/profile/ProfileHeader.tsx or components/profile/profile-header.tsx
   - If photo upload exists, verify it has modal UI with options: Upload New Photo, Take Photo (mobile), Choose from existing, Remove Photo, Cancel
   - If not, create ProfilePhotoUpload component with Dialog containing upload options
@@ -275,7 +275,7 @@
   - Use Dialog, Button, Progress components from @/components/ui
   - _Requirements: 7.1, 7.2_
 
-- [ ] 12.2 Build PhotoCropModal component
+- [ ] 1.31. Build PhotoCropModal component
   - Create components/profile/photo-crop-modal.tsx
   - Install react-easy-crop: npm install react-easy-crop
   - Implement Dialog with react-easy-crop component
@@ -289,7 +289,7 @@
   - Return cropped image blob to parent component
   - _Requirements: 7.3_
 
-- [ ] 12.3 Implement client-side image processing
+- [ ] 1.32. Implement client-side image processing
   - Check if lib/utils/upload.ts exists with uploadProfilePhoto function
   - If not, create upload utility functions
   - Implement upload progress tracking using XMLHttpRequest or fetch with progress events
@@ -301,7 +301,7 @@
   - Note: Server-side processing with Sharp exists at /api/users/[userId]/profile-photo
   - _Requirements: 7.4_
 
-- [ ] 12.4 Create cover photo upload component
+- [ ] 1.33. Create cover photo upload component
   - Similar to 12.1 but for cover photos
   - Create CoverPhotoUpload component or add to ProfileHeader
   - Accept larger files (max 15MB)
@@ -310,8 +310,8 @@
   - Show upload progress and success/error notifications
   - _Requirements: 8.1, 8.2_
 
-- [x] 13. Build backend API routes for profile data ✅ COMPLETED
-- [x] 13.1 Implement GET /api/users/[userId]/profile ✅ COMPLETED
+- [x] 1.34. Build backend API routes for profile data ✅ COMPLETED
+- [x] 1.35. Implement GET /api/users/[userId]/profile ✅ COMPLETED
   - Route exists at app/api/users/[userId]/profile/route.ts
   - Fetches profile data from storage using getServerUserById
   - Applies privacy rules using buildProfileResponse and canViewProfileSection
@@ -323,7 +323,7 @@
   - Implements caching with setCached (1 hour TTL)
   - _Requirements: 15.1, 15.2, 15.3, 15.4_
 
-- [x] 13.2 Implement PUT /api/users/[userId]/profile ✅ COMPLETED
+- [x] 1.36. Implement PUT /api/users/[userId]/profile ✅ COMPLETED
   - PUT handler exists in app/api/users/[userId]/profile/route.ts
   - Validates authentication (must be profile owner)
   - Checks uniqueness constraints for username and email
@@ -336,7 +336,7 @@
   - Validates: fullName (1-100 chars), bio (<=1000 chars), website (valid URL), interests (<=50 items), languages (<=30 items)
   - _Requirements: 15.5, 15.6, 15.7_
 
-- [ ] 13.3 Implement GET /api/users/[userId]/profile/completion
+- [ ] 1.37. Implement GET /api/users/[userId]/profile/completion
   - Create app/api/users/[userId]/profile/completion/route.ts
   - Import computeProfileCompletionForServer from lib/utils/profile-compute.ts
   - Fetch user data using getServerUserById
@@ -346,8 +346,8 @@
   - Only accessible by profile owner (check authentication)
   - _Requirements: 11.1, 11.2, 11.3_
 
-- [ ] 14. Build backend API routes for photo management
-- [ ] 14.1 Implement POST /api/users/[userId]/profile-photo
+- [ ] 1.38. Build backend API routes for photo management
+- [ ] 1.39. Implement POST /api/users/[userId]/profile-photo
   - Check if route exists at app/api/users/[userId]/profile-photo/route.ts
   - If not, create POST handler accepting multipart/form-data with image file
   - Validate authentication (must be profile owner)
@@ -362,7 +362,7 @@
   - Optional: Add image moderation using AWS Rekognition or similar
   - _Requirements: 7.5, 7.6, 7.7, 15.8_
 
-- [ ] 14.2 Implement DELETE /api/users/[userId]/profile-photo
+- [ ] 1.40. Implement DELETE /api/users/[userId]/profile-photo
   - Check if DELETE handler exists in app/api/users/[userId]/profile-photo/route.ts
   - If not, create DELETE handler
   - Validate authentication (must be profile owner)
@@ -373,7 +373,7 @@
   - Return JSON with default avatar URL
   - _Requirements: 15.9_
 
-- [ ] 14.3 Implement POST /api/users/[userId]/cover-photo
+- [ ] 1.41. Implement POST /api/users/[userId]/cover-photo
   - Check if route exists at app/api/users/[userId]/cover-photo/route.ts
   - If not, create POST handler similar to profile-photo
   - Accept larger files (max 15MB)
@@ -386,7 +386,7 @@
   - Optional: Apply gradient overlay for text readability
   - _Requirements: 8.1, 8.2, 8.3, 8.4_
 
-- [ ] 14.4 Implement DELETE /api/users/[userId]/cover-photo
+- [ ] 1.42. Implement DELETE /api/users/[userId]/cover-photo
   - Check if DELETE handler exists in app/api/users/[userId]/cover-photo/route.ts
   - If not, create DELETE handler
   - Validate authentication
@@ -396,8 +396,8 @@
   - Return success JSON
   - _Requirements: 8.1, 8.2, 8.3, 8.4_
 
-- [x] 15. Implement username management system ✅ MOSTLY COMPLETED
-- [x] 15.1 Create POST /api/users/[userId]/username (check availability) ✅ COMPLETED
+- [x] 1.43. Implement username management system ✅ MOSTLY COMPLETED
+- [x] 1.44. Create POST /api/users/[userId]/username (check availability) ✅ COMPLETED
   - Route exists at app/api/users/[userId]/username/route.ts (POST handler)
   - Accepts newUsername and password in request body
   - Validates username format with USERNAME_REGEX (/^[a-zA-Z0-9_-]{3,20}$/)
@@ -413,7 +413,7 @@
   - Note: This endpoint combines check and change functionality
   - _Requirements: 2.4, 12.1, 12.2, 12.3, 12.4, 12.5_
 
-- [ ] 15.2 Create separate GET /api/users/[userId]/username/check endpoint (optional)
+- [ ] 1.45. Create separate GET /api/users/[userId]/username/check endpoint (optional)
   - If needed for real-time availability checking without password
   - Create GET handler in app/api/users/[userId]/username/route.ts or separate check/route.ts
   - Accept username as query parameter
@@ -424,7 +424,7 @@
   - Note: Current POST endpoint requires password, so separate check endpoint may be useful
   - _Requirements: 2.4, 12.1, 12.2_
 
-- [ ] 15.3 Implement username redirect logic
+- [ ] 1.46. Implement username redirect logic
   - Create middleware in middleware.ts or app/user/[username]/page.tsx
   - Check if username exists in current users
   - If not found, query username history using getServerUsernameHistory or similar
@@ -434,7 +434,7 @@
   - After 30 days, username becomes available (already handled by isUsernameReservedWithinDays)
   - _Requirements: 12.6_
 
-- [ ] 15.4 Create GET /api/users/[userId]/username/history
+- [ ] 1.47. Create GET /api/users/[userId]/username/history
   - Create app/api/users/[userId]/username/history/route.ts
   - Validate authentication (must be profile owner or admin)
   - Fetch user using getServerUserById
@@ -444,7 +444,7 @@
   - Return JSON: { history: [...] }
   - _Requirements: 12.1, 12.2, 12.3, 12.4, 12.5, 12.6_
 
-- [ ] 16. Build verification system (Future Enhancement)
+- [ ] 1.48. Build verification system (Future Enhancement)
   - Note: Verification system is a separate feature that can be implemented later
   - User type already has isVerified, verificationBadgeType, and verifiedAt fields
   - Badge display already supported in ProfileHeader component
@@ -456,8 +456,8 @@
     - Email notifications
   - _Requirements: 13.1, 13.2, 13.3, 13.4, 13.5, 13.6_
 
-- [ ] 17. Implement privacy and blocking API endpoints
-- [ ] 17.1 Create GET /api/users/[userId]/privacy
+- [ ] 1.49. Implement privacy and blocking API endpoints
+- [ ] 1.50. Create GET /api/users/[userId]/privacy
   - Check if app/api/user/privacy/route.ts exists (note: may be /api/user/privacy not /api/users/[userId]/privacy)
   - If not, create app/api/users/[userId]/privacy/route.ts
   - Validate authentication (must be profile owner)
@@ -466,7 +466,7 @@
   - Format: { profileVisibility, profilePhotoVisibility, coverPhotoVisibility, emailVisibility, phoneVisibility, birthdayVisibility, ageVisibility, locationVisibility, joinedDateVisibility, lastActiveVisibility, whoCanMessage, whoCanTag, friendsListVisibility, followingListVisibility, likedPostsVisibility }
   - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.5, 9.6_
 
-- [ ] 17.2 Implement PUT /api/users/[userId]/privacy
+- [ ] 1.51. Implement PUT /api/users/[userId]/privacy
   - Create PUT handler in app/api/users/[userId]/privacy/route.ts
   - Validate authentication (must be profile owner)
   - Parse request body with privacy settings
@@ -477,7 +477,7 @@
   - Return updated privacy settings
   - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.5, 9.6_
 
-- [ ] 17.3 Implement POST /api/users/[userId]/block
+- [ ] 1.52. Implement POST /api/users/[userId]/block
   - Create app/api/users/[userId]/block/route.ts or app/api/social/block-user/route.ts
   - Validate authentication
   - Accept targetUserId in request body
@@ -488,7 +488,7 @@
   - Return success JSON
   - _Requirements: 10.1, 10.2_
 
-- [ ] 17.4 Implement POST /api/users/[userId]/unblock
+- [ ] 1.53. Implement POST /api/users/[userId]/unblock
   - Create app/api/users/[userId]/unblock/route.ts or add to block route
   - Validate authentication
   - Accept targetUserId in request body
@@ -496,7 +496,7 @@
   - Return success JSON
   - _Requirements: 10.1, 10.2_
 
-- [ ] 17.5 Implement POST /api/users/[userId]/restrict
+- [ ] 1.54. Implement POST /api/users/[userId]/restrict
   - Create app/api/users/[userId]/restrict/route.ts
   - Validate authentication
   - Accept targetUserId in request body
@@ -505,7 +505,7 @@
   - Return success JSON
   - _Requirements: 10.3, 10.4, 10.5_
 
-- [ ] 17.6 Implement POST /api/users/[userId]/unrestrict
+- [ ] 1.55. Implement POST /api/users/[userId]/unrestrict
   - Create app/api/users/[userId]/unrestrict/route.ts or add to restrict route
   - Validate authentication
   - Accept targetUserId in request body
@@ -513,8 +513,8 @@
   - Return success JSON
   - _Requirements: 10.3, 10.4, 10.5_
 
-- [ ] 18. Build profile analytics system
-- [ ] 18.1 Implement POST /api/users/[userId]/analytics/track-view
+- [ ] 1.56. Build profile analytics system
+- [ ] 1.57. Implement POST /api/users/[userId]/analytics/track-view
   - Create app/api/users/[userId]/analytics/track-view/route.ts
   - Accept referrer in request body (optional)
   - Get viewer ID from getCurrentUser (null if not authenticated)
@@ -526,7 +526,7 @@
   - Return success JSON
   - _Requirements: 14.1, 14.2, 14.3_
 
-- [ ] 18.2 Create GET /api/users/[userId]/analytics/views
+- [ ] 1.58. Create GET /api/users/[userId]/analytics/views
   - Create app/api/users/[userId]/analytics/views/route.ts
   - Validate authentication (must be profile owner)
   - Accept period query param: 7d, 30d, 90d, all (default: 30d)
@@ -539,7 +539,7 @@
   - Return JSON: { totalViews, uniqueVisitors, returningVisitors, byDay: [...], referrers: [...] }
   - _Requirements: 14.1, 14.2, 14.3_
 
-- [ ] 18.3 Implement GET /api/users/[userId]/analytics/engagement
+- [ ] 1.59. Implement GET /api/users/[userId]/analytics/engagement
   - Create app/api/users/[userId]/analytics/engagement/route.ts
   - Validate authentication (must be profile owner)
   - Check if lib/profile-analytics.ts exists with getProfileActions
@@ -551,7 +551,7 @@
   - Return JSON: { followersGainedWeek, followersGainedMonth, messagesReceived, profilePhotoViews, coverPhotoViews, bioLinkClicks, websiteClicks, socialLinkClicks: { instagram, twitter, etc. } }
   - _Requirements: 14.4_
 
-- [ ] 18.4 Create GET /api/users/[userId]/analytics/audience
+- [ ] 1.60. Create GET /api/users/[userId]/analytics/audience
   - Create app/api/users/[userId]/analytics/audience/route.ts
   - Validate authentication (must be profile owner)
   - Check if lib/profile-audience.ts exists with getFollowerDemographics, getFollowerActivityHeatmap, getFollowerGrowthSeries
@@ -565,8 +565,8 @@
   - Return JSON: { genderDistribution, ageDistribution, topLocations, followerGrowth, bestTimeToPost }
   - _Requirements: 14.5, 14.6_
 
-- [x] 19. Build analytics dashboard components
-- [x] 19.1 Create ProfileAnalyticsDashboard component
+- [x] 1.61. Build analytics dashboard components
+- [x] 1.62. Create ProfileAnalyticsDashboard component
   - Component already exists at components/profile/profile-insights.tsx (ProfileInsights)
   - Displays profile views chart with line graph
   - Shows total lifetime views counter
@@ -575,7 +575,7 @@
   - Uses Recharts for visualization
   - _Requirements: 14.1, 14.2, 14.3_
 
-- [x] 19.2 Create AudienceInsights component
+- [x] 1.63. Create AudienceInsights component
   - Component already exists at components/profile/audience-insights.tsx
   - Displays follower demographics pie charts (gender, age)
   - Shows top locations list
@@ -584,14 +584,14 @@
   - Uses Recharts for visualization
   - _Requirements: 14.5, 14.6_
 
-- [x] 20. Implement real-time updates with WebSocket
+- [x] 1.64. Implement real-time updates with WebSocket
   - WebSocket infrastructure already exists (lib/server/sse.ts with broadcastEvent)
   - Profile update events already broadcast (profilePhotoUpdated, coverPhotoUpdated)
   - Photo upload completion already broadcasts events
   - Note: Verification badge updates could be added when verification system is implemented
   - _Requirements: 7.7, 13.2_
 
-- [x] 21. Set up AWS S3 and CloudFront integration
+- [x] 1.65. Set up AWS S3 and CloudFront integration
   - S3 integration already exists (lib/scalability/s3-storage.ts with getS3Client)
   - Profile images uploaded to S3 with organized path structure
   - Cover images uploaded to S3 with organized path structure
@@ -599,7 +599,7 @@
   - Note: CloudFront CDN could be added as enhancement, currently using S3 URLs directly
   - _Requirements: 7.5, 7.6, 8.3, 14.1, 14.3_
 
-- [ ] 22. Implement image moderation integration
+- [ ] 1.66. Implement image moderation integration
   - Integrate AWS Rekognition or similar image moderation API
   - Scan uploaded images for inappropriate content
   - Reject uploads that fail moderation
@@ -607,7 +607,7 @@
   - Implement fallback for API failures (allow upload, manual review later)
   - _Requirements: 7.5_
 
-- [x] 23. Add caching layer
+- [x] 1.67. Add caching layer
   - Caching layer already exists (lib/scalability/cache-layer.ts with setCached, getCached, deleteCached)
   - Profile data cached with TTL
   - Cache invalidation on profile updates already implemented
@@ -615,7 +615,7 @@
   - Note: Redis integration could be added as optional upgrade
   - _Requirements: 15.1_
 
-- [ ] 24. Implement email verification flow
+- [ ] 1.68. Implement email verification flow
   - Create email change modal with password verification
   - Send verification email with 24-hour expiration token
   - Create email verification endpoint
@@ -624,14 +624,14 @@
   - Note: Email verification infrastructure exists (lib/email-verification-store.ts)
   - _Requirements: 5.2, 5.3_
 
-- [ ] 25. Implement phone verification flow
+- [ ] 1.69. Implement phone verification flow
   - Create phone change modal with international format
   - Send OTP to new phone number
   - Create OTP verification endpoint
   - Update phone verification status using phoneVerified field in User type
   - _Requirements: 5.4_
 
-- [x] 26. Add location API integration
+- [x] 1.70. Add location API integration
   - CityAutocomplete component already exists (components/ui/city-autocomplete.tsx)
   - City autocomplete functionality already implemented
   - Country dropdown already exists in ContactTab
@@ -639,7 +639,7 @@
   - Note: Using free/open location data sources
   - _Requirements: 6.1, 6.2, 6.3, 6.4_
 
-- [x] 27. Implement audit logging
+- [x] 1.71. Implement audit logging
   - Audit logging infrastructure already exists (AuditLog model in Prisma schema)
   - Profile changes logged via audit trail in /api/users/[userId]/profile
   - Username changes logged via addServerUsernameHistory
@@ -647,14 +647,14 @@
   - Note: System is functional and logging key events
   - _Requirements: 15.7_
 
-- [x] 28. Add rate limiting
+- [x] 1.72. Add rate limiting
   - Rate limiting infrastructure already exists (lib/rate-limit.ts, lib/server-rate-limit.ts)
   - PROFILE_UPDATE rate limit already defined (3 updates per minute)
   - Username change cooldown already enforced (30 days)
   - 429 Too Many Requests responses already implemented
   - _Requirements: 12.1, 12.2, 12.3, 12.4_
 
-- [x] 29. Implement profile completion calculation
+- [x] 1.73. Implement profile completion calculation
   - Function already exists: computeProfileCompletionForServer in lib/utils/profile-compute.ts
   - Weighted completion percentage already calculated
   - Profile photo (10%), Cover photo (5%), Bio (15%), Location (5%), Birthday (5%), Phone verified (10%), Email verified (10%), Interests (10%), At least one pet (20%), Contact info (5%), Social links (5%)
@@ -662,7 +662,7 @@
   - Note: ProfileCompletionWidget component still needs to be created
   - _Requirements: 11.1, 11.2, 11.3, 11.4_
 
-- [ ] 30. Wire up all components and routes
+- [ ] 1.74. Wire up all components and routes
   - Create profile edit page at app/[locale]/settings/profile/page.tsx following pattern from app/[locale]/settings/
   - Import and integrate all tab components: BasicInfoTab, AboutMeTab, ContactTab, PreferencesTab, PrivacyTab
   - Implement Tabs component from @/components/ui/tabs with 5 tabs
