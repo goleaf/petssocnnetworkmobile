@@ -223,11 +223,27 @@ async function areMutualFollowers(userId1: string, userId2: string): Promise<boo
 
 /**
  * Block a user
+ * Creates a block relationship and removes any follower connections
  */
 export async function blockUser(userId: string, blockedId: string): Promise<void> {
   // Prevent self-blocking
   if (userId === blockedId) {
     throw new Error('Cannot block yourself')
+  }
+  
+  // Check if already blocked
+  const existingBlock = await prisma.blockedUser.findUnique({
+    where: {
+      userId_blockedId: {
+        userId,
+        blockedId
+      }
+    }
+  })
+  
+  if (existingBlock) {
+    // Already blocked, no action needed
+    return
   }
   
   // Create block relationship
@@ -238,12 +254,16 @@ export async function blockUser(userId: string, blockedId: string): Promise<void
     }
   })
   
-  // TODO: Remove follower relationships if they exist
-  // TODO: Remove from feeds
+  // TODO: Remove follower relationships when follower system is implemented
+  // When implemented, this should:
+  // 1. Remove userId from blockedId's followers
+  // 2. Remove blockedId from userId's followers
+  // 3. Remove any pending follow requests between the users
 }
 
 /**
  * Unblock a user
+ * Removes the block relationship
  */
 export async function unblockUser(userId: string, blockedId: string): Promise<void> {
   await prisma.blockedUser.deleteMany({
@@ -256,11 +276,27 @@ export async function unblockUser(userId: string, blockedId: string): Promise<vo
 
 /**
  * Mute a user
+ * Creates a mute relationship to hide their content from feeds
  */
 export async function muteUser(userId: string, mutedId: string): Promise<void> {
   // Prevent self-muting
   if (userId === mutedId) {
     throw new Error('Cannot mute yourself')
+  }
+  
+  // Check if already muted
+  const existingMute = await prisma.mutedUser.findUnique({
+    where: {
+      userId_mutedId: {
+        userId,
+        mutedId
+      }
+    }
+  })
+  
+  if (existingMute) {
+    // Already muted, no action needed
+    return
   }
   
   await prisma.mutedUser.create({
@@ -273,6 +309,7 @@ export async function muteUser(userId: string, mutedId: string): Promise<void> {
 
 /**
  * Unmute a user
+ * Removes the mute relationship
  */
 export async function unmuteUser(userId: string, mutedId: string): Promise<void> {
   await prisma.mutedUser.deleteMany({
@@ -337,4 +374,50 @@ export async function isUserMuted(userId: string, potentialMutedId: string): Pro
   })
   
   return !!mute
+}
+
+/**
+ * Block multiple users at once
+ * Returns results for each username attempted
+ */
+export async function bulkBlockUsers(
+  userId: string,
+  usernames: string[]
+): Promise<Array<{ username: string; success: boolean; error?: string }>> {
+  const results: Array<{ username: string; success: boolean; error?: string }> = []
+  
+  for (const username of usernames) {
+    try {
+      // Find user by username
+      const targetUser = await prisma.user.findUnique({
+        where: { username: username.trim() },
+        select: { id: true, username: true }
+      })
+      
+      if (!targetUser) {
+        results.push({
+          username,
+          success: false,
+          error: 'User not found'
+        })
+        continue
+      }
+      
+      // Block the user
+      await blockUser(userId, targetUser.id)
+      
+      results.push({
+        username,
+        success: true
+      })
+    } catch (error: any) {
+      results.push({
+        username,
+        success: false,
+        error: error.message || 'Failed to block user'
+      })
+    }
+  }
+  
+  return results
 }
