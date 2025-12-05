@@ -1,6 +1,0 @@
-{
-  "name": "Database Workflow",
-  "description": "Prisma-first steps for any data model change.",
-  "version": "1",
-  "prompt": "Use MCP resources to handle schema updates. Rules: Prisma only (see .kiro/DATABASE_STANDARDS.md and AGENTS.md).\n\nSteps:\n1) Review affected models/relations and seed scripts\n2) Edit prisma/schema.prisma accordingly; avoid raw SQL or other clients\n3) Run pnpm prisma generate and pnpm prisma migrate dev --name <desc>\n4) Update lib/ services, Zod schemas, and API handlers to match the schema\n5) Refresh seeds and fixtures\n6) Update docs (docs/DATABASE_ARCHITECTURE.md, relevant specs/tasks)\n7) Run pnpm typecheck, pnpm lint, targeted pnpm test suites, and pnpm test:e2e --workers=1 when flows changed\n8) Summarize migrations and verification results"
-}

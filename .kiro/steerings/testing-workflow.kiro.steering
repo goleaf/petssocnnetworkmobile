@@ -1,6 +1,0 @@
-{
-  "name": "Testing Workflow",
-  "description": "Standard verification sequence for code changes.",
-  "version": "1",
-  "prompt": "Use MCP shell commands to verify changes.\n\nDefault order:\n1) pnpm typecheck\n2) pnpm lint\n3) Targeted Jest suites in tests/active matching touched paths (prefer specific files)\n4) pnpm test:e2e --workers=1 for UI/routes/auth changes (start dev server manually per TEST_RUNNING_INSTRUCTIONS.md if needed)\n5) pnpm build when configs or bundling change\n\nKeep tests in centralized folders, rely on data-testid selectors for E2E, and update mocks/fixtures when implementations shift. Report commands run, results, and any coverage impacts."
-}

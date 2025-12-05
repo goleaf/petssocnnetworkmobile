@@ -31,7 +31,7 @@ This implementation plan breaks down the design into discrete, actionable coding
 
 ## Phase 1: Critical Bug Fixes
 
-- [x] 1. Fix groups page hydration error
+- [ ] 1.Fix groups page hydration error
   - ✅ Removed `"use client"` directive to enable Server Component rendering
   - ✅ Replaced dynamic `getGroupCategories()` call with static `DEFAULT_CATEGORIES` array
   - ✅ Ensured category data is identical between server and client renders
@@ -40,7 +40,7 @@ This implementation plan breaks down the design into discrete, actionable coding
   - _Requirements: 2.1, 2.2, 2.3, 2.4_
   - _Completed: 2025-11-14_
 
-- [x] 1.1. Implement group resources routing
+- [x] 1.1.Implement group resources routing
   - ✅ Created `app/[locale]/groups/[slug]/resources/create/page.tsx`
   - ✅ Implemented resource creation form component
   - ✅ Added API route for POST operations
@@ -49,7 +49,7 @@ This implementation plan breaks down the design into discrete, actionable coding
   - _Requirements: 3.1, 3.2, 3.3, 3.4_
   - _Completed: 2025-11-14_
 
-- [x] 1.2. Fix CreatePostButton React error
+- [x] 1.2.Fix CreatePostButton React error
   - ✅ Reviewed `components/posts/CreatePostButton.tsx` - no hook violations found
   - ✅ Component has proper `"use client"` directive
   - ✅ All React imports follow React 18 conventions
@@ -61,7 +61,7 @@ This implementation plan breaks down the design into discrete, actionable coding
 
 ## Phase 2: Moderation Infrastructure
 
-- [x] 1.3. Define TypeScript types and Prisma schema
+- [x] 1.3.Define TypeScript types and Prisma schema
   - ✅ Created moderation types in `lib/types/moderation.ts`
   - ✅ Extended Prisma schema with EditRequest, LinkWhitelist, LinkBlacklist, ModerationCategory models
   - ✅ Added all necessary indexes and relations to User model
@@ -69,7 +69,7 @@ This implementation plan breaks down the design into discrete, actionable coding
   - _Requirements: 4.1_
   - _Completed: 2025-11-14_
 
-- [x] 1.4. Create moderation types in `lib/types/moderation.ts`
+- [x] 1.4.Create moderation types in `lib/types/moderation.ts`
   - ✅ Defined `EditRequest` interface with all fields
   - ✅ Defined `ModerationQueue`, `QueueFilters`, `BulkOperation` interfaces
   - ✅ Defined `LinkRule` interface for whitelist/blacklist
@@ -77,7 +77,7 @@ This implementation plan breaks down the design into discrete, actionable coding
   - _Requirements: 4.1_
   - _Completed: 2025-11-14_
 
-- [x] 1.5. Extend Prisma schema in `prisma/schema.prisma`
+- [x] 1.5.Extend Prisma schema in `prisma/schema.prisma`
   - ✅ Added `EditRequest` model with all fields and metadata flags
   - ✅ Added `LinkWhitelist` and `LinkBlacklist` models
   - ✅ Added `ModerationCategory` model
@@ -86,7 +86,7 @@ This implementation plan breaks down the design into discrete, actionable coding
   - _Requirements: 4.1_
   - _Completed: 2025-11-14_
 
-- [x] 1.6. Generate and apply Prisma migration
+- [x] 1.6.Generate and apply Prisma migration
   - ✅ Generated migration with `npx prisma migrate dev --name add_moderation_system`
   - ✅ Reviewed generated migration SQL
   - ✅ Applied migration to development database
@@ -96,7 +96,7 @@ This implementation plan breaks down the design into discrete, actionable coding
 
 
 
-- [x] 1.7. Implement storage layer for edit requests
+- [x] 1.7.Implement storage layer for edit requests
   - ✅ Created `lib/storage/edit-requests.ts` with full CRUD operations
   - ✅ Implemented all query operations with filtering and pagination
   - ✅ Implemented approval/rejection workflows with transactions
@@ -107,7 +107,7 @@ This implementation plan breaks down the design into discrete, actionable coding
   - _Requirements: 4.2, 5.1, 5.2, 5.3, 5.4, 5.5_
   - _Completed: 2025-11-14_
 
-- [x] 1.8. Create `lib/storage/edit-requests.ts`
+- [x] 1.8.Create `lib/storage/edit-requests.ts`
   - ✅ Implemented `createEditRequest` function
   - ✅ Implemented `getEditRequest` function with user/reviewer relations
   - ✅ Implemented `updateEditRequest` function
@@ -116,7 +116,7 @@ This implementation plan breaks down the design into discrete, actionable coding
   - _Requirements: 4.2_
   - _Completed: 2025-11-14_
 
-- [x] 1.9. Implement query operations in `lib/storage/edit-requests.ts`
+- [x] 1.9.Implement query operations in `lib/storage/edit-requests.ts`
   - ✅ Implemented `listEditRequests` with filtering and pagination
   - ✅ Implemented `getQueueItems` for specialized queues (new-pages, flagged-health, coi-edits, image-reviews)
   - ✅ Implemented `getRecentChanges` for recent changes feed
@@ -125,7 +125,7 @@ This implementation plan breaks down the design into discrete, actionable coding
   - _Requirements: 4.2, 5.5_
   - _Completed: 2025-11-14_
 
-- [x] 1.10. Implement approval/rejection operations
+- [x] 1.10.Implement approval/rejection operations
   - ✅ Implemented `approveEditRequest` with transaction handling
   - ✅ Implemented `rejectEditRequest` with transaction handling
   - ✅ Applies changes to actual content on approval (blog, wiki, pet, profile)
@@ -137,7 +137,7 @@ This implementation plan breaks down the design into discrete, actionable coding
 
 
 
-- [x] 1.11. Create API routes for edit submission
+- [x] 1.11.Create API routes for edit submission
   - ✅ Created `app/api/admin/moderation/edit-requests/route.ts` with POST endpoint
   - ✅ Created `app/api/admin/moderation/approve/route.ts` for approvals
   - ✅ Created `app/api/admin/moderation/reject/route.ts` for rejections
@@ -145,7 +145,7 @@ This implementation plan breaks down the design into discrete, actionable coding
   - _Requirements: 4.2, 10.5, 10.6_
   - _Completed: 2025-11-14_
 
-- [x] 1.12. Create `app/api/admin/moderation/edit-requests/route.ts`
+- [x] 1.12.Create `app/api/admin/moderation/edit-requests/route.ts`
   - ✅ Implemented POST endpoint to create edit requests
   - ✅ Validates input using Zod schemas
   - ✅ Checks user authentication and rate limits
@@ -155,7 +155,7 @@ This implementation plan breaks down the design into discrete, actionable coding
   - _Requirements: 4.2, 10.5_
   - _Completed: 2025-11-14_
 
-- [x] 1.13. Implement rate limiting for edit submissions
+- [x] 1.13.Implement rate limiting for edit submissions
   - ✅ Uses existing `lib/server-rate-limit.ts`
   - ✅ Enforces 10 edits per hour per user
   - ✅ Enforces 50 edits per day per user
@@ -165,7 +165,7 @@ This implementation plan breaks down the design into discrete, actionable coding
 
 
 
-- [x] 1.14. Implement diff calculation utility
+- [x] 1.14.Implement diff calculation utility
   - ✅ Extended `lib/diff-utils.ts` with edit request diff functions
   - ✅ Implemented `calculateEditRequestDiff` core function
   - ✅ Created content-specific functions: `calculateBlogDiff`, `calculateWikiDiff`, `calculatePetDiff`, `calculateProfileDiff`
@@ -175,7 +175,7 @@ This implementation plan breaks down the design into discrete, actionable coding
   - _Requirements: 5.4_
   - _Completed: 2025-11-14_
 
-- [x] 1.15. Integrate edit submission into existing forms
+- [x] 1.15.Integrate edit submission into existing forms
   - ✅ Updated all four edit forms (blog, wiki, pet, profile)
   - ✅ All forms now submit to `/api/admin/moderation/edit-requests`
   - ✅ Success messages and redirects implemented
@@ -183,7 +183,7 @@ This implementation plan breaks down the design into discrete, actionable coding
   - _Requirements: 10.1, 10.2, 10.3, 10.4, 10.5, 10.6_
   - _Completed: 2025-11-14_
 
-- [x] 1.16. Update blog edit form
+- [x] 1.16.Update blog edit form
   - ✅ Modified `app/[locale]/blog/[id]/edit/page.tsx`
   - ✅ Submits to `/api/admin/moderation/edit-requests` instead of direct update
   - ✅ Shows "Edit submitted for approval" message on success
@@ -192,7 +192,7 @@ This implementation plan breaks down the design into discrete, actionable coding
   - _Requirements: 10.1, 10.5, 10.6_
   - _Completed: 2025-11-14_
 
-- [x] 1.17. Update wiki edit form
+- [x] 1.17.Update wiki edit form
   - ✅ Modified `app/[locale]/wiki/[slug]/edit/page.tsx`
   - ✅ Submits to `/api/admin/moderation/edit-requests` instead of direct update
   - ✅ Shows "Edit submitted for approval" message on success
@@ -201,7 +201,7 @@ This implementation plan breaks down the design into discrete, actionable coding
   - _Requirements: 10.2, 10.5, 10.6_
   - _Completed: 2025-11-14_
 
-- [x] 1.18. Update pet profile edit form
+- [x] 1.18.Update pet profile edit form
   - ✅ Modified `app/[locale]/user/[username]/pet/[slug]/edit/page.tsx`
   - ✅ Submits to `/api/admin/moderation/edit-requests` instead of direct update
   - ✅ Shows "Edit submitted for approval" message on success
@@ -210,7 +210,7 @@ This implementation plan breaks down the design into discrete, actionable coding
   - _Requirements: 10.3, 10.5, 10.6_
   - _Completed: 2025-11-14_
 
-- [x] 1.19. Update user profile edit form
+- [x] 1.19.Update user profile edit form
   - ✅ Modified `app/[locale]/user/[username]/edit/page.tsx`
   - ✅ Submits to `/api/admin/moderation/edit-requests` instead of direct update
   - ✅ Shows "Edit submitted for approval" message on success
@@ -222,7 +222,7 @@ This implementation plan breaks down the design into discrete, actionable coding
 
 ## Phase 3: Moderation Dashboard
 
-- [x] 1.20. Create API routes for moderation dashboard
+- [x] 1.20.Create API routes for moderation dashboard
   - ✅ Created `app/api/admin/moderation/recent-changes/route.ts`
   - ✅ Created `app/api/admin/moderation/queues/[type]/route.ts`
   - ✅ Created `app/api/admin/moderation/approve/route.ts`
@@ -231,7 +231,7 @@ This implementation plan breaks down the design into discrete, actionable coding
   - _Requirements: 4.2, 4.3, 5.1, 5.2, 5.3, 6.1, 6.2, 6.3, 6.4, 6.5_
   - _Completed: 2025-11-14_
 
-- [x] 1.21. Create `app/api/admin/moderation/recent-changes/route.ts`
+- [x] 1.21.Create `app/api/admin/moderation/recent-changes/route.ts`
   - ✅ Implemented GET endpoint with query params (page, limit, contentType, status, priority, ageInDays)
   - ✅ Returns paginated list of EditRequests with diff previews
   - ✅ Includes metadata for filtering UI
@@ -239,7 +239,7 @@ This implementation plan breaks down the design into discrete, actionable coding
   - _Requirements: 4.2, 5.1, 5.2, 5.3_
   - _Completed: 2025-11-14_
 
-- [x] 1.22. Create `app/api/admin/moderation/queues/[type]/route.ts`
+- [x] 1.22.Create `app/api/admin/moderation/queues/[type]/route.ts`
   - ✅ Implemented GET endpoint for each queue type (new-pages, flagged-health, coi-edits, image-reviews)
   - ✅ Filters EditRequests based on metadata flags
   - ✅ Supports same query params as recent changes
@@ -247,7 +247,7 @@ This implementation plan breaks down the design into discrete, actionable coding
   - _Requirements: 4.3, 6.1, 6.2, 6.3, 6.4, 6.5_
   - _Completed: 2025-11-14_
 
-- [x] 1.23. Create `app/api/admin/moderation/approve/route.ts`
+- [x] 1.23.Create `app/api/admin/moderation/approve/route.ts`
   - ✅ Implemented POST endpoint to approve edit requests
   - ✅ Calls `approveEditRequest` from storage layer
   - ✅ Applies changes to actual content
@@ -256,7 +256,7 @@ This implementation plan breaks down the design into discrete, actionable coding
   - _Requirements: 5.1, 5.2_
   - _Completed: 2025-11-14_
 
-- [x] 1.24. Create `app/api/admin/moderation/reject/route.ts`
+- [x] 1.24.Create `app/api/admin/moderation/reject/route.ts`
   - ✅ Implemented POST endpoint to reject edit requests
   - ✅ Calls `rejectEditRequest` from storage layer
   - ✅ Logs action to audit trail with reason
@@ -264,13 +264,13 @@ This implementation plan breaks down the design into discrete, actionable coding
   - _Requirements: 5.1, 5.2_
   - _Completed: 2025-11-14_
 
-- [x] 1.25. Build Recent Changes Feed component
+- [x] 1.25.Build Recent Changes Feed component
   - ✅ Created reusable moderation dashboard components
   - ✅ Integrated with existing diff viewer
   - ✅ Implemented filtering and pagination UI
   - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5_
 
-- [x] 1.26. Create `components/admin/RecentChangesFeed.tsx`
+- [x] 1.26.Create `components/admin/RecentChangesFeed.tsx`
   - ✅ Display paginated list of edit requests
   - ✅ Show visual diffs using existing `components/diff-viewer.tsx`
   - ✅ Provide filtering controls (content type, status, priority, age)
@@ -278,7 +278,7 @@ This implementation plan breaks down the design into discrete, actionable coding
   - ✅ Mark as client component with `"use client"`
   - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5_
 
-- [x] 1.27. Create filter controls component
+- [x] 1.27.Create filter controls component
   - ✅ Built `components/admin/ModerationFilters.tsx`
   - ✅ Implemented dropdowns for content type, status, priority
   - ✅ Implemented age filtering (days input)
@@ -286,7 +286,7 @@ This implementation plan breaks down the design into discrete, actionable coding
   - ✅ Use UI primitives from `components/ui/*`
   - _Requirements: 5.5_
 
-- [x] 1.28. Enhance moderation dashboard page
+- [x] 1.28.Enhance moderation dashboard page
 
   - ✅ Updated `app/admin/moderation/page.tsx` to use new API routes
   - ✅ Integrated RecentChangesFeed component
@@ -297,7 +297,7 @@ This implementation plan breaks down the design into discrete, actionable coding
 
 
 
-- [x] 1.29. Implement queue management components
+- [x] 1.29.Implement queue management components
 
 
 
@@ -310,7 +310,7 @@ This implementation plan breaks down the design into discrete, actionable coding
 
 
 
-- [x] 1.30. Create `components/admin/QueueManager.tsx`
+- [x] 1.30.Create `components/admin/QueueManager.tsx`
 
 
   - Build reusable component for all queue types
@@ -324,7 +324,7 @@ This implementation plan breaks down the design into discrete, actionable coding
 
   - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5_
 
-- [x] 1.31. Create specialized queue pages
+- [x] 1.31.Create specialized queue pages
 
 
 
@@ -344,7 +344,7 @@ This implementation plan breaks down the design into discrete, actionable coding
   - _Requirements: 6.1, 6.2, 6.3, 6.4_
 
 
-- [x] 1.32. Add queue navigation to admin layout
+- [x] 1.32.Add queue navigation to admin layout
 
 
 
@@ -362,13 +362,13 @@ This implementation plan breaks down the design into discrete, actionable coding
 
 
 
-- [ ] 1.33. Implement bulk operations
+- [ ] 1.33.Implement bulk operations
 
 
 
 
 
-- [ ] 1.34. Create `app/api/admin/moderation/bulk/route.ts`
+- [ ] 1.34.Create `app/api/admin/moderation/bulk/route.ts`
 
 
 
@@ -384,7 +384,7 @@ This implementation plan breaks down the design into discrete, actionable coding
 
   - _Requirements: 4.4, 7.1, 7.2, 7.3, 7.4, 7.5_
 
-- [ ] 1.35. Create `components/admin/BulkOperationsPanel.tsx`
+- [ ] 1.35.Create `components/admin/BulkOperationsPanel.tsx`
 
   - Build checkbox selection UI for multiple items
   - Add confirmation dialog before executing bulk actions
@@ -397,7 +397,7 @@ This implementation plan breaks down the design into discrete, actionable coding
   - Handle partial failures gracefully
   - _Requirements: 7.4, 7.5_
 
-- [ ] 1.36. Integrate bulk operations into queue manager
+- [ ] 1.36.Integrate bulk operations into queue manager
 
 
 
@@ -409,9 +409,9 @@ This implementation plan breaks down the design into discrete, actionable coding
 
 
 
-- [ ] 1.37. Build link management system
+- [ ] 1.37.Build link management system
 
-- [ ] 1.38. Create link validation utility
+- [ ] 1.38.Create link validation utility
 
   - Create `lib/moderation/link-validator.ts`
   - Implement `validateLinks` function to check URLs against whitelist/blacklist
@@ -421,7 +421,7 @@ This implementation plan breaks down the design into discrete, actionable coding
   - Support wildcard subdomain matching
   - _Requirements: 8.1, 8.2, 8.3, 8.5_
 
-- [ ] 1.39. Create `app/api/admin/moderation/links/route.ts`
+- [ ] 1.39.Create `app/api/admin/moderation/links/route.ts`
 
   - Implement GET endpoint to list all whitelist/blacklist rules
   - Implement POST endpoint to add new rule
@@ -432,7 +432,7 @@ This implementation plan breaks down the design into discrete, actionable coding
 
   - _Requirements: 8.4_
 
-- [ ] 1.40. Create `components/admin/LinkManagement.tsx`
+- [ ] 1.40.Create `components/admin/LinkManagement.tsx`
 
   - Build two-column layout for whitelist and blacklist
   - Add form to add new domains
@@ -442,7 +442,7 @@ This implementation plan breaks down the design into discrete, actionable coding
   - Implement search and filter capabilities
   - _Requirements: 8.4_
 
-- [ ] 1.41. Create link management page
+- [ ] 1.41.Create link management page
 
   - Create `app/admin/links/page.tsx`
   - Integrate LinkManagement component
@@ -450,7 +450,7 @@ This implementation plan breaks down the design into discrete, actionable coding
   - Verify moderator role before rendering
   - _Requirements: 8.4_
 
-- [ ] 1.42. Integrate link validation into edit submission
+- [ ] 1.42.Integrate link validation into edit submission
 
   - Update edit request creation to validate links
   - Extract URLs from content before submission
@@ -459,27 +459,27 @@ This implementation plan breaks down the design into discrete, actionable coding
   - Flag for review if not whitelisted
   - _Requirements: 8.3, 8.5_
 
-- [ ] 1.43. Implement hidden categories system
+- [ ] 1.43.Implement hidden categories system
   - Note: EditRequest model already has categories array field
   - ModerationCategory table already exists in schema
   - Need to implement management utilities and UI
   - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.5_
 
-- [ ] 1.44. Create category management utility
+- [ ] 1.44.Create category management utility
   - Create `lib/moderation/categories.ts`
   - Implement functions to create, list, and delete categories
   - Seed predefined categories (Needs maps, Outdated laws, etc.)
   - Use existing ModerationCategory table
   - _Requirements: 9.1, 9.2_
 
-- [ ] 1.45. Add category assignment UI
+- [ ] 1.45.Add category assignment UI
   - Add category assignment UI to queue manager
   - Implement category dropdown in moderation dashboard
   - Allow filtering by category
   - Categories array already exists in EditRequest model
   - _Requirements: 9.3, 9.4_
 
-- [ ] 1.46. Ensure categories are hidden from non-moderators
+- [ ] 1.46.Ensure categories are hidden from non-moderators
 
   - Verify categories are not exposed in public APIs
   - Remove categories from user-facing edit request views
@@ -489,10 +489,10 @@ This implementation plan breaks down the design into discrete, actionable coding
 
 ## Phase 5: Developer Tooling
 
-- [ ] 1.47. Implement Cursor hook for test automation
+- [ ] 1.47.Implement Cursor hook for test automation
 
 
-- [ ] 1.48. Create AST parsing utility
+- [ ] 1.48.Create AST parsing utility
   - Create `lib/dev-tools/ast-parser.ts`
   - Use TypeScript compiler API to parse source files
   - Extract function names and signatures
@@ -500,7 +500,7 @@ This implementation plan breaks down the design into discrete, actionable coding
   - Handle both function declarations and arrow functions
   - _Requirements: 1.1_
 
-- [ ] 1.49. Create test discovery utility
+- [ ] 1.49.Create test discovery utility
 
   - Create `lib/dev-tools/test-discovery.ts`
   - Implement logic to find related test files based on naming conventions
@@ -509,7 +509,7 @@ This implementation plan breaks down the design into discrete, actionable coding
   - Handle lib tests in `tests/lib`
   - _Requirements: 1.2_
 
-- [ ] 1.50. Create test generation utility
+- [ ] 1.50.Create test generation utility
 
   - Create `lib/dev-tools/test-generator.ts`
   - Implement templates for common test scenarios (pure functions, React components)
@@ -518,7 +518,7 @@ This implementation plan breaks down the design into discrete, actionable coding
   - Follow repository testing conventions
   - _Requirements: 1.2_
 
-- [ ] 1.51. Create Cursor hook implementation
+- [ ] 1.51.Create Cursor hook implementation
 
   - Create `.kiro/hooks/test-automation.ts`
   - Implement file watcher for `*.ts` and `*.tsx` files
@@ -529,7 +529,7 @@ This implementation plan breaks down the design into discrete, actionable coding
   - Report results to developer
   - _Requirements: 1.1, 1.2, 1.3, 1.4_
 
-- [ ] 1.52. Handle Context7 constraints
+- [ ] 1.52.Handle Context7 constraints
 
   - Review Context7 requirements and limitations
   - Adjust implementation to comply with constraints
@@ -539,8 +539,8 @@ This implementation plan breaks down the design into discrete, actionable coding
 
 ## Phase 6: Testing & Documentation
 
-- [ ] 1.53. Write unit tests for moderation logic
-- [ ] 1.54. Create `tests/lib/moderation.test.ts`
+- [ ] 1.53.Write unit tests for moderation logic
+- [ ] 1.54.Create `tests/lib/moderation.test.ts`
   - Test edit request creation for all content types
   - Test diff calculation for various change scenarios
   - Test rate limiting enforcement
@@ -548,7 +548,7 @@ This implementation plan breaks down the design into discrete, actionable coding
   - Achieve 80% code coverage for moderation module
   - _Requirements: 11.1, 11.3_
 
-- [ ] 1.55. Create `tests/lib/storage/edit-requests.test.ts`
+- [ ] 1.55.Create `tests/lib/storage/edit-requests.test.ts`
   - Test CRUD operations for EditRequest
   - Test query filtering and pagination
   - Test approval and rejection flows
@@ -556,22 +556,22 @@ This implementation plan breaks down the design into discrete, actionable coding
   - Test notification triggers
   - _Requirements: 11.2, 11.4, 11.5_
 
-- [ ] 1.56. Create `tests/lib/moderation/link-validator.test.ts`
+- [ ] 1.56.Create `tests/lib/moderation/link-validator.test.ts`
   - Test domain extraction from URLs
   - Test whitelist/blacklist matching
   - Test wildcard subdomain handling
   - Test edge cases (malformed URLs, IP addresses)
   - _Requirements: 11.3_
 
-- [ ] 1.57. Create `tests/lib/moderation/categories.test.ts`
+- [ ] 1.57.Create `tests/lib/moderation/categories.test.ts`
   - Test category creation and listing
   - Test category assignment to edit requests
 
   - Test category filtering
   - _Requirements: 11.3_
 
-- [ ] 1.58. Write integration tests for moderation dashboard
-- [ ] 1.59. Create `tests/integration/admin/moderation.test.tsx`
+- [ ] 1.58.Write integration tests for moderation dashboard
+- [ ] 1.59.Create `tests/integration/admin/moderation.test.tsx`
   - Test recent changes feed rendering
   - Test queue filtering and sorting
 
@@ -581,7 +581,7 @@ This implementation plan breaks down the design into discrete, actionable coding
   - Test audit trail generation
   - _Requirements: 11.5, 11.6_
 
-- [ ] 1.60. Create `tests/integration/edit-submission.test.ts`
+- [ ] 1.60.Create `tests/integration/edit-submission.test.ts`
   - Test blog edit submission creates EditRequest
   - Test wiki edit submission creates EditRequest
   - Test pet profile edit submission creates EditRequest
@@ -589,8 +589,8 @@ This implementation plan breaks down the design into discrete, actionable coding
   - Test rate limit enforcement in UI
   - _Requirements: 11.3, 11.4_
 
-- [ ] 1.61. Write E2E tests for moderation workflow
-- [ ] 1.62. Create `e2e/flows/moderation.spec.ts`
+- [ ] 1.61.Write E2E tests for moderation workflow
+- [ ] 1.62.Create `e2e/flows/moderation.spec.ts`
   - Test user submits edit → EditRequest created
   - Test moderator reviews edit → Sees in queue
   - Test moderator approves edit → Content updated
@@ -598,15 +598,15 @@ This implementation plan breaks down the design into discrete, actionable coding
   - Test bulk revert operation → Multiple edits reverted
   - _Requirements: 11.7_
 
-- [ ] 1.63. Create `e2e/bug-fixes.spec.ts`
+- [ ] 1.63.Create `e2e/bug-fixes.spec.ts`
   - Test groups page loads without hydration errors
   - Test group resources creation page accessible
   - Test CreatePostButton renders without errors
   - _Requirements: 11.7_
 
 
-- [ ] 1.64. Create documentation
-- [ ] 1.65. Write moderator user guide
+- [ ] 1.64.Create documentation
+- [ ] 1.65.Write moderator user guide
   - Create `docs/MODERATION_USER_GUIDE.md`
   - Explain how to use the moderation dashboard
   - Document queue types and their purposes
@@ -614,7 +614,7 @@ This implementation plan breaks down the design into discrete, actionable coding
   - Include screenshots of key UI elements
   - _Requirements: 12.1_
 
-- [ ] 1.66. Write API documentation
+- [ ] 1.66.Write API documentation
   - Create `docs/MODERATION_API.md`
   - Document all moderation API endpoints
   - Include request/response examples
@@ -622,7 +622,7 @@ This implementation plan breaks down the design into discrete, actionable coding
   - Provide authentication requirements
   - _Requirements: 12.2_
 
-- [ ] 1.67. Write developer integration guide
+- [ ] 1.67.Write developer integration guide
   - Create `docs/MODERATION_INTEGRATION.md`
   - Explain how to add new content types to moderation
   - Document edit request creation process
@@ -630,7 +630,7 @@ This implementation plan breaks down the design into discrete, actionable coding
   - Document testing requirements
   - _Requirements: 12.3_
 
-- [ ] 1.68. Add inline code comments
+- [ ] 1.68.Add inline code comments
 
   - Review all moderation utilities and add comments
   - Document complex logic and algorithms
@@ -638,7 +638,7 @@ This implementation plan breaks down the design into discrete, actionable coding
   - Add JSDoc comments for public functions
   - _Requirements: 12.4_
 
-- [ ] 1.69. Create usage examples
+- [ ] 1.69.Create usage examples
 
   - Add examples to documentation for common scenarios
   - Include code snippets for edit submission
@@ -648,14 +648,14 @@ This implementation plan breaks down the design into discrete, actionable coding
 
 ## Phase 7: Final Integration & Deployment
 
-- [ ] 1.70. Perform final integration testing
+- [ ] 1.70.Perform final integration testing
   - Run full test suite (unit, integration, E2E)
   - Verify all tests pass
   - Check test coverage meets 80% goal
   - Fix any failing tests or regressions
   - _Requirements: 11.7_
 
-- [ ] 1.71. Conduct code review and cleanup
+- [ ] 1.71.Conduct code review and cleanup
   - Review all new code for quality and consistency
   - Remove any debug code or console logs
   - Ensure all code follows repository conventions
@@ -663,7 +663,7 @@ This implementation plan breaks down the design into discrete, actionable coding
   - Check for any security vulnerabilities
   - _Requirements: All_
 
-- [ ] 1.72. Prepare for deployment
+- [ ] 1.72.Prepare for deployment
   - Create database migration plan
   - Document deployment steps
   - Prepare rollback plan
@@ -671,7 +671,7 @@ This implementation plan breaks down the design into discrete, actionable coding
   - Create deployment checklist
   - _Requirements: All_
 
-- [ ] 1.73. Deploy to staging environment
+- [ ] 1.73.Deploy to staging environment
   - Apply database migrations
   - Deploy application code
   - Verify all features work in staging
@@ -679,7 +679,7 @@ This implementation plan breaks down the design into discrete, actionable coding
   - Monitor for errors or performance issues
   - _Requirements: All_
 
-- [ ] 1.74. Deploy to production
+- [ ] 1.74.Deploy to production
   - Follow gradual rollout plan (shadow mode → soft launch → full rollout)
   - Monitor queue backlog and moderator capacity
   - Gather user feedback

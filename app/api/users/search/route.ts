@@ -38,6 +38,9 @@ export async function GET(request: NextRequest) {
       // Exclude blocked and muted users
       if (blockedUsers.has(user.id) || mutedUsers.has(user.id)) return false
       
+      // Exclude users who have disabled search visibility
+      if (user.showInSearch === false) return false
+      
       // Include if they're a follower or we're following them
       return followers.has(user.id) || following.has(user.id)
     })

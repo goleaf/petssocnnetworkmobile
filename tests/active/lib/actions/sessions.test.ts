@@ -6,9 +6,19 @@
 import { logoutSessionAction, logoutAllOtherSessionsAction } from "@/lib/actions/sessions"
 import { registerSession, getUserSessions, isSessionRevoked } from "@/lib/session-store"
 import { getCurrentUser } from "@/lib/auth-server"
+import { prisma } from "@/lib/prisma"
 
 // Mock dependencies
 jest.mock("@/lib/auth-server")
+jest.mock("@/lib/prisma", () => ({
+  prisma: {
+    session: {
+      findUnique: jest.fn(),
+      updateMany: jest.fn(),
+      update: jest.fn(),
+    },
+  },
+}))
 jest.mock("next/headers", () => ({
   cookies: jest.fn(() => Promise.resolve({
     get: jest.fn((name: string) => ({ value: "current-token-123" })),
@@ -17,8 +27,14 @@ jest.mock("next/headers", () => ({
     get: jest.fn(),
   })),
 }))
+jest.mock("next/cache", () => ({
+  revalidatePath: jest.fn(),
+}))
 
 const mockGetCurrentUser = getCurrentUser as jest.MockedFunction<typeof getCurrentUser>
+const mockPrismaSessionFindUnique = prisma.session.findUnique as jest.MockedFunction<typeof prisma.session.findUnique>
+const mockPrismaSessionUpdateMany = prisma.session.updateMany as jest.MockedFunction<typeof prisma.session.updateMany>
+const mockPrismaSessionUpdate = prisma.session.update as jest.MockedFunction<typeof prisma.session.update>
 
 describe("Session Logout Actions", () => {
   const mockUser = {
@@ -44,6 +60,12 @@ describe("Session Logout Actions", () => {
       registerSession(token1, mockUser.id, "Mozilla/5.0", "192.168.1.1")
       registerSession(token2, mockUser.id, "Mozilla/5.0", "192.168.1.2")
 
+      // Mock Prisma to return session owned by current user
+      mockPrismaSessionFindUnique.mockResolvedValue({
+        userId: mockUser.id,
+      } as any)
+      mockPrismaSessionUpdate.mockResolvedValue({} as any)
+
       // Verify sessions are not revoked initially
       expect(isSessionRevoked(token1)).toBe(false)
       expect(isSessionRevoked(token2)).toBe(false)
@@ -58,6 +80,8 @@ describe("Session Logout Actions", () => {
     })
 
     it("should return error if session not found", async () => {
+      mockPrismaSessionFindUnique.mockResolvedValue(null)
+
       const result = await logoutSessionAction("non-existent-token")
 
       expect(result.success).toBe(false)
@@ -86,6 +110,9 @@ describe("Session Logout Actions", () => {
       registerSession(token1, mockUser.id, "Mozilla/5.0", "192.168.1.2")
       registerSession(token2, mockUser.id, "Mozilla/5.0", "192.168.1.3")
       registerSession(token3, mockUser.id, "Mozilla/5.0", "192.168.1.4")
+
+      // Mock Prisma to update sessions
+      mockPrismaSessionUpdateMany.mockResolvedValue({ count: 3 } as any)
 
       // Verify all sessions are active
       expect(isSessionRevoked(currentToken)).toBe(false)
@@ -120,6 +147,9 @@ describe("Session Logout Actions", () => {
     it("should handle case with no other sessions", async () => {
       const currentToken = "current-token-123"
       registerSession(currentToken, mockUser.id, "Mozilla/5.0", "192.168.1.1")
+
+      // Mock Prisma to update no sessions
+      mockPrismaSessionUpdateMany.mockResolvedValue({ count: 0 } as any)
 
       const result = await logoutAllOtherSessionsAction()
 

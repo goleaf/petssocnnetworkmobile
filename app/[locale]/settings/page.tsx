@@ -15,8 +15,9 @@ import { PrivacySelector } from "@/components/privacy-selector"
 import { BlurToggle } from "@/components/moderation/blur-toggle"
 import { updateUser, getUsers, blockUser, unblockUser, isExpertVerified, getExpertVerificationRequestByUserId } from "@/lib/storage"
 import { getNotificationSettings, saveNotificationSettings } from "@/lib/notifications"
-import { requestEmailChangeAction, updatePasswordAction, logoutAllDevicesAction, requestAccountDeletionAction } from "@/lib/actions/account"
+import { requestEmailChangeAction, updatePasswordAction, logoutAllDevicesAction, requestAccountDeletionAction, getBlockedUsersAction, unblockUserAction, getMutedUsersAction, unmuteUserAction, bulkBlockUsersAction } from "@/lib/actions/account"
 import { getActiveSessionsAction, logoutSessionAction, logoutAllOtherSessionsAction, renameSessionDeviceAction } from "@/lib/actions/sessions"
+import { updatePrivacySettingsAction, updateMessagingPrivacyAction } from "@/lib/actions/privacy"
 import type { PrivacyLevel, NotificationSettings, NotificationChannel } from "@/lib/types"
 import {
   ArrowLeft,
@@ -72,6 +73,11 @@ const CHANNEL_SUMMARY_META: Record<NotificationChannel, { label: string; icon: L
     icon: Mail,
     description: "Summaries and alerts delivered to your inbox",
   },
+  sms: {
+    label: "SMS",
+    icon: Smartphone,
+    description: "Text messages to your phone",
+  },
   digest: {
     label: "Digest",
     icon: LayoutGrid,
@@ -90,27 +96,49 @@ export default function SettingsPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
   const [privacySettings, setPrivacySettings] = useState({
-    profile: "public" as PrivacyLevel,
-    email: "private" as PrivacyLevel,
-    location: "followers-only" as PrivacyLevel,
-    pets: "public" as PrivacyLevel,
-    posts: "public" as PrivacyLevel,
-    followers: "public" as PrivacyLevel,
-    following: "public" as PrivacyLevel,
+    profile: "public" as "public" | "private" | "followers-only",
+    email: "private" as "public" | "private" | "followers-only" | "never",
+    phone: "private" as "public" | "private" | "followers-only" | "never",
+    birthdayVisibility: "public_hide_year" as "public_show_year" | "public_hide_year" | "followers-only" | "private",
+    ageVisibility: "public" as "public" | "followers-only" | "private",
+    location: "followers-only" as "public" | "private" | "followers-only",
+    lastActiveVisibility: "public" as "public" | "followers-only" | "private" | "hidden",
+    pets: "public" as "public" | "private" | "followers-only",
+    posts: "public" as "public" | "private" | "followers-only",
+    followers: "public" as "public" | "private" | "followers-only",
+    following: "public" as "public" | "private" | "followers-only",
     searchable: true,
-    allowFollowRequests: "public" as PrivacyLevel,
-    allowTagging: "public" as PrivacyLevel,
+    externalIndexing: true,
+    showInRecommendations: true,
+    allowFollowRequests: "public" as "public" | "followers-only",
+    allowTagging: "public" as "public" | "followers-only" | "private" | "none",
+    tagReviewRequired: false,
+    tagNotifications: true,
+    mentionPermissions: "public" as "public" | "followers-only" | "none",
     secureMessages: true,
     sections: {
-      basics: "public" as PrivacyLevel,
-      statistics: "public" as PrivacyLevel,
-      friends: "public" as PrivacyLevel,
-      pets: "public" as PrivacyLevel,
-      activity: "public" as PrivacyLevel,
+      basics: "public" as "public" | "private" | "followers-only",
+      statistics: "public" as "public" | "private" | "followers-only",
+      friends: "public" as "public" | "private" | "followers-only",
+      pets: "public" as "public" | "private" | "followers-only",
+      activity: "public" as "public" | "private" | "followers-only",
     },
   })
   const [notificationSettings, setNotificationSettings] = useState<NotificationSettings | null>(null)
   const [blockedUsers, setBlockedUsers] = useState<any[]>([])
+  const [blockedSearchQuery, setBlockedSearchQuery] = useState("")
+  const [mutedUsers, setMutedUsers] = useState<any[]>([])
+  // Bulk block state
+  const [bulkBlockOpen, setBulkBlockOpen] = useState(false)
+  const [bulkBlockText, setBulkBlockText] = useState("")
+  const [bulkBlockSubmitting, setBulkBlockSubmitting] = useState(false)
+  const [bulkBlockResults, setBulkBlockResults] = useState<Array<{ username: string; success: boolean; error?: string }> | null>(null)
+  const [messagingPrivacy, setMessagingPrivacy] = useState({
+    whoCanMessage: "public" as PrivacyLevel,
+    readReceipts: true,
+    typingIndicators: true,
+    allowForwarding: true,
+  })
   // Email change dialog state
   const [emailDialogOpen, setEmailDialogOpen] = useState(false)
   const [newEmail, setNewEmail] = useState("")
@@ -166,6 +194,17 @@ export default function SettingsPage() {
   const [bizDocs, setBizDocs] = useState<File[]>([])
   const [isSubmittingVerif, setIsSubmittingVerif] = useState(false)
 
+  // Filtered blocked users based on search query
+  const filteredBlockedUsers = blockedUsers.filter((user) => {
+    if (!blockedSearchQuery.trim()) return true
+    const query = blockedSearchQuery.toLowerCase()
+    return (
+      user.username?.toLowerCase().includes(query) ||
+      user.fullName?.toLowerCase().includes(query) ||
+      user.displayName?.toLowerCase().includes(query)
+    )
+  })
+
   // Handle success/error messages from URL params
   useEffect(() => {
     const status = searchParams.get("status")
@@ -194,14 +233,23 @@ export default function SettingsPage() {
         setPrivacySettings({
           profile: user.privacy.profile || "public",
           email: user.privacy.email || "private",
+          phone: user.privacy.phone || "private",
+          birthdayVisibility: user.privacy.birthdayVisibility || "public_hide_year",
+          ageVisibility: user.privacy.ageVisibility || "public",
           location: user.privacy.location || "followers-only",
+          lastActiveVisibility: user.privacy.lastActiveVisibility || "public",
           pets: user.privacy.pets || "public",
           posts: user.privacy.posts || "public",
           followers: user.privacy.followers || "public",
           following: user.privacy.following || "public",
           searchable: user.privacy.searchable !== false,
+          externalIndexing: user.privacy.externalIndexing !== false,
+          showInRecommendations: user.privacy.showInRecommendations !== false,
           allowFollowRequests: user.privacy.allowFollowRequests || "public",
           allowTagging: user.privacy.allowTagging || "public",
+          tagReviewRequired: user.privacy.tagReviewRequired || false,
+          tagNotifications: user.privacy.tagNotifications !== false,
+          mentionPermissions: user.privacy.mentionPermissions || "public",
           secureMessages: user.privacy.secureMessages !== false,
           sections: {
             basics: user.privacy.sections?.basics || user.privacy.profile || "public",
@@ -222,12 +270,34 @@ export default function SettingsPage() {
       const storedNotificationSettings = getNotificationSettings(user.id)
       setNotificationSettings(storedNotificationSettings)
       
-      // Load blocked users
-      if (user.blockedUsers && user.blockedUsers.length > 0) {
-        const allUsers = getUsers()
-        const blocked = allUsers.filter((u) => user.blockedUsers!.includes(u.id))
-        setBlockedUsers(blocked)
-      }
+      // Load blocked users from server
+      getBlockedUsersAction().then((res) => {
+        if (res.success && res.users) {
+          setBlockedUsers(res.users.map(u => ({
+            id: u.id,
+            username: u.username,
+            fullName: u.displayName || u.username,
+            displayName: u.displayName,
+            avatar: u.avatarUrl,
+            blockedAt: u.blockedAt
+          })))
+        }
+      })
+      
+      // Load muted users from server
+      getMutedUsersAction().then((res) => {
+        if (res.success && res.users) {
+          setMutedUsers(res.users.map(u => ({
+            id: u.id,
+            username: u.username,
+            fullName: u.displayName || u.username,
+            displayName: u.displayName,
+            avatar: u.avatarUrl,
+            mutedAt: u.mutedAt
+          })))
+        }
+      })
+      
       // Load active sessions
       setIsLoadingSessions(true)
       getActiveSessionsAction()
@@ -245,33 +315,116 @@ export default function SettingsPage() {
     setMessage(null)
     
     try {
-      // Simulate async operation (in case updateUser becomes async in the future)
-      await new Promise((resolve) => setTimeout(resolve, 300))
+      // Save privacy settings using server action
+      const privacyResult = await updatePrivacySettingsAction(privacySettings)
+      if (!privacyResult.success) {
+        throw new Error(privacyResult.error || 'Failed to save privacy settings')
+      }
       
-      // Save privacy settings
-      updateUser(user.id, { privacy: privacySettings })
+      // Save messaging privacy settings
+      const messagingResult = await updateMessagingPrivacyAction(messagingPrivacy)
+      if (!messagingResult.success) {
+        throw new Error(messagingResult.error || 'Failed to save messaging privacy')
+      }
       
       // Save notification settings
       if (notificationSettings) {
         saveNotificationSettings({ ...notificationSettings, userId: user.id })
       }
       
-      // Redirect with success message
-      router.push("/settings?status=success")
-      router.refresh()
-    } catch (error) {
-      // Redirect with error message
-      router.push("/settings?status=error")
-      router.refresh()
+      // Also update local storage for backward compatibility
+      updateUser(user.id, { privacy: privacySettings })
+      
+      // Show success message and refresh
+      setMessage({ type: "success", text: "Settings saved successfully!" })
+      await refresh()
+      
+      // Scroll to top to show message
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    } catch (error: any) {
+      setMessage({ type: "error", text: error.message || "Failed to save settings. Please try again." })
+      window.scrollTo({ top: 0, behavior: 'smooth' })
     } finally {
       setIsLoading(false)
     }
   }
 
-  const handleUnblock = (unblockUserId: string) => {
+  const handleUnblock = async (unblockUserId: string) => {
     if (!user) return
-    unblockUser(user.id, unblockUserId)
-    setBlockedUsers(blockedUsers.filter((u) => u.id !== unblockUserId))
+    const result = await unblockUserAction(unblockUserId)
+    if (result.success) {
+      setBlockedUsers(blockedUsers.filter((u) => u.id !== unblockUserId))
+      setMessage({ type: "success", text: "User unblocked successfully" })
+    } else {
+      setMessage({ type: "error", text: result.error || "Failed to unblock user" })
+    }
+  }
+
+  const handleUnmute = async (unmuteUserId: string) => {
+    if (!user) return
+    const result = await unmuteUserAction(unmuteUserId)
+    if (result.success) {
+      setMutedUsers(mutedUsers.filter((u) => u.id !== unmuteUserId))
+      setMessage({ type: "success", text: "User unmuted successfully" })
+    } else {
+      setMessage({ type: "error", text: result.error || "Failed to unmute user" })
+    }
+  }
+
+  const handleBulkBlock = async () => {
+    if (!user || !bulkBlockText.trim()) return
+    
+    setBulkBlockSubmitting(true)
+    setBulkBlockResults(null)
+    
+    try {
+      // Parse usernames from textarea (one per line, comma-separated, or space-separated)
+      const usernames = bulkBlockText
+        .split(/[\n,\s]+/)
+        .map(u => u.trim())
+        .filter(u => u.length > 0)
+        .map(u => u.replace(/^@/, '')) // Remove @ prefix if present
+      
+      if (usernames.length === 0) {
+        setMessage({ type: "error", text: "Please enter at least one username" })
+        setBulkBlockSubmitting(false)
+        return
+      }
+      
+      const result = await bulkBlockUsersAction(usernames)
+      
+      if (result.success && result.results) {
+        setBulkBlockResults(result.results)
+        
+        // Reload blocked users list
+        const blockedRes = await getBlockedUsersAction()
+        if (blockedRes.success && blockedRes.users) {
+          setBlockedUsers(blockedRes.users.map(u => ({
+            id: u.id,
+            username: u.username,
+            fullName: u.displayName || u.username,
+            displayName: u.displayName,
+            avatar: u.avatarUrl,
+            blockedAt: u.blockedAt
+          })))
+        }
+        
+        const successCount = result.results.filter(r => r.success).length
+        const failCount = result.results.filter(r => !r.success).length
+        
+        if (failCount === 0) {
+          setMessage({ type: "success", text: `Successfully blocked ${successCount} user(s)` })
+        } else {
+          setMessage({ type: "success", text: `Blocked ${successCount} user(s), ${failCount} failed` })
+        }
+      } else {
+        setMessage({ type: "error", text: result.error || "Failed to block users" })
+      }
+    } catch (error: any) {
+      setMessage({ type: "error", text: error.message || "Failed to block users" })
+    } finally {
+      setBulkBlockSubmitting(false)
+    }
   }
 
   const passwordStrength = (() => {
@@ -914,10 +1067,76 @@ export default function SettingsPage() {
                 <div className="space-y-2">
                   <Label>Email Address</Label>
                   <p className="text-sm text-muted-foreground mb-2">Who can see your email address</p>
-                  <PrivacySelector
+                  <Select
                     value={privacySettings.email}
-                    onChange={(value) => setPrivacySettings({ ...privacySettings, email: value })}
-                  />
+                    onValueChange={(value: any) => setPrivacySettings({ ...privacySettings, email: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="public">Public</SelectItem>
+                      <SelectItem value="followers-only">Followers only</SelectItem>
+                      <SelectItem value="private">Private</SelectItem>
+                      <SelectItem value="never">Never show</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Phone Number</Label>
+                  <p className="text-sm text-muted-foreground mb-2">Who can see your phone number</p>
+                  <Select
+                    value={privacySettings.phone}
+                    onValueChange={(value: any) => setPrivacySettings({ ...privacySettings, phone: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="public">Public</SelectItem>
+                      <SelectItem value="followers-only">Followers only</SelectItem>
+                      <SelectItem value="private">Private</SelectItem>
+                      <SelectItem value="never">Never show</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Birthday</Label>
+                  <p className="text-sm text-muted-foreground mb-2">Who can see your birthday</p>
+                  <Select
+                    value={privacySettings.birthdayVisibility}
+                    onValueChange={(value: any) => setPrivacySettings({ ...privacySettings, birthdayVisibility: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="public_show_year">Public (with year)</SelectItem>
+                      <SelectItem value="public_hide_year">Public (hide year)</SelectItem>
+                      <SelectItem value="followers-only">Followers only</SelectItem>
+                      <SelectItem value="private">Private</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Age</Label>
+                  <p className="text-sm text-muted-foreground mb-2">Who can see your age</p>
+                  <Select
+                    value={privacySettings.ageVisibility}
+                    onValueChange={(value: any) => setPrivacySettings({ ...privacySettings, ageVisibility: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="public">Public</SelectItem>
+                      <SelectItem value="followers-only">Followers only</SelectItem>
+                      <SelectItem value="private">Private</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="space-y-2">
@@ -927,6 +1146,25 @@ export default function SettingsPage() {
                     value={privacySettings.location}
                     onChange={(value) => setPrivacySettings({ ...privacySettings, location: value })}
                   />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Online Status</Label>
+                  <p className="text-sm text-muted-foreground mb-2">Who can see when you're online</p>
+                  <Select
+                    value={privacySettings.lastActiveVisibility}
+                    onValueChange={(value: any) => setPrivacySettings({ ...privacySettings, lastActiveVisibility: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="public">Public</SelectItem>
+                      <SelectItem value="followers-only">Followers only</SelectItem>
+                      <SelectItem value="private">Private</SelectItem>
+                      <SelectItem value="hidden">Hidden</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </CardContent>
             </Card>
@@ -1099,31 +1337,147 @@ export default function SettingsPage() {
                 <div className="space-y-2">
                   <Label>Follow Requests</Label>
                   <p className="text-sm text-muted-foreground mb-2">Who can send you follow requests</p>
-                  <PrivacySelector
+                  <Select
                     value={privacySettings.allowFollowRequests}
-                    onChange={(value) => setPrivacySettings({ ...privacySettings, allowFollowRequests: value })}
+                    onValueChange={(value: any) => setPrivacySettings({ ...privacySettings, allowFollowRequests: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="public">Everyone</SelectItem>
+                      <SelectItem value="followers-only">Followers only</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Who Can Tag Me</Label>
+                  <p className="text-sm text-muted-foreground mb-2">Who can tag you in posts</p>
+                  <Select
+                    value={privacySettings.allowTagging}
+                    onValueChange={(value: any) => setPrivacySettings({ ...privacySettings, allowTagging: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="public">Everyone</SelectItem>
+                      <SelectItem value="followers-only">Followers only</SelectItem>
+                      <SelectItem value="private">Private</SelectItem>
+                      <SelectItem value="none">No one</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <Label>Review Tags Before Showing</Label>
+                    <p className="text-sm text-muted-foreground">Approve tags before they appear on your profile</p>
+                  </div>
+                  <Switch
+                    checked={privacySettings.tagReviewRequired}
+                    onCheckedChange={(checked) => setPrivacySettings({ ...privacySettings, tagReviewRequired: checked })}
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Tagging</Label>
-                  <p className="text-sm text-muted-foreground mb-2">Who can tag you in posts</p>
-                  <PrivacySelector
-                    value={privacySettings.allowTagging}
-                    onChange={(value) => setPrivacySettings({ ...privacySettings, allowTagging: value })}
+                  <Label>Who Can Mention Me</Label>
+                  <p className="text-sm text-muted-foreground mb-2">Who can @mention you in posts</p>
+                  <Select
+                    value={privacySettings.mentionPermissions}
+                    onValueChange={(value: any) => setPrivacySettings({ ...privacySettings, mentionPermissions: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="public">Everyone</SelectItem>
+                      <SelectItem value="followers-only">Followers only</SelectItem>
+                      <SelectItem value="none">No one</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <Label>Tag Notifications</Label>
+                    <p className="text-sm text-muted-foreground">Get notified when someone tags you</p>
+                  </div>
+                  <Switch
+                    checked={privacySettings.tagNotifications}
+                    onCheckedChange={(checked) => setPrivacySettings({ ...privacySettings, tagNotifications: checked })}
                   />
                 </div>
               </CardContent>
             </Card>
 
-            {/* Message Privacy */}
+            {/* Messaging Privacy */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
                   <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-lg bg-orange-500/10 flex items-center justify-center flex-shrink-0">
-                    <ShieldCheck className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-orange-500" />
+                    <Mail className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-orange-500" />
                   </div>
-                  Message Privacy
+                  Messaging Privacy
+                </CardTitle>
+                <CardDescription className="text-xs sm:text-sm">
+                  Control who can message you and message features
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4 sm:space-y-6">
+                <div className="space-y-2">
+                  <Label>Who Can Send Me Messages</Label>
+                  <p className="text-sm text-muted-foreground mb-2">Control who can start conversations with you</p>
+                  <PrivacySelector
+                    value={messagingPrivacy.whoCanMessage}
+                    onChange={(value) => setMessagingPrivacy({ ...messagingPrivacy, whoCanMessage: value })}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <Label>Read Receipts</Label>
+                    <p className="text-sm text-muted-foreground">Let others see when you've read their messages</p>
+                  </div>
+                  <Switch
+                    checked={messagingPrivacy.readReceipts}
+                    onCheckedChange={(checked) => setMessagingPrivacy({ ...messagingPrivacy, readReceipts: checked })}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <Label>Typing Indicators</Label>
+                    <p className="text-sm text-muted-foreground">Show when you're typing a message</p>
+                  </div>
+                  <Switch
+                    checked={messagingPrivacy.typingIndicators}
+                    onCheckedChange={(checked) => setMessagingPrivacy({ ...messagingPrivacy, typingIndicators: checked })}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <Label>Allow Message Forwarding</Label>
+                    <p className="text-sm text-muted-foreground">Let others forward your messages</p>
+                  </div>
+                  <Switch
+                    checked={messagingPrivacy.allowForwarding}
+                    onCheckedChange={(checked) => setMessagingPrivacy({ ...messagingPrivacy, allowForwarding: checked })}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Message Encryption */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                  <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-lg bg-emerald-500/10 flex items-center justify-center flex-shrink-0">
+                    <ShieldCheck className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-emerald-500" />
+                  </div>
+                  Message Encryption
                 </CardTitle>
                 <CardDescription className="text-xs sm:text-sm">
                   Keep direct messages private with end-to-end encryption
@@ -1142,13 +1496,62 @@ export default function SettingsPage() {
                     onCheckedChange={(checked) => setPrivacySettings({ ...privacySettings, secureMessages: checked })}
                   />
                 </div>
-                <div className="rounded-lg border border-dashed border-orange-500/30 bg-orange-500/10 p-3 sm:p-4 space-y-2">
+                <div className="rounded-lg border border-dashed border-emerald-500/30 bg-emerald-500/10 p-3 sm:p-4 space-y-2">
                   <p className="text-sm font-semibold text-foreground">Encryption coverage</p>
                   <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1.5">
                     <li>Messages are encrypted on-device before sending.</li>
                     <li>Keys rotate automatically when devices change.</li>
                     <li>Attachments and reactions stay in the secure channel.</li>
                   </ul>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Search and Indexing */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                  <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-lg bg-indigo-500/10 flex items-center justify-center flex-shrink-0">
+                    <Globe className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-indigo-500" />
+                  </div>
+                  Search & Discoverability
+                </CardTitle>
+                <CardDescription className="text-xs sm:text-sm">
+                  Control how others can find you
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4 sm:space-y-6">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <Label>Allow Search Engine Indexing</Label>
+                    <p className="text-sm text-muted-foreground">Let search engines like Google index your profile</p>
+                  </div>
+                  <Switch
+                    checked={privacySettings.externalIndexing}
+                    onCheckedChange={(checked) => setPrivacySettings({ ...privacySettings, externalIndexing: checked })}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <Label>Show Profile in User Search</Label>
+                    <p className="text-sm text-muted-foreground">Appear in internal search results</p>
+                  </div>
+                  <Switch
+                    checked={privacySettings.searchable}
+                    onCheckedChange={(checked) => setPrivacySettings({ ...privacySettings, searchable: checked })}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <Label>Show in Recommendations</Label>
+                    <p className="text-sm text-muted-foreground">Appear in "People you may know" suggestions</p>
+                  </div>
+                  <Switch
+                    checked={privacySettings.showInRecommendations}
+                    onCheckedChange={(checked) => setPrivacySettings({ ...privacySettings, showInRecommendations: checked })}
+                  />
                 </div>
               </CardContent>
             </Card>
@@ -1163,14 +1566,28 @@ export default function SettingsPage() {
                 </div>
                 Blocked Users
               </CardTitle>
-              <CardDescription className="text-xs sm:text-sm">Manage users you have blocked</CardDescription>
+              <CardDescription className="text-xs sm:text-sm">
+                Manage users you have blocked. Blocked users cannot view your profile, send you messages, tag you, or see your posts.
+              </CardDescription>
             </CardHeader>
-            <CardContent>
-              {blockedUsers.length > 0 ? (
+            <CardContent className="space-y-4">
+              {blockedUsers.length > 0 && (
+                <div className="space-y-2">
+                  <Label htmlFor="blocked-search">Search blocked users</Label>
+                  <Input
+                    id="blocked-search"
+                    placeholder="Search by username..."
+                    value={blockedSearchQuery}
+                    onChange={(e) => setBlockedSearchQuery(e.target.value)}
+                  />
+                </div>
+              )}
+              
+              {filteredBlockedUsers.length > 0 ? (
                 <div className="space-y-2 sm:space-y-3">
-                  {blockedUsers.map((blockedUser) => (
+                  {filteredBlockedUsers.map((blockedUser) => (
                     <div key={blockedUser.id} className="flex items-center justify-between p-2 sm:p-3 rounded-lg border gap-2 sm:gap-3">
-                      <Link href={`/profile/${blockedUser.username}`} className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                      <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
                         <Avatar className="h-8 w-8 sm:h-10 sm:w-10 flex-shrink-0">
                           <AvatarImage src={blockedUser.avatar || "/placeholder.svg"} alt={blockedUser.fullName} />
                           <AvatarFallback className="text-xs sm:text-sm">{blockedUser.fullName.charAt(0)}</AvatarFallback>
@@ -1178,8 +1595,13 @@ export default function SettingsPage() {
                         <div className="min-w-0 flex-1">
                           <p className="font-semibold text-sm sm:text-base truncate">{blockedUser.fullName}</p>
                           <p className="text-xs sm:text-sm text-muted-foreground truncate">@{blockedUser.username}</p>
+                          {blockedUser.blockedAt && (
+                            <p className="text-xs text-muted-foreground">
+                              Blocked <RelativeTime date={blockedUser.blockedAt} />
+                            </p>
+                          )}
                         </div>
-                      </Link>
+                      </div>
                       <Button
                         variant="outline"
                         size="sm"
@@ -1192,9 +1614,79 @@ export default function SettingsPage() {
                     </div>
                   ))}
                 </div>
+              ) : blockedUsers.length > 0 ? (
+                <p className="text-xs sm:text-sm text-muted-foreground text-center py-6 sm:py-8">No users match your search</p>
               ) : (
                 <p className="text-xs sm:text-sm text-muted-foreground text-center py-6 sm:py-8">No blocked users</p>
               )}
+              
+              <Alert className="border-amber-500/50 bg-amber-500/10">
+                <Ban className="h-4 w-4 text-amber-600" />
+                <AlertTitle className="text-amber-900 dark:text-amber-100">About blocking</AlertTitle>
+                <AlertDescription className="text-amber-800 dark:text-amber-200 text-xs sm:text-sm">
+                  When you block someone, they won't be able to find your profile, see your posts, or contact you. You won't see their content either.
+                </AlertDescription>
+              </Alert>
+              
+              <div className="flex justify-end">
+                <Button variant="outline" onClick={() => setBulkBlockOpen(true)}>
+                  <Ban className="h-4 w-4 mr-2" />
+                  Bulk Block Users
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Muted Users */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-lg bg-gray-500/10 flex items-center justify-center flex-shrink-0">
+                  <UserX className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-500" />
+                </div>
+                Muted Users
+              </CardTitle>
+              <CardDescription className="text-xs sm:text-sm">
+                Manage users you have muted. You won't see posts from muted users in your feed, but they can still interact with you.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {mutedUsers.length > 0 ? (
+                <div className="space-y-2 sm:space-y-3">
+                  {mutedUsers.map((mutedUser) => (
+                    <div key={mutedUser.id} className="flex items-center justify-between p-2 sm:p-3 rounded-lg border gap-2 sm:gap-3">
+                      <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                        <Avatar className="h-8 w-8 sm:h-10 sm:w-10 flex-shrink-0">
+                          <AvatarImage src={mutedUser.avatar || "/placeholder.svg"} alt={mutedUser.fullName} />
+                          <AvatarFallback className="text-xs sm:text-sm">{mutedUser.fullName.charAt(0)}</AvatarFallback>
+                        </Avatar>
+                        <div className="min-w-0 flex-1">
+                          <p className="font-semibold text-sm sm:text-base truncate">{mutedUser.fullName}</p>
+                          <p className="text-xs sm:text-sm text-muted-foreground truncate">@{mutedUser.username}</p>
+                        </div>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleUnmute(mutedUser.id)}
+                        className="flex-shrink-0"
+                      >
+                        Unmute
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs sm:text-sm text-muted-foreground text-center py-6 sm:py-8">No muted users</p>
+              )}
+              
+              <Alert className="border-blue-500/50 bg-blue-500/10">
+                <UserX className="h-4 w-4 text-blue-600" />
+                <AlertTitle className="text-blue-900 dark:text-blue-100">About muting</AlertTitle>
+                <AlertDescription className="text-blue-800 dark:text-blue-200 text-xs sm:text-sm">
+                  Muting someone hides their posts from your feed without notifying them. They can still see your profile and interact with you.
+                </AlertDescription>
+              </Alert>
             </CardContent>
           </Card>
 
@@ -1506,6 +1998,77 @@ export default function SettingsPage() {
             >
               Submit Request
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Block Dialog */}
+      <Dialog open={bulkBlockOpen} onOpenChange={(open) => { 
+        setBulkBlockOpen(open)
+        if (!open) {
+          setBulkBlockText("")
+          setBulkBlockResults(null)
+        }
+      }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Bulk Block Users</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="bulk-block-usernames">Usernames</Label>
+              <Textarea
+                id="bulk-block-usernames"
+                placeholder="Enter usernames (one per line, or comma/space separated)&#10;Example:&#10;user1&#10;user2, user3&#10;@user4"
+                value={bulkBlockText}
+                onChange={(e) => setBulkBlockText(e.target.value)}
+                rows={8}
+                disabled={bulkBlockSubmitting}
+              />
+              <p className="text-xs text-muted-foreground">
+                You can enter usernames with or without the @ symbol
+              </p>
+            </div>
+            
+            {bulkBlockResults && (
+              <div className="space-y-2 max-h-48 overflow-y-auto border rounded-lg p-3">
+                <p className="text-sm font-medium">Results:</p>
+                {bulkBlockResults.map((result, idx) => (
+                  <div key={idx} className="flex items-center justify-between text-sm">
+                    <span className="truncate">@{result.username}</span>
+                    {result.success ? (
+                      <Badge variant="outline" className="border-green-500/50 text-green-600 flex-shrink-0">
+                        <CheckCircle2 className="h-3 w-3 mr-1" />
+                        Blocked
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="border-red-500/50 text-red-600 flex-shrink-0">
+                        <XCircle className="h-3 w-3 mr-1" />
+                        {result.error || 'Failed'}
+                      </Badge>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setBulkBlockOpen(false)} 
+              disabled={bulkBlockSubmitting}
+            >
+              {bulkBlockResults ? 'Close' : 'Cancel'}
+            </Button>
+            {!bulkBlockResults && (
+              <Button 
+                onClick={handleBulkBlock} 
+                loading={bulkBlockSubmitting} 
+                disabled={!bulkBlockText.trim() || bulkBlockSubmitting}
+              >
+                Block Users
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

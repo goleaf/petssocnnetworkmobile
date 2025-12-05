@@ -51,6 +51,7 @@ export default function ProfilePage({ params }: { params: Promise<{ username: st
   const [activities, setActivities] = useState<UserActivity[]>([])
   const [isFollowing, setIsFollowing] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  const [shouldNoIndex, setShouldNoIndex] = useState(false)
   const avatarRef = useRef<HTMLDivElement | null>(null)
   const coverRef = useRef<HTMLDivElement | null>(null)
 
@@ -74,6 +75,10 @@ export default function ProfilePage({ params }: { params: Promise<{ username: st
 
     setUser(foundUser)
     setIsFollowing(viewerId ? foundUser.followers.includes(viewerId) : false)
+    
+    // Check if profile should be indexed by search engines
+    const searchIndexingEnabled = foundUser.privacy?.searchIndexingEnabled !== false
+    setShouldNoIndex(!searchIndexingEnabled)
 
     if (canViewUserPets(foundUser, viewerId)) {
       const visiblePets = getPets()
@@ -320,7 +325,7 @@ export default function ProfilePage({ params }: { params: Promise<{ username: st
 
   return (
       <>
-      {user?.privacy && (user.privacy as any).externalIndexing === false && (
+      {shouldNoIndex && (
         <Head>
           <meta name="robots" content="noindex, nofollow" />
         </Head>

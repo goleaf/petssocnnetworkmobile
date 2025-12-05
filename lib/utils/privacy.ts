@@ -1,9 +1,16 @@
 import type { User, BlogPost, Pet, PrivacyLevel, ProfileSection } from "@/lib/types"
 import { getUserById as getUserByIdFromStorage } from "@/lib/storage"
+import { isUserBlocked } from "@/lib/services/privacy"
 
 // Helper to get user by ID
 function getUserById(userId: string): User | undefined {
   return getUserByIdFromStorage(userId)
+}
+
+// Helper to check if blocked (async wrapper for sync context)
+// Note: This is a temporary solution. Ideally, all privacy checks should be async
+async function checkIfBlocked(userId: string, potentialBlockedId: string): Promise<boolean> {
+  return await isUserBlocked(userId, potentialBlockedId)
 }
 
 function canViewUserScopedProperty(

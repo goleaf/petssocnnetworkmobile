@@ -75,6 +75,37 @@ export interface EnrichedPost extends PostWithCounts {
  */
 export class FeedService {
   /**
+   * Get list of user IDs to exclude from feed (blocked and muted users)
+   */
+  private async getExcludedUserIds(userId: string): Promise<string[]> {
+    // Get blocked user IDs (users blocked by this user)
+    const blockedByUser = await prisma.blockedUser.findMany({
+      where: { userId },
+      select: { blockedId: true }
+    });
+    const blockedUserIds = blockedByUser.map(b => b.blockedId);
+
+    // Get users who blocked this user
+    const blockedThisUser = await prisma.blockedUser.findMany({
+      where: { blockedId: userId },
+      select: { userId: true }
+    });
+    const usersWhoBlockedMe = blockedThisUser.map(b => b.userId);
+
+    // Get muted users
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { mutedUsers: true }
+    });
+
+    // Combine all users to exclude
+    return Array.from(new Set([
+      ...blockedUserIds,
+      ...usersWhoBlockedMe,
+      ...(user?.mutedUsers || [])
+    ]));
+  }
+  /**
    * Get feed for a user based on feed type
    */
   async getFeed(userId: string, options: FeedOptions): Promise<FeedResponse> {
@@ -111,7 +142,6 @@ export class FeedService {
       where: { id: userId },
       select: {
         following: true,
-        mutedUsers: true,
         displayPreferences: true,
       },
     });
@@ -119,6 +149,9 @@ export class FeedService {
     if (!user) {
       throw new Error('User not found');
     }
+
+    // Get excluded user IDs (blocked and muted)
+    const excludedUserIds = await this.getExcludedUserIds(userId);
 
     // Get followed pet IDs
     const followedPets = await prisma.pet.findMany({
@@ -142,8 +175,8 @@ export class FeedService {
       return { posts: [], hasMore: false };
     }
 
-    // Build filters
-    const postFilters = this.buildPostFilters(filters, followedUserIds);
+    // Build filters - exclude blocked and muted users
+    const postFilters = this.buildPostFilters(filters, followedUserIds, excludedUserIds);
 
     // Fetch posts
     const { posts, nextCursor, hasMore } = await postRepository.getPosts(
@@ -158,7 +191,7 @@ export class FeedService {
     // Build ranking context
     const rankingContext: RankingContext = {
       userId,
-      mutedUserIds: user.mutedUsers || [],
+      mutedUserIds: excludedUserIds,
       mutedWords: (user.displayPreferences as any)?.mutedKeywords || [],
     };
 
@@ -209,21 +242,19 @@ export class FeedService {
     cursor?: string,
     filters?: FeedFilters
   ): Promise<FeedResponse> {
-    // Get user's muted users and words
+    // Get user's display preferences
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: {
-        mutedUsers: true,
         displayPreferences: true,
       },
     });
 
-    // Build filters - exclude muted users
-    const postFilters = this.buildPostFilters(filters);
-    if (user?.mutedUsers && user.mutedUsers.length > 0) {
-      // We need to fetch all and filter, or use NOT IN query
-      // For now, we'll fetch and filter
-    }
+    // Get excluded user IDs (blocked and muted)
+    const excludedUserIds = await this.getExcludedUserIds(userId);
+
+    // Build filters - exclude blocked and muted users
+    const postFilters = this.buildPostFilters(filters, undefined, excludedUserIds);
 
     // Fetch posts sorted by relevance score
     const posts = await prisma.post.findMany({
@@ -231,6 +262,7 @@ export class FeedService {
         deletedAt: null,
         visibility: 'public',
         publishedAt: { not: null },
+        ...(excludedUserIds.length > 0 ? { authorUserId: { notIn: excludedUserIds } } : {}),
         ...(filters?.contentTypes && filters.contentTypes.length > 0
           ? { postType: { in: filters.contentTypes } }
           : {}),
@@ -476,10 +508,12 @@ export class FeedService {
    */
   private buildPostFilters(
     filters?: FeedFilters,
-    authorUserIds?: string[]
+    authorUserIds?: string[],
+    excludedUserIds?: string[]
   ) {
     return {
       ...(authorUserIds ? { authorUserIds } : {}),
+      ...(excludedUserIds ? { excludedUserIds } : {}),
       ...(filters?.contentTypes ? { postTypes: filters.contentTypes } : {}),
       ...(filters?.dateRange ? { dateRange: filters.dateRange } : {}),
       ...(filters?.topics ? { hashtags: filters.topics } : {}),

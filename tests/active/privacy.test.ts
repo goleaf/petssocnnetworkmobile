@@ -68,6 +68,9 @@ function userFactory(overrides: Partial<User> = {}): User {
       sections: {
         basics: 'public',
         statistics: 'public',
+        friends: 'public',
+        pets: 'public',
+        activity: 'public',
       },
     },
     ...overrides,
@@ -111,7 +114,7 @@ describe('Privacy Service - Default Settings', () => {
     expect(defaults.profile).toBe('public')
     expect(defaults.email).toBe('private')
     expect(defaults.searchable).toBe(true)
-    expect(defaults.sections.basics).toBe('public')
+    expect(defaults.sections?.basics).toBe('public')
   })
 
   test('getDefaultMessagingPrivacySettings returns correct defaults', () => {

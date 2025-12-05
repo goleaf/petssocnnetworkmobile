@@ -167,11 +167,15 @@ export async function logoutSessionAction(token: string): Promise<{ success: boo
     return { success: false, error: "Session not found" }
   }
   
-  // Revoke the session
+  // Revoke the session in database
   await prisma.session.update({
     where: { token },
     data: { revoked: true },
   })
+  
+  // Also revoke in memory store for backwards compatibility
+  const { revokeSession } = await import("../session-store")
+  revokeSession(token)
   
   return { success: true }
 }
@@ -183,7 +187,7 @@ export async function logoutAllOtherSessionsAction(): Promise<{ success: boolean
   const cookieStore = await cookies()
   const currentToken = cookieStore.get(SESSION_COOKIE_NAME)?.value || ""
   
-  // Revoke all sessions except the current one
+  // Revoke all sessions except the current one in database
   await prisma.session.updateMany({
     where: {
       userId: user.id,
@@ -191,6 +195,10 @@ export async function logoutAllOtherSessionsAction(): Promise<{ success: boolean
     },
     data: { revoked: true },
   })
+  
+  // Also revoke in memory store for backwards compatibility
+  const { revokeOtherSessions } = await import("../session-store")
+  revokeOtherSessions(user.id, currentToken)
   
   return { success: true }
 }

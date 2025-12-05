@@ -742,6 +742,19 @@ model MutedUser {
   @@map("muted_users")
 }
 
+// Deletion Restore Token model - tracks account deletion restore tokens
+model DeletionRestoreToken {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([token])
+  @@index([expiresAt])
+  @@map("deletion_restore_tokens")
+}
+
 // ============================================================================
 // CONTENT FEED & TIMELINE SYSTEM
 // ============================================================================
