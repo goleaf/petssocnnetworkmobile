@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Docs & Tooling
+- Expanded root `README.md` with project layout, testing workflow (type/lint, Jest, Playwright), OpenSpec/Kiro guardrails, and mobile/Capacitor sync references
+- Introduced Kiro automation hooks and steerings covering database, API, frontend, config, mobile sync, and spec governance (MCP-first workflows)
+
 ### Added
 - **Recent Changes Feed Component**
   - Reusable React component for displaying edit requests with visual diffs
@@ -81,7 +85,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Email change functionality with verification tokens and 24-hour expiration
   - Password change with complexity requirements and session invalidation
   - Active session management with device tracking, location, and IP address
-  - Account deletion with 30-day grace period and restore capability
+  - Account deletion with 30-day grace period and restore capability using secure tokens
+  - Improved account deletion now stores restore tokens in database with automatic expiration
+  - Account deletion properly revokes all active sessions in database and clears session cookies
+  - Deletion scheduling stores date and reason directly in user record for better tracking
   - Privacy settings for profile visibility, contact information, and online status
   - Granular privacy controls for tagging, mentions, and messaging
   - User blocking and muting system with relationship management
@@ -89,7 +96,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Email digest options (real-time, hourly, daily, weekly)
   - Quiet hours configuration with critical notification exceptions
   - Search and indexing controls for profile discoverability
-  - Database models: EmailVerification, Session, BlockedUser, MutedUser
+  - Database models: EmailVerification, Session, BlockedUser, MutedUser, DeletionRestoreToken
   - Enhanced User model with privacy, notification settings, and deletion scheduling
 - **Post Embeds**
   - Share dialog with link copying and iframe embed generation

@@ -1,0 +1,28 @@
+{
+  "enabled": true,
+  "name": "Config Quality Gate",
+  "description": "Runs build, lint, and test safeguards when core config or toolchain files change.",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "next.config.mjs",
+      "tsconfig.json",
+      "tsconfig.*.json",
+      ".eslintrc.json",
+      "jest.config.js",
+      "jest.setup.js",
+      "jest.setup.preenv.js",
+      "playwright.config.ts",
+      "postcss.config.mjs",
+      "components.json",
+      "package.json",
+      "pnpm-lock.yaml",
+      "package-lock.json"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "Core configuration/tooling files changed: {{changedFiles}}. Use MCP for file edits and shell commands.\n\n1) Identify which pipelines are impacted (linting, typechecking, Jest, Playwright, Next build, Capacitor) and note any new dependencies or scripts.\n2) If dependencies/scripts changed, run `pnpm install` if needed, then verify with `pnpm lint` and `pnpm typecheck`.\n3) Run relevant suites: `pnpm test` for Jest, targeted directories when possible, and `pnpm test:e2e --workers=1` when Playwright or routing/config is involved (start the dev server per TEST_RUNNING_INSTRUCTIONS.md).\n4) Build for production to catch Next.js regressions: `pnpm build`.\n5) Update any how-to docs (TEST_RUNNING_INSTRUCTIONS.md, README, CI notes) if command behavior or requirements changed.\n6) Summarize what changed, which checks ran, their outcomes, and any follow-ups."
+  }
+}

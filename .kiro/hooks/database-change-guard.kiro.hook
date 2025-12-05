@@ -1,0 +1,21 @@
+{
+  "enabled": true,
+  "name": "Database Change Guard",
+  "description": "Enforces Prisma-only workflow, migrations, docs, and testing whenever schema or database access files change.",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "prisma/schema.prisma",
+      "prisma/migrations/**/*",
+      "prisma/seed*.ts",
+      "lib/db/**/*.{ts,tsx}",
+      "lib/prisma.{ts,js}",
+      "lib/prisma/**/*.{ts,tsx}"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "Database-related files changed: {{changedFiles}}. Follow Prisma-only rules (AGENTS.md, .kiro/DATABASE_STANDARDS.md). Use MCP file and shell actions for all edits and commands.\n\n1) Inspect the schema/seed changes and map impacted models, relations, and data access layers.\n2) Plan the migration name and update `prisma/schema.prisma`; avoid raw SQL or direct database clients.\n3) Through MCP shell, run `pnpm prisma generate` and `pnpm prisma migrate dev --name <description>` (explain if a migration is intentionally skipped). Refresh seed scripts if models changed.\n4) Update dependent code: adjust Zod schemas, `lib/` services, API handlers, and validation to match the schema updates.\n5) Sync documentation/checklists: log migration steps in `docs/DATABASE_ARCHITECTURE.md` (or relevant docs) and update any affected `.kiro/specs/*` tasks.\n6) Validate: `pnpm typecheck`, `pnpm lint`, targeted Jest suites touching the affected area, and `pnpm test:e2e --workers=1` when flows cross the UI (start the dev server per TEST_RUNNING_INSTRUCTIONS.md).\n7) Summarize migrations applied, seeds touched, and verification results before proceeding."
+  }
+}

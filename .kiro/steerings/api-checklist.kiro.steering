@@ -1,0 +1,6 @@
+{
+  "name": "API Checklist",
+  "description": "Contract-first flow for API routes and server actions.",
+  "version": "1",
+  "prompt": "Use MCP for reads/edits/commands. For API/server changes:\n- Validate inputs with Zod; enforce required fields and types\n- Check auth/authorization early; respect tenant/locale context\n- Use Prisma only for data; no raw SQL or other clients\n- Handle errors safely; avoid leaking sensitive details\n- Update schemas/types consumed by clients; align with UI expectations\n- Sync docs/specs/tasks when behavior changes; call out env/flag impacts\n- Run pnpm typecheck, pnpm lint, targeted Jest for actions/services, and pnpm test:e2e --workers=1 when UI flows depend on the endpoint (start dev server if needed)\n- Summarize breaking risks and verification results"
+}

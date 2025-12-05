@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "name": "Mobile Capacitor Sync",
+  "description": "Keeps Capacitor shells in sync and validated when mobile assets or configuration change.",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "mobile/**/*",
+      "capacitor.config.ts",
+      "mobile/package.json"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "Mobile/Capacitor files changed: {{changedFiles}}. Use MCP for file edits and shell commands.\n\n1) Review plugin/config changes and confirm they match web app capabilities (permissions, URLs, bundling paths).\n2) Build fresh web assets: `pnpm build`.\n3) Sync native projects with the local CLI: `pnpm exec cap sync` (or `pnpm exec cap copy` if only assets changed) for both iOS and Android; capture any plugin install output.\n4) Open platform projects when needed: `pnpm exec cap open ios` / `pnpm exec cap open android`, run platform builds, and smoke test critical flows (auth, media uploads, offline states).\n5) Verify mobile-specific env vars are set for the build (API base URLs, keys) and document any manual steps required.\n6) Summarize sync/build results and note follow-ups for QA or store submissions."
+  }
+}

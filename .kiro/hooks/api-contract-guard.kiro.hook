@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "name": "API Contract Guard",
+  "description": "Enforces validation, auth, and Prisma patterns for API and server actions.",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "app/api/**/*.{ts,tsx,js,jsx}",
+      "lib/actions/**/*.{ts,tsx,js,jsx}",
+      "lib/services/**/*.{ts,tsx,js,jsx}"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "API/server files changed: {{changedFiles}}. Work through MCP for reading, editing, and shell commands.\n\n1) Validate inputs with Zod or existing schemas; reject invalid payloads early and sanitize user input.\n2) Enforce authentication/authorization: verify session, roles, and tenant/locale context before side effects.\n3) Use Prisma only for data access (AGENTS.md, .kiro/DATABASE_STANDARDS.md); avoid raw SQL and direct clients.\n4) Ensure error handling surfaces safe messages; log details server-side, avoid leaking sensitive data.\n5) Update related docs/specs/tasks when behavior or contracts change; note env vars or feature flags.\n6) Run MCP shell checks: pnpm typecheck, pnpm lint, targeted Jest suites for actions/services, and pnpm test:e2e --workers=1 when endpoints back UI flows (start dev server as instructed).\n7) Summarize contract changes, breaking risks, and test results."
+  }
+}

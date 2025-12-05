@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "name": "Frontend Change Guard",
+  "description": "Guides UI changes with accessibility, i18n, testing, and build checks.",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "app/**/*.{ts,tsx,js,jsx}",
+      "components/**/*.{ts,tsx,js,jsx}",
+      "styles/**/*.{css,scss}",
+      "public/**/*.{png,jpg,jpeg,svg,webp}"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "UI-related files changed: {{changedFiles}}. Use MCP for all file edits and shell commands.\n\n1) Confirm component type: add \"use client\" when hooks/state are used; keep server-only logic in lib/.\n2) Enforce accessibility: semantic elements, aria labels, keyboard focus, color contrast; prefer shadcn/ui patterns already in components/ui.\n3) Keep localization: route text through i18n/messages; avoid hardcoded strings; update translations if keys change.\n4) Add/align data-testid selectors for E2E; avoid breaking existing selectors.\n5) Validate with MCP shell: pnpm typecheck, pnpm lint, targeted Jest tests for touched components in tests/active, and pnpm test:e2e --workers=1 for user-facing flows (start dev server per TEST_RUNNING_INSTRUCTIONS.md if needed).\n6) Check responsive behavior and error/loading states; update docs/README snippets if UI/UX changed.\n7) Summarize risk areas and remaining QA steps."
+  }
+}

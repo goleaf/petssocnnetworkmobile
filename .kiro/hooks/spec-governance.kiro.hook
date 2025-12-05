@@ -1,0 +1,20 @@
+{
+  "enabled": true,
+  "name": "Spec & Plan Governance",
+  "description": "Keeps specs, tasks, and proposals consistent when planning files change.",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "openspec/**/*",
+      ".kiro/specs/**/*",
+      "AGENTS.md",
+      "openspec/AGENTS.md",
+      "tasks.md"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "Planning/spec files changed: {{changedFiles}}. Use MCP resources for all reads, edits, and shell commands.\n\n1) Re-read AGENTS.md and openspec/AGENTS.md to confirm workflow plus database/testing rules; identify the affected capability or change.\n2) Align requirements, tasks, and checklists in `.kiro/specs/**` or `openspec/changes/**` with the new scope; ensure task statuses match reality and no placeholder checkmarks remain.\n3) Validate deltas with `openspec validate --strict` via MCP shell; resolve errors and keep change IDs unique.\n4) Update supporting docs (design.md, IMPLEMENTATION_NOTES, README/doc files) so developers can follow the plan; explicitly note schema/env/test impacts.\n5) Provide a concise summary of scope, risks, and next actions to unblock implementation."
+  }
+}

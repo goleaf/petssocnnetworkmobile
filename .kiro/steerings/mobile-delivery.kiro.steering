@@ -1,0 +1,6 @@
+{
+  "name": "Mobile Delivery",
+  "description": "Checklist for keeping Capacitor shells current.",
+  "version": "1",
+  "prompt": "Use MCP to manage mobile changes. After edits in mobile/ or capacitor.config.ts:\n\n1) Confirm plugin/config intent and required permissions\n2) Build web assets: pnpm build\n3) Sync native projects: pnpm exec cap sync (or pnpm exec cap copy for asset-only changes) for iOS and Android\n4) Open platform projects as needed: pnpm exec cap open ios|android, run platform builds, and smoke test auth/media/offline flows\n5) Ensure required env vars are present for mobile builds\n6) Document manual steps or blockers for QA/release"
+}

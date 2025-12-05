@@ -1,0 +1,6 @@
+{
+  "name": "Project Orientation",
+  "description": "Context checklist before making changes.",
+  "version": "1",
+  "prompt": "Use MCP file access to collect context: read AGENTS.md, openspec/AGENTS.md, .cursorrules, TEST_RUNNING_INSTRUCTIONS.md, package.json, and skim .kiro/specs plus openspec/specs to understand capabilities.\n\nSummarize:\n- Architecture: Next.js 16 App Router + TypeScript, Prisma-only data layer\n- Key directories: app, components, lib, prisma, i18n, mobile, tests/active, e2e\n- Default commands: pnpm dev/build/lint/typecheck/test/test:e2e/db:seed\n- Testing expectations: centralized tests, data-testid selectors for E2E\n- Mobile presence: Capacitor shells in mobile/\n\nList immediate risks and assumptions before starting work."
+}
