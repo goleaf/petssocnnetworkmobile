@@ -132,24 +132,24 @@ Step 6 additionally receives:
 
 ## Requirements Fulfilled
 
-✅ **1.1**: Multi-step modal with 6 distinct steps
-✅ **1.2**: "Add New Pet" button integration point
-✅ **1.3**: Incentive message support (via AddPetButton)
-✅ **1.4**: Progress saving and step navigation
-✅ **1.5**: Data preservation between steps
-✅ **7.6**: Final submission and redirect
+ **1.1**: Multi-step modal with 6 distinct steps
+ **1.2**: "Add New Pet" button integration point
+ **1.3**: Incentive message support (via AddPetButton)
+ **1.4**: Progress saving and step navigation
+ **1.5**: Data preservation between steps
+ **7.6**: Final submission and redirect
 
 ### Specific Features
-- ✅ Step indicator with progress (1-6 with checkmarks)
-- ✅ Next, Back, Save Draft buttons
-- ✅ Step validation before progression
-- ✅ localStorage persistence (auto-save every 30 seconds)
-- ✅ Draft restoration on modal reopen
-- ✅ Modal dialog wrapper with close confirmation
-- ✅ Form state management across all steps
-- ✅ Error summary display at top
-- ✅ Final submission handler
-- ✅ Redirect to new pet profile
+-  Step indicator with progress (1-6 with checkmarks)
+-  Next, Back, Save Draft buttons
+-  Step validation before progression
+-  localStorage persistence (auto-save every 30 seconds)
+-  Draft restoration on modal reopen
+-  Modal dialog wrapper with close confirmation
+-  Form state management across all steps
+-  Error summary display at top
+-  Final submission handler
+-  Redirect to new pet profile
 
 ## Testing Recommendations
 

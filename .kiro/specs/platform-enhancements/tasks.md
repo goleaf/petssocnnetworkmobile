@@ -32,7 +32,7 @@
 
 ## 2. Admin Analytics Dashboard - UI Components
 
-- [x] 1.5.Create analytics dashboard layout and routing
+- [ ] 1.5.Create analytics dashboard layout and routing
   - `app/admin/analytics/page.tsx` exists with tabs for moderation, wiki, search, and community
   - _Requirements: 1.1_
 
@@ -68,12 +68,12 @@
 
 ## 3. Multi-Language Support - Core Infrastructure
 
-- [x] 1.11.i18n routing infrastructure exists
+- [ ] 1.11.i18n routing infrastructure exists
   - `i18n/routing.ts` and `i18n/request.ts` exist with locale handling
   - `app/[locale]/` directory structure exists for locale-based routing
   - _Requirements: 4.1, 4.4_
 
-- [x] 1.12.Translation file structure exists
+- [ ] 1.12.Translation file structure exists
   - `messages/en.json` and `messages/de.json` exist with translations
   - _Requirements: 4.3, 4.4_
 
@@ -87,7 +87,7 @@
   - Generate Prisma client and run migrations
   - _Requirements: 4.2_
 
-- [x] 1.15.Translation utilities exist
+- [ ] 1.15.Translation utilities exist
   - `lib/i18n/` directory has formatting, hooks, languages, navigation, and regions utilities
   - _Requirements: 4.5, 5.5_
 
@@ -129,7 +129,7 @@
 
 ## 5. Mobile Application - Authentication and Core Setup
 
-- [x] 1.22.Android project structure exists
+- [ ] 1.22.Android project structure exists
   - `mobile/android/` directory exists with Capacitor configuration
   - Android build system configured in `capacitor.config.ts`
   - Push notifications plugin configured
@@ -341,7 +341,7 @@
 
 ## 11. Security Enhancements - Session Management
 
-- [x] 1.55.Session tracking exists
+- [ ] 1.55.Session tracking exists
   - Session model in Prisma schema has deviceType, browser, ip, city, country, and lastActivityAt fields
   - `lib/actions/sessions.ts` exists for session management
   - _Requirements: 15.1_
@@ -411,13 +411,13 @@
   - Update content status in database
   - _Requirements: 17.3, 17.4_
 
-- [x] 1.66.Moderation queue models exist
+- [ ] 1.66.Moderation queue models exist
   - `ModerationQueue` model exists in Prisma schema with autoFlagged and autoReason fields
   - _Requirements: 17.4_
 
 ## 14. Content Moderation - Moderator Interface
 
-- [x] 1.67.Moderator review interface exists
+- [ ] 1.67.Moderator review interface exists
   - `app/admin/moderation-queue/page.tsx` exists with moderation queue display
   - _Requirements: 18.1, 18.4_
 

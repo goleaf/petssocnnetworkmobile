@@ -61,14 +61,14 @@ Created a robust POST endpoint with the following features:
 ### 2. Test Suite (`tests/active/api/posts/route.test.ts`)
 Comprehensive test coverage with 8 test cases:
 
-1. ✅ Create post with text only
-2. ✅ Extract and validate @mentions
-3. ✅ Extract #hashtags from text
-4. ✅ Validate text content max length (5000 chars)
-5. ✅ Reject more than one video
-6. ✅ Reject more than 10 photos
-7. ✅ Require poll options for poll posts
-8. ✅ Return 401 if not authenticated
+1.  Create post with text only
+2.  Extract and validate @mentions
+3.  Extract #hashtags from text
+4.  Validate text content max length (5000 chars)
+5.  Reject more than one video
+6.  Reject more than 10 photos
+7.  Require poll options for poll posts
+8.  Return 401 if not authenticated
 
 All tests passing successfully.
 
@@ -134,14 +134,14 @@ All tests passing successfully.
 
 ## Requirements Satisfied
 
-✅ **6.1** - Create POST /api/posts endpoint for creating posts
-✅ **6.2** - Validate input (text max 5000 chars, media limits, visibility settings)
-✅ **6.3** - Process @mentions: extract usernames, validate users exist, create mention records
-✅ **6.4** - Process #hashtags: extract tags, create/update hashtag records
-✅ **6.5** - Handle media uploads (accept base64 or pre-uploaded media IDs)
-✅ **13.2** - Create post record with all metadata
-✅ **Additional** - Send notifications to mentioned users
-✅ **Additional** - Broadcast new post to followers via WebSocket (placeholder)
+ **6.1** - Create POST /api/posts endpoint for creating posts
+ **6.2** - Validate input (text max 5000 chars, media limits, visibility settings)
+ **6.3** - Process @mentions: extract usernames, validate users exist, create mention records
+ **6.4** - Process #hashtags: extract tags, create/update hashtag records
+ **6.5** - Handle media uploads (accept base64 or pre-uploaded media IDs)
+ **13.2** - Create post record with all metadata
+ **Additional** - Send notifications to mentioned users
+ **Additional** - Broadcast new post to followers via WebSocket (placeholder)
 
 ## Technical Decisions
 

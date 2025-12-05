@@ -66,34 +66,34 @@ Added comprehensive documentation including:
 ### 4. Tests (`tests/active/api/stories/route.test.ts`)
 Created test suite with 10 test cases covering:
 
-- ✅ Photo story creation
-- ✅ Video story creation with duration
-- ✅ Photo size limit validation (10MB)
-- ✅ Video size limit validation (100MB)
-- ✅ Video duration limit validation (15 seconds)
-- ✅ Story creation with stickers
-- ✅ Close friends story creation
-- ✅ Missing required fields validation
-- ✅ Invalid media type validation
-- ✅ Custom visibility validation
+-  Photo story creation
+-  Video story creation with duration
+-  Photo size limit validation (10MB)
+-  Video size limit validation (100MB)
+-  Video duration limit validation (15 seconds)
+-  Story creation with stickers
+-  Close friends story creation
+-  Missing required fields validation
+-  Invalid media type validation
+-  Custom visibility validation
 
 **Test Results:** 6 passing, 4 failing due to Prisma mocking issues in test environment. The failing tests are related to test infrastructure, not the actual implementation logic.
 
 ## Requirements Satisfied
 
 ### Requirement 9.1: Story Publishing with Visibility Controls
-- ✅ Story creation with visibility options (everyone, close_friends, custom)
-- ✅ 24-hour expiry timestamp automatically set
-- ✅ Privacy controls enforced at creation time
-- ✅ Close friends and custom visibility lists supported
+-  Story creation with visibility options (everyone, close_friends, custom)
+-  24-hour expiry timestamp automatically set
+-  Privacy controls enforced at creation time
+-  Close friends and custom visibility lists supported
 
 ### Requirement 13.4: Story Creation API with JSONB Stickers
-- ✅ POST /api/stories endpoint accepting media and metadata
-- ✅ Media validation (photos max 10MB, videos max 100MB and 15 seconds)
-- ✅ Story record creation with 24-hour expiry
-- ✅ Stickers stored as JSONB data
-- ✅ Broadcast notification to followers via WebSocket
-- ✅ In-app notifications created for followers
+-  POST /api/stories endpoint accepting media and metadata
+-  Media validation (photos max 10MB, videos max 100MB and 15 seconds)
+-  Story record creation with 24-hour expiry
+-  Stickers stored as JSONB data
+-  Broadcast notification to followers via WebSocket
+-  In-app notifications created for followers
 
 ## Implementation Details
 

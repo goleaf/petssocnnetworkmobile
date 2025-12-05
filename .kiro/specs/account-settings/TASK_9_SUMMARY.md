@@ -155,32 +155,32 @@ All types are defined in `lib/types/settings.ts`:
 ## Requirements Validated
 
 ### Requirement 11 (Notification Categories)
-✅ 11.1 - Nine notification categories with master toggles
-✅ 11.2 - Master toggle disables all notifications in category
-✅ 11.3 - Individual channel toggles (Push, Email, SMS, In-App)
-✅ 11.4 - Instant or Daily Digest option for email
-✅ 11.5 - SMS cost warning displayed
+ 11.1 - Nine notification categories with master toggles
+ 11.2 - Master toggle disables all notifications in category
+ 11.3 - Individual channel toggles (Push, Email, SMS, In-App)
+ 11.4 - Instant or Daily Digest option for email
+ 11.5 - SMS cost warning displayed
 
 ### Requirement 12 (Email Digest)
-✅ 12.1 - Digest frequency options (real-time, hourly, daily, weekly)
-✅ 12.2 - Four frequency options provided
-✅ 12.3 - Time picker for daily digest
-✅ 12.4 - Day selector for weekly digest
-✅ 12.5 - Security alerts sent immediately (noted in UI)
+ 12.1 - Digest frequency options (real-time, hourly, daily, weekly)
+ 12.2 - Four frequency options provided
+ 12.3 - Time picker for daily digest
+ 12.4 - Day selector for weekly digest
+ 12.5 - Security alerts sent immediately (noted in UI)
 
 ### Requirement 13 (Quiet Hours)
-✅ 13.1 - Time range configuration (start/end)
-✅ 13.2 - Day selector for active days
-✅ 13.3 - Email notifications queued during quiet hours
-✅ 13.4 - In-app notifications shown without sound
-✅ 13.5 - Critical notifications bypass option
+ 13.1 - Time range configuration (start/end)
+ 13.2 - Day selector for active days
+ 13.3 - Email notifications queued during quiet hours
+ 13.4 - In-app notifications shown without sound
+ 13.5 - Critical notifications bypass option
 
 ### Requirement 14 (Notification Previews)
-✅ 14.1 - Toggle for notification previews
-✅ 14.2 - Toggle for lock screen display
-✅ 14.3 - Full content shown when enabled
-✅ 14.4 - Settings apply to all notification types
-✅ 14.5 - Content accessible after unlock when disabled
+ 14.1 - Toggle for notification previews
+ 14.2 - Toggle for lock screen display
+ 14.3 - Full content shown when enabled
+ 14.4 - Settings apply to all notification types
+ 14.5 - Content accessible after unlock when disabled
 
 ## Notes
 

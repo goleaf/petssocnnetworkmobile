@@ -4,10 +4,10 @@ This implementation plan breaks down the design into discrete, actionable coding
 
 ## Current Status Summary
 
-**Phase 1: Critical Bug Fixes** ✅ COMPLETE
+**Phase 1: Critical Bug Fixes**  COMPLETE
 - All 3 critical bugs have been fixed and tested
 
-**Phase 2: Moderation Infrastructure** ✅ COMPLETE  
+**Phase 2: Moderation Infrastructure**  COMPLETE  
 - Database schema, storage layer, API routes, and form integrations all implemented
 - Edit request system fully functional with rate limiting and classification
 
@@ -32,272 +32,272 @@ This implementation plan breaks down the design into discrete, actionable coding
 ## Phase 1: Critical Bug Fixes
 
 - [ ] 1.Fix groups page hydration error
-  - ✅ Removed `"use client"` directive to enable Server Component rendering
-  - ✅ Replaced dynamic `getGroupCategories()` call with static `DEFAULT_CATEGORIES` array
-  - ✅ Ensured category data is identical between server and client renders
-  - ✅ Maintained all existing functionality (filtering, search, pagination)
-  - ✅ E2E test validates no hydration errors occur
+  -  Removed `"use client"` directive to enable Server Component rendering
+  -  Replaced dynamic `getGroupCategories()` call with static `DEFAULT_CATEGORIES` array
+  -  Ensured category data is identical between server and client renders
+  -  Maintained all existing functionality (filtering, search, pagination)
+  -  E2E test validates no hydration errors occur
   - _Requirements: 2.1, 2.2, 2.3, 2.4_
   - _Completed: 2025-11-14_
 
-- [x] 1.1.Implement group resources routing
-  - ✅ Created `app/[locale]/groups/[slug]/resources/create/page.tsx`
-  - ✅ Implemented resource creation form component
-  - ✅ Added API route for POST operations
-  - ✅ Followed existing patterns from other group sub-routes
-  - ✅ Page is accessible and functional
+- [ ] 1.1.Implement group resources routing
+  -  Created `app/[locale]/groups/[slug]/resources/create/page.tsx`
+  -  Implemented resource creation form component
+  -  Added API route for POST operations
+  -  Followed existing patterns from other group sub-routes
+  -  Page is accessible and functional
   - _Requirements: 3.1, 3.2, 3.3, 3.4_
   - _Completed: 2025-11-14_
 
-- [x] 1.2.Fix CreatePostButton React error
-  - ✅ Reviewed `components/posts/CreatePostButton.tsx` - no hook violations found
-  - ✅ Component has proper `"use client"` directive
-  - ✅ All React imports follow React 18 conventions
-  - ✅ No ReferenceError issues detected
-  - ✅ Component renders without errors (verified with getDiagnostics)
+- [ ] 1.2.Fix CreatePostButton React error
+  -  Reviewed `components/posts/CreatePostButton.tsx` - no hook violations found
+  -  Component has proper `"use client"` directive
+  -  All React imports follow React 18 conventions
+  -  No ReferenceError issues detected
+  -  Component renders without errors (verified with getDiagnostics)
   - _Requirements: 13.1, 13.2, 13.3, 13.4_
   - _Completed: 2025-11-14_
 
 
 ## Phase 2: Moderation Infrastructure
 
-- [x] 1.3.Define TypeScript types and Prisma schema
-  - ✅ Created moderation types in `lib/types/moderation.ts`
-  - ✅ Extended Prisma schema with EditRequest, LinkWhitelist, LinkBlacklist, ModerationCategory models
-  - ✅ Added all necessary indexes and relations to User model
-  - ✅ Generated and applied Prisma migration
+- [ ] 1.3.Define TypeScript types and Prisma schema
+  -  Created moderation types in `lib/types/moderation.ts`
+  -  Extended Prisma schema with EditRequest, LinkWhitelist, LinkBlacklist, ModerationCategory models
+  -  Added all necessary indexes and relations to User model
+  -  Generated and applied Prisma migration
   - _Requirements: 4.1_
   - _Completed: 2025-11-14_
 
-- [x] 1.4.Create moderation types in `lib/types/moderation.ts`
-  - ✅ Defined `EditRequest` interface with all fields
-  - ✅ Defined `ModerationQueue`, `QueueFilters`, `BulkOperation` interfaces
-  - ✅ Defined `LinkRule` interface for whitelist/blacklist
-  - ✅ Exported all types for use across the application
+- [ ] 1.4.Create moderation types in `lib/types/moderation.ts`
+  -  Defined `EditRequest` interface with all fields
+  -  Defined `ModerationQueue`, `QueueFilters`, `BulkOperation` interfaces
+  -  Defined `LinkRule` interface for whitelist/blacklist
+  -  Exported all types for use across the application
   - _Requirements: 4.1_
   - _Completed: 2025-11-14_
 
-- [x] 1.5.Extend Prisma schema in `prisma/schema.prisma`
-  - ✅ Added `EditRequest` model with all fields and metadata flags
-  - ✅ Added `LinkWhitelist` and `LinkBlacklist` models
-  - ✅ Added `ModerationCategory` model
-  - ✅ Added necessary indexes for query optimization
-  - ✅ Added relations to existing `User` model
+- [ ] 1.5.Extend Prisma schema in `prisma/schema.prisma`
+  -  Added `EditRequest` model with all fields and metadata flags
+  -  Added `LinkWhitelist` and `LinkBlacklist` models
+  -  Added `ModerationCategory` model
+  -  Added necessary indexes for query optimization
+  -  Added relations to existing `User` model
   - _Requirements: 4.1_
   - _Completed: 2025-11-14_
 
-- [x] 1.6.Generate and apply Prisma migration
-  - ✅ Generated migration with `npx prisma migrate dev --name add_moderation_system`
-  - ✅ Reviewed generated migration SQL
-  - ✅ Applied migration to development database
-  - ✅ Updated Prisma client with `npx prisma generate`
+- [ ] 1.6.Generate and apply Prisma migration
+  -  Generated migration with `npx prisma migrate dev --name add_moderation_system`
+  -  Reviewed generated migration SQL
+  -  Applied migration to development database
+  -  Updated Prisma client with `npx prisma generate`
   - _Requirements: 4.1_
   - _Completed: 2025-11-14_
 
 
 
-- [x] 1.7.Implement storage layer for edit requests
-  - ✅ Created `lib/storage/edit-requests.ts` with full CRUD operations
-  - ✅ Implemented all query operations with filtering and pagination
-  - ✅ Implemented approval/rejection workflows with transactions
-  - ✅ Integrated with audit logging and notifications
-  - ✅ Added comprehensive JSDoc documentation
-  - ✅ Created API documentation in `docs/EDIT_REQUESTS_API.md`
-  - ✅ Updated `docs/DATABASE_ARCHITECTURE.md` with EditRequest model
+- [ ] 1.7.Implement storage layer for edit requests
+  -  Created `lib/storage/edit-requests.ts` with full CRUD operations
+  -  Implemented all query operations with filtering and pagination
+  -  Implemented approval/rejection workflows with transactions
+  -  Integrated with audit logging and notifications
+  -  Added comprehensive JSDoc documentation
+  -  Created API documentation in `docs/EDIT_REQUESTS_API.md`
+  -  Updated `docs/DATABASE_ARCHITECTURE.md` with EditRequest model
   - _Requirements: 4.2, 5.1, 5.2, 5.3, 5.4, 5.5_
   - _Completed: 2025-11-14_
 
-- [x] 1.8.Create `lib/storage/edit-requests.ts`
-  - ✅ Implemented `createEditRequest` function
-  - ✅ Implemented `getEditRequest` function with user/reviewer relations
-  - ✅ Implemented `updateEditRequest` function
-  - ✅ Implemented `deleteEditRequest` function
-  - ✅ Uses Prisma exclusively for all database operations
+- [ ] 1.8.Create `lib/storage/edit-requests.ts`
+  -  Implemented `createEditRequest` function
+  -  Implemented `getEditRequest` function with user/reviewer relations
+  -  Implemented `updateEditRequest` function
+  -  Implemented `deleteEditRequest` function
+  -  Uses Prisma exclusively for all database operations
   - _Requirements: 4.2_
   - _Completed: 2025-11-14_
 
-- [x] 1.9.Implement query operations in `lib/storage/edit-requests.ts`
-  - ✅ Implemented `listEditRequests` with filtering and pagination
-  - ✅ Implemented `getQueueItems` for specialized queues (new-pages, flagged-health, coi-edits, image-reviews)
-  - ✅ Implemented `getRecentChanges` for recent changes feed
-  - ✅ Added comprehensive error handling for all operations
-  - ✅ Supports filtering by contentType, status, priority, age, categories, userId, reviewedBy
+- [ ] 1.9.Implement query operations in `lib/storage/edit-requests.ts`
+  -  Implemented `listEditRequests` with filtering and pagination
+  -  Implemented `getQueueItems` for specialized queues (new-pages, flagged-health, coi-edits, image-reviews)
+  -  Implemented `getRecentChanges` for recent changes feed
+  -  Added comprehensive error handling for all operations
+  -  Supports filtering by contentType, status, priority, age, categories, userId, reviewedBy
   - _Requirements: 4.2, 5.5_
   - _Completed: 2025-11-14_
 
-- [x] 1.10.Implement approval/rejection operations
-  - ✅ Implemented `approveEditRequest` with transaction handling
-  - ✅ Implemented `rejectEditRequest` with transaction handling
-  - ✅ Applies changes to actual content on approval (blog, wiki, pet, profile)
-  - ✅ Logs all actions to audit trail
-  - ✅ Sends notifications to users
-  - ✅ Includes helper functions for content-specific updates
+- [ ] 1.10.Implement approval/rejection operations
+  -  Implemented `approveEditRequest` with transaction handling
+  -  Implemented `rejectEditRequest` with transaction handling
+  -  Applies changes to actual content on approval (blog, wiki, pet, profile)
+  -  Logs all actions to audit trail
+  -  Sends notifications to users
+  -  Includes helper functions for content-specific updates
   - _Requirements: 4.2_
   - _Completed: 2025-11-14_
 
 
 
-- [x] 1.11.Create API routes for edit submission
-  - ✅ Created `app/api/admin/moderation/edit-requests/route.ts` with POST endpoint
-  - ✅ Created `app/api/admin/moderation/approve/route.ts` for approvals
-  - ✅ Created `app/api/admin/moderation/reject/route.ts` for rejections
-  - ✅ Implemented rate limiting, validation, and classification
+- [ ] 1.11.Create API routes for edit submission
+  -  Created `app/api/admin/moderation/edit-requests/route.ts` with POST endpoint
+  -  Created `app/api/admin/moderation/approve/route.ts` for approvals
+  -  Created `app/api/admin/moderation/reject/route.ts` for rejections
+  -  Implemented rate limiting, validation, and classification
   - _Requirements: 4.2, 10.5, 10.6_
   - _Completed: 2025-11-14_
 
-- [x] 1.12.Create `app/api/admin/moderation/edit-requests/route.ts`
-  - ✅ Implemented POST endpoint to create edit requests
-  - ✅ Validates input using Zod schemas
-  - ✅ Checks user authentication and rate limits
-  - ✅ Calculates and stores diff in changes field
-  - ✅ Classifies edit (COI, health, new page, images)
-  - ✅ Returns edit request ID and confirmation
+- [ ] 1.12.Create `app/api/admin/moderation/edit-requests/route.ts`
+  -  Implemented POST endpoint to create edit requests
+  -  Validates input using Zod schemas
+  -  Checks user authentication and rate limits
+  -  Calculates and stores diff in changes field
+  -  Classifies edit (COI, health, new page, images)
+  -  Returns edit request ID and confirmation
   - _Requirements: 4.2, 10.5_
   - _Completed: 2025-11-14_
 
-- [x] 1.13.Implement rate limiting for edit submissions
-  - ✅ Uses existing `lib/server-rate-limit.ts`
-  - ✅ Enforces 10 edits per hour per user
-  - ✅ Enforces 50 edits per day per user
-  - ✅ Returns clear error messages when limits exceeded
+- [ ] 1.13.Implement rate limiting for edit submissions
+  -  Uses existing `lib/server-rate-limit.ts`
+  -  Enforces 10 edits per hour per user
+  -  Enforces 50 edits per day per user
+  -  Returns clear error messages when limits exceeded
   - _Requirements: 10.6_
   - _Completed: 2025-11-14_
 
 
 
-- [x] 1.14.Implement diff calculation utility
-  - ✅ Extended `lib/diff-utils.ts` with edit request diff functions
-  - ✅ Implemented `calculateEditRequestDiff` core function
-  - ✅ Created content-specific functions: `calculateBlogDiff`, `calculateWikiDiff`, `calculatePetDiff`, `calculateProfileDiff`
-  - ✅ Generates structured diffs with additions/deletions/modifications
-  - ✅ Returns JSON-serializable objects suitable for EditRequest.changes field
-  - ✅ Updated `docs/EDIT_REQUESTS_API.md` with diff utilities documentation
+- [ ] 1.14.Implement diff calculation utility
+  -  Extended `lib/diff-utils.ts` with edit request diff functions
+  -  Implemented `calculateEditRequestDiff` core function
+  -  Created content-specific functions: `calculateBlogDiff`, `calculateWikiDiff`, `calculatePetDiff`, `calculateProfileDiff`
+  -  Generates structured diffs with additions/deletions/modifications
+  -  Returns JSON-serializable objects suitable for EditRequest.changes field
+  -  Updated `docs/EDIT_REQUESTS_API.md` with diff utilities documentation
   - _Requirements: 5.4_
   - _Completed: 2025-11-14_
 
-- [x] 1.15.Integrate edit submission into existing forms
-  - ✅ Updated all four edit forms (blog, wiki, pet, profile)
-  - ✅ All forms now submit to `/api/admin/moderation/edit-requests`
-  - ✅ Success messages and redirects implemented
-  - ✅ Rate limit error handling in place
+- [ ] 1.15.Integrate edit submission into existing forms
+  -  Updated all four edit forms (blog, wiki, pet, profile)
+  -  All forms now submit to `/api/admin/moderation/edit-requests`
+  -  Success messages and redirects implemented
+  -  Rate limit error handling in place
   - _Requirements: 10.1, 10.2, 10.3, 10.4, 10.5, 10.6_
   - _Completed: 2025-11-14_
 
-- [x] 1.16.Update blog edit form
-  - ✅ Modified `app/[locale]/blog/[id]/edit/page.tsx`
-  - ✅ Submits to `/api/admin/moderation/edit-requests` instead of direct update
-  - ✅ Shows "Edit submitted for approval" message on success
-  - ✅ Redirects to blog post page after submission
-  - ✅ Handles rate limit errors gracefully
+- [ ] 1.16.Update blog edit form
+  -  Modified `app/[locale]/blog/[id]/edit/page.tsx`
+  -  Submits to `/api/admin/moderation/edit-requests` instead of direct update
+  -  Shows "Edit submitted for approval" message on success
+  -  Redirects to blog post page after submission
+  -  Handles rate limit errors gracefully
   - _Requirements: 10.1, 10.5, 10.6_
   - _Completed: 2025-11-14_
 
-- [x] 1.17.Update wiki edit form
-  - ✅ Modified `app/[locale]/wiki/[slug]/edit/page.tsx`
-  - ✅ Submits to `/api/admin/moderation/edit-requests` instead of direct update
-  - ✅ Shows "Edit submitted for approval" message on success
-  - ✅ Redirects to wiki article page after submission
-  - ✅ Handles rate limit errors gracefully
+- [ ] 1.17.Update wiki edit form
+  -  Modified `app/[locale]/wiki/[slug]/edit/page.tsx`
+  -  Submits to `/api/admin/moderation/edit-requests` instead of direct update
+  -  Shows "Edit submitted for approval" message on success
+  -  Redirects to wiki article page after submission
+  -  Handles rate limit errors gracefully
   - _Requirements: 10.2, 10.5, 10.6_
   - _Completed: 2025-11-14_
 
-- [x] 1.18.Update pet profile edit form
-  - ✅ Modified `app/[locale]/user/[username]/pet/[slug]/edit/page.tsx`
-  - ✅ Submits to `/api/admin/moderation/edit-requests` instead of direct update
-  - ✅ Shows "Edit submitted for approval" message on success
-  - ✅ Redirects to pet profile page after submission
-  - ✅ Handles rate limit errors gracefully
+- [ ] 1.18.Update pet profile edit form
+  -  Modified `app/[locale]/user/[username]/pet/[slug]/edit/page.tsx`
+  -  Submits to `/api/admin/moderation/edit-requests` instead of direct update
+  -  Shows "Edit submitted for approval" message on success
+  -  Redirects to pet profile page after submission
+  -  Handles rate limit errors gracefully
   - _Requirements: 10.3, 10.5, 10.6_
   - _Completed: 2025-11-14_
 
-- [x] 1.19.Update user profile edit form
-  - ✅ Modified `app/[locale]/user/[username]/edit/page.tsx`
-  - ✅ Submits to `/api/admin/moderation/edit-requests` instead of direct update
-  - ✅ Shows "Edit submitted for approval" message on success
-  - ✅ Redirects to user profile page after submission
-  - ✅ Handles rate limit errors gracefully
+- [ ] 1.19.Update user profile edit form
+  -  Modified `app/[locale]/user/[username]/edit/page.tsx`
+  -  Submits to `/api/admin/moderation/edit-requests` instead of direct update
+  -  Shows "Edit submitted for approval" message on success
+  -  Redirects to user profile page after submission
+  -  Handles rate limit errors gracefully
   - _Requirements: 10.4, 10.5, 10.6_
   - _Completed: 2025-11-14_
 
 
 ## Phase 3: Moderation Dashboard
 
-- [x] 1.20.Create API routes for moderation dashboard
-  - ✅ Created `app/api/admin/moderation/recent-changes/route.ts`
-  - ✅ Created `app/api/admin/moderation/queues/[type]/route.ts`
-  - ✅ Created `app/api/admin/moderation/approve/route.ts`
-  - ✅ Created `app/api/admin/moderation/reject/route.ts`
-  - ✅ All routes verify moderator permissions
+- [ ] 1.20.Create API routes for moderation dashboard
+  -  Created `app/api/admin/moderation/recent-changes/route.ts`
+  -  Created `app/api/admin/moderation/queues/[type]/route.ts`
+  -  Created `app/api/admin/moderation/approve/route.ts`
+  -  Created `app/api/admin/moderation/reject/route.ts`
+  -  All routes verify moderator permissions
   - _Requirements: 4.2, 4.3, 5.1, 5.2, 5.3, 6.1, 6.2, 6.3, 6.4, 6.5_
   - _Completed: 2025-11-14_
 
-- [x] 1.21.Create `app/api/admin/moderation/recent-changes/route.ts`
-  - ✅ Implemented GET endpoint with query params (page, limit, contentType, status, priority, ageInDays)
-  - ✅ Returns paginated list of EditRequests with diff previews
-  - ✅ Includes metadata for filtering UI
-  - ✅ Verifies moderator permissions
+- [ ] 1.21.Create `app/api/admin/moderation/recent-changes/route.ts`
+  -  Implemented GET endpoint with query params (page, limit, contentType, status, priority, ageInDays)
+  -  Returns paginated list of EditRequests with diff previews
+  -  Includes metadata for filtering UI
+  -  Verifies moderator permissions
   - _Requirements: 4.2, 5.1, 5.2, 5.3_
   - _Completed: 2025-11-14_
 
-- [x] 1.22.Create `app/api/admin/moderation/queues/[type]/route.ts`
-  - ✅ Implemented GET endpoint for each queue type (new-pages, flagged-health, coi-edits, image-reviews)
-  - ✅ Filters EditRequests based on metadata flags
-  - ✅ Supports same query params as recent changes
-  - ✅ Verifies moderator permissions
+- [ ] 1.22.Create `app/api/admin/moderation/queues/[type]/route.ts`
+  -  Implemented GET endpoint for each queue type (new-pages, flagged-health, coi-edits, image-reviews)
+  -  Filters EditRequests based on metadata flags
+  -  Supports same query params as recent changes
+  -  Verifies moderator permissions
   - _Requirements: 4.3, 6.1, 6.2, 6.3, 6.4, 6.5_
   - _Completed: 2025-11-14_
 
-- [x] 1.23.Create `app/api/admin/moderation/approve/route.ts`
-  - ✅ Implemented POST endpoint to approve edit requests
-  - ✅ Calls `approveEditRequest` from storage layer
-  - ✅ Applies changes to actual content
-  - ✅ Logs action to audit trail
-  - ✅ Sends notification to user
+- [ ] 1.23.Create `app/api/admin/moderation/approve/route.ts`
+  -  Implemented POST endpoint to approve edit requests
+  -  Calls `approveEditRequest` from storage layer
+  -  Applies changes to actual content
+  -  Logs action to audit trail
+  -  Sends notification to user
   - _Requirements: 5.1, 5.2_
   - _Completed: 2025-11-14_
 
-- [x] 1.24.Create `app/api/admin/moderation/reject/route.ts`
-  - ✅ Implemented POST endpoint to reject edit requests
-  - ✅ Calls `rejectEditRequest` from storage layer
-  - ✅ Logs action to audit trail with reason
-  - ✅ Sends notification to user
+- [ ] 1.24.Create `app/api/admin/moderation/reject/route.ts`
+  -  Implemented POST endpoint to reject edit requests
+  -  Calls `rejectEditRequest` from storage layer
+  -  Logs action to audit trail with reason
+  -  Sends notification to user
   - _Requirements: 5.1, 5.2_
   - _Completed: 2025-11-14_
 
-- [x] 1.25.Build Recent Changes Feed component
-  - ✅ Created reusable moderation dashboard components
-  - ✅ Integrated with existing diff viewer
-  - ✅ Implemented filtering and pagination UI
+- [ ] 1.25.Build Recent Changes Feed component
+  -  Created reusable moderation dashboard components
+  -  Integrated with existing diff viewer
+  -  Implemented filtering and pagination UI
   - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5_
 
-- [x] 1.26.Create `components/admin/RecentChangesFeed.tsx`
-  - ✅ Display paginated list of edit requests
-  - ✅ Show visual diffs using existing `components/diff-viewer.tsx`
-  - ✅ Provide filtering controls (content type, status, priority, age)
-  - ✅ Include approve/reject buttons for each item
-  - ✅ Mark as client component with `"use client"`
+- [ ] 1.26.Create `components/admin/RecentChangesFeed.tsx`
+  -  Display paginated list of edit requests
+  -  Show visual diffs using existing `components/diff-viewer.tsx`
+  -  Provide filtering controls (content type, status, priority, age)
+  -  Include approve/reject buttons for each item
+  -  Mark as client component with `"use client"`
   - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5_
 
-- [x] 1.27.Create filter controls component
-  - ✅ Built `components/admin/ModerationFilters.tsx`
-  - ✅ Implemented dropdowns for content type, status, priority
-  - ✅ Implemented age filtering (days input)
-  - ✅ Update URL query params on filter change
-  - ✅ Use UI primitives from `components/ui/*`
+- [ ] 1.27.Create filter controls component
+  -  Built `components/admin/ModerationFilters.tsx`
+  -  Implemented dropdowns for content type, status, priority
+  -  Implemented age filtering (days input)
+  -  Update URL query params on filter change
+  -  Use UI primitives from `components/ui/*`
   - _Requirements: 5.5_
 
-- [x] 1.28.Enhance moderation dashboard page
+- [ ] 1.28.Enhance moderation dashboard page
 
-  - ✅ Updated `app/admin/moderation/page.tsx` to use new API routes
-  - ✅ Integrated RecentChangesFeed component
-  - ✅ Added navigation to specialized queues
-  - ✅ Connected to real API endpoints instead of mock data
-  - ✅ Improved diff visualization
+  -  Updated `app/admin/moderation/page.tsx` to use new API routes
+  -  Integrated RecentChangesFeed component
+  -  Added navigation to specialized queues
+  -  Connected to real API endpoints instead of mock data
+  -  Improved diff visualization
   - _Requirements: 5.1, 5.2, 5.3_
 
 
 
-- [x] 1.29.Implement queue management components
+- [ ] 1.29.Implement queue management components
 
 
 
@@ -310,7 +310,7 @@ This implementation plan breaks down the design into discrete, actionable coding
 
 
 
-- [x] 1.30.Create `components/admin/QueueManager.tsx`
+- [ ] 1.30.Create `components/admin/QueueManager.tsx`
 
 
   - Build reusable component for all queue types
@@ -324,7 +324,7 @@ This implementation plan breaks down the design into discrete, actionable coding
 
   - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5_
 
-- [x] 1.31.Create specialized queue pages
+- [ ] 1.31.Create specialized queue pages
 
 
 
@@ -344,7 +344,7 @@ This implementation plan breaks down the design into discrete, actionable coding
   - _Requirements: 6.1, 6.2, 6.3, 6.4_
 
 
-- [x] 1.32.Add queue navigation to admin layout
+- [ ] 1.32.Add queue navigation to admin layout
 
 
 

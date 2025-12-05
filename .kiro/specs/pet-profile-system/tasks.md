@@ -9,7 +9,7 @@
   - Run migrations and verify schema changes
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 2.9, 2.10_
 
-- [x] 1.1.Implement core pet service layer
+- [ ] 1.1.Implement core pet service layer
   - Create lib/services/pet-service.ts with CRUD operations for pets
   - Implement createPet function with validation using Zod schema
   - Implement getPetById, getPetBySlug, updatePet, and deletePet functions
@@ -19,7 +19,7 @@
   - Add pet statistics calculation (followers, posts, photos count)
   - _Requirements: 1.1, 1.4, 1.5, 7.3, 7.4, 8.1, 8.2, 8.3, 8.4, 8.5, 8.6, 8.7, 8.8_
 
-- [x] 1.2.Implement photo service and upload handling
+- [ ] 1.2.Implement photo service and upload handling
   - Create lib/services/photo-service.ts for photo management
   - Implement photo upload with file validation (type, size, dimensions)
   - Add image processing: resize to multiple sizes (thumbnail 150x150, medium 800x800, large 1600x1600)
@@ -29,7 +29,7 @@
   - Implement caption and tag management for photos
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 3.9_
 
-- [x] 1.3.Create API routes for pet management
+- [ ] 1.3.Create API routes for pet management
   - Implement POST /api/pets/create endpoint with request validation
   - Implement GET /api/pets/[id] endpoint with privacy checks
   - Implement PATCH /api/pets/[id] endpoint for updates
@@ -40,7 +40,7 @@
   - Add rate limiting to all endpoints (10 req/min for uploads, 20 req/min for updates)
   - _Requirements: 1.1, 1.4, 1.5, 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 7.6, 8.8_
 
-- [x] 1.4.Build Step 1: Basic Information component
+- [ ] 1.4.Build Step 1: Basic Information component
   - Create components/pet/wizard/step1-basic-info.tsx component
   - Implement pet name input with Unicode support, emoji support, and 2-50 character validation
   - Add real-time character counter for name field
@@ -58,7 +58,7 @@
   - Create adoption date picker with "With you for X months" display
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 2.9, 2.10_
 
-- [x] 1.5.Build Step 2: Photos & Gallery component
+- [ ] 1.5.Build Step 2: Photos & Gallery component
   - Create components/pet/wizard/step2-photos.tsx component
   - Implement primary photo upload with required validation
   - Add image cropping tool for 500x500px square format
@@ -72,7 +72,7 @@
   - Display file format and size validation errors
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 3.9_
 
-- [x] 1.6.Build Step 3: Personality & Temperament component
+- [ ] 1.6.Build Step 3: Personality & Temperament component
   - Create components/pet/wizard/step3-personality.tsx component
   - Implement personality trait selector with pre-defined options as chips
   - Add traits: Friendly, Shy, Energetic, Calm, Playful, Curious, Protective, Independent, Affectionate, Vocal, Quiet, Intelligent, Stubborn, Loyal, Anxious, Confident, Gentle, Aggressive, Good with Kids, Good with Other Pets
@@ -86,7 +86,7 @@
   - Display selected traits as colored tags below selector
   - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.7_
 
-- [x] 1.7.Build Step 4: Identification component
+- [ ] 1.7.Build Step 4: Identification component
   - Create components/pet/wizard/step4-identification.tsx component
   - Implement microchip ID input with 15-digit validation
   - Add microchip company dropdown (Avid, HomeAgain, AKC Reunite, PetLink, 24PetWatch, Other)
@@ -97,7 +97,7 @@
   - Display validation errors for incorrect microchip format
   - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 5.6_
 
-- [x] 1.8.Build Step 5: Medical Information component
+- [ ] 1.8.Build Step 5: Medical Information component
   - Create components/pet/wizard/step5-medical.tsx component
   - Implement vet clinic name and contact text inputs
   - Create allergies multi-select with common options as chips
@@ -111,7 +111,7 @@
   - Create date diagnosed and notes fields for each condition
   - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5, 6.6, 6.7_
 
-- [x] 1.9.Build Step 6: Bio & Review component
+- [ ] 1.9.Build Step 6: Bio & Review component
   - Create components/pet/wizard/step6-bio-review.tsx component
   - Implement rich text editor for pet bio (1000 character limit)
   - Add support for bold, italic, emoji, line breaks, @mentions, #hashtags
@@ -122,7 +122,7 @@
   - Add edit buttons to jump back to specific steps from review
   - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5, 7.6_
 
-- [x] 1.10.Build pet creation wizard shell
+- [ ] 1.10.Build pet creation wizard shell
   - Create components/pet/pet-creation-wizard.tsx main component
   - Implement step indicator showing progress (1-6 with checkmarks)
   - Add step navigation with Next, Back, Save Draft buttons
@@ -135,7 +135,7 @@
   - Handle final submission and redirect to new pet profile
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 7.6_
 
-- [x] 1.11.Create pet profile page layout
+- [ ] 1.11.Create pet profile page layout
   - Create app/[locale]/pet/[username]/[petSlug]/page.tsx
   - Implement hero section with cover photo banner
   - Add profile photo overlay (200x200px circular) in bottom-left of cover
@@ -147,7 +147,7 @@
   - Add verified pet badge display (if applicable)
   - _Requirements: 8.1, 8.2, 8.3, 8.4, 8.5, 8.6, 8.7, 8.8_
 
-- [x] 1.12.Implement pet profile stats bar
+- [ ] 1.12.Implement pet profile stats bar
   - Create components/pet/pet-stats-bar.tsx component
   - Display followers count with icon
   - Show photos count with icon
@@ -157,7 +157,7 @@
   - Add responsive layout (horizontal on desktop, grid on mobile)
   - _Requirements: 8.5, 8.6_
 
-- [x] 1.13.Build About tab with information cards
+- [ ] 1.13.Build About tab with information cards
   - Create components/pet/about-tab.tsx component
   - Implement Physical Stats card with weight, color, neutered status
   - Add weight history line chart if multiple entries exist
@@ -171,7 +171,7 @@
   - Display condition management status (Controlled, Under Treatment, Monitoring)
   - _Requirements: 10.1, 10.2, 10.3, 10.4, 10.5, 10.6, 10.7, 10.8, 10.9_
 
-- [x] 1.14.Build Photos tab with gallery
+- [ ] 1.14.Build Photos tab with gallery
   - Create components/pet/photos-tab.tsx component
   - Implement responsive grid layout (3 columns desktop, 2 tablet, 1 mobile)
   - Add lightbox viewer on photo click

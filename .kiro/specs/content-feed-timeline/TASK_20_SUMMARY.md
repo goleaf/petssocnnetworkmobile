@@ -186,15 +186,15 @@ model StoryHighlight {
 - Ready for profile page integration
 
 ## Completion Status
-✅ All sub-tasks completed:
-- ✅ POST /api/stories/highlights endpoint
-- ✅ Highlight selector UI
-- ✅ Highlights display on profile
-- ✅ Highlight viewer
-- ✅ Edit highlight functionality
-- ✅ Delete highlight functionality
-- ✅ Story archiving on highlight creation
-- ✅ Archive API endpoint
-- ✅ Archive UI with filtering
+ All sub-tasks completed:
+-  POST /api/stories/highlights endpoint
+-  Highlight selector UI
+-  Highlights display on profile
+-  Highlight viewer
+-  Edit highlight functionality
+-  Delete highlight functionality
+-  Story archiving on highlight creation
+-  Archive API endpoint
+-  Archive UI with filtering
 
 Task 20 is now complete and ready for integration into the profile pages.

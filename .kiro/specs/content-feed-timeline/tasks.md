@@ -1,6 +1,6 @@
 # Implementation Plan
 
-- [x] 1.Set up database schema and core data models
+- [ ] 1.Set up database schema and core data models
   - Create Prisma schema for posts, stories, comments, likes, shares, saves, views tables
   - Add indexes for performance (author_user_id, created_at, relevance_score, hashtags)
   - Create story-related tables (stories, story_views, story_interactions, story_highlights, close_friends)
@@ -8,7 +8,7 @@
   - Run migrations and verify schema
   - _Requirements: 13.1, 14.1, 14.4_
 
-- [x] 1.1.Implement core post data access layer
+- [ ] 1.1.Implement core post data access layer
   - Create PostRepository with CRUD operations
   - Implement methods: createPost, getPost, updatePost, deletePost (soft delete)
   - Add batch fetching methods to avoid N+1 queries
@@ -16,7 +16,7 @@
   - Add pagination support (cursor-based)
   - _Requirements: 13.2, 14.1_
 
-- [x] 1.2.Build ranking algorithm engine
+- [ ] 1.2.Build ranking algorithm engine
   - Create RankingEngine class with score computation logic
   - Implement engagement score calculation (likes 0.2, comments 0.3, shares 0.25, saves 0.15)
   - Add recency decay multipliers (exponential decay based on post age)
@@ -26,7 +26,7 @@
   - Apply negative signals (muted users, hidden posts, muted words)
   - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5_
 
-- [x] 1.3.Create feed service and API endpoints
+- [ ] 1.3.Create feed service and API endpoints
   - Implement GET /api/feed endpoint with query parameters (type, limit, cursor, filters)
   - Create FeedService to orchestrate data fetching and ranking
   - Implement feed types: home (ranked), explore, following (chronological), local, my-pets
@@ -35,7 +35,7 @@
   - Return paginated feed response with posts and engagement data
   - _Requirements: 1.1, 1.2, 13.1_
 
-- [x] 1.4.Implement post creation API and processing
+- [ ] 1.4.Implement post creation API and processing
   - Create POST /api/posts endpoint for creating posts
   - Validate input (text max 5000 chars, media limits, visibility settings)
   - Process @mentions: extract usernames, validate users exist, create mention records
@@ -46,7 +46,7 @@
   - Broadcast new post to followers via WebSocket
   - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5, 13.2_
 
-- [x] 1.5.Build post engagement endpoints
+- [ ] 1.5.Build post engagement endpoints
   - Create POST /api/posts/{postId}/like endpoint (create like, increment counter, notify author)
   - Create DELETE /api/posts/{postId}/like endpoint (remove like, decrement counter)
   - Create POST /api/posts/{postId}/comments endpoint (create comment, handle replies, notify)
@@ -56,7 +56,7 @@
   - Broadcast real-time updates via WebSocket
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 13.3_
 
-- [x] 1.6.Create post composer UI component
+- [ ] 1.6.Create post composer UI component
   - Build PostComposer React component with textarea (auto-expanding 3-20 lines)
   - Add character counter (0/5000)
   - Implement @mention autocomplete with user search
@@ -70,7 +70,7 @@
   - Add save draft functionality (auto-save every 10 seconds)
   - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5_
 
-- [x] 1.7.Build feed display UI components
+- [ ] 1.7.Build feed display UI components
   - Create FeedContainer component with tab navigation (Home, Explore, Following, Local, My Pets)
   - Build PostCard component displaying avatar, username, timestamp, content, media
   - Implement media display: single image full-width, multiple images in grid, video with player
@@ -81,7 +81,7 @@
   - Implement smooth tab transitions (300ms animation)
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 2.1, 2.2, 2.3, 2.4, 2.5, 3.1, 3.2, 3.3, 3.4, 3.5_
 
-- [x] 1.8.Implement infinite scroll and pagination
+- [ ] 1.8.Implement infinite scroll and pagination
   - Add IntersectionObserver for detecting scroll to bottom
   - Implement "Load More" button appearing after 20 posts
   - Fetch next batch when user reaches 80% of current content
@@ -90,7 +90,7 @@
   - Maintain scroll position on back navigation
   - _Requirements: 1.3, 12.5_
 
-- [x] 1.9.Create feed filtering UI and logic
+- [ ] 1.9.Create feed filtering UI and logic
   - Build FilterPanel component with sidebar/modal layout
   - Add content type checkboxes (Photos, Videos, Text Only, Polls, Shared Posts)
   - Implement date range selector (Today, This Week, This Month, All Time, custom picker)
@@ -101,7 +101,7 @@
   - Apply filters to feed query and refresh results
   - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5_
 
-- [x] 1.10.Implement special post types (polls, questions, events)
+- [ ] 1.10.Implement special post types (polls, questions, events)
   - Create PollPost component with 2-4 options and vote buttons
   - Display poll results as percentage bars after voting
   - Implement QuestionPost with "Best Answer" marking functionality
@@ -121,7 +121,7 @@
   - Handle permissions and error states
   - _Requirements: 8.1, 8.2_
 
-- [x] 1.12.Create story editing tools
+- [ ] 1.12.Create story editing tools
   - Build text overlay tool with font selector (5-10 fonts), color picker, alignment
   - Implement drawing tool with pen, marker, highlighter, neon, eraser
   - Add brush size slider and color picker for drawing
@@ -131,7 +131,7 @@
   - Add filter intensity slider
   - _Requirements: 8.3, 8.4_
 
-- [x] 1.13.Implement story stickers system
+- [ ] 1.13.Implement story stickers system
   - Create sticker panel with tabs: Emoji, GIF, Location, Mention, Hashtag, Poll, Question, Countdown, Music, Quiz, Weather
   - Integrate GIPHY/Tenor API for GIF search
   - Build poll sticker with question and 2-4 answer options
@@ -142,7 +142,7 @@
   - Allow sticker positioning, resizing, rotation
   - _Requirements: 8.5_
 
-- [x] 1.14.Build story publishing and API
+- [ ] 1.14.Build story publishing and API
   - Create POST /api/stories endpoint accepting media and metadata
   - Validate media (photos max 10MB, videos max 100MB and 15 seconds)
   - Upload media to cloud storage with CDN
@@ -152,7 +152,7 @@
   - Broadcast notification to followers
   - _Requirements: 9.1, 13.4_
 
-- [x] 1.15.Implement story viewer UI
+- [ ] 1.15.Implement story viewer UI
   - Create StoryViewer component with fullscreen display
   - Show progress bars at top (one per story segment)
   - Implement auto-advance after 5 seconds (photos) or full duration (videos)
@@ -162,7 +162,7 @@
   - Show "Close Friends" badge for close friends stories
   - _Requirements: 9.1, 9.2_
 
-- [x] 1.16.Create story privacy and close friends
+- [ ] 1.16.Create story privacy and close friends
   - Implement visibility selector (Everyone, Close Friends, Custom)
   - Create CloseFriendsList management UI (add/remove users)
   - Add "Add to Close Friends" button on user profiles
@@ -170,7 +170,7 @@
   - Filter story feed based on visibility permissions
   - _Requirements: 9.1, 9.2_
 
-- [x] 1.17.Build story interactions and responses
+- [ ] 1.17.Build story interactions and responses
   - Implement swipe-up reply functionality (opens DM composer)
   - Create quick reaction buttons (heart, laughing, surprised, crying)
   - Build poll interaction: tap to vote, show real-time results
@@ -180,7 +180,7 @@
   - Record all interactions in story_interactions table
   - _Requirements: 10.4, 10.5_
 
-- [x] 1.18.Implement story analytics and insights
+- [ ] 1.18.Implement story analytics and insights
   - Create GET /api/stories/{storyId}/viewers endpoint returning viewer list
   - Build GET /api/stories/{storyId}/insights endpoint with comprehensive analytics
   - Display viewer list with profile photos, usernames, timestamps
@@ -190,7 +190,7 @@
   - Build insights UI component for story creators
   - _Requirements: 10.1, 10.2, 10.3_
 
-- [x] 1.19.Create story highlights system
+- [ ] 1.19.Create story highlights system
   - Implement POST /api/stories/highlights endpoint for creating highlights
   - Build highlight selector UI (choose stories from archive, select cover, name highlight)
   - Display highlights as circular icons below profile bio
@@ -249,7 +249,7 @@
   - Handle dynamic post heights
   - _Requirements: 12.1_
 
-- [x] 1.25.Add lazy loading for media
+- [ ] 1.25.Add lazy loading for media
   - Implement IntersectionObserver for images and videos
   - Load images only when scrolled into view (or just above)
   - Show blur-up placeholder (tiny thumbnail scaled with blur)

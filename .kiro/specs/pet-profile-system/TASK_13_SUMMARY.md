@@ -38,18 +38,18 @@ Created a reusable `PetStatsBar` component that displays key statistics for pet 
 **File**: `tests/active/components/pet/pet-stats-bar.test.tsx`
 
 **Test Coverage**:
-- ✅ Renders all stats correctly
-- ✅ Displays singular labels for count of 1
-- ✅ Calls onClick handlers when stats are clicked
-- ✅ Supports keyboard navigation with Enter key
-- ✅ Supports keyboard navigation with Space key
-- ✅ Does not make stats clickable when no onClick handler provided
-- ✅ Applies custom className
-- ✅ Handles age with unknown value
-- ✅ Extracts numeric age value correctly
-- ✅ Has responsive grid layout classes
+-  Renders all stats correctly
+-  Displays singular labels for count of 1
+-  Calls onClick handlers when stats are clicked
+-  Supports keyboard navigation with Enter key
+-  Supports keyboard navigation with Space key
+-  Does not make stats clickable when no onClick handler provided
+-  Applies custom className
+-  Handles age with unknown value
+-  Extracts numeric age value correctly
+-  Has responsive grid layout classes
 
-**Test Results**: All 10 tests passing ✅
+**Test Results**: All 10 tests passing 
 
 ### 4. Documentation
 **File**: `components/pet/pet-stats-bar.md`

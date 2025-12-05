@@ -133,6 +133,6 @@
 - [x] Ready for integration into pet profile page
 - [x] No breaking changes to existing code
 
-## Status: ✅ COMPLETED
+## Status:  COMPLETED
 
 All requirements have been successfully implemented and tested. The AboutTab component is ready for integration into the pet profile page.

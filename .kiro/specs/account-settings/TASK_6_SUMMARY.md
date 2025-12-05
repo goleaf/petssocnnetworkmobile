@@ -2,7 +2,7 @@
 
 ## Completed Subtasks
 
-### 6.1 Implement requestAccountDeletionAction server action ✅
+### 6.1 Implement requestAccountDeletionAction server action 
 **Location:** `lib/actions/account.ts`
 
 **Implementation Details:**
@@ -29,13 +29,13 @@
 - Indexes on `token` and `expiresAt` for performance
 
 **Requirements Validated:**
-- ✅ 5.1: Verify password using bcrypt compare
-- ✅ 5.2: Calculate deletion date (30 days from now)
-- ✅ 5.3: Update user with deletionScheduledAt and deletionReason
-- ✅ 5.4: Revoke all user sessions immediately
-- ✅ 5.5: Generate restore token and send confirmation email
+-  5.1: Verify password using bcrypt compare
+-  5.2: Calculate deletion date (30 days from now)
+-  5.3: Update user with deletionScheduledAt and deletionReason
+-  5.4: Revoke all user sessions immediately
+-  5.5: Generate restore token and send confirmation email
 
-### 6.2 Create account deletion dialog component ✅
+### 6.2 Create account deletion dialog component 
 **Location:** `app/[locale]/settings/page.tsx`
 
 **Implementation Details:**
@@ -77,12 +77,12 @@ The deletion dialog was already fully implemented with all required features:
 - Step indicator shows "Step X of 4"
 
 **Requirements Validated:**
-- ✅ 5.1: Multi-step modal with data deletion list
-- ✅ 5.2: Reason selection with "Other" option
-- ✅ 5.3: Password confirmation
-- ✅ 5.4: Type "DELETE" confirmation
+-  5.1: Multi-step modal with data deletion list
+-  5.2: Reason selection with "Other" option
+-  5.3: Password confirmation
+-  5.4: Type "DELETE" confirmation
 
-### 6.3 Implement account restore endpoint ✅
+### 6.3 Implement account restore endpoint 
 **Locations:** 
 - `app/api/restore-account/route.ts` (new file)
 - `lib/actions/account.ts` (updated restoreAccountAction)
@@ -110,9 +110,9 @@ The deletion dialog was already fully implemented with all required features:
 - 500: Server error
 
 **Requirements Validated:**
-- ✅ 5.5: Validate restore token
-- ✅ 5.5: Clear deletionScheduledAt and deletionReason
-- ✅ 5.5: Send confirmation email (logged)
+-  5.5: Validate restore token
+-  5.5: Clear deletionScheduledAt and deletionReason
+-  5.5: Send confirmation email (logged)
 
 ## Database Schema Changes
 
@@ -186,8 +186,8 @@ model DeletionRestoreToken {
 
 All requirements from the design document have been implemented:
 
-- ✅ Requirement 5.1: Multi-step confirmation modal
-- ✅ Requirement 5.2: Soft delete with 30-day grace period
-- ✅ Requirement 5.3: Scheduled permanent deletion
-- ✅ Requirement 5.4: Immediate session revocation
-- ✅ Requirement 5.5: Restore functionality with token validation
+-  Requirement 5.1: Multi-step confirmation modal
+-  Requirement 5.2: Soft delete with 30-day grace period
+-  Requirement 5.3: Scheduled permanent deletion
+-  Requirement 5.4: Immediate session revocation
+-  Requirement 5.5: Restore functionality with token validation
