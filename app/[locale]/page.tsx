@@ -1092,6 +1092,21 @@ export default function HomePage() {
     loadSuggestedUsers()
   }
 
+  // Watch only blog posts storage changes to show the New Posts banner instead of immediately merging
+  useEffect(() => {
+    if (typeof window === "undefined" || !user) return
+    const handler = (event: StorageEvent) => {
+      if (event.key && event.key !== "pet_social_blog_posts") return
+      const fresh = buildActiveFeed(activeFeed)
+      const current = getActiveFeedList()
+      const currentIds = new Set(current.map((p) => p.id))
+      const freshNew = fresh.filter((p) => !currentIds.has(p.id))
+      setNewPostsCount(freshNew.length)
+    }
+    window.addEventListener("storage", handler)
+    return () => window.removeEventListener("storage", handler)
+  }, [activeFeed, user?.id, homeFeedPosts, exploreFeedPosts, followingFeedPosts, localFeedPosts, myPetsFeedPosts])
+
   // Show loading spinner while checking auth and loading data
   if (isLoading || (isAuthenticated && isFeedLoading)) {
     return <LoadingSpinner fullScreen />

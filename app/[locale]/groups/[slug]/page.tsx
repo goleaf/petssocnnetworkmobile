@@ -127,30 +127,13 @@ export default function GroupPage({ params }: { params: Promise<{ slug: string }
     setIsLoading(false)
   }, [slug, user, isAuthenticated, router])
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-background">
-        <div className="flex justify-center items-center py-20">
-          <LoadingSpinner />
-        </div>
-      </div>
-    )
-  }
-
-  if (!group) {
-    return null
-  }
-
-  const isMember = isAuthenticated && user ? isUserMemberOfGroup(group.id, user.id) : false
-  const canModerate = isAuthenticated && user ? canUserModerate(group.id, user.id) : false
-  const canViewContent = canUserViewGroupContent(group.id, user?.id)
-
-  const topics = getGroupTopicsByGroupId(group.id)
-  const polls = getGroupPollsByGroupId(group.id)
-  const events = getGroupEventsByGroupId(group.id)
-  const resources = getGroupResourcesByGroupId(group.id)
-  const activities = getGroupActivitiesByGroupId(group.id)
-  const members = getGroupMembersByGroupId(group.id)
+  // Move all hooks before early returns
+  const topics = group ? getGroupTopicsByGroupId(group.id) : []
+  const polls = group ? getGroupPollsByGroupId(group.id) : []
+  const events = group ? getGroupEventsByGroupId(group.id) : []
+  const resources = group ? getGroupResourcesByGroupId(group.id) : []
+  const activities = group ? getGroupActivitiesByGroupId(group.id) : []
+  const members = group ? getGroupMembersByGroupId(group.id) : []
   const memberProfiles = useMemo<User[]>(() => {
     return members
       .map((member) => getUserById(member.userId))
@@ -194,8 +177,6 @@ export default function GroupPage({ params }: { params: Promise<{ slug: string }
     })
     return items
   }, [blogPosts, groupMemberIds])
-  const canManage = isAuthenticated && user ? canUserManageMembers(group.id, user.id) : false
-  const canManageSettings = isAuthenticated && user ? canUserManageSettings(group.id, user.id) : false
 
   const filteredMembers = useMemo(() => {
     const searchTerm = memberSearch.trim().toLowerCase()
@@ -210,6 +191,26 @@ export default function GroupPage({ params }: { params: Promise<{ slug: string }
       return matchesRole && matchesSearch
     })
   }, [memberRoleFilter, memberSearch, members])
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="flex justify-center items-center py-20">
+          <LoadingSpinner />
+        </div>
+      </div>
+    )
+  }
+
+  if (!group) {
+    return null
+  }
+
+  const isMember = isAuthenticated && user ? isUserMemberOfGroup(group.id, user.id) : false
+  const canModerate = isAuthenticated && user ? canUserModerate(group.id, user.id) : false
+  const canViewContent = canUserViewGroupContent(group.id, user?.id)
+  const canManage = isAuthenticated && user ? canUserManageMembers(group.id, user.id) : false
+  const canManageSettings = isAuthenticated && user ? canUserManageSettings(group.id, user.id) : false
 
   const handleRoleChange = (memberId: string, newRole: GroupMember["role"]) => {
     if (!canManage || !user) return

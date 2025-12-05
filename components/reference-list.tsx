@@ -131,6 +131,31 @@ function ReferenceItem({ citation, source, index, onRecheck, isChecking }: Refer
 export function ReferenceList({ citations, sources, className, articleId }: ReferenceListProps) {
   const [checkingSourceId, setCheckingSourceId] = useState<string | null>(null)
 
+  const handleRecheck = useCallback(async (sourceId: string) => {
+    setCheckingSourceId(sourceId)
+    try {
+      const source = getSourceById(sourceId)
+      if (!source?.url) return
+
+      const result = await checkLink(source.url)
+
+      // Update source with result
+      updateSource(sourceId, {
+        isValid: result.isValid,
+        lastChecked: result.checkedAt,
+        brokenAt: result.isValid ? undefined : result.checkedAt,
+      })
+
+      // Force re-render by updating sources
+      // This will be handled by parent component
+      window.dispatchEvent(new CustomEvent("sourceUpdated", { detail: { sourceId } }))
+    } catch (error) {
+      console.error("Failed to recheck link:", error)
+    } finally {
+      setCheckingSourceId(null)
+    }
+  }, [])
+
   if (!citations || citations.length === 0) return null
 
   // Sort citations - numeric IDs first, then "citation-needed"
@@ -154,31 +179,6 @@ export function ReferenceList({ citations, sources, className, articleId }: Refe
     const source = citation.sourceId ? sources?.find((s) => s.id === citation.sourceId) : null
     return source?.lastChecked && source?.isValid === false && !source?.brokenAt
   }).length
-
-  const handleRecheck = useCallback(async (sourceId: string) => {
-    setCheckingSourceId(sourceId)
-    try {
-      const source = getSourceById(sourceId)
-      if (!source?.url) return
-
-      const result = await checkLink(source.url)
-      
-      // Update source with result
-      updateSource(sourceId, {
-        isValid: result.isValid,
-        lastChecked: result.checkedAt,
-        brokenAt: result.isValid ? undefined : result.checkedAt,
-      })
-
-      // Force re-render by updating sources
-      // This will be handled by parent component
-      window.dispatchEvent(new CustomEvent("sourceUpdated", { detail: { sourceId } }))
-    } catch (error) {
-      console.error("Failed to recheck link:", error)
-    } finally {
-      setCheckingSourceId(null)
-    }
-  }, [])
 
   return (
     <Card className={cn("mt-8", className)}>

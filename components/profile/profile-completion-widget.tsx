@@ -182,6 +182,14 @@ export function ProfileCompletionWidget({
   onNavigate,
   className,
 }: ProfileCompletionWidgetProps) {
+  // Move useMemo before early return
+  const { percentage, items } = useMemo(() => {
+    if (!user) return { percentage: 0, items: [] }
+    const items = createCompletionItems(user, petsCount)
+    const percentage = calculateCompletion(items)
+    return { percentage, items }
+  }, [user, petsCount])
+
   // Defensive check for malformed user data
   if (!user) {
     return (
@@ -192,12 +200,6 @@ export function ProfileCompletionWidget({
       </Card>
     )
   }
-
-  const { percentage, items } = useMemo(() => {
-    const items = createCompletionItems(user, petsCount)
-    const percentage = calculateCompletion(items)
-    return { percentage, items }
-  }, [user, petsCount])
 
   const handleItemClick = (section: string): void => {
     if (onNavigate) {

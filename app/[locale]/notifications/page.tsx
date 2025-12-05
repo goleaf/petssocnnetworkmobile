@@ -279,11 +279,7 @@ export default function NotificationsPage() {
     [user, router, loadNotifications, loadHistory, showHistory],
   )
 
-  if (!user) return null
-
-  const unreadCount = notifications.filter((notification) => !notification.read).length
-
-  // Calculate statistics
+  // Calculate statistics - move before early return
   const statistics = useMemo(() => {
     const total = notifications.length
     const read = notifications.filter((n) => n.read).length
@@ -368,6 +364,10 @@ export default function NotificationsPage() {
       last24Hours,
     }
   }, [notifications])
+
+  if (!user) return null
+
+  const unreadCount = notifications.filter((notification) => !notification.read).length
 
   const filteredNotifications = notifications.filter((notification) => {
     if (filter === "unread" && notification.read) return false
